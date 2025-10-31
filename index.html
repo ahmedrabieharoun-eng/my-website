@@ -411,7 +411,7 @@
             box-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
         }
 
-        /* تصميم شاشة التحميل */
+        /* تصميم شاشة التحميل المعدلة */
         #app-loader {
             position: fixed;
             top: 0;
@@ -444,7 +444,65 @@
             50% { transform: rotate(10deg); }
         }
 
-        #loading-progress {
+        .ship-wheel-loader {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .ship-wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--ship-silver) 0%, #888 100%);
+            border: 5px solid var(--ship-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: wheelRotate 3s linear infinite;
+            position: relative;
+        }
+
+        .ship-wheel::before {
+            content: "";
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--ship-gold);
+            border-radius: 50%;
+        }
+
+        .ship-wheel::after {
+            content: "";
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border: 2px dashed var(--ship-gold);
+            border-radius: 50%;
+            animation: wheelRotateReverse 2s linear infinite;
+        }
+
+        @keyframes wheelRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes wheelRotateReverse {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(-360deg); }
+        }
+
+        .ship-floating {
+            animation: shipFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes shipFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        #loading-text {
             margin-top: 20px;
             font-size: 1.2rem;
             font-weight: 600;
@@ -978,8 +1036,10 @@
     <div class="stars" id="stars"></div>
 
     <div id="app-loader">
-        <div class="ship-anchor"></div>
-        <p id="loading-progress">0%</p>
+        <div class="ship-wheel-loader ship-floating">
+            <div class="ship-wheel"></div>
+        </div>
+        <p id="loading-text">Preparing Your Ship...</p>
     </div>
     
     <!-- البوب أب -->
@@ -1184,7 +1244,7 @@
 
                 <!-- زر إضافة مهمة جديد - تم التعديل -->
                 <button class="add-task-btn" id="add-task-main-btn">
-                    <i class="fas fa-plus-circle"></i> Add Task
+                    <i class="fas fa-plus-circle"></i> لإضافة قناتك كإعلان، اضغط هنا
                 </button>
                 
                 <h2>Bonus Tasks</h2>
@@ -1443,7 +1503,7 @@
 
         const popup = document.getElementById('popup');
         const popupBody = document.getElementById('popup-body');
-        const loadingProgress = document.getElementById('loading-progress');
+        const loadingText = document.getElementById('loading-text');
 
         // ✅ إنشاء النجوم في الخلفية
         function createStars() {
@@ -1473,7 +1533,6 @@
 
         const showPopup = (content) => { popupBody.innerHTML = content; popup.style.display = 'flex'; };
         const closePopup = () => { popup.style.display = 'none'; };
-        const updateProgress = (percentage) => { loadingProgress.textContent = `${percentage}%`; };
 
         // ✅ دالة فتح محادثة Telegram - تم التعديل لاستخدام الرابط الخاص بك
         const openTelegramContact = () => {
@@ -1656,7 +1715,7 @@
                 await db.ref(`userEarnings/${tgUser.id}/${today}`).set(firebase.database.ServerValue.increment(adValueRR / RR_TO_TON_RATE));
 
                 if (userState.referredBy) {
-                    await updateReferralEarnings(tgUser.id, adValueRR / RR_TO_TON_RATE);
+                    await updateReferralEarnings(tgUser.id, adValueRR);
                 }
 
                 // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
@@ -1698,10 +1757,7 @@
                 const db = firebase.database();
                 const today = new Date().toDateString();
                 
-                console.log('🔍 Checking daily login bonus for:', today);
-                console.log('📊 Current daily login data:', dailyLoginData);
-                
-                // ✅ التعديل: التحقق من أن المستخدم لم يحصل على المكافأة اليوم
+                // التحقق مما إذا تم المطالبة اليوم
                 if (dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today)) {
                     try{ 
                         if (tg.showAlert) tg.showAlert("You have already claimed your daily bonus today!"); 
@@ -1709,37 +1765,31 @@
                     return;
                 }
                 
-                // ✅ التعديل: حساب المكافأة بناءً على streak الحالي
-                const currentStreak = dailyLoginData.currentStreak || 0;
-                const rewardIndex = Math.min(currentStreak, dailyLoginRewards.length - 1);
+                // حساب المكافأة بناءً على streak
+                const currentStreak = dailyLoginData.currentStreak || 1;
+                const rewardIndex = Math.min(currentStreak - 1, dailyLoginRewards.length - 1);
                 const rewardAmount = dailyLoginRewards[rewardIndex] || dailyLoginRewards[dailyLoginRewards.length - 1] || 0.0001;
                 
                 const rewardAmountRR = Math.round(rewardAmount * RR_TO_TON_RATE);
                 userRRBalance += rewardAmountRR;
                 localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
                 
-                // ✅ التعديل: تحديث بيانات التسجيل اليومي
+                // تحديث بيانات التسجيل اليومي
                 if (!dailyLoginData.claimedDays) {
                     dailyLoginData.claimedDays = [];
                 }
                 dailyLoginData.claimedDays.push(today);
-                dailyLoginData.currentStreak = currentStreak + 1;
                 dailyLoginData.lastLoginDate = today;
                 
                 const dailyLoginRef = db.ref(`dailyLogin/${tgUser.id}`);
                 await dailyLoginRef.set(dailyLoginData);
                 
-                console.log('✅ Daily bonus claimed successfully:', {
-                    streak: dailyLoginData.currentStreak,
-                    reward: rewardAmountRR,
-                    today: today
-                });
-                
                 try{ 
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(`🎉 Daily login bonus claimed! +${rewardAmountRR.toLocaleString()} RR (Day ${dailyLoginData.currentStreak})`); 
+                    if (tg.showAlert) tg.showAlert(`🎉 Daily login bonus claimed! +${rewardAmountRR.toLocaleString()} RR (Day ${currentStreak})`); 
                 }catch{}
                 
+                // تحديث الواجهة
                 renderUI();
                 
                 // إغلاق النافذة تلقائياً بعد النجاح
@@ -1748,7 +1798,7 @@
                 }, 1500);
                 
             } catch (error) {
-                console.error('❌ Error claiming daily login bonus:', error);
+                console.error('Error claiming daily login bonus:', error);
                 try{ 
                     if (tg.showAlert) tg.showAlert("Failed to claim daily bonus. Please try again."); 
                 }catch{} 
@@ -1759,13 +1809,7 @@
         const openDailyCalendar = () => {
             const today = new Date().toDateString();
             const isClaimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
-            
-            console.log('📅 Opening daily calendar:', {
-                today: today,
-                isClaimedToday: isClaimedToday,
-                currentStreak: dailyLoginData.currentStreak,
-                claimedDays: dailyLoginData.claimedDays
-            });
+            const currentStreak = dailyLoginData.currentStreak || 1;
             
             let calendarHTML = '';
             for (let day = 1; day <= dailyLoginRewards.length; day++) {
@@ -1774,10 +1818,10 @@
                 let dayClass = 'calendar-day-compact future';
                 let statusText = 'Future';
                 
-                if (day < (dailyLoginData.currentStreak || 0)) {
+                if (day < currentStreak) {
                     dayClass = 'calendar-day-compact completed';
                     statusText = 'Claimed';
-                } else if (day === (dailyLoginData.currentStreak || 0)) {
+                } else if (day === currentStreak) {
                     if (isClaimedToday) {
                         dayClass = 'calendar-day-compact completed';
                         statusText = 'Claimed';
@@ -1797,7 +1841,7 @@
             }
             
             document.getElementById('streak-calendar-compact').innerHTML = calendarHTML;
-            document.getElementById('current-streak-display').textContent = `${dailyLoginData.currentStreak || 0} days`;
+            document.getElementById('current-streak-display').textContent = `${currentStreak} days`;
             
             // تحديث حالة المكافأة اليومية
             const statusElement = document.getElementById('daily-login-status');
@@ -1823,11 +1867,10 @@
 
         // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
         const closeDailyCalendar = () => {
-            console.log('🔒 Closing daily calendar');
             document.getElementById('daily-calendar-popup').style.display = 'none';
         };
 
-        // ✅ دالة لتحديث حالة المسابقة في الصفحة الرئيسية
+        // ✅ دالة لتحديث حالة المسابقة في الصفحة الرئيسية - تم إصلاحها
         const updateContestStatus = () => {
             const statusBox = document.getElementById('contest-status-box');
             const statusValue = document.getElementById('contest-status-value');
@@ -2135,13 +2178,10 @@
                     initDataUnsafe: tg.initDataUnsafe
                 });
 
-                updateProgress(10); 
                 firebase.initializeApp(firebaseConfig); 
                 const db = firebase.database();
-                updateProgress(20);
 
                 await loadDynamicSettings(db);
-                updateProgress(25);
 
                 const configSnapshot = await db.ref('config').once('value');
                 appConfig = configSnapshot.val() || {};
@@ -2156,23 +2196,16 @@
                     adValue: appConfig.adValue,
                     dailyAdLimit: appConfig.dailyAdLimit
                 });
-                
-                updateProgress(40);
 
                 await loadContestData(db);
-                updateProgress(45);
 
                 await loadDailyLoginData(db);
-                updateProgress(47);
 
                 await loadReferralData(db);
-                updateProgress(48);
 
                 await loadRedeemedCodes(db);
-                updateProgress(49);
 
                 await loadAdChannels(db);
-                updateProgress(50);
 
                 userRRBalance = parseInt(localStorage.getItem(`userRRBalance_${tgUser.id || 'guest'}`) || '0');
 
@@ -2246,20 +2279,16 @@
         // ✅ دالة لمتابعة تهيئة التطبيق بعد التحقق من الاشتراك
         const continueAppInitialization = async (db) => {
             try {
-                updateProgress(50);
                 await loadUserData(db);
-                updateProgress(60);
 
                 const historyPromise = loadTransactionHistory(db);
                 await historyPromise;
-                updateProgress(80);
 
                 loadAdSdk(appConfig.adZoneId);
 
                 renderUI(); 
                 setupNavigation(); 
                 setupEventListeners();
-                updateProgress(100);
 
                 setTimeout(() => {
                     document.getElementById('app-loader').style.display = 'none';
@@ -2301,11 +2330,7 @@
                 contestData.leaderboard = [];
                 leaderboardSnap.forEach(child => {
                     const participant = child.val();
-                    // ✅ التعديل: إضافة photoUrl للمشاركين
-                    contestData.leaderboard.unshift({
-                        ...participant,
-                        photoUrl: participant.photoUrl || 'https://via.placeholder.com/32'
-                    });
+                    contestData.leaderboard.unshift(participant);
                 });
                 
                 contestData.userRank = 0;
@@ -2329,13 +2354,6 @@
                 
                 if (savedData) {
                     dailyLoginData = savedData;
-                } else {
-                    // ✅ التعديل: تهيئة بيانات جديدة إذا لم تكن موجودة
-                    dailyLoginData = {
-                        currentStreak: 0,
-                        lastLoginDate: null,
-                        claimedDays: []
-                    };
                 }
                 
                 await checkDailyLogin(db);
@@ -2350,43 +2368,25 @@
             const today = new Date().toDateString();
             const lastLogin = dailyLoginData.lastLoginDate;
             
-            console.log('🔍 Checking daily login:', {
-                today: today,
-                lastLogin: lastLogin,
-                currentStreak: dailyLoginData.currentStreak
-            });
-            
             if (lastLogin !== today) {
                 const yesterday = new Date();
                 yesterday.setDate(yesterday.getDate() - 1);
                 const yesterdayStr = yesterday.toDateString();
                 
                 if (lastLogin === yesterdayStr) {
-                    // ✅ استمرار streak
                     dailyLoginData.currentStreak = (dailyLoginData.currentStreak || 0) + 1;
-                    console.log('✅ Continuing streak:', dailyLoginData.currentStreak);
-                } else if (lastLogin && lastLogin !== today) {
-                    // ✅ كسر streak، البدء من جديد
+                } else if (lastLogin !== today) {
                     dailyLoginData.currentStreak = 1;
-                    console.log('🔄 Starting new streak');
-                } else {
-                    // ✅ أول مرة
-                    dailyLoginData.currentStreak = 1;
-                    console.log('🎯 First time login');
                 }
                 
                 dailyLoginData.lastLoginDate = today;
                 
                 const dailyLoginRef = db.ref(`dailyLogin/${tgUser.id}`);
                 await dailyLoginRef.set(dailyLoginData);
-                
-                console.log('✅ Daily login data updated:', dailyLoginData);
-            } else {
-                console.log('ℹ️ Already logged in today');
             }
         };
 
-        // ✅ دالة لتحميل بيانات نظام الإحالات الجديد
+        // ✅ دالة محسنة لتحميل بيانات نظام الإحالات الجديد - تم تعديلها لتعمل بـ RR
         const loadReferralData = async (db) => {
             try {
                 const referralRef = db.ref(`referrals/${tgUser.id}`);
@@ -2717,8 +2717,7 @@
                     referrals: 0,
                     userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
                     username: tgUser.username || '',
-                    userId: tgUser.id,
-                    photoUrl: userState.photoUrl || 'https://via.placeholder.com/32'
+                    userId: tgUser.id
                 };
                 
                 const newPoints = (currentData.points || 0) + 1;
@@ -2730,7 +2729,6 @@
                     userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
                     username: tgUser.username || '',
                     userId: tgUser.id,
-                    photoUrl: userState.photoUrl || 'https://via.placeholder.com/32',
                     lastActivity: firebase.database.ServerValue.TIMESTAMP
                 });
                 
@@ -2760,8 +2758,7 @@
                     referrals: 0,
                     userName: '',
                     username: '',
-                    userId: referrerId,
-                    photoUrl: 'https://via.placeholder.com/32'
+                    userId: referrerId
                 };
                 
                 const newPoints = (currentData.points || 0) + 15;
@@ -2773,7 +2770,6 @@
                     userName: currentData.userName || '',
                     username: currentData.username || '',
                     userId: referrerId,
-                    photoUrl: currentData.photoUrl || 'https://via.placeholder.com/32',
                     lastActivity: firebase.database.ServerValue.TIMESTAMP
                 });
                 
@@ -2784,11 +2780,11 @@
             }
         };
 
-        // ✅ دالة لتحديث أرباح الإحالات
-        const updateReferralEarnings = async (referredUserId, earnings) => {
+        // ✅ دالة محسنة لتحديث أرباح الإحالات - تم تعديلها لتعمل بـ RR
+        const updateReferralEarnings = async (referredUserId, earningsRR) => {
             try {
                 const db = firebase.database();
-                const referrerId = tgUser.id;
+                const referrerId = userState.referredBy;
                 
                 if (!referrerId) return;
                 
@@ -2796,13 +2792,13 @@
                 const referralSnap = await referralRef.once('value');
                 const currentData = referralSnap.val() || { totalEarnings: 0, pendingEarnings: 0, referredUsers: [] };
                 
-                const referralBonus = earnings * 0.1;
+                const referralBonusRR = earningsRR * 0.1; // 10% من أرباح RR
                 
-                currentData.pendingEarnings = (currentData.pendingEarnings || 0) + referralBonus;
+                currentData.pendingEarnings = (currentData.pendingEarnings || 0) + referralBonusRR;
                 
                 await referralRef.set(currentData);
                 
-                console.log(`🎯 Referral earnings updated for ${referrerId}: +${referralBonus.toFixed(4)} TON from ${referredUserId}`);
+                console.log(`🎯 Referral earnings updated for ${referrerId}: +${referralBonusRR.toLocaleString()} RR from ${referredUserId}`);
                 
             } catch (error) {
                 console.error('Error updating referral earnings:', error);
@@ -2817,15 +2813,18 @@
                 
                 if (refSnap.exists()) {
                     const referrerData = refSnap.val();
-                    const bonusAmount = parseFloat(appConfig.referralBonus || 0.001);
+                    const bonusAmountRR = 10000; // 10,000 RR كمكافأة إحالة
                     
-                    if (bonusAmount > 0) {
+                    if (bonusAmountRR > 0) {
+                        // تحديث رصيد RR للمحيل
+                        const currentRRBalance = parseInt(localStorage.getItem(`userRRBalance_${referrerId}`) || '0');
+                        localStorage.setItem(`userRRBalance_${referrerId}`, (currentRRBalance + bonusAmountRR).toString());
+                        
                         await referrerRef.update({
-                            balance: firebase.database.ServerValue.increment(bonusAmount),
                             referrals: firebase.database.ServerValue.increment(1)
                         });
                         
-                        console.log(`🎉 Referral credited: ${referrerId} got ${bonusAmount} TON for referring ${newUserId}`);
+                        console.log(`🎉 Referral credited: ${referrerId} got ${bonusAmountRR.toLocaleString()} RR for referring ${newUserId}`);
                         
                         await updateContestPointsOnReferral(referrerId);
                     }
@@ -3122,18 +3121,18 @@
             }
         };
 
-        // ✅ دالة لعرض صفحة الإحالات
+        // ✅ دالة محسنة لعرض صفحة الإحالات - تم تعديلها لتعمل بـ RR
         const renderReferralsPage = () => {
-            const referralBonus = appConfig.referralBonus || 0.001;
+            const referralBonusRR = 10000; // 10,000 RR كمكافأة إحالة
             const botUsername = appConfig.botUsername || "Aborabie777_bot";
             const userId = tgUser.id || '';
             
             const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
             
-            document.getElementById('referral-bonus-amount').textContent = Number(referralBonus).toFixed(4);
+            document.getElementById('referral-bonus-amount').textContent = referralBonusRR.toLocaleString() + ' RR';
             document.getElementById('total-referrals-display').textContent = userState.referrals || 0;
-            document.getElementById('total-earnings-display').textContent = referralData.totalEarnings.toFixed(4);
-            document.getElementById('pending-earnings-display').textContent = referralData.pendingEarnings.toFixed(4);
+            document.getElementById('total-earnings-display').textContent = (referralData.totalEarnings || 0).toLocaleString() + ' RR';
+            document.getElementById('pending-earnings-display').textContent = (referralData.pendingEarnings || 0).toLocaleString() + ' RR';
             document.getElementById('referral-link').value = refLink;
             
             let referredUsersHTML = '';
@@ -3148,7 +3147,7 @@
                                     <small style="color: var(--text-secondary-dark);">Joined: ${new Date(user.joinDate).toLocaleDateString()}</small>
                                 </div>
                             </div>
-                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.1).toFixed(4)} TON</div>
+                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.1 * RR_TO_TON_RATE).toLocaleString()} RR</div>
                         </div>
                     `;
                 });
@@ -3161,7 +3160,7 @@
             const claimBtn = document.getElementById('claim-referral-earnings-btn');
             if (referralData.pendingEarnings > 0) {
                 claimBtn.disabled = false;
-                claimBtn.textContent = `🎁 Claim ${referralData.pendingEarnings.toFixed(4)} TON`;
+                claimBtn.textContent = `🎁 Claim ${referralData.pendingEarnings.toLocaleString()} RR`;
             } else {
                 claimBtn.disabled = true;
                 claimBtn.textContent = '🎁 Claim Referral Earnings';
@@ -3170,6 +3169,43 @@
             // إضافة event listener لزر النسخ
             document.getElementById('copy-ref-link-btn').addEventListener('click', copyReferralLink);
             document.getElementById('claim-referral-earnings-btn').addEventListener('click', claimReferralEarnings);
+        };
+
+        // ✅ دالة محسنة لمطالبة أرباح الإحالات - تم تعديلها لتعمل بـ RR
+        const claimReferralEarnings = async () => {
+            try {
+                const db = firebase.database();
+                
+                if (referralData.pendingEarnings <= 0) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("No pending referral earnings to claim!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                // إضافة أرباح RR إلى رصيد المستخدم
+                userRRBalance += referralData.pendingEarnings;
+                localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                
+                referralData.totalEarnings += referralData.pendingEarnings;
+                referralData.pendingEarnings = 0;
+                
+                const referralRef = db.ref(`referrals/${tgUser.id}`);
+                await referralRef.set(referralData);
+                
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert(`🎉 Referral earnings claimed! +${referralData.totalEarnings.toLocaleString()} RR`); 
+                }catch{}
+                
+                renderUI();
+                
+            } catch (error) {
+                console.error('Error claiming referral earnings:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to claim referral earnings. Please try again."); 
+                }catch{} 
+            }
         };
 
         // ✅ دالة محسنة لعرض قسم السحب - تم تعديلها
@@ -3935,8 +3971,7 @@
                     referrals: 0,
                     userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
                     username: tgUser.username || '',
-                    userId: tgUser.id,
-                    photoUrl: userState.photoUrl || 'https://via.placeholder.com/32'
+                    userId: tgUser.id
                 };
                 
                 const newPoints = (currentData.points || 0) + points;
@@ -3946,7 +3981,6 @@
                     userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
                     username: tgUser.username || '',
                     userId: tgUser.id,
-                    photoUrl: userState.photoUrl || 'https://via.placeholder.com/32',
                     lastActivity: firebase.database.ServerValue.TIMESTAMP
                 });
                 
@@ -3954,43 +3988,6 @@
                 
             } catch (error) {
                 console.error('Error awarding contest points:', error);
-            }
-        };
-
-        // ✅ دالة لمطالبة أرباح الإحالات
-        const claimReferralEarnings = async () => {
-            try {
-                const db = firebase.database();
-                
-                if (referralData.pendingEarnings <= 0) {
-                    try{ 
-                        if (tg.showAlert) tg.showAlert("No pending referral earnings to claim!"); 
-                    }catch{} 
-                    return;
-                }
-                
-                const userRef = db.ref(`users/${tgUser.id}`);
-                await userRef.child('balance').set(firebase.database.ServerValue.increment(referralData.pendingEarnings));
-                userState.balance = (userState.balance || 0) + referralData.pendingEarnings;
-                
-                referralData.totalEarnings += referralData.pendingEarnings;
-                referralData.pendingEarnings = 0;
-                
-                const referralRef = db.ref(`referrals/${tgUser.id}`);
-                await referralRef.set(referralData);
-                
-                try{ 
-                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(`🎉 Referral earnings claimed! +${referralData.totalEarnings.toFixed(4)} TON`); 
-                }catch{}
-                
-                renderUI();
-                
-            } catch (error) {
-                console.error('Error claiming referral earnings:', error);
-                try{ 
-                    if (tg.showAlert) tg.showAlert("Failed to claim referral earnings. Please try again."); 
-                }catch{} 
             }
         };
 
@@ -4008,6 +4005,7 @@
             if (distance < 0) {
                 countdownEl.textContent = 'Contest Ended!';
                 contestData.isActive = false; // تحديث حالة المسابقة
+                updateContestStatus(); // تحديث حالة المسابقة في الصفحة الرئيسية
                 return;
             }
             
@@ -4043,20 +4041,37 @@
                 const rank = index + 1;
                 const isCurrentUser = participant.userId === tgUser.id;
                 
+                let rankIcon = rank;
+                if (rank === 1) rankIcon = '🥇';
+                else if (rank === 2) rankIcon = '🥈';
+                else if (rank === 3) rankIcon = '🥉';
+                
+                let displayName = 'Unknown User';
+                if (participant.userName && participant.userName.trim() !== '') {
+                    displayName = participant.userName;
+                } else if (participant.username) {
+                    displayName = `@${participant.username}`;
+                } else if (participant.userId) {
+                    displayName = `User ${participant.userId}`;
+                }
+                
+                const prizeAmount = getPrizeForRank(rank);
+                const prizeText = prizeAmount > 0 ? `${prizeAmount} TON` : '';
+                
                 const item = document.createElement('div');
                 item.className = `contest-leaderboard-item-compact ${isCurrentUser ? 'current-user' : ''}`;
                 item.innerHTML = `
                     <div class="contest-rank-compact ${rank <= 3 ? 'top-3' : ''}">
-                        <img src="${participant.photoUrl || 'https://via.placeholder.com/32'}" alt="${participant.userName || 'User'}" class="user-avatar-small">
+                        ${rankIcon}
                     </div>
-                    <div class="contest-user-info-compact">
+                    <div class="contest-user-info-compact" style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
                         <div class="contest-user-details">
-                            <div class="contest-user-name-compact">${participant.userName || 'Unknown User'}</div>
+                            <div class="contest-user-name-compact">${displayName}</div>
                             <div class="contest-user-points-compact">${participant.points || 0} points</div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="contest-user-score-compact">${participant.points || 0}</div>
-                            ${rank <= 10 ? `<div class="contest-user-prize">${getPrizeForRank(rank)} TON</div>` : ''}
+                            ${prizeText ? `<div class="contest-user-prize">${prizeText}</div>` : ''}
                         </div>
                     </div>
                 `;
@@ -4113,7 +4128,14 @@
                 const prizeAmount = getPrizeForRank(rank);
                 const prizeText = prizeAmount > 0 ? `${prizeAmount} TON` : '';
                 
-                let displayName = participant.userName || 'Unknown User';
+                let displayName = 'Unknown User';
+                if (participant.userName && participant.userName.trim() !== '') {
+                    displayName = participant.userName;
+                } else if (participant.username) {
+                    displayName = `@${participant.username}`;
+                } else if (participant.userId) {
+                    displayName = `User ${participant.userId}`;
+                }
                 
                 let rankIcon = rank;
                 if (rank === 1) rankIcon = '🥇';
