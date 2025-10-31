@@ -204,7 +204,7 @@
         }
 
         /* تصميم المحول */
-        .converter-container, .earning-wallet-card, .contest-container, .withdraw-container {
+        .converter-container, .contest-container, .withdraw-container {
             padding: 20px;
             border-radius: 12px;
             margin: 20px 15px;
@@ -310,11 +310,41 @@
             font-size: 0.75rem;
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* تأثير العجلة المسننة */
+        .control-wheel::before {
+            content: "";
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            background: 
+                radial-gradient(circle, transparent 55%, var(--ship-gold) 55%, var(--ship-gold) 60%, transparent 60%),
+                radial-gradient(circle, transparent 65%, var(--ship-gold) 65%, var(--ship-gold) 70%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            animation: rotateGear 10s linear infinite;
+        }
+
+        @keyframes rotateGear {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         .control-wheel i {
             font-size: 1.5rem;
             margin-bottom: 4px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .control-wheel span {
+            position: relative;
+            z-index: 2;
         }
 
         .control-wheel.active {
@@ -525,15 +555,6 @@
         .history-status { padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: white; text-transform: capitalize; }
         .status-completed { background-color: var(--success); } .status-pending { background-color: var(--pending); } .status-rejected { background-color: var(--danger); }
 
-        .leaderboard-toggle { display: flex; justify-content: space-around; margin-bottom: 15px; }
-        .toggle-btn { padding: 10px 20px; border: none; background: none; font-size: 1rem; cursor: pointer; color: var(--text-secondary-dark); }
-        .toggle-btn.active { font-weight: 700; color: var(--ship-gold); border-bottom: 2px solid var(--ship-gold); }
-        .leaderboard-list { list-style: none; }
-        .leaderboard-item { display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 8px; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); }
-        .rank { font-size: 1.2rem; font-weight: 700; color: var(--ship-gold); width: 40px; }
-        .leaderboard-item img { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
-        .leaderboard-name { font-weight: 600; flex-grow: 1; } .leaderboard-score { font-weight: 600; color: var(--ship-gold); }
-
         .subscription-container { padding: 20px; border-radius: 12px; margin: 20px 0; text-align: center; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; margin: 10px 0; border-radius: 8px; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); }
         .channel-info { display: flex; align-items: center; gap: 10px; }
@@ -614,6 +635,20 @@
         .ad-reward-amount { font-size: 1.1rem; font-weight: 700; color: var(--ship-gold); margin-bottom: 5px; }
         .ad-reward-label { font-size: 0.75rem; color: var(--text-secondary-dark); }
 
+        /* أنماط التقويم اليومي */
+        .daily-calendar-popup { max-width: 450px !important; }
+        .streak-calendar-compact { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 15px 0; }
+        .calendar-day-compact { padding: 10px; border-radius: 8px; text-align: center; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); }
+        .calendar-day-compact.completed { background: rgba(76, 175, 80, 0.2); border-color: var(--success); }
+        .calendar-day-compact.current { background: rgba(255, 215, 0, 0.2); border: 2px solid var(--ship-gold); }
+        .calendar-day-compact.future { background: rgba(255, 255, 255, 0.05); opacity: 0.6; }
+        .day-number-compact { font-weight: 700; margin-bottom: 5px; }
+        .day-reward-compact { font-size: 0.8rem; color: var(--ship-gold); font-weight: 600; }
+        .day-status-compact { font-size: 0.7rem; margin-top: 3px; }
+
+        /* أنماط صفحة الإحالات */
+        .referrals-container { padding: 20px; border-radius: 12px; margin: 20px 15px; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); }
+
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -638,6 +673,20 @@
     <div id="popup" class="popup-overlay">
         <div class="popup-content">
             <div id="popup-body"></div>
+        </div>
+    </div>
+
+    <!-- نافذة التقويم اليومي -->
+    <div id="daily-calendar-popup" class="popup-overlay" style="display: none;">
+        <div class="popup-content daily-calendar-popup">
+            <h2>📅 Daily Login Calendar</h2>
+            <div id="streak-calendar-compact" class="streak-calendar-compact">
+                <!-- سيتم إضافة الأيام هنا -->
+            </div>
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255, 215, 0, 0.1); border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.9rem;">Current Streak: <strong id="current-streak-display">0 days</strong></p>
+            </div>
+            <button class="popup-close-btn" onclick="closeDailyCalendar()" style="margin-top: 15px;">Close</button>
         </div>
     </div>
     
@@ -731,39 +780,43 @@
             </div>
 
             <div id="tasks-page" class="page">
-                <div class="earning-wallet-card">
-                    <h3>Earning Wallet</h3>
-                    <p style="font-size: 1.8rem; font-weight: 700; color: var(--ship-gold); margin: 10px 0;"><span id="earning-wallet-balance">0.0000</span> TON</p>
-                    <small>Minimum 0.001 TON to move to main balance.</small>
-                    <button id="move-to-balance-btn" class="action-btn" style="width:100%; margin-top: 15px;" disabled>Move to Main Balance</button>
-                </div>
-                <div id="ad-progress-container" class="progress-container" style="margin-top:20px;"></div>
+                <!-- تم إزالة Earning Wallet -->
+                
+                <div id="ad-progress-container" class="progress-container"></div>
                 <div id="ad-task-container"></div>
                 
-                <!-- مهمة التسجيل اليومي المحسنة -->
-                <div id="daily-login-task-container"></div>
+                <!-- مهمة التسجيل اليومي المبسطة -->
+                <div class="task-container daily-login-simple">
+                    <i class="fas fa-calendar-check" style="font-size: 1.5rem; color: var(--ship-gold);"></i>
+                    <div class="task-info">
+                        <h3>Daily Login Bonus</h3>
+                        <p>Claim your daily reward!</p>
+                    </div>
+                    <button id="open-daily-calendar-btn" class="action-btn">
+                        Open Calendar
+                    </button>
+                </div>
                 
-                <!-- خانة إدخال الأكواد -->
-                <div id="redeem-code-container" style="margin-top: 20px;">
-                    <div class="task-container" style="flex-direction: column; align-items: stretch;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                            <i class="fas fa-ticket-alt" style="font-size: 1.5rem; color: var(--ship-gold);"></i>
-                            <h3>Redeem Code</h3>
+                <!-- خانة إدخال الأكواد المصغرة -->
+                <div id="redeem-code-container">
+                    <div class="task-container" style="flex-direction: row; align-items: center; padding: 12px;">
+                        <i class="fas fa-ticket-alt" style="font-size: 1.2rem; color: var(--ship-gold); margin-right: 10px;"></i>
+                        <div class="task-info" style="flex: 1;">
+                            <h3 style="font-size: 1rem;">Redeem Code</h3>
+                            <p style="font-size: 0.8rem;">Enter code for contest points</p>
                         </div>
-                        <p style="margin-bottom: 15px; font-size: 0.9rem;">Enter a code to earn contest points!</p>
-                        
-                        <div class="code-input-container">
-                            <input type="text" id="redeem-code-input" class="code-input" placeholder="ENTER_CODE_HERE" maxlength="20">
-                            <button id="redeem-code-btn" class="redeem-code-btn">Redeem</button>
-                        </div>
-                        
-                        <div class="code-info">
-                            💡 Codes give contest points only, not TON
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="redeem-code-input" class="code-input" 
+                                   placeholder="CODE" maxlength="20" style="width: 100px; padding: 8px;">
+                            <button id="redeem-code-btn" class="redeem-code-btn" style="padding: 8px 12px;">
+                                Redeem
+                            </button>
                         </div>
                     </div>
                 </div>
                 
-                <h2>Bonus Tasks</h2><div id="dynamic-tasks-container"></div>
+                <h2>Bonus Tasks</h2>
+                <div id="dynamic-tasks-container"></div>
             </div>
 
             <div id="contest-page" class="page">
@@ -839,21 +892,58 @@
                 </div>
             </div>
 
-            <div id="leaderboard-page" class="page">
-                <h2>Leaderboard</h2>
-                <div class="leaderboard-toggle">
-                    <button class="toggle-btn active" data-board="referral">Top Referrers</button>
-                    <button class="toggle-btn" data-board="earning">Top Earners</button>
+            <!-- صفحة الإحالات الجديدة -->
+            <div id="referrals-page" class="page">
+                <div class="referrals-container">
+                    <h2>👥 Refer & Earn</h2>
+                    <p>Invite friends and earn <strong>10% of their earnings</strong> + <strong id="referral-bonus-amount">0.0010 TON</strong> per referral!</p>
+                    
+                    <div class="referral-stats">
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="total-referrals-display">0</div>
+                            <div class="referral-stat-label">Total Referrals</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="total-earnings-display">0.0000</div>
+                            <div class="referral-stat-label">Total Earnings</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="pending-earnings-display">0.0000</div>
+                            <div class="referral-stat-label">Pending Earnings</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value">10%</div>
+                            <div class="referral-stat-label">Commission Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 20px 0;">
+                        <h4>📋 Your Referral Link</h4>
+                        <input type="text" id="referral-link" readonly style="width: 100%; padding: 12px; border-radius: 8px; border: 1px dashed var(--ship-gold); background: transparent; color: inherit; text-align: center; margin: 10px 0;">
+                        <button id="copy-ref-link-btn" class="action-btn" style="width: 100%;">
+                            📋 Copy Referral Link
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <h4>👤 Your Referrals</h4>
+                        <div class="referral-list" id="referrals-list-container">
+                            <!-- سيتم إضافة قائمة الإحالات هنا -->
+                        </div>
+                    </div>
+                    
+                    <button class="claim-referral-btn" id="claim-referral-earnings-btn" style="width: 100%; margin-top: 15px;" disabled>
+                        🎁 Claim Referral Earnings
+                    </button>
                 </div>
-                <div id="referral-board"><ul class="leaderboard-list" id="referral-leaderboard-list"></ul></div>
-                <div id="earning-board" style="display: none;"><ul class="leaderboard-list" id="earning-leaderboard-list"></ul></div>
             </div>
 
             <div id="profile-page" class="page">
-                <div id="referral-section"></div>
+                <!-- تم إزالة قسم الإحالات من هنا -->
                 <div id="withdraw-section"></div>
                 <div id="withdrawal-history-section" style="margin-top: 20px;">
-                    <h2>Withdrawal History</h2><div id="withdrawal-history-list"></div>
+                    <h2>Withdrawal History</h2>
+                    <div id="withdrawal-history-list"></div>
                 </div>
             </div>
         </main>
@@ -872,9 +962,9 @@
                 <i class="fas fa-trophy"></i>
                 <span>Contest</span>
             </div>
-            <div class="control-wheel" data-page="leaderboard-page">
-                <i class="fas fa-ranking-star"></i>
-                <span>Ranking</span>
+            <div class="control-wheel" data-page="referrals-page">
+                <i class="fas fa-users"></i>
+                <span>Referrals</span>
             </div>
             <div class="control-wheel" data-page="profile-page">
                 <i class="fas fa-user-alt"></i>
@@ -909,7 +999,6 @@
         let adWatchTimer = null;
 
         let appConfig = {}; let userState = {}; let tgUser = {}; let earningWalletBalance = 0;
-        let leaderboardData = { referral: [], earning: [] };
         let userTransactions = [];
         let isSubscribedToAllChannels = false;
 
@@ -1233,9 +1322,8 @@
             }
         };
 
-        // ✅ دالة محسنة لعرض مهمة التسجيل اليومي
-        const renderDailyLoginTask = () => {
-            const container = document.getElementById('daily-login-task-container');
+        // ✅ دالة لعرض التقويم اليومي
+        const openDailyCalendar = () => {
             const today = new Date().toDateString();
             const isClaimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
             
@@ -1243,75 +1331,39 @@
             for (let day = 1; day <= dailyLoginRewards.length; day++) {
                 const rewardAmount = dailyLoginRewards[day - 1];
                 const rewardAmountRR = Math.round(rewardAmount * RR_TO_TON_RATE);
-                let dayClass = 'calendar-day future';
+                let dayClass = 'calendar-day-compact future';
                 let statusText = 'Future';
-                let dayNumber = day;
                 
                 if (day < dailyLoginData.currentStreak) {
-                    dayClass = 'calendar-day completed';
+                    dayClass = 'calendar-day-compact completed';
                     statusText = 'Claimed';
                 } else if (day === dailyLoginData.currentStreak) {
                     if (isClaimedToday) {
-                        dayClass = 'calendar-day completed';
+                        dayClass = 'calendar-day-compact completed';
                         statusText = 'Claimed';
                     } else {
-                        dayClass = 'calendar-day current';
+                        dayClass = 'calendar-day-compact current';
                         statusText = 'Claim Now';
                     }
                 }
                 
                 calendarHTML += `
                     <div class="${dayClass}">
-                        <div class="day-number">${dayNumber}</div>
-                        <div class="day-reward">${rewardAmountRR.toLocaleString()} RR</div>
-                        <div class="day-status">${statusText}</div>
+                        <div class="day-number-compact">Day ${day}</div>
+                        <div class="day-reward-compact">${rewardAmountRR.toLocaleString()} RR</div>
+                        <div class="day-status-compact">${statusText}</div>
                     </div>
                 `;
             }
             
-            const nextReward = dailyLoginData.currentStreak <= dailyLoginRewards.length ? 
-                dailyLoginRewards[dailyLoginData.currentStreak - 1] || dailyLoginRewards[dailyLoginRewards.length - 1] : 
-                dailyLoginRewards[dailyLoginRewards.length - 1];
-            const nextRewardRR = Math.round(nextReward * RR_TO_TON_RATE);
-            
-            container.innerHTML = `
-                <div class="task-container daily-login-task">
-                    <div class="daily-login-header">
-                        <i class="fas fa-calendar-check"></i>
-                        <h3>Daily Login Bonus</h3>
-                    </div>
-                    <p style="margin-bottom: 15px; font-size: 0.9rem;">Login consecutively to earn increasing rewards every day!</p>
-                    
-                    <div class="login-streak">
-                        <div class="streak-info">
-                            <div class="streak-count">${dailyLoginData.currentStreak} days</div>
-                            <div class="streak-label">Current Streak</div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 0.8rem; color: var(--text-secondary-dark);">Max: ${dailyLoginRewards.length} days</div>
-                            <div style="font-size: 0.8rem; color: var(--ship-gold); font-weight: 600;">Increasing rewards each day!</div>
-                        </div>
-                    </div>
-                    
-                    <div class="streak-calendar">
-                        ${calendarHTML}
-                    </div>
-                    
-                    <div class="claim-section">
-                        <div class="next-reward">
-                            <div class="reward-label">Next Reward</div>
-                            <div class="reward-amount">${nextRewardRR.toLocaleString()} RR</div>
-                        </div>
-                        <button class="claim-daily-btn" id="claim-daily-login-btn" ${isClaimedToday ? 'disabled' : ''}>
-                            ${isClaimedToday ? '✅ Claimed Today' : '🎁 CLAIM NOW'}
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            if (!isClaimedToday) {
-                document.getElementById('claim-daily-login-btn').addEventListener('click', claimDailyLoginBonus);
-            }
+            document.getElementById('streak-calendar-compact').innerHTML = calendarHTML;
+            document.getElementById('current-streak-display').textContent = `${dailyLoginData.currentStreak} days`;
+            document.getElementById('daily-calendar-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة لإغلاق التقويم اليومي
+        const closeDailyCalendar = () => {
+            document.getElementById('daily-calendar-popup').style.display = 'none';
         };
 
         // ✅ دالة للتحقق من الاشتراك في القنوات باستخدام بوت واحد
@@ -1716,21 +1768,11 @@
                 await loadUserData(db);
                 updateProgress(60);
 
-                const referralBoardPromise = db.ref('users').orderByChild('referrals').limitToLast(10).once('value');
-                const earningBoardPromise = db.ref('users').orderByChild('totalEarned').limitToLast(10).once('value');
                 const historyPromise = loadTransactionHistory(db);
-
-                const [referralBoardSnap, earningBoardSnap] = await Promise.all([referralBoardPromise, earningBoardPromise, historyPromise]);
+                await historyPromise;
                 updateProgress(80);
 
-                referralBoardSnap.forEach(child => { leaderboardData.referral.push(child.val()); });
-                earningBoardSnap.forEach(child => { leaderboardData.earning.push(child.val()); });
-                leaderboardData.referral.reverse(); 
-                leaderboardData.earning.reverse();
-                updateProgress(90);
-
                 loadAdSdk(appConfig.adZoneId);
-                earningWalletBalance = parseFloat(localStorage.getItem(`earningWallet_${tgUser.id || 'guest'}`) || '0');
 
                 renderUI(); 
                 setupNavigation(); 
@@ -1844,7 +1886,7 @@
                 }
                 
                 const referredUsersRef = db.ref('users').orderByChild('referredBy').equalTo(tgUser.id);
-                const referredUsersSnap = await referredUsersRef.once('value');
+                const referredUsersSnap = await referredUsersSnap.once('value');
                 
                 referralData.referredUsers = [];
                 referredUsersSnap.forEach(child => {
@@ -2291,13 +2333,10 @@
             document.getElementById('referral-count').textContent = userState.referrals || 0;
             document.getElementById('total-ads-watched').textContent = userState.lifetimeAdCount || 0;
             document.getElementById('total-earned').textContent = (userState.totalEarned || 0).toFixed(4);
-            document.getElementById('earning-wallet-balance').textContent = earningWalletBalance.toFixed(4);
-            document.getElementById('move-to-balance-btn').disabled = earningWalletBalance < 0.001;
             renderAdTask(); 
             renderAdProgress(); 
-            renderDailyLoginTask();
             renderDynamicTasks(); 
-            renderReferralSection(); 
+            renderReferralsPage();
             renderWithdrawSection(); 
             renderConverter(); 
             renderDynamicLinks();
@@ -2385,44 +2424,6 @@
             }
         };
 
-        const handleMoveToBalance = async () => {
-            if (!isSubscribedToAllChannels) {
-                try{ 
-                    if (tg.showAlert) tg.showAlert("Please subscribe to all required channels first!"); 
-                }catch{} 
-                return; 
-            }
-
-            if(earningWalletBalance < 0.001) { 
-                try{ 
-                    if (tg.showAlert) tg.showAlert("You need at least 0.001 TON to move."); 
-                }catch{} 
-                return; 
-            }
-            const btn = document.getElementById('move-to-balance-btn'); 
-            btn.disabled = true; 
-            btn.textContent = 'Moving...';
-            try {
-                const db = firebase.database();
-                await db.ref(`users/${tgUser.id}/balance`).set(firebase.database.ServerValue.increment(earningWalletBalance));
-                userState.balance = (userState.balance || 0) + earningWalletBalance;
-                earningWalletBalance = 0;
-                localStorage.setItem(`earningWallet_${tgUser.id}`, '0');
-                try{ 
-                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert("Successfully moved to main balance!"); 
-                }catch{}
-            } catch(error) { 
-                console.error("Failed to move balance:", error); 
-                try{ 
-                    if (tg.showAlert) tg.showAlert("Failed to move balance. Please try again."); 
-                }catch{} 
-            } finally { 
-                btn.textContent = 'Move to Main Balance'; 
-                renderUI(); 
-            }
-        };
-
         const renderWithdrawalHistory = () => {
             const listEl = document.getElementById('withdrawal-history-list');
             if (userTransactions.length === 0) { 
@@ -2452,11 +2453,11 @@
                     if (pageId === 'profile-page') { 
                         renderWithdrawalHistory(); 
                     }
-                    if (pageId === 'leaderboard-page') { 
-                        renderLeaderboard(); 
-                    }
                     if (pageId === 'contest-page') { 
                         renderContestPage(); 
+                    }
+                    if (pageId === 'referrals-page') {
+                        renderReferralsPage();
                     }
                 });
             });
@@ -2466,19 +2467,9 @@
             popup.addEventListener('click', (e) => { 
                 if (e.target.classList.contains('popup-close-btn') || e.target.id === 'popup') closePopup(); 
             });
-            document.querySelector('.leaderboard-toggle').addEventListener('click', (e) => {
-                if(e.target.classList.contains('toggle-btn')) {
-                    document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    renderLeaderboard();
-                }
-            });
             document.getElementById('dynamic-tasks-container').addEventListener('click', (e) => handleClaimTask(e));
             document.getElementById('profile-page').addEventListener('submit', (e) => handleWithdraw(e));
-            document.getElementById('referral-section').addEventListener('click', (e) => { 
-                if(e.target.id === 'copy-ref-link-btn') copyReferralLink(); 
-            });
-            document.getElementById('move-to-balance-btn').addEventListener('click', handleMoveToBalance);
+            document.getElementById('open-daily-calendar-btn').addEventListener('click', openDailyCalendar);
             document.getElementById('redeem-code-btn').addEventListener('click', redeemCode);
             document.getElementById('redeem-code-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
@@ -2557,30 +2548,6 @@
             }
         };
 
-        const renderLeaderboard = () => {
-            const activeBoard = document.querySelector('.toggle-btn.active').dataset.board;
-            const listEl = document.getElementById(activeBoard === 'referral' ? 'referral-leaderboard-list' : 'earning-leaderboard-list');
-            const data = leaderboardData[activeBoard];
-            document.getElementById('referral-board').style.display = activeBoard === 'referral' ? 'block' : 'none';
-            document.getElementById('earning-board').style.display = activeBoard === 'earning' ? 'block' : 'none';
-            listEl.innerHTML = '';
-            if (!data || data.length === 0) { 
-                listEl.innerHTML = '<li>No data available.</li>'; 
-                return; 
-            }
-            data.forEach((user, index) => {
-                const score = activeBoard === 'referral' ? (user.referrals || 0) : Number(user.totalEarned || 0).toFixed(4);
-                const item = document.createElement('li'); 
-                item.className = 'leaderboard-item';
-                item.innerHTML = `
-                    <span class="rank">#${index + 1}</span>
-                    <img src="${user.photoUrl || 'https://via.placeholder.com/40'}" alt="User">
-                    <span class="leaderboard-name">${user.firstName || 'User'}</span>
-                    <span class="leaderboard-score">${score}</span>`;
-                listEl.appendChild(item);
-            });
-        };
-
         const renderDynamicTasks = () => {
             const container = document.getElementById('dynamic-tasks-container'); 
             container.innerHTML = '';
@@ -2607,6 +2574,56 @@
                     container.appendChild(el);
                 });
             }
+        };
+
+        // ✅ دالة لعرض صفحة الإحالات
+        const renderReferralsPage = () => {
+            const referralBonus = appConfig.referralBonus || 0.001;
+            const botUsername = appConfig.botUsername || "Aborabie777_bot";
+            const userId = tgUser.id || '';
+            
+            const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
+            
+            document.getElementById('referral-bonus-amount').textContent = Number(referralBonus).toFixed(4);
+            document.getElementById('total-referrals-display').textContent = userState.referrals || 0;
+            document.getElementById('total-earnings-display').textContent = referralData.totalEarnings.toFixed(4);
+            document.getElementById('pending-earnings-display').textContent = referralData.pendingEarnings.toFixed(4);
+            document.getElementById('referral-link').value = refLink;
+            
+            let referredUsersHTML = '';
+            if (referralData.referredUsers.length > 0) {
+                referralData.referredUsers.forEach(user => {
+                    referredUsersHTML += `
+                        <div class="referral-list-item">
+                            <div class="referral-user-info">
+                                <img src="${user.photoUrl}" alt="${user.name}" class="referral-user-avatar">
+                                <div>
+                                    <div class="referral-user-name">${user.name}</div>
+                                    <small style="color: var(--text-secondary-dark);">Joined: ${new Date(user.joinDate).toLocaleDateString()}</small>
+                                </div>
+                            </div>
+                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.1).toFixed(4)} TON</div>
+                        </div>
+                    `;
+                });
+            } else {
+                referredUsersHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary-dark);">No referrals yet. Share your link to start earning!</div>';
+            }
+            
+            document.getElementById('referrals-list-container').innerHTML = referredUsersHTML;
+            
+            const claimBtn = document.getElementById('claim-referral-earnings-btn');
+            if (referralData.pendingEarnings > 0) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = `🎁 Claim ${referralData.pendingEarnings.toFixed(4)} TON`;
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '🎁 Claim Referral Earnings';
+            }
+            
+            // إضافة event listener لزر النسخ
+            document.getElementById('copy-ref-link-btn').addEventListener('click', copyReferralLink);
+            document.getElementById('claim-referral-earnings-btn').addEventListener('click', claimReferralEarnings);
         };
 
         // ✅ دالة محسنة لعرض قسم السحب
@@ -3463,79 +3480,6 @@
             });
             
             return html;
-        };
-
-        // ✅ دالة لعرض نظام الإحالات الجديد
-        const renderReferralSection = () => {
-            const container = document.getElementById('referral-section');
-            
-            const referralBonus = appConfig.referralBonus || 0.001;
-            const botUsername = appConfig.botUsername || "Aborabie777_bot";
-            const userId = tgUser.id || '';
-            
-            const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
-            
-            let referredUsersHTML = '';
-            if (referralData.referredUsers.length > 0) {
-                referralData.referredUsers.forEach(user => {
-                    referredUsersHTML += `
-                        <div class="referral-list-item">
-                            <div class="referral-user-info">
-                                <img src="${user.photoUrl}" alt="${user.name}" class="referral-user-avatar">
-                                <div>
-                                    <div class="referral-user-name">${user.name}</div>
-                                    <small style="color: var(--text-secondary-dark);">Joined: ${new Date(user.joinDate).toLocaleDateString()}</small>
-                                </div>
-                            </div>
-                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.1).toFixed(4)} TON</div>
-                        </div>
-                    `;
-                });
-            } else {
-                referredUsersHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary-dark);">No referrals yet. Share your link to start earning!</div>';
-            }
-            
-            container.innerHTML = `
-                <div class="task-container" style="flex-direction: column; align-items: stretch;">
-                    <h3>👥 Refer & Earn 10%!</h3>
-                    <p>Earn <strong>10% of your referrals' earnings</strong> + <strong>${Number(referralBonus).toFixed(4)} TON</strong> per referral.</p>
-                    
-                    <div class="referral-stats">
-                        <div class="referral-stat-card">
-                            <div class="referral-stat-value">${userState.referrals || 0}</div>
-                            <div class="referral-stat-label">Total Referrals</div>
-                        </div>
-                        <div class="referral-stat-card">
-                            <div class="referral-stat-value">${referralData.totalEarnings.toFixed(4)}</div>
-                            <div class="referral-stat-label">Total Earnings</div>
-                        </div>
-                        <div class="referral-stat-card">
-                            <div class="referral-stat-value">${referralData.pendingEarnings.toFixed(4)}</div>
-                            <div class="referral-stat-label">Pending Earnings</div>
-                        </div>
-                        <div class="referral-stat-card">
-                            <div class="referral-stat-value">10%</div>
-                            <div class="referral-stat-label">Commission Rate</div>
-                        </div>
-                    </div>
-                    
-                    <input type="text" id="referral-link" value="${refLink}" readonly style="padding: 10px; text-align: center; border-radius: 8px; border: 1px dashed var(--ship-gold); margin: 10px 0; background: transparent; color: inherit;">
-                    <button id="copy-ref-link-btn" class="action-btn">📋 Copy Link</button>
-                    
-                    <div style="margin-top: 20px;">
-                        <h4>Your Referrals</h4>
-                        <div class="referral-list">
-                            ${referredUsersHTML}
-                        </div>
-                    </div>
-                    
-                    <button class="claim-referral-btn" id="claim-referral-earnings-btn" ${referralData.pendingEarnings <= 0 ? 'disabled' : ''}>
-                        🎁 Claim ${referralData.pendingEarnings.toFixed(4)} TON
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('claim-referral-earnings-btn').addEventListener('click', claimReferralEarnings);
         };
 
         // ✅ بدء التطبيق
