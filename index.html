@@ -501,28 +501,39 @@
 
         /* زر إضافة مهمة جديد */
         .add-task-btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-            color: white;
+            background: linear-gradient(45deg, var(--ship-gold), #ffa500);
+            color: #000;
             border: none;
-            padding: 12px 20px;
+            padding: 15px 25px;
             border-radius: 25px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.6);
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            margin: 15px 0;
+            margin: 20px auto;
+            width: 90%;
+            font-size: 1rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 215, 0, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
         }
 
         .add-task-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.6);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.8);
+            animation: none;
         }
 
         .add-task-btn i {
-            font-size: 1.1rem;
+            font-size: 1.2rem;
         }
 
         /* شريط التقدم المعدل */
@@ -780,6 +791,49 @@
         .referrals-container { padding: 20px; border-radius: 12px; margin: 20px 15px; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); }
 
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* أنماط إضافية للإصلاحات */
+        .contest-status-card {
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            background: rgba(26, 43, 60, 0.8);
+            border: 1px solid var(--border-dark);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            margin: 15px;
+        }
+
+        .method-details {
+            display: none;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .method-details.active {
+            display: block;
+        }
+
+        .withdraw-amount-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary-dark);
+        }
+
+        .withdraw-btn-enabled {
+            background: linear-gradient(45deg, var(--ship-gold), #ffa500);
+            cursor: pointer;
+        }
+
+        .withdraw-btn-disabled {
+            background: #808B96;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -932,6 +986,13 @@
                     <div class="stat-card"><h3>Today's Ads</h3><p id="daily-ads-watched">0 / 0</p></div>
                     <div class="stat-card"><h3>Total Ads Watched</h3><p id="total-ads-watched">0</p></div>
                 </div>
+                
+                <!-- إضافة بطاقة حالة المسابقة -->
+                <div id="contest-status-card" class="contest-status-card">
+                    <h3>🏆 Contest Status</h3>
+                    <p id="contest-status-display">Loading contest data...</p>
+                </div>
+                
                 <div id="converter-container" class="converter-container">
                     <div class="converter-header">
                         <i class="fas fa-exchange-alt"></i>
@@ -2570,6 +2631,7 @@
             renderWithdrawSection(); 
             renderConverter(); 
             renderDynamicLinks();
+            renderContestStatus();
         };
 
         const renderAdProgress = () => {
@@ -3710,6 +3772,29 @@
             });
             
             return html;
+        };
+
+        // ✅ دالة جديدة لعرض حالة المسابقة في الصفحة الرئيسية
+        const renderContestStatus = () => {
+            const contestStatusCard = document.getElementById('contest-status-card');
+            if (!contestStatusCard) return;
+            
+            const now = new Date().getTime();
+            const distance = contestData.endTime - now;
+            
+            let statusText = '';
+            if (distance < 0) {
+                statusText = 'Contest Ended';
+            } else if (contestData.userRank > 0) {
+                statusText = `Your Rank: #${contestData.userRank} | Points: ${contestData.userPoints}`;
+            } else {
+                statusText = 'Contest Active - Join Now!';
+            }
+            
+            contestStatusCard.innerHTML = `
+                <h3>🏆 Contest Status</h3>
+                <p id="contest-status-display">${statusText}</p>
+            `;
         };
 
         // ✅ بدء التطبيق
