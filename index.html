@@ -930,6 +930,38 @@
             background: linear-gradient(45deg, var(--ship-gold), #ffa500) !important;
         }
 
+        /* تعديلات جديدة للمسابقة */
+        .contest-info-compact {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .contest-info-item {
+            text-align: center;
+            padding: 10px;
+        }
+
+        .contest-info-item .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--ship-gold);
+            margin-bottom: 5px;
+        }
+
+        .contest-info-item .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary-dark);
+        }
+
+        .user-avatar-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--ship-gold);
+        }
+
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -1170,18 +1202,19 @@
                         <div id="contest-countdown">Loading...</div>
                     </div>
                     
-                    <div class="contest-info-cards">
-                        <div class="contest-info-card">
-                            <div class="contest-info-value" id="user-contest-points">0</div>
-                            <div class="contest-info-label">Your Points</div>
+                    <!-- قسم النقاط والترتيب المدمج -->
+                    <div class="contest-info-compact">
+                        <div class="contest-info-item">
+                            <div class="value" id="user-contest-points">0</div>
+                            <div class="label">Your Points</div>
                         </div>
-                        <div class="contest-info-card">
-                            <div class="contest-info-value" id="user-contest-rank">-</div>
-                            <div class="contest-info-label">Your Rank</div>
+                        <div class="contest-info-item">
+                            <div class="value" id="user-contest-rank">-</div>
+                            <div class="label">Your Rank</div>
                         </div>
                     </div>
                     
-                    <!-- زر شرح المسابقة المعدل - تم إصلاحه -->
+                    <!-- زر شرح المسابقة المعدل -->
                     <div class="contest-guide-popup" id="contest-guide-trigger">
                         <h4>
                             <i class="fas fa-question-circle" style="font-size: 1.5rem;"></i>
@@ -1192,33 +1225,33 @@
                             <p><strong>+15 Points</strong> for every successful referral</p>
                             <p><strong>+10-50 Points</strong> for redeeming codes</p>
                             <p>Compete for <strong>2 TON</strong> in total prizes!</p>
-                        </div>
-                    </div>
-                    
-                    <div class="contest-prizes-compact">
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">🥇 1st</div>
-                            <div class="prize-amount-compact">0.6 TON</div>
-                        </div>
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">🥈 2nd</div>
-                            <div class="prize-amount-compact">0.4 TON</div>
-                        </div>
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">🥉 3rd</div>
-                            <div class="prize-amount-compact">0.25 TON</div>
-                        </div>
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">4th-5th</div>
-                            <div class="prize-amount-compact">0.2 TON</div>
-                        </div>
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">6th-8th</div>
-                            <div class="prize-amount-compact">0.1 TON</div>
-                        </div>
-                        <div class="prize-compact-item">
-                            <div class="prize-rank-compact">9th-10th</div>
-                            <div class="prize-amount-compact">0.05 TON</div>
+                            
+                            <div class="contest-prizes-compact" style="margin-top: 15px;">
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥇 1st</div>
+                                    <div class="prize-amount-compact">0.6 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥈 2nd</div>
+                                    <div class="prize-amount-compact">0.4 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥉 3rd</div>
+                                    <div class="prize-amount-compact">0.25 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">4th-5th</div>
+                                    <div class="prize-amount-compact">0.2 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">6th-8th</div>
+                                    <div class="prize-amount-compact">0.1 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">9th-10th</div>
+                                    <div class="prize-amount-compact">0.05 TON</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -1517,7 +1550,7 @@
             }
         };
 
-        // ✅ دالة محسنة لمشاهدة الإعلان - تم التعديل لوقت 5 ثواني
+        // ✅ دالة محسنة لمشاهدة الإعلان - تم التعديل لوقت 5 ثواني وإضافة نقاط المسابقة
         const handleWatchAd = async () => {
             if (isUserBanned) {
                 try{ 
@@ -1626,11 +1659,20 @@
                     await updateReferralEarnings(tgUser.id, adValueRR / RR_TO_TON_RATE);
                 }
 
-                await updateContestPointsOnAdWatch();
+                // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
+                if (contestData.isActive) {
+                    await updateContestPointsOnAdWatch();
+                }
 
+                // ✅ التعديل: إظهار رسالة تحتوي على مكافأة RR ونقاط المسابقة
+                let rewardMessage = `+${adValueRR.toLocaleString()} RR added to your balance.`;
+                if (contestData.isActive) {
+                    rewardMessage += ` +1 Contest Point!`;
+                }
+                
                 try{ 
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(`+${adValueRR.toLocaleString()} RR added to your balance.`); 
+                    if (tg.showAlert) tg.showAlert(rewardMessage); 
                 }catch{}
                 
                 renderUI();
@@ -1747,7 +1789,7 @@
                 statusElement.innerHTML = `
                     <div style="color: var(--ship-gold);">
                         <i class="fas fa-gift"></i> Today's bonus available! 
-                        <button onclick="claimDailyLoginBonusFromCalendar()" class="action-btn" style="padding: 5px 10px; font-size: 0.8rem; margin-left: 10px;">
+                        <button onclick="claimDailyLoginBonus()" class="action-btn" style="padding: 5px 10px; font-size: 0.8rem; margin-left: 10px;">
                             Claim Now
                         </button>
                     </div>
@@ -1755,11 +1797,6 @@
             }
             
             document.getElementById('daily-calendar-popup').style.display = 'flex';
-        };
-
-        // ✅ دالة للمطالبة من التقويم - تم إصلاحها
-        const claimDailyLoginBonusFromCalendar = async () => {
-            await claimDailyLoginBonus();
         };
 
         // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
@@ -2609,9 +2646,15 @@
             document.body.appendChild(script);
         };
 
-        // ✅ دالة لتحديث نقاط المسابقة عند مشاهدة إعلان
+        // ✅ دالة محسنة لتحديث نقاط المسابقة عند مشاهدة إعلان - مع التحقق من حالة المسابقة
         const updateContestPointsOnAdWatch = async () => {
             try {
+                // ✅ التعديل: التحقق من أن المسابقة نشطة قبل إضافة النقاط
+                if (!contestData.isActive) {
+                    console.log('ℹ️ Contest is not active, skipping points update');
+                    return;
+                }
+
                 const db = firebase.database();
                 const userContestRef = db.ref(`contest/participants/${tgUser.id}`);
                 
@@ -2644,9 +2687,15 @@
             }
         };
 
-        // ✅ دالة لتحديث نقاط المسابقة عند الإحالة
+        // ✅ دالة محسنة لتحديث نقاط المسابقة عند الإحالة - مع التحقق من حالة المسابقة
         const updateContestPointsOnReferral = async (referrerId) => {
             try {
+                // ✅ التعديل: التحقق من أن المسابقة نشطة قبل إضافة النقاط
+                if (!contestData.isActive) {
+                    console.log('ℹ️ Contest is not active, skipping referral points update');
+                    return;
+                }
+
                 const db = firebase.database();
                 const userContestRef = db.ref(`contest/participants/${referrerId}`);
                 
@@ -3701,7 +3750,7 @@
             }
         };
 
-        // ✅ دالة لاستبدال الكود
+        // ✅ دالة محسنة لاستبدال الكود - مع التحقق من حالة المسابقة
         const redeemCode = async () => {
             try {
                 const codeInput = document.getElementById('redeem-code-input');
@@ -3759,7 +3808,16 @@
                 }
                 
                 const points = codeData.points || 10;
-                await awardContestPoints(points);
+                
+                // ✅ التعديل: منح نقاط المسابقة فقط إذا كانت المسابقة نشطة
+                if (contestData.isActive) {
+                    await awardContestPoints(points);
+                } else {
+                    // إذا كانت المسابقة غير نشطة، إعطاء مكافأة بديلة من RR
+                    const rewardAmountRR = points * 100; // 100 RR لكل نقطة
+                    userRRBalance += rewardAmountRR;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                }
                 
                 await codesRef.child(code).update({
                     usedCount: firebase.database.ServerValue.increment(1),
@@ -3770,9 +3828,16 @@
                 const redeemedCodesRef = db.ref(`redeemedCodes/${tgUser.id}`);
                 await redeemedCodesRef.set(redeemedCodes);
                 
+                let successMessage = '';
+                if (contestData.isActive) {
+                    successMessage = `🎉 Code redeemed! You earned ${points} contest points!`;
+                } else {
+                    successMessage = `🎉 Code redeemed! You earned ${points * 100} RR!`;
+                }
+                
                 try{ 
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(`🎉 Code redeemed! You earned ${points} contest points!`); 
+                    if (tg.showAlert) tg.showAlert(successMessage); 
                 }catch{}
                 
                 codeInput.value = '';
@@ -3795,9 +3860,15 @@
             }
         };
 
-        // ✅ دالة لمنح نقاط المسابقة
+        // ✅ دالة محسنة لمنح نقاط المسابقة - مع التحقق من حالة المسابقة
         const awardContestPoints = async (points) => {
             try {
+                // ✅ التعديل: التحقق من أن المسابقة نشطة قبل إضافة النقاط
+                if (!contestData.isActive) {
+                    console.log('ℹ️ Contest is not active, skipping points award');
+                    return;
+                }
+
                 const db = firebase.database();
                 const userContestRef = db.ref(`contest/participants/${tgUser.id}`);
                 
@@ -3878,6 +3949,7 @@
             
             if (distance < 0) {
                 countdownEl.textContent = 'Contest Ended!';
+                contestData.isActive = false; // تحديث حالة المسابقة
                 return;
             }
             
@@ -3897,7 +3969,7 @@
             renderCompactLeaderboard();
         };
 
-        // ✅ دالة لعرض لوحة المتصدرين المختصرة
+        // ✅ دالة محسنة لعرض لوحة المتصدرين المختصرة - مع صور المستخدمين
         const renderCompactLeaderboard = () => {
             const leaderboardList = document.getElementById('contest-leaderboard-compact-list');
             leaderboardList.innerHTML = '';
@@ -3933,7 +4005,9 @@
                 const item = document.createElement('div');
                 item.className = `contest-leaderboard-item-compact ${isCurrentUser ? 'current-user' : ''}`;
                 item.innerHTML = `
-                    <div class="contest-rank-compact ${rank <= 3 ? 'top-3' : ''}">${rankIcon}</div>
+                    <div class="contest-rank-compact ${rank <= 3 ? 'top-3' : ''}">
+                        <img src="${participant.photoUrl || 'https://via.placeholder.com/32'}" alt="${displayName}" class="user-avatar-small">
+                    </div>
                     <div class="contest-user-info-compact">
                         <div class="contest-user-details">
                             <div class="contest-user-name-compact">${displayName}</div>
