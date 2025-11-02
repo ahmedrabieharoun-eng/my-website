@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>اختبار أزرار Join</title>
+    <title>اختبار أزرار Join - الإصدار النهائي</title>
     <style>
         * {
             margin: 0;
@@ -60,6 +60,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            flex: 1;
         }
         
         .channel-icon {
@@ -85,6 +86,7 @@
             border-radius: 20px;
             font-size: 0.8rem;
             font-weight: 600;
+            margin: 0 10px;
         }
         
         .status-subscribed {
@@ -144,6 +146,13 @@
             box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
         }
         
+        .check-btn:disabled {
+            background: #808080;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
         .message {
             margin-top: 20px;
             padding: 15px;
@@ -170,13 +179,48 @@
             border: 1px solid #2196F3;
             color: #2196F3;
         }
+        
+        .instructions {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid #ffd700;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .instructions h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 </head>
 <body>
     <div class="container">
         <h1><i class="fas fa-bell"></i> الاشتراك الإجباري</h1>
-        <p style="text-align: center; margin-bottom: 20px; opacity: 0.9;">يجب الاشتراك في جميع القنوات أدناه للمتابعة</p>
+        
+        <div class="instructions">
+            <h3><i class="fas fa-info-circle"></i> تعليمات الاستخدام:</h3>
+            <ul>
+                <li>انقر على زر <strong>Join</strong> بجانب كل قناة للاشتراك فيها</li>
+                <li>سيتم فتح نافذة جديدة للقناة على Telegram</li>
+                <li>بعد الاشتراك في القناة، ارجع لهذه الصفحة وانقر على <strong>التحقق من الاشتراك</strong></li>
+                <li>كرر هذه الخطوات لكل القنوات حتى تصبح جميعها باللون الأخضر</li>
+            </ul>
+        </div>
         
         <div id="channels-list">
             <!-- سيتم إضافة القنوات هنا ديناميكياً -->
@@ -251,7 +295,7 @@
                         <span class="channel-status ${statusClass}">
                             ${statusText}
                         </span>
-                        <button class="join-btn" data-channel-url="${channel.url}">
+                        <button class="join-btn" data-channel-id="${channel.id}" data-channel-url="${channel.url}">
                             <i class="fas fa-external-link-alt"></i> Join
                         </button>
                     `;
@@ -261,50 +305,72 @@
                 // إضافة event listeners لأزرار Join
                 document.querySelectorAll('.join-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
+                        const channelId = this.getAttribute('data-channel-id');
                         const channelUrl = this.getAttribute('data-channel-url');
-                        openChannel(channelUrl);
+                        openChannel(channelId, channelUrl);
                     });
                 });
             }
 
-            // دالة لفتح القناة
-            function openChannel(url) {
-                // محاكاة فتح القناة في Telegram
-                showMessage(`جارٍ فتح القناة: ${url}`, 'info');
+            // دالة لفتح القناة - الإصدار الحقيقي
+            function openChannel(channelId, url) {
+                showMessage(`جارٍ فتح قناة ${getChannelName(channelId)}...`, 'info');
                 
-                // في التطبيق الحقيقي، استخدم:
-                // if (window.Telegram?.WebApp?.openLink) {
-                //     window.Telegram.WebApp.openLink(url);
-                // } else {
-                //     window.open(url, '_blank');
-                // }
+                // فتح الرابط في نافذة جديدة
+                window.open(url, '_blank', 'noopener,noreferrer');
                 
-                // لمحاكاة الاشتراك، سنغير حالة القناة بعد 2 ثانية
+                // إظهار رسالة تذكير بالاشتراك
                 setTimeout(() => {
-                    const channelIndex = requiredChannels.findIndex(ch => ch.url === url);
-                    if (channelIndex !== -1) {
-                        requiredChannels[channelIndex].subscribed = true;
-                        renderChannels();
-                        showMessage(`تم الاشتراك في القناة بنجاح!`, 'success');
-                    }
-                }, 2000);
+                    showMessage(`تذكر: بعد الاشتراك في القناة، ارجع لهذه الصفحة وانقر على "التحقق من الاشتراك"`, 'info');
+                }, 1000);
+            }
+
+            // دالة للحصول على اسم القناة
+            function getChannelName(channelId) {
+                const channel = requiredChannels.find(ch => ch.id === channelId);
+                return channel ? channel.name : 'القناة';
             }
 
             // دالة للتحقق من الاشتراك
             function checkSubscription() {
                 showMessage('جارٍ التحقق من الاشتراكات...', 'info');
+                checkSubscriptionBtn.disabled = true;
+                checkSubscriptionBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحقق...';
                 
-                // محاكاة التحقق من الاشتراك
+                // محاكاة عملية التحقق من الاشتراك
                 setTimeout(() => {
-                    const allSubscribed = requiredChannels.every(channel => channel.subscribed);
-                    
-                    if (allSubscribed) {
-                        showMessage('🎉 تهانينا! أنت مشترك في جميع القنوات.', 'success');
-                    } else {
-                        const notSubscribedCount = requiredChannels.filter(ch => !ch.subscribed).length;
-                        showMessage(`❌ أنت غير مشترك في ${notSubscribedCount} قناة. يرجى الاشتراك في جميع القنوات.`, 'error');
-                    }
+                    // في التطبيق الحقيقي، هنا سيتم التحقق من الاشتراك عبر API
+                    // لكن لأغراض التجربة، سنسأل المستخدم
+                    simulateSubscriptionCheck();
                 }, 1500);
+            }
+
+            // دالة لمحاكاة التحقق من الاشتراك
+            function simulateSubscriptionCheck() {
+                const channelNames = requiredChannels
+                    .filter(ch => !ch.subscribed)
+                    .map(ch => ch.name)
+                    .join('، ');
+                
+                if (channelNames) {
+                    const userResponse = confirm(`هل أنت مشترك في القنوات التالية؟\n\n${channelNames}\n\nاضغط OK إذا كنت مشتركاً، أو Cancel إذا لم تكن مشتركاً بعد.`);
+                    
+                    if (userResponse) {
+                        // تم الاشتراك في جميع القنوات
+                        requiredChannels.forEach(channel => {
+                            channel.subscribed = true;
+                        });
+                        showMessage('🎉 تهانينا! تم التحقق من اشتراكك في جميع القنوات.', 'success');
+                    } else {
+                        showMessage(`❌ يرجى الاشتراك في القنوات المتبقية ثم المحاولة مرة أخرى.`, 'error');
+                    }
+                } else {
+                    showMessage('🎉 أنت مشترك في جميع القنوات بالفعل!', 'success');
+                }
+                
+                renderChannels();
+                checkSubscriptionBtn.disabled = false;
+                checkSubscriptionBtn.innerHTML = '<i class="fas fa-sync-alt"></i> التحقق من الاشتراك';
             }
 
             // دالة لعرض الرسائل
@@ -313,10 +379,12 @@
                 messageEl.className = `message ${type}`;
                 messageEl.style.display = 'block';
                 
-                // إخفاء الرسالة بعد 5 ثواني
-                setTimeout(() => {
-                    messageEl.style.display = 'none';
-                }, 5000);
+                // إخفاء الرسالة بعد 7 ثواني (ما عدا رسائل النجاح)
+                if (type !== 'success') {
+                    setTimeout(() => {
+                        messageEl.style.display = 'none';
+                    }, 7000);
+                }
             }
 
             // إضافة event listeners
@@ -326,7 +394,7 @@
             renderChannels();
             
             // عرض رسالة ترحيب
-            showMessage('مرحباً! يرجى الاشتراك في جميع القنوات أدناه.', 'info');
+            showMessage('مرحباً! يرجى الاشتراك في جميع القنوات أدناه للمتابعة.', 'info');
         });
     </script>
 </body>
