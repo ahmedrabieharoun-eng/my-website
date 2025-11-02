@@ -1,5 +1,3 @@
-[file name]: index (6).html
-[file content begin]
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -1097,7 +1095,7 @@
                 </div>
                 <div class="prize-compact-item">
                     <div class="prize-rank-compact">4th-5th</div>
-                    <div class="prize-amount-compact">0.15 TON</div>
+                    <div class="prize-amount-compact">0.2 TON</div>
                 </div>
                 <div class="prize-compact-item">
                     <div class="prize-rank-compact">6th-8th</div>
@@ -1291,7 +1289,7 @@
                                 </div>
                                 <div class="prize-compact-item">
                                     <div class="prize-rank-compact">4th-5th</div>
-                                    <div class="prize-amount-compact">0.15 TON</div>
+                                    <div class="prize-amount-compact">0.2 TON</div>
                                 </div>
                                 <div class="prize-compact-item">
                                     <div class="prize-rank-compact">6th-8th</div>
@@ -1323,7 +1321,7 @@
             <div id="referrals-page" class="page">
                 <div class="referrals-container">
                     <h2>👥 Refer & Earn</h2>
-                    <p>Invite friends and earn <strong>15% of their earnings</strong></p>
+                    <p>Invite friends and earn <strong>10% of their earnings</strong> + <strong id="referral-bonus-amount">0.0010 TON</strong> per referral!</p>
                     
                     <div class="referral-stats">
                         <div class="referral-stat-card">
@@ -1339,7 +1337,7 @@
                             <div class="referral-stat-label">Pending Earnings</div>
                         </div>
                         <div class="referral-stat-card">
-                            <div class="referral-stat-value">15%</div>
+                            <div class="referral-stat-value">10%</div>
                             <div class="referral-stat-label">Commission Rate</div>
                         </div>
                     </div>
@@ -2388,7 +2386,7 @@
                 }
                 
                 const referredUsersRef = db.ref('users').orderByChild('referredBy').equalTo(tgUser.id);
-                const referredUsersSnap = await referredUsersRef.once('value');
+                const referredUsersSnap = await referredUsersSnap.once('value');
                 
                 referralData.referredUsers = [];
                 referredUsersSnap.forEach(child => {
@@ -2484,7 +2482,7 @@
             };
         };
 
-        // ✅ دالة محسنة لتحديث واجهة الاشتراك - مع إصلاح أزرار Join
+        // ✅ دالة محسنة لتحديث واجهة الاشتراك - الإصلاح الرئيسي هنا
         const updateSubscriptionUI = (subscriptionResults) => {
             const channelsList = document.getElementById('channels-list');
             channelsList.innerHTML = '';
@@ -2515,27 +2513,30 @@
                     <span class="channel-status ${statusClass}">
                         ${statusText}
                     </span>
-                    <button class="action-btn join-channel-btn" data-channel-url="${channel.url}" style="padding: 8px 12px; font-size: 0.8rem;">
+                    <button class="join-channel-btn" data-channel-url="${channel.url}">
                         Join
                     </button>
                 `;
                 channelsList.appendChild(channelElement);
             });
 
-            // ✅ إصلاح: إضافة event listeners لأزرار Join بشكل صحيح
-            document.querySelectorAll('.join-channel-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const channelUrl = this.getAttribute('data-channel-url');
+            // ✅ الإصلاح: استخدام event delegation بدلاً من إضافة listeners لكل زر
+            channelsList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('join-channel-btn')) {
+                    const channelUrl = e.target.getAttribute('data-channel-url');
+                    console.log('🔗 Opening channel:', channelUrl);
+                    
                     try {
-                        if (tg.openLink) {
-                            tg.openLink(channelUrl);
+                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                            window.Telegram.WebApp.openLink(channelUrl);
                         } else {
                             window.open(channelUrl, '_blank');
                         }
                     } catch (error) {
+                        console.error('Error opening channel:', error);
                         window.open(channelUrl, '_blank');
                     }
-                });
+                }
             });
         };
 
@@ -2571,29 +2572,29 @@
                         <div class="ad-reward-amount">+${channel.reward || 0} Points</div>
                         <div class="ad-reward-label">Contest Points</div>
                     </div>
-                    <button class="action-btn subscribe-ad-btn" data-channel-url="${channel.url}" ${isSubscribed ? 'disabled' : ''} style="padding: 8px 12px; font-size: 0.8rem;">
+                    <button class="subscribe-ad-btn" data-channel-url="${channel.url}" ${isSubscribed ? 'disabled' : ''}>
                         ${isSubscribed ? '✅ Subscribed' : 'Subscribe'}
                     </button>
                 `;
                 adChannelsList.appendChild(channelElement);
             }
 
-            // ✅ إصلاح: إضافة event listeners لأزرار Subscribe بشكل صحيح
-            document.querySelectorAll('.subscribe-ad-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (!this.disabled) {
-                        const channelUrl = this.getAttribute('data-channel-url');
-                        try {
-                            if (tg.openLink) {
-                                tg.openLink(channelUrl);
-                            } else {
-                                window.open(channelUrl, '_blank');
-                            }
-                        } catch (error) {
+            // ✅ الإصلاح: استخدام event delegation لأزرار Subscribe
+            adChannelsList.addEventListener('click', function(e) {
+                if (e.target.classList.contains('subscribe-ad-btn') && !e.target.disabled) {
+                    const channelUrl = e.target.getAttribute('data-channel-url');
+                    console.log('🔗 Opening AD channel:', channelUrl);
+                    try {
+                        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
+                            window.Telegram.WebApp.openLink(channelUrl);
+                        } else {
                             window.open(channelUrl, '_blank');
                         }
+                    } catch (error) {
+                        console.error('Error opening AD channel:', error);
+                        window.open(channelUrl, '_blank');
                     }
-                });
+                }
             });
         };
 
@@ -2816,8 +2817,7 @@
                 const referralSnap = await referralRef.once('value');
                 const currentData = referralSnap.val() || { totalEarnings: 0, pendingEarnings: 0, referredUsers: [] };
                 
-                // ✅ التعديل: تغيير النسبة من 10% إلى 15%
-                const referralBonusRR = earningsRR * 0.15; // 15% من أرباح RR
+                const referralBonusRR = earningsRR * 0.1; // 10% من أرباح RR
                 
                 currentData.pendingEarnings = (currentData.pendingEarnings || 0) + referralBonusRR;
                 
@@ -2838,17 +2838,21 @@
                 
                 if (refSnap.exists()) {
                     const referrerData = refSnap.val();
+                    const bonusAmountRR = 10000; // 10,000 RR كمكافأة إحالة
                     
-                    // ✅ التعديل: إزالة المكافأة الثابتة 10,000 RR
-                    // نحتفظ فقط بنسبة 15% من أرباح المستخدم المحال
-                    
-                    await referrerRef.update({
-                        referrals: firebase.database.ServerValue.increment(1)
-                    });
-                    
-                    console.log(`🎉 Referral credited: ${referrerId} referred ${newUserId}`);
+                    if (bonusAmountRR > 0) {
+                        // تحديث رصيد RR للمحيل
+                        const currentRRBalance = parseInt(localStorage.getItem(`userRRBalance_${referrerId}`) || '0');
+                        localStorage.setItem(`userRRBalance_${referrerId}`, (currentRRBalance + bonusAmountRR).toString());
                         
-                    await updateContestPointsOnReferral(referrerId);
+                        await referrerRef.update({
+                            referrals: firebase.database.ServerValue.increment(1)
+                        });
+                        
+                        console.log(`🎉 Referral credited: ${referrerId} got ${bonusAmountRR.toLocaleString()} RR for referring ${newUserId}`);
+                        
+                        await updateContestPointsOnReferral(referrerId);
+                    }
                 } else {
                     console.warn("❌ Referrer not found:", referrerId);
                 }
@@ -3143,11 +3147,13 @@
 
         // ✅ دالة محسنة لعرض صفحة الإحالات - تم تعديلها لتعمل بـ RR
         const renderReferralsPage = () => {
+            const referralBonusRR = 10000; // 10,000 RR كمكافأة إحالة
             const botUsername = appConfig.botUsername || "Aborabie777_bot";
             const userId = tgUser.id || '';
             
             const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
             
+            document.getElementById('referral-bonus-amount').textContent = referralBonusRR.toLocaleString() + ' RR';
             document.getElementById('total-referrals-display').textContent = userState.referrals || 0;
             document.getElementById('total-earnings-display').textContent = (referralData.totalEarnings || 0).toLocaleString() + ' RR';
             document.getElementById('pending-earnings-display').textContent = (referralData.pendingEarnings || 0).toLocaleString() + ' RR';
@@ -3165,7 +3171,7 @@
                                     <small style="color: var(--text-secondary-dark);">Joined: ${new Date(user.joinDate).toLocaleDateString()}</small>
                                 </div>
                             </div>
-                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.15 * RR_TO_TON_RATE).toLocaleString()} RR</div>
+                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.1 * RR_TO_TON_RATE).toLocaleString()} RR</div>
                         </div>
                     `;
                 });
@@ -4102,9 +4108,9 @@
             const prizes = {
                 1: 0.6,
                 2: 0.4,
-                3: 0.3,
-                4: 0.15,
-                5: 0.15,
+                3: 0.3, // ✅ التعديل: المركز الثالث أصبح 0.3 TON بدل 0.25
+                4: 0.2,
+                5: 0.2,
                 6: 0.1,
                 7: 0.1,
                 8: 0.1,
@@ -4196,4 +4202,3 @@
     </script>
 </body>
 </html>
-[file content end]
