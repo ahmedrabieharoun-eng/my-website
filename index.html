@@ -1095,7 +1095,7 @@
                 </div>
                 <div class="prize-compact-item">
                     <div class="prize-rank-compact">4th-5th</div>
-                    <div class="prize-amount-compact">0.2 TON</div>
+                    <div class="prize-amount-compact">0.15 TON</div>
                 </div>
                 <div class="prize-compact-item">
                     <div class="prize-rank-compact">6th-8th</div>
@@ -1115,18 +1115,6 @@
         <div class="subscription-container">
             <h2 style="color: var(--ship-gold); margin-bottom: 10px;">📢 Required Subscription</h2>
             <p style="margin-bottom: 20px;">You must subscribe to our channels to use the bot and earn rewards!</p>
-            
-            <div id="notification-area"></div>
-            
-            <div class="stats" style="display: flex; justify-content: space-between; margin: 15px 0; font-size: 0.9rem; color: var(--text-secondary-dark);">
-                <span>Channels: <strong id="channels-count">3</strong></span>
-                <span>Subscribed: <strong id="subscribed-count">0</strong></span>
-                <span>Progress: <strong id="progress-percent">0%</strong></span>
-            </div>
-            
-            <div class="progress-bar" style="width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; margin: 10px 0; overflow: hidden;">
-                <div class="progress-fill" id="progress-fill" style="height: 100%; background: linear-gradient(90deg, var(--ship-gold), #ffa500); border-radius: 3px; transition: width 0.5s ease; width: 0%;"></div>
-            </div>
             
             <div id="channels-list">
                 <!-- سيتم إضافة القنوات هنا ديناميكياً -->
@@ -1153,7 +1141,7 @@
             </p>
 
             <!-- زر التخطي للتطوير فقط -->
-            <button id="skip-subscription-btn" style="margin-top: 10px; padding: 8px 15px; background: transparent; color: var(--ship-gold); border: 1px solid var(--ship-gold); border-radius: 5px; cursor: pointer; font-size: 0.8rem; width: 100%;">
+            <button id="skip-subscription-btn" style="margin-top: 10px; padding: 8px 15px; background: transparent; color: var(--ship-gold); border: 1px solid var(--ship-gold); border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
                 🚨 Skip for Testing (Dev Only)
             </button>
         </div>
@@ -1301,7 +1289,7 @@
                                 </div>
                                 <div class="prize-compact-item">
                                     <div class="prize-rank-compact">4th-5th</div>
-                                    <div class="prize-amount-compact">0.2 TON</div>
+                                    <div class="prize-amount-compact">0.15 TON</div>
                                 </div>
                                 <div class="prize-compact-item">
                                     <div class="prize-rank-compact">6th-8th</div>
@@ -1333,7 +1321,7 @@
             <div id="referrals-page" class="page">
                 <div class="referrals-container">
                     <h2>👥 Refer & Earn</h2>
-                    <p>Invite friends and earn <strong>15% of their earnings</strong>!</p>
+                    <p>Invite friends and earn <strong>15% of their earnings</strong></p>
                     
                     <div class="referral-stats">
                         <div class="referral-stat-card">
@@ -2494,7 +2482,7 @@
             };
         };
 
-        // ✅ دالة محسنة لتحديث واجهة الاشتراك مع إصلاح الأزرار
+        // ✅ دالة لتحديث واجهة الاشتراك
         const updateSubscriptionUI = (subscriptionResults) => {
             const channelsList = document.getElementById('channels-list');
             channelsList.innerHTML = '';
@@ -2525,131 +2513,28 @@
                     <span class="channel-status ${statusClass}">
                         ${statusText}
                     </span>
-                    <button class="check-subscription-btn join-channel-btn" data-channel-url="${channel.url}">
+                    <button class="action-btn join-channel-btn" data-channel-url="${channel.url}" style="padding: 8px 12px; font-size: 0.8rem;">
                         Join
                     </button>
                 `;
                 channelsList.appendChild(channelElement);
             });
 
-            // تحديث الإحصائيات
-            updateSubscriptionStats(subscriptionResults);
-            
-            // إصلاح الأزرار بعد التحديث
-            setTimeout(fixSubscriptionButtons, 100);
-        };
-
-        // ✅ دالة لتحديث إحصائيات الاشتراك
-        const updateSubscriptionStats = (subscriptionResults) => {
-            const totalChannels = subscriptionResults.length;
-            const subscribedChannels = subscriptionResults.filter(ch => ch.subscribed).length;
-            const progress = Math.round((subscribedChannels / totalChannels) * 100);
-            
-            document.getElementById('channels-count').textContent = totalChannels;
-            document.getElementById('subscribed-count').textContent = subscribedChannels;
-            document.getElementById('progress-percent').textContent = progress + '%';
-            document.getElementById('progress-fill').style.width = progress + '%';
-        };
-
-        // ✅ دالة إصلاح أزرار الاشتراك
-        const fixSubscriptionButtons = () => {
-            console.log('🔧 Fixing subscription buttons...');
-            
-            // إصلاح أزرار Join للقنوات المطلوبة
+            // إضافة event listeners لأزرار Join
             document.querySelectorAll('.join-channel-btn').forEach(btn => {
-                // إزالة أي مستمعين سابقين
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
+                btn.addEventListener('click', function() {
                     const channelUrl = this.getAttribute('data-channel-url');
-                    const channelName = this.closest('.channel-item').querySelector('h4').textContent;
-                    
-                    console.log('🔗 Opening channel:', channelName, channelUrl);
-                    showNotification(`🔗 Opening: ${channelName}`, 'info');
-                    
-                    // فتح القناة فعلياً في نافذة جديدة
-                    openChannelInNewTab(channelUrl, channelName);
-                });
-            });
-
-            // إصلاح أزرار Subscribe لقنوات الإعلانات
-            document.querySelectorAll('.subscribe-ad-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    if (!this.disabled) {
-                        const channelUrl = this.getAttribute('data-channel-url');
-                        const channelName = this.closest('.ad-channel-item').querySelector('.ad-channel-name').textContent;
-                        
-                        console.log('🔗 Opening ad channel:', channelName);
-                        showNotification(`🔗 Opening: ${channelName}`, 'info');
-                        
-                        // فتح قناة الإعلان فعلياً
-                        openChannelInNewTab(channelUrl, channelName);
+                    try {
+                        if (tg.openLink) {
+                            tg.openLink(channelUrl);
+                        } else {
+                            window.open(channelUrl, '_blank');
+                        }
+                    } catch (error) {
+                        window.open(channelUrl, '_blank');
                     }
                 });
             });
-        };
-
-        // ✅ دالة فتح القناة في تبويب جديد
-        const openChannelInNewTab = (url, channelName) => {
-            try {
-                // محاولة فتح في Telegram Web App أولاً
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.openLink) {
-                    window.Telegram.WebApp.openLink(url);
-                } else {
-                    // فتح في نافذة جديدة عادية
-                    const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
-                    if (newWindow) {
-                        newWindow.focus();
-                    } else {
-                        // إذا حظرت النافذة المنبثقة، افتح في نفس النافذة
-                        window.location.href = url;
-                    }
-                }
-                
-                showNotification(`✅ ${channelName} opened! Please subscribe and return to verify.`, 'success');
-                
-            } catch (error) {
-                console.error('Error opening channel:', error);
-                // طريقة بديلة إذا فشلت الطرق الأخرى
-                window.location.href = url;
-            }
-        };
-
-        // ✅ دالة لعرض الإشعارات في صفحة الاشتراك
-        const showNotification = (message, type = 'info') => {
-            const notificationArea = document.getElementById('notification-area');
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.style.cssText = `
-                padding: 12px; 
-                margin: 10px 0; 
-                border-radius: 8px; 
-                text-align: center; 
-                font-weight: 600;
-                background: ${type === 'success' ? 'rgba(76, 175, 80, 0.2)' : type === 'error' ? 'rgba(244, 67, 54, 0.2)' : 'rgba(255, 215, 0, 0.2)'};
-                border: 1px solid ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#ffd700'};
-                color: ${type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#ffd700'};
-            `;
-            notification.innerHTML = message;
-            
-            notificationArea.innerHTML = '';
-            notificationArea.appendChild(notification);
-            
-            // إزالة الإشعار تلقائياً بعد 5 ثواني
-            if (type !== 'error') {
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 5000);
-            }
         };
 
         // ✅ دالة لعرض قنوات الإعلانات
@@ -2684,15 +2569,30 @@
                         <div class="ad-reward-amount">+${channel.reward || 0} Points</div>
                         <div class="ad-reward-label">Contest Points</div>
                     </div>
-                    <button class="subscribe-ad-btn" data-channel-url="${channel.url}" ${isSubscribed ? 'disabled' : ''}>
+                    <button class="action-btn subscribe-ad-btn" data-channel-url="${channel.url}" ${isSubscribed ? 'disabled' : ''} style="padding: 8px 12px; font-size: 0.8rem;">
                         ${isSubscribed ? '✅ Subscribed' : 'Subscribe'}
                     </button>
                 `;
                 adChannelsList.appendChild(channelElement);
             }
 
-            // إصلاح الأزرار بعد التحديث
-            setTimeout(fixSubscriptionButtons, 100);
+            // إضافة event listeners لأزرار Subscribe
+            document.querySelectorAll('.subscribe-ad-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!this.disabled) {
+                        const channelUrl = this.getAttribute('data-channel-url');
+                        try {
+                            if (tg.openLink) {
+                                tg.openLink(channelUrl);
+                            } else {
+                                window.open(channelUrl, '_blank');
+                            }
+                        } catch (error) {
+                            window.open(channelUrl, '_blank');
+                        }
+                    }
+                });
+            });
         };
 
         // ✅ دالة للتحقق من الاشتراك في قنوات الإعلانات
@@ -2754,29 +2654,20 @@
 
         // ✅ دالة لتخطي الاشتراك (للتطوير فقط)
         const skipSubscription = () => {
-            if (confirm('🚨 DEVELOPMENT MODE\n\nThis will skip subscription verification.\nOnly use for testing purposes!\n\nAre you sure?')) {
-                showNotification('🚨 Development mode activated! Subscription verification skipped.', 'info');
-                isSubscribedToAllChannels = true;
-                
-                // تعيين جميع القنوات كمشترك فيها
-                const subscriptionResults = requiredChannels.map(channel => ({
-                    ...channel,
-                    subscribed: true
-                }));
-                
-                updateSubscriptionUI(subscriptionResults);
-                
-                setTimeout(() => {
-                    showNotification('🎮 Development mode: Full access granted!', 'success');
-                    document.getElementById('subscription-page').style.display = 'none';
-                    document.querySelector('.ship-container').style.display = 'block';
-                    
-                    // متابعة التهيئة
-                    firebase.initializeApp(firebaseConfig);
-                    const db = firebase.database();
-                    continueAppInitialization(db);
-                }, 2000);
-            }
+            console.log('🚨 Skipping subscription check for development');
+            isSubscribedToAllChannels = true;
+            document.getElementById('subscription-page').style.display = 'none';
+            document.getElementById('app-loader').style.display = 'none';
+            document.querySelector('.ship-container').style.display = 'block';
+            
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.database();
+            
+            loadBasicUserData(db).then(() => {
+                renderUI();
+                setupNavigation();
+                setupEventListeners();
+            });
         };
 
         // ✅ دالة لتحميل بيانات المستخدم الأساسية بدون اشتراك
@@ -2911,7 +2802,7 @@
             }
         };
 
-        // ✅ دالة محسنة لتحديث أرباح الإحالات - تم تعديلها لتعمل بـ RR ونسبة 15%
+        // ✅ دالة محسنة لتحديث أرباح الإحالات - تم تعديلها لتعمل بـ RR
         const updateReferralEarnings = async (referredUserId, earningsRR) => {
             try {
                 const db = firebase.database();
@@ -2937,7 +2828,7 @@
             }
         };
 
-        // ✅ دالة منفصلة لمعالجة الإحالات - تم إزالة المكافأة الثابتة
+        // ✅ دالة منفصلة لمعالجة الإحالات
         const processReferral = async (referrerId, newUserId, db) => {
             try {
                 const referrerRef = db.ref(`users/${referrerId}`);
@@ -2945,31 +2836,17 @@
                 
                 if (refSnap.exists()) {
                     const referrerData = refSnap.val();
-                    // ✅ التعديل: إزالة المكافأة الثابتة 10,000 RR
-                    const bonusAmountRR = 0; // تم إزالة المكافأة الثابتة
                     
-                    if (bonusAmountRR > 0) {
-                        // تحديث رصيد RR للمحيل
-                        const currentRRBalance = parseInt(localStorage.getItem(`userRRBalance_${referrerId}`) || '0');
-                        localStorage.setItem(`userRRBalance_${referrerId}`, (currentRRBalance + bonusAmountRR).toString());
+                    // ✅ التعديل: إزالة المكافأة الثابتة 10,000 RR
+                    // نحتفظ فقط بنسبة 15% من أرباح المستخدم المحال
+                    
+                    await referrerRef.update({
+                        referrals: firebase.database.ServerValue.increment(1)
+                    });
+                    
+                    console.log(`🎉 Referral credited: ${referrerId} referred ${newUserId}`);
                         
-                        await referrerRef.update({
-                            referrals: firebase.database.ServerValue.increment(1)
-                        });
-                        
-                        console.log(`🎉 Referral credited: ${referrerId} got ${bonusAmountRR.toLocaleString()} RR for referring ${newUserId}`);
-                        
-                        await updateContestPointsOnReferral(referrerId);
-                    } else {
-                        // فقط تحديث عدد الإحالات
-                        await referrerRef.update({
-                            referrals: firebase.database.ServerValue.increment(1)
-                        });
-                        
-                        console.log(`🎉 Referral credited: ${referrerId} referred ${newUserId} (no fixed bonus)`);
-                        
-                        await updateContestPointsOnReferral(referrerId);
-                    }
+                    await updateContestPointsOnReferral(referrerId);
                 } else {
                     console.warn("❌ Referrer not found:", referrerId);
                 }
@@ -3262,17 +3139,13 @@
             }
         };
 
-        // ✅ دالة محسنة لعرض صفحة الإحالات - تم تعديلها لتعمل بـ RR ونسبة 15%
+        // ✅ دالة محسنة لعرض صفحة الإحالات - تم تعديلها لتعمل بـ RR
         const renderReferralsPage = () => {
-            // ✅ التعديل: إزالة المكافأة الثابتة
-            const referralBonusRR = 0; // تم إزالة المكافأة الثابتة
             const botUsername = appConfig.botUsername || "Aborabie777_bot";
             const userId = tgUser.id || '';
             
             const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
             
-            // ✅ التعديل: تحديث النص ليعكس نسبة 15%
-            document.getElementById('referral-bonus-amount').textContent = '15% Commission';
             document.getElementById('total-referrals-display').textContent = userState.referrals || 0;
             document.getElementById('total-earnings-display').textContent = (referralData.totalEarnings || 0).toLocaleString() + ' RR';
             document.getElementById('pending-earnings-display').textContent = (referralData.pendingEarnings || 0).toLocaleString() + ' RR';
@@ -4227,9 +4100,9 @@
             const prizes = {
                 1: 0.6,
                 2: 0.4,
-                3: 0.3, // ✅ التعديل: المركز الثالث أصبح 0.3 TON بدل 0.25
-                4: 0.2,
-                5: 0.2,
+                3: 0.3,
+                4: 0.15,
+                5: 0.15,
                 6: 0.1,
                 7: 0.1,
                 8: 0.1,
