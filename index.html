@@ -2214,42 +2214,8 @@
                     updateSubscriptionUI(subscriptionResults);
                     await renderAdChannels();
                     
-                    document.getElementById('check-subscription-btn').addEventListener('click', async () => {
-                        document.getElementById('check-subscription-btn').disabled = true;
-                        document.getElementById('check-subscription-btn').textContent = 'Checking...';
-                        
-                        showPopup(`
-                            <div style="margin-bottom:10px;">
-                                <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
-                            </div>
-                            <h2>Checking Subscription</h2>
-                            <p>Verifying channel subscriptions...</p>
-                        `);
-
-                        const newResults = await checkAllSubscriptions();
-                        closePopup();
-                        
-                        document.getElementById('check-subscription-btn').disabled = false;
-                        document.getElementById('check-subscription-btn').textContent = '🔄 Check Subscription';
-                        
-                        updateSubscriptionUI(newResults.subscriptionResults);
-                        await renderAdChannels();
-                        
-                        if (newResults.allSubscribed) {
-                            document.getElementById('subscription-page').style.display = 'none';
-                            await continueAppInitialization(db);
-                        } else {
-                            try {
-                                if (tg.showAlert) tg.showAlert("Please subscribe to all channels first!");
-                            } catch(e) {}
-                        }
-                    });
-
-                    document.getElementById('skip-subscription-btn').addEventListener('click', () => {
-                        if (confirm('🚨 This is for development only! Are you sure you want to skip subscription?')) {
-                            skipSubscription();
-                        }
-                    });
+                    // ✅ الإصلاح: استخدام event delegation للأزرار
+                    setupSubscriptionEventListeners();
                     
                     return;
                 }
@@ -2262,6 +2228,69 @@
                     if (tg.showAlert) tg.showAlert("Failed to load app data. Please try again."); 
                 } catch(e){} 
             }
+        };
+
+        // ✅ دالة جديدة لإعداد مستمعي الأحداث للاشتراك باستخدام event delegation
+        const setupSubscriptionEventListeners = () => {
+            // ✅ الإصلاح: استخدام event delegation لأزرار Join
+            document.getElementById('channels-list').addEventListener('click', function(event) {
+                const joinButton = event.target.closest('.join-channel-btn');
+                if (joinButton) {
+                    const channelUrl = joinButton.getAttribute('data-channel-url');
+                    console.log('🎯 Join button clicked:', channelUrl);
+                    
+                    try {
+                        if (window.Telegram?.WebApp?.openLink) {
+                            window.Telegram.WebApp.openLink(channelUrl);
+                        } else {
+                            window.open(channelUrl, '_blank');
+                        }
+                    } catch (error) {
+                        window.open(channelUrl, '_blank');
+                    }
+                }
+            });
+
+            // ✅ الإصلاح: إضافة مستمع لزر Check Subscription
+            document.getElementById('check-subscription-btn').addEventListener('click', async () => {
+                console.log('🔄 Check Subscription button clicked');
+                
+                document.getElementById('check-subscription-btn').disabled = true;
+                document.getElementById('check-subscription-btn').textContent = 'Checking...';
+                
+                showPopup(`
+                    <div style="margin-bottom:10px;">
+                        <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                    </div>
+                    <h2>Checking Subscription</h2>
+                    <p>Verifying channel subscriptions...</p>
+                `);
+
+                const newResults = await checkAllSubscriptions();
+                closePopup();
+                
+                document.getElementById('check-subscription-btn').disabled = false;
+                document.getElementById('check-subscription-btn').textContent = '🔄 Check Subscription';
+                
+                updateSubscriptionUI(newResults.subscriptionResults);
+                await renderAdChannels();
+                
+                if (newResults.allSubscribed) {
+                    document.getElementById('subscription-page').style.display = 'none';
+                    await continueAppInitialization(db);
+                } else {
+                    try {
+                        if (tg.showAlert) tg.showAlert("Please subscribe to all channels first!");
+                    } catch(e) {}
+                }
+            });
+
+            // ✅ الإصلاح: إضافة مستمع لزر Skip
+            document.getElementById('skip-subscription-btn').addEventListener('click', () => {
+                if (confirm('🚨 This is for development only! Are you sure you want to skip subscription?')) {
+                    skipSubscription();
+                }
+            });
         };
 
         // ✅ دالة لمتابعة تهيئة التطبيق بعد التحقق من الاشتراك
@@ -2313,7 +2342,7 @@
                 contestData.userPoints = userContestData.points || 0;
                 
                 const leaderboardRef = db.ref('contest/participants').orderByChild('points').limitToLast(50);
-                const leaderboardSnap = await leaderboardRef.once('value');
+                const leaderboardSnap = await leaderboardSnap.once('value');
                 
                 contestData.leaderboard = [];
                 leaderboardSnap.forEach(child => {
@@ -2482,7 +2511,7 @@
             };
         };
 
-        // ✅ دالة لتحديث واجهة الاشتراك
+        // ✅ دالة محسنة لتحديث واجهة الاشتراك - مع الإصلاح النهائي
         const updateSubscriptionUI = (subscriptionResults) => {
             const channelsList = document.getElementById('channels-list');
             channelsList.innerHTML = '';
@@ -2518,22 +2547,6 @@
                     </button>
                 `;
                 channelsList.appendChild(channelElement);
-            });
-
-            // إضافة event listeners لأزرار Join
-            document.querySelectorAll('.join-channel-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const channelUrl = this.getAttribute('data-channel-url');
-                    try {
-                        if (tg.openLink) {
-                            tg.openLink(channelUrl);
-                        } else {
-                            window.open(channelUrl, '_blank');
-                        }
-                    } catch (error) {
-                        window.open(channelUrl, '_blank');
-                    }
-                });
             });
         };
 
@@ -2576,22 +2589,23 @@
                 adChannelsList.appendChild(channelElement);
             }
 
-            // إضافة event listeners لأزرار Subscribe
-            document.querySelectorAll('.subscribe-ad-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    if (!this.disabled) {
-                        const channelUrl = this.getAttribute('data-channel-url');
-                        try {
-                            if (tg.openLink) {
-                                tg.openLink(channelUrl);
-                            } else {
-                                window.open(channelUrl, '_blank');
-                            }
-                        } catch (error) {
+            // ✅ الإصلاح: استخدام event delegation لأزرار Subscribe
+            document.getElementById('ad-channels-list').addEventListener('click', function(event) {
+                const subscribeButton = event.target.closest('.subscribe-ad-btn');
+                if (subscribeButton && !subscribeButton.disabled) {
+                    const channelUrl = subscribeButton.getAttribute('data-channel-url');
+                    console.log('🎯 Subscribe button clicked:', channelUrl);
+                    
+                    try {
+                        if (window.Telegram?.WebApp?.openLink) {
+                            window.Telegram.WebApp.openLink(channelUrl);
+                        } else {
                             window.open(channelUrl, '_blank');
                         }
+                    } catch (error) {
+                        window.open(channelUrl, '_blank');
                     }
-                });
+                }
             });
         };
 
