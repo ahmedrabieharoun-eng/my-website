@@ -1020,6 +1020,122 @@
             border: 2px solid var(--ship-gold);
         }
 
+        /* إضافة أنماط صفحة الاشتراك الإجباري */
+        #subscription-page {
+            display: none;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--background-dark) 0%, #0a2a3a 100%);
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        #subscription-page.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .subscription-container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 12px;
+            background: rgba(26, 43, 60, 0.9);
+            border: 2px solid var(--ship-gold);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+
+        .channel-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-dark);
+            transition: all 0.3s;
+        }
+
+        .channel-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .channel-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .channel-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid var(--ship-gold);
+        }
+
+        .channel-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin: 0 10px;
+        }
+
+        .status-subscribed {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .status-not-subscribed {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        .join-channel-btn {
+            background: linear-gradient(45deg, var(--ship-gold), #ffa500);
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .join-channel-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+        }
+
+        .check-subscription-btn {
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 25px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .check-subscription-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
+        }
+
+        .check-subscription-btn:disabled {
+            background: #808B96;
+            cursor: not-allowed;
+        }
+
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -1111,7 +1227,7 @@
     </div>
     
     <!-- شاشة الاشتراك الإجباري -->
-    <div id="subscription-page" style="display: none;">
+    <div id="subscription-page">
         <div class="subscription-container">
             <h2 style="color: var(--ship-gold); margin-bottom: 10px;">📢 Required Subscription</h2>
             <p style="margin-bottom: 20px;">You must subscribe to our channels to use the bot and earn rewards!</p>
@@ -1148,7 +1264,7 @@
     </div>
 
     <!-- تصميم السفينة -->
-    <div class="ship-container" style="display: none;">
+    <div class="ship-container">
         <!-- الأمواج -->
         <div class="wave"></div>
         <div class="wave wave-2"></div>
@@ -1403,51 +1519,6 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <script>
-    // جعل الدوال الأساسية متاحة بشكل عام
-    window.openTelegramContact = function() {
-        const telegramUrl = 'https://t.me/aborabie777';
-        try {
-            const tg = window.Telegram?.WebApp;
-            if (tg && tg.openLink) {
-                tg.openLink(telegramUrl);
-            } else {
-                window.open(telegramUrl, '_blank');
-            }
-        } catch (error) {
-            window.open(telegramUrl, '_blank');
-        }
-    };
-
-    window.closeDailyCalendar = function() {
-        document.getElementById('daily-calendar-popup').style.display = 'none';
-    };
-
-    window.closeContestGuide = function() {
-        document.getElementById('contest-guide-popup').style.display = 'none';
-    };
-
-    window.showFullLeaderboard = function() {
-        // سيتم تعريف هذه الدالة لاحقاً في الكود
-        if (window.generateFullLeaderboardHTML) {
-            const popup = document.getElementById('popup');
-            const popupBody = document.getElementById('popup-body');
-            
-            popupBody.innerHTML = `
-                <div style="text-align: left; max-height: 70vh; overflow-y: auto;">
-                    <h2 style="margin-bottom: 15px; color: var(--ship-gold);">🏆 Full Leaderboard</h2>
-                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-secondary-dark);">
-                        Showing top 50 participants
-                    </div>
-                    <div id="full-leaderboard-content">
-                        ${window.generateFullLeaderboardHTML()}
-                    </div>
-                    <button class="popup-close-btn" onclick="document.getElementById('popup').style.display='none'" style="margin-top: 15px; width: 100%;">Close</button>
-                </div>
-            `;
-            popup.style.display = 'flex';
-        }
-    };
-
     document.addEventListener('DOMContentLoaded', () => {
         const tg = window.Telegram?.WebApp || {};
         
@@ -1567,9 +1638,28 @@
         const showPopup = (content) => { popupBody.innerHTML = content; popup.style.display = 'flex'; };
         const closePopup = () => { popup.style.display = 'none'; };
 
+        // ✅ دالة فتح محادثة Telegram - تم التعديل لاستخدام الرابط الخاص بك
+        const openTelegramContact = () => {
+            const telegramUrl = 'https://t.me/aborabie777';
+            try {
+                if (tg.openLink) {
+                    tg.openLink(telegramUrl);
+                } else {
+                    window.open(telegramUrl, '_blank');
+                }
+            } catch (error) {
+                window.open(telegramUrl, '_blank');
+            }
+        };
+
         // ✅ دالة فتح نافذة شرح المسابقة - تم إصلاحها
         const openContestGuide = () => {
             document.getElementById('contest-guide-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة إغلاق نافذة شرح المسابقة
+        const closeContestGuide = () => {
+            document.getElementById('contest-guide-popup').style.display = 'none';
         };
 
         // ✅ دالة للتحقق من حالة الحظر
@@ -1597,7 +1687,7 @@
             document.getElementById('banned-reason').textContent = banReason;
             document.getElementById('banned-page').style.display = 'flex';
             document.getElementById('app-loader').style.display = 'none';
-            document.getElementById('subscription-page').style.display = 'none';
+            document.getElementById('subscription-page').classList.remove('active');
             document.querySelector('.ship-container').style.display = 'none';
         };
 
@@ -1877,6 +1967,11 @@
             }
             
             document.getElementById('daily-calendar-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
+        const closeDailyCalendar = () => {
+            document.getElementById('daily-calendar-popup').style.display = 'none';
         };
 
         // ✅ دالة لتحديث حالة المسابقة في الصفحة الرئيسية - تم إصلاحها
@@ -2231,12 +2326,47 @@
                 
                 if (!allSubscribed) {
                     document.getElementById('app-loader').style.display = 'none';
-                    document.getElementById('subscription-page').style.display = 'block';
+                    document.getElementById('subscription-page').classList.add('active');
+                    document.querySelector('.ship-container').style.display = 'none';
                     updateSubscriptionUI(subscriptionResults);
                     await renderAdChannels();
                     
-                    // ✅ الإصلاح: إضافة event listeners بشكل صحيح
-                    setupSubscriptionEventListeners();
+                    document.getElementById('check-subscription-btn').addEventListener('click', async () => {
+                        document.getElementById('check-subscription-btn').disabled = true;
+                        document.getElementById('check-subscription-btn').textContent = 'Checking...';
+                        
+                        showPopup(`
+                            <div style="margin-bottom:10px;">
+                                <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                            </div>
+                            <h2>Checking Subscription</h2>
+                            <p>Verifying channel subscriptions...</p>
+                        `);
+
+                        const newResults = await checkAllSubscriptions();
+                        closePopup();
+                        
+                        document.getElementById('check-subscription-btn').disabled = false;
+                        document.getElementById('check-subscription-btn').textContent = '🔄 Check Subscription';
+                        
+                        updateSubscriptionUI(newResults.subscriptionResults);
+                        await renderAdChannels();
+                        
+                        if (newResults.allSubscribed) {
+                            document.getElementById('subscription-page').classList.remove('active');
+                            await continueAppInitialization(db);
+                        } else {
+                            try {
+                                if (tg.showAlert) tg.showAlert("Please subscribe to all channels first!");
+                            } catch(e) {}
+                        }
+                    });
+
+                    document.getElementById('skip-subscription-btn').addEventListener('click', () => {
+                        if (confirm('🚨 This is for development only! Are you sure you want to skip subscription?')) {
+                            skipSubscription();
+                        }
+                    });
                     
                     return;
                 }
@@ -2249,110 +2379,6 @@
                     if (tg.showAlert) tg.showAlert("Failed to load app data. Please try again."); 
                 } catch(e){} 
             }
-        };
-
-        // ✅ دالة جديدة لإعداد event listeners لصفحة الاشتراك
-        const setupSubscriptionEventListeners = () => {
-            // زر التحقق من الاشتراك
-            const checkBtn = document.getElementById('check-subscription-btn');
-            if (checkBtn) {
-                checkBtn.addEventListener('click', async () => {
-                    checkBtn.disabled = true;
-                    checkBtn.textContent = 'Checking...';
-                    
-                    showPopup(`
-                        <div style="margin-bottom:10px;">
-                            <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
-                        </div>
-                        <h2>Checking Subscription</h2>
-                        <p>Verifying channel subscriptions...</p>
-                    `);
-
-                    const newResults = await checkAllSubscriptions();
-                    closePopup();
-                    
-                    checkBtn.disabled = false;
-                    checkBtn.textContent = '🔄 Check Subscription';
-                    
-                    updateSubscriptionUI(newResults.subscriptionResults);
-                    await renderAdChannels();
-                    
-                    if (newResults.allSubscribed) {
-                        document.getElementById('subscription-page').style.display = 'none';
-                        const db = firebase.database();
-                        await continueAppInitialization(db);
-                    } else {
-                        try {
-                            if (tg.showAlert) tg.showAlert("Please subscribe to all channels first!");
-                        } catch(e) {}
-                    }
-                });
-            }
-
-            // زر التخطي للتطوير
-            const skipBtn = document.getElementById('skip-subscription-btn');
-            if (skipBtn) {
-                skipBtn.addEventListener('click', () => {
-                    if (confirm('🚨 This is for development only! Are you sure you want to skip subscription?')) {
-                        skipSubscription();
-                    }
-                });
-            }
-
-            // أزرار Join للقنوات
-            document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('join-channel-btn')) {
-                    const channelUrl = e.target.getAttribute('data-channel-url');
-                    try {
-                        if (tg.openLink) {
-                            tg.openLink(channelUrl);
-                        } else {
-                            window.open(channelUrl, '_blank');
-                        }
-                    } catch (error) {
-                        window.open(channelUrl, '_blank');
-                    }
-                }
-            });
-        };
-
-        // ✅ دالة لتحديث واجهة الاشتراك
-        const updateSubscriptionUI = (subscriptionResults) => {
-            const channelsList = document.getElementById('channels-list');
-            channelsList.innerHTML = '';
-            
-            subscriptionResults.forEach(channel => {
-                const channelElement = document.createElement('div');
-                channelElement.className = 'channel-item';
-                
-                let statusText = '❌ Not Subscribed';
-                let statusClass = 'status-not-subscribed';
-                
-                if (channel.subscribed) {
-                    statusText = '✅ Subscribed';
-                    statusClass = 'status-subscribed';
-                } else if (channel.error) {
-                    statusText = '⚠️ Check Failed';
-                    statusClass = 'status-not-subscribed';
-                }
-                
-                channelElement.innerHTML = `
-                    <div class="channel-info">
-                        <img src="${channel.icon}" alt="${channel.name}" class="channel-icon">
-                        <div style="text-align: left;">
-                            <h4 style="margin: 0; font-size: 1rem;">${channel.name}</h4>
-                            <small style="opacity: 0.7;">@${channel.username}</small>
-                        </div>
-                    </div>
-                    <span class="channel-status ${statusClass}">
-                        ${statusText}
-                    </span>
-                    <button class="action-btn join-channel-btn" data-channel-url="${channel.url}" style="padding: 8px 12px; font-size: 0.8rem;">
-                        Join
-                    </button>
-                `;
-                channelsList.appendChild(channelElement);
-            });
         };
 
         // ✅ دالة لمتابعة تهيئة التطبيق بعد التحقق من الاشتراك
@@ -2371,6 +2397,7 @@
 
                 setTimeout(() => {
                     document.getElementById('app-loader').style.display = 'none';
+                    document.getElementById('subscription-page').classList.remove('active');
                     document.querySelector('.ship-container').style.display = 'block';
                 }, 300);
             } catch (error) {
@@ -2573,6 +2600,61 @@
             };
         };
 
+        // ✅ دالة لتحديث واجهة الاشتراك
+        const updateSubscriptionUI = (subscriptionResults) => {
+            const channelsList = document.getElementById('channels-list');
+            channelsList.innerHTML = '';
+            
+            subscriptionResults.forEach(channel => {
+                const channelElement = document.createElement('div');
+                channelElement.className = 'channel-item';
+                
+                let statusText = '❌ Not Subscribed';
+                let statusClass = 'status-not-subscribed';
+                
+                if (channel.subscribed) {
+                    statusText = '✅ Subscribed';
+                    statusClass = 'status-subscribed';
+                } else if (channel.error) {
+                    statusText = '⚠️ Check Failed';
+                    statusClass = 'status-not-subscribed';
+                }
+                
+                channelElement.innerHTML = `
+                    <div class="channel-info">
+                        <img src="${channel.icon}" alt="${channel.name}" class="channel-icon">
+                        <div style="text-align: left;">
+                            <h4 style="margin: 0; font-size: 1rem;">${channel.name}</h4>
+                            <small style="opacity: 0.7;">@${channel.username}</small>
+                        </div>
+                    </div>
+                    <span class="channel-status ${statusClass}">
+                        ${statusText}
+                    </span>
+                    <button class="action-btn join-channel-btn" data-channel-url="${channel.url}" style="padding: 8px 12px; font-size: 0.8rem;">
+                        Join
+                    </button>
+                `;
+                channelsList.appendChild(channelElement);
+            });
+
+            // إضافة event listeners لأزرار Join
+            document.querySelectorAll('.join-channel-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const channelUrl = this.getAttribute('data-channel-url');
+                    try {
+                        if (tg.openLink) {
+                            tg.openLink(channelUrl);
+                        } else {
+                            window.open(channelUrl, '_blank');
+                        }
+                    } catch (error) {
+                        window.open(channelUrl, '_blank');
+                    }
+                });
+            });
+        };
+
         // ✅ دالة لعرض قنوات الإعلانات
         const renderAdChannels = async () => {
             const adChannelsList = document.getElementById('ad-channels-list');
@@ -2692,7 +2774,7 @@
         const skipSubscription = () => {
             console.log('🚨 Skipping subscription check for development');
             isSubscribedToAllChannels = true;
-            document.getElementById('subscription-page').style.display = 'none';
+            document.getElementById('subscription-page').classList.remove('active');
             document.getElementById('app-loader').style.display = 'none';
             document.querySelector('.ship-container').style.display = 'block';
             
@@ -3068,19 +3150,13 @@
         // ✅ إعداد مستمعي الأحداث الإضافية
         const setupAdditionalEventListeners = () => {
             // زر إضافة مهمة - تم التعديل
-            const addTaskBtn = document.getElementById('add-task-main-btn');
-            if (addTaskBtn) {
-                addTaskBtn.addEventListener('click', openTelegramContact);
-            }
+            document.getElementById('add-task-main-btn').addEventListener('click', openTelegramContact);
             
             // زر شرح المسابقة - تم إصلاحه
-            const contestGuideTrigger = document.getElementById('contest-guide-trigger');
-            if (contestGuideTrigger) {
-                contestGuideTrigger.addEventListener('click', function() {
-                    const content = document.getElementById('contest-guide-content');
-                    content.style.display = content.style.display === 'block' ? 'none' : 'block';
-                });
-            }
+            document.getElementById('contest-guide-trigger').addEventListener('click', function() {
+                const content = document.getElementById('contest-guide-content');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            });
         };
 
         const renderAdTask = () => {
@@ -4156,7 +4232,23 @@
         };
 
         // ✅ دالة لعرض لوحة المتصدرين الكاملة
-        window.generateFullLeaderboardHTML = function() {
+        const showFullLeaderboard = () => {
+            showPopup(`
+                <div style="text-align: left; max-height: 70vh; overflow-y: auto;">
+                    <h2 style="margin-bottom: 15px; color: var(--ship-gold);">🏆 Full Leaderboard</h2>
+                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-secondary-dark);">
+                        Showing top 50 participants
+                    </div>
+                    <div id="full-leaderboard-content">
+                        ${generateFullLeaderboardHTML()}
+                    </div>
+                    <button class="popup-close-btn" onclick="closePopup()" style="margin-top: 15px; width: 100%;">Close</button>
+                </div>
+            `);
+        };
+
+        // ✅ دالة لتوليد HTML للوحة المتصدرين الكاملة
+        const generateFullLeaderboardHTML = () => {
             if (contestData.leaderboard.length === 0) {
                 return '<p style="text-align: center; padding: 20px;">No participants yet.</p>';
             }
