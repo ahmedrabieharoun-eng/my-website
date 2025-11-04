@@ -874,7 +874,7 @@
             background: rgba(255, 215, 0, 0.2);
         }
 
-        .streak-calendar-compact { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin: 15px 0; }
+        .streak-calendar-compact { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 15px 0; }
         .calendar-day-compact { padding: 10px; border-radius: 8px; text-align: center; background: rgba(26, 43, 60, 0.8); border: 1px solid var(--border-dark); }
         .calendar-day-compact.completed { background: rgba(76, 175, 80, 0.2); border-color: var(--success); }
         .calendar-day-compact.current { background: rgba(255, 215, 0, 0.2); border: 2px solid var(--ship-gold); }
@@ -1290,7 +1290,7 @@
                 <!-- حالة المكافأة اليومية -->
             </div>
             <div style="margin-top: 15px; padding: 10px; background: rgba(255, 215, 0, 0.1); border-radius: 8px;">
-                <p style="margin: 0; font-size: 0.9rem;">Current Streak: <strong id="current-streak-display">0 days</strong></p>
+                <p style="margin: 0; font-size: 0.9rem;">Current Streak: <strong id="current-streak-display-popup">0 days</strong></p>
             </div>
             <button class="popup-close-btn" onclick="closeDailyCalendar()" style="margin-top: 15px;">Close</button>
         </div>
@@ -1440,6 +1440,21 @@
                 
                 <div id="ad-progress-container" class="progress-container-inline"></div>
                 <div id="ad-task-container"></div>
+                
+                <!-- إضافة مهمة التسجيل اليومي -->
+                <div class="task-container daily-login-task" id="daily-login-task-container">
+                    <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/calendar.png" alt="icon">
+                    <div class="task-info">
+                        <h3>Daily Login Reward</h3>
+                        <p>Login daily to earn increasing rewards!</p>
+                        <div class="ad-progress-inline">
+                            Current Streak: <span id="current-streak-display">0 days</span>
+                        </div>
+                    </div>
+                    <button class="action-btn" id="open-calendar-btn">
+                        <i class="fas fa-calendar"></i> Calendar
+                    </button>
+                </div>
                 
                 <!-- خانة إدخال الأكواد المصغرة -->
                 <div id="redeem-code-container">
@@ -1637,21 +1652,20 @@
         const tg = window.Telegram?.WebApp || {};
         
         // ✅ إعدادات Firebase
-// ✅ التكوين الجديد مع مفتاح API الصحيح
-const firebaseConfig = {
-  apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
-  authDomain: "earnmoney124553.firebaseapp.com",
-  databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
-  projectId: "earnmoney124553",
-  storageBucket: "earnmoney124553.firebasestorage.app",
-  messagingSenderId: "325528918523",
-  appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
-  measurementId: "G-G1H96Q5XCJ"
-};
+        const firebaseConfig = {
+          apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+          authDomain: "earnmoney124553.firebaseapp.com",
+          databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+          projectId: "earnmoney124553",
+          storageBucket: "earnmoney124553.firebasestorage.app",
+          messagingSenderId: "325528918523",
+          appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+          measurementId: "G-G1H96Q5XCJ"
+        };
         const NOTIFICATION_USERNAME = "aborabie777";
 
         // ✅ متغيرات جديدة من Firebase
-        let dailyLoginRewards = [0.0001, 0.0002, 0.0004, 0.0008, 0.0016, 0.0032, 0.0064];
+        let dailyLoginRewards = [1000, 2000, 4000, 8000, 16000, 32000, 64000]; // مكافآت RR
         
         // ✅ التعديل: تغيير وقت الإعلان من 15 إلى 5 ثواني
         let minAdDuration = 5000; // 5 ثواني فقط
@@ -1783,6 +1797,70 @@ const firebaseConfig = {
         // ✅ دالة إغلاق نافذة شرح المسابقة
         const closeContestGuide = () => {
             document.getElementById('contest-guide-popup').style.display = 'none';
+        };
+
+        // ✅ دالة فتح التقويم اليومي
+        const openDailyCalendar = () => {
+            const today = new Date().toDateString();
+            const isClaimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
+            const currentStreak = dailyLoginData.currentStreak || 1;
+            
+            let calendarHTML = '';
+            for (let day = 1; day <= dailyLoginRewards.length; day++) {
+                const rewardAmount = dailyLoginRewards[day - 1];
+                let dayClass = 'calendar-day-compact future';
+                let statusText = 'Future';
+                
+                if (day < currentStreak) {
+                    dayClass = 'calendar-day-compact completed';
+                    statusText = 'Claimed';
+                } else if (day === currentStreak) {
+                    if (isClaimedToday) {
+                        dayClass = 'calendar-day-compact completed';
+                        statusText = 'Claimed';
+                    } else {
+                        dayClass = 'calendar-day-compact current';
+                        statusText = 'Claim Now';
+                    }
+                }
+                
+                calendarHTML += `
+                    <div class="${dayClass}">
+                        <div class="day-number-compact">Day ${day}</div>
+                        <div class="day-reward-compact">${rewardAmount.toLocaleString()} RR</div>
+                        <div class="day-status-compact">${statusText}</div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('streak-calendar-compact').innerHTML = calendarHTML;
+            document.getElementById('current-streak-display-popup').textContent = `${currentStreak} days`;
+            
+            // تحديث حالة المكافأة اليومية
+            const statusElement = document.getElementById('daily-login-status');
+            if (isClaimedToday) {
+                statusElement.innerHTML = `
+                    <div style="color: var(--success);">
+                        <i class="fas fa-check-circle"></i> Today's bonus already claimed!
+                    </div>
+                `;
+            } else {
+                statusElement.innerHTML = `
+                    <div style="color: var(--ship-gold);">
+                        <i class="fas fa-gift"></i> Today's bonus available! 
+                        <button onclick="claimDailyLoginBonus()" class="action-btn" style="padding: 5px 10px; font-size: 0.8rem; margin-left: 10px;">
+                            Claim Now
+                        </button>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('daily-calendar-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة إغلاق التقويم اليومي
+        const closeDailyCalendar = () => {
+            document.getElementById('daily-calendar-popup').style.display = 'none';
         };
 
         // ✅ دالة محسنة للمصادقة مع Firebase
@@ -2008,10 +2086,9 @@ const firebaseConfig = {
                 // حساب المكافأة بناءً على streak
                 const currentStreak = dailyLoginData.currentStreak || 1;
                 const rewardIndex = Math.min(currentStreak - 1, dailyLoginRewards.length - 1);
-                const rewardAmount = dailyLoginRewards[rewardIndex] || dailyLoginRewards[dailyLoginRewards.length - 1] || 0.0001;
+                const rewardAmount = dailyLoginRewards[rewardIndex] || dailyLoginRewards[dailyLoginRewards.length - 1] || 1000;
                 
-                const rewardAmountRR = Math.round(rewardAmount * RR_TO_TON_RATE);
-                userRRBalance += rewardAmountRR;
+                userRRBalance += rewardAmount;
                 localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
                 
                 // تحديث بيانات التسجيل اليومي
@@ -2026,7 +2103,7 @@ const firebaseConfig = {
                 
                 try{ 
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(`🎉 Daily login bonus claimed! +${rewardAmountRR.toLocaleString()} RR (Day ${currentStreak})`); 
+                    if (tg.showAlert) tg.showAlert(`🎉 Daily login bonus claimed! +${rewardAmount.toLocaleString()} RR (Day ${currentStreak})`); 
                 }catch{}
                 
                 // تحديث الواجهة
@@ -2045,69 +2122,58 @@ const firebaseConfig = {
             }
         };
 
-        // ✅ دالة لعرض التقويم اليومي المعدلة - تم إصلاحها بالكامل
-        const openDailyCalendar = () => {
+        // ✅ دالة محسنة لعرض مهمة التسجيل اليومي
+        const renderDailyLoginTask = () => {
             const today = new Date().toDateString();
             const isClaimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
             const currentStreak = dailyLoginData.currentStreak || 1;
             
-            let calendarHTML = '';
-            for (let day = 1; day <= dailyLoginRewards.length; day++) {
-                const rewardAmount = dailyLoginRewards[day - 1];
-                const rewardAmountRR = Math.round(rewardAmount * RR_TO_TON_RATE);
-                let dayClass = 'calendar-day-compact future';
-                let statusText = 'Future';
-                
-                if (day < currentStreak) {
-                    dayClass = 'calendar-day-compact completed';
-                    statusText = 'Claimed';
-                } else if (day === currentStreak) {
-                    if (isClaimedToday) {
-                        dayClass = 'calendar-day-compact completed';
-                        statusText = 'Claimed';
-                    } else {
-                        dayClass = 'calendar-day-compact current';
-                        statusText = 'Claim Now';
-                    }
-                }
-                
-                calendarHTML += `
-                    <div class="${dayClass}">
-                        <div class="day-number-compact">Day ${day}</div>
-                        <div class="day-reward-compact">${rewardAmountRR.toLocaleString()} RR</div>
-                        <div class="day-status-compact">${statusText}</div>
-                    </div>
-                `;
-            }
+            const taskContainer = document.getElementById('daily-login-task-container');
+            if (!taskContainer) return;
             
-            document.getElementById('streak-calendar-compact').innerHTML = calendarHTML;
-            document.getElementById('current-streak-display').textContent = `${currentStreak} days`;
+            const nextRewardIndex = Math.min(currentStreak, dailyLoginRewards.length - 1);
+            const nextRewardAmount = dailyLoginRewards[nextRewardIndex] || dailyLoginRewards[dailyLoginRewards.length - 1] || 1000;
             
-            // تحديث حالة المكافأة اليومية
-            const statusElement = document.getElementById('daily-login-status');
-            if (isClaimedToday) {
-                statusElement.innerHTML = `
-                    <div style="color: var(--success);">
-                        <i class="fas fa-check-circle"></i> Today's bonus already claimed!
+            taskContainer.innerHTML = `
+                <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/calendar.png" alt="icon">
+                <div class="task-info">
+                    <h3>Daily Login Reward</h3>
+                    <p>Login daily to earn increasing rewards!</p>
+                    <div class="ad-progress-inline">
+                        Current Streak: <span id="current-streak-display">${currentStreak} days</span>
+                        ${isClaimedToday ? ' • ✅ Claimed Today' : ` • Next: ${nextRewardAmount.toLocaleString()} RR`}
                     </div>
-                `;
-            } else {
-                statusElement.innerHTML = `
-                    <div style="color: var(--ship-gold);">
-                        <i class="fas fa-gift"></i> Today's bonus available! 
-                        <button onclick="claimDailyLoginBonus()" class="action-btn" style="padding: 5px 10px; font-size: 0.8rem; margin-left: 10px;">
-                            Claim Now
-                        </button>
-                    </div>
-                `;
-            }
+                </div>
+                <button class="action-btn" id="open-calendar-btn">
+                    <i class="fas fa-calendar"></i> Calendar
+                </button>
+            `;
             
-            document.getElementById('daily-calendar-popup').style.display = 'flex';
+            // إضافة event listener للزر
+            document.getElementById('open-calendar-btn').addEventListener('click', openDailyCalendar);
         };
 
-        // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
-        const closeDailyCalendar = () => {
-            document.getElementById('daily-calendar-popup').style.display = 'none';
+        // ✅ دالة محسنة للتحقق من التسجيل اليومي
+        const checkDailyLogin = async (db) => {
+            const today = new Date().toDateString();
+            const lastLogin = dailyLoginData.lastLoginDate;
+            
+            if (lastLogin !== today) {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toDateString();
+                
+                if (lastLogin === yesterdayStr) {
+                    dailyLoginData.currentStreak = (dailyLoginData.currentStreak || 0) + 1;
+                } else if (lastLogin !== today) {
+                    dailyLoginData.currentStreak = 1;
+                }
+                
+                dailyLoginData.lastLoginDate = today;
+                
+                const dailyLoginRef = db.ref(`dailyLogin/${tgUser.id}`);
+                await dailyLoginRef.set(dailyLoginData);
+            }
         };
 
         // ✅ دالة لتحديث حالة المسابقة في الصفحة الرئيسية - تم إصلاحها
@@ -2672,34 +2738,11 @@ const firebaseConfig = {
             }
         };
 
-        // ✅ دالة محسنة للتحقق من التسجيل اليومي - تم إصلاحها
-        const checkDailyLogin = async (db) => {
-            const today = new Date().toDateString();
-            const lastLogin = dailyLoginData.lastLoginDate;
-            
-            if (lastLogin !== today) {
-                const yesterday = new Date();
-                yesterday.setDate(yesterday.getDate() - 1);
-                const yesterdayStr = yesterday.toDateString();
-                
-                if (lastLogin === yesterdayStr) {
-                    dailyLoginData.currentStreak = (dailyLoginData.currentStreak || 0) + 1;
-                } else if (lastLogin !== today) {
-                    dailyLoginData.currentStreak = 1;
-                }
-                
-                dailyLoginData.lastLoginDate = today;
-                
-                const dailyLoginRef = db.ref(`dailyLogin/${tgUser.id}`);
-                await dailyLoginRef.set(dailyLoginData);
-            }
-        };
-
         // ✅ دالة محسنة لتحميل بيانات نظام الإحالات الجديد - تم تعديلها لتعمل بـ RR
         const loadReferralData = async (db) => {
             try {
                 const referralRef = db.ref(`referrals/${tgUser.id}`);
-                const referralSnap = await referralRef.once('value');
+                const referralSnap = await referralSnap.once('value');
                 const savedData = referralSnap.val();
                 
                 if (savedData) {
@@ -3210,6 +3253,9 @@ const firebaseConfig = {
             renderWithdrawSection(); 
             renderConverter(); 
             renderDynamicLinks();
+            
+            // ✅ إضافة عرض مهمة التسجيل اليومي
+            renderDailyLoginTask();
             
             // إعداد المستمعين الإضافيين
             setupAdditionalEventListeners();
