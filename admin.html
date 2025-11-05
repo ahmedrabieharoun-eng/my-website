@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>لوحة تحكم Firebase</title>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js"></script>
+  <!-- استخدام إصدارات متوافقة مع المتصفح -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -26,28 +27,27 @@
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
-
+  <script>
+    // تهيئة Firebase باستخدام الإصدار المتوافق
     const firebaseConfig = {
-            apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
-  authDomain: "dogs-boss.firebaseapp.com",
-  databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
-  projectId: "dogs-boss",
-  storageBucket: "dogs-boss.firebasestorage.app",
-  messagingSenderId: "778183941825",
-  appId: "1:778183941825:web:45a96727e1aad043bffe40",
-  measurementId: "G-EY15XEGP53"
+      apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
+      authDomain: "dogs-boss.firebaseapp.com",
+      databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
+      projectId: "dogs-boss",
+      storageBucket: "dogs-boss.firebasestorage.app",
+      messagingSenderId: "778183941825",
+      appId: "1:778183941825:web:45a96727e1aad043bffe40",
+      measurementId: "G-EY15XEGP53"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const dbRef = ref(db, '/');
+    // تهيئة التطبيق
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const dbRef = firebase.database().ref('/');
     const dataContainer = document.getElementById("dataContainer");
 
     // عرض البيانات
-    onValue(dbRef, (snapshot) => {
+    dbRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (!data) {
         dataContainer.innerHTML = "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
@@ -76,7 +76,7 @@
       const newVal = document.getElementById(`val-${key}`).value;
       try {
         const parsedVal = JSON.parse(newVal);
-        update(ref(db, key), parsedVal);
+        db.ref(key).update(parsedVal);
         alert("✅ تم التعديل بنجاح!");
       } catch (e) {
         alert("⚠️ يجب إدخال JSON صالح!");
@@ -85,7 +85,7 @@
 
     window.deleteData = (key) => {
       if (confirm(`هل أنت متأكد من حذف ${key}؟`)) {
-        remove(ref(db, key));
+        db.ref(key).remove();
       }
     };
 
@@ -96,13 +96,36 @@
 
       try {
         const parsed = JSON.parse(val);
-        set(ref(db, key), parsed);
+        db.ref(key).set(parsed);
         alert("✅ تمت الإضافة بنجاح!");
+        // تفريغ الحقول بعد الإضافة
+        document.getElementById("newKey").value = '';
+        document.getElementById("newValue").value = '';
       } catch {
-        set(ref(db, key), val);
+        db.ref(key).set(val);
         alert("✅ تمت الإضافة كنص!");
+        // تفريغ الحقول بعد الإضافة
+        document.getElementById("newKey").value = '';
+        document.getElementById("newValue").value = '';
       }
     });
+
+    // إضافة زر لتفريغ جميع البيانات (اختياري)
+    function addClearAllButton() {
+      const clearBtn = document.createElement('button');
+      clearBtn.textContent = '🗑️ تفريغ جميع البيانات';
+      clearBtn.className = 'bg-red-700 px-4 py-2 rounded hover:bg-red-600 mt-4';
+      clearBtn.onclick = () => {
+        if (confirm('⚠️ هل أنت متأكد من حذف جميع البيانات؟ هذا الإجراء لا يمكن التراجع عنه!')) {
+          db.ref('/').remove();
+          alert('✅ تم حذف جميع البيانات');
+        }
+      };
+      document.querySelector('.p-6').appendChild(clearBtn);
+    }
+
+    // استدعاء الدالة بعد تحميل الصفحة
+    setTimeout(addClearAllButton, 1000);
   </script>
 </body>
 </html>
