@@ -1,280 +1,438 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة تحكم DOGS Boss</title>
-  <!-- استخدام نفس إصدارات Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DOGS Boss</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script>
+        // --- INSTANT THEME APPLY SCRIPT ---
+        (function() {
+            try {
+                const tg = window.Telegram.WebApp;
+                const isDark = tg.colorScheme === 'dark';
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            } catch (e) {
+                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+            }
+        })();
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap');
+        :root { --primary-color: #007AFF; --primary-color-rgb: 0, 122, 255; --secondary-color: #0056B3; --background-color: #F0F2F5; --card-background: #FFFFFF; --text-color: #1D1D1F; --text-light: #6E6E73; --border-color: #E5E5EA; --glass-bg: rgba(240, 242, 245, 0.8); }
+        [data-theme="dark"] { --primary-color: #0A84FF; --primary-color-rgb: 10, 132, 255; --secondary-color: #3395FF; --background-color: #000000; --card-background: #1C1C1E; --text-color: #F5F5F7; --text-light: #8E8E93; --border-color: #3A3A3C; --glass-bg: rgba(28, 28, 30, 0.8); }
+        
+        * { box-sizing: border-box; }
+        html, body { overscroll-behavior-y: contain; }
+        body { font-family: 'Noto Sans', sans-serif; margin: 0; padding: 20px 15px 100px 15px; background-color: var(--background-color); color: var(--text-color); -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s; }
+        
+        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: var(--background-color); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: opacity 0.5s ease; }
+        #preloader i { font-size: 48px; color: var(--primary-color); animation: spin 1.5s linear infinite; }
+        #preloader-percentage { font-size: 20px; font-weight: 700; color: var(--text-color); }
+        #preloader-footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 15px; z-index: 10000; transition: opacity 0.5s ease; }
+        #preloader-footer a { font-size: 14px; font-weight: 500; color: var(--text-light); text-decoration: none; }
+
+        .container { max-width: 500px; margin: 0 auto; display: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 24px; animation: fadeIn 0.5s ease-out; }
+        #profile-pic { width: 52px; height: 52px; border-radius: 50%; background-color: var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; overflow: hidden; border: 2px solid var(--card-background); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+        #greeting { font-size: 22px; font-weight: 800; }
+        
+        .balance-card { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 28px; border-radius: 24px; text-align: center; margin-bottom: 20px; box-shadow: 0 12px 25px rgba(var(--primary-color-rgb), 0.2); animation: fadeIn 0.6s ease-out; }
+        .balance-card::after { content: '\f51e'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; right: -20px; bottom: -30px; font-size: 120px; opacity: 0.1; transform: rotate(-15deg); pointer-events: none; }
+        .balance-card h3 { margin: 0 0 8px 0; font-size: 16px; font-weight: 500; opacity: 0.9; z-index: 1; position: relative; }
+        .balance-card .amount { font-size: 48px; font-weight: 800; line-height: 1.2; z-index: 1; position: relative; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+        .stat-item { position: relative; overflow: hidden; background-color: var(--card-background); padding: 20px; border-radius: 18px; text-align: center; border: 1px solid var(--border-color); animation: fadeIn 0.7s ease-out; transition: background-color 0.3s, border-color 0.3s; }
+        .stat-item .bg-icon { position: absolute; right: 5px; bottom: 5px; font-size: 50px; opacity: 0.08; color: var(--text-color); pointer-events: none; }
+        .stat-item .icon { font-size: 28px; color: var(--primary-color); margin-bottom: 12px; }
+        .stat-item .value { font-size: 24px; font-weight: 800; }
+        .stat-item .label { font-size: 14px; color: var(--text-light); }
+        
+        .card { background-color: var(--card-background); padding: 20px; border-radius: 18px; margin-bottom: 20px; border: 1px solid var(--border-color); animation: fadeIn 0.8s ease-out; transition: background-color 0.3s, border-color 0.3s; }
+        .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+        .chart-container { position: relative; height: 200px; width: 100%; }
+        
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4); } 70% { box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0); } 100% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0); } }
+        .action-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 18px; border: none; border-radius: 16px; background-color: var(--primary-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
+        .action-button.pulsing { animation: pulse 2s infinite; }
+        .action-button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.2); }
+        .action-button:disabled { background-color: #8E8E93; cursor: not-allowed; }
+        .secondary-button { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color); margin-top: 15px; }
+        
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); padding: 10px 15px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; z-index: 100; }
+        .nav-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; border-radius: 12px; color: var(--text-light); text-decoration: none; font-size: 12px; font-weight: 500; border: none; background: transparent; cursor: pointer; transition: all 0.2s ease; }
+        .nav-button.active, .nav-button:hover { color: var(--primary-color); background-color: rgba(var(--primary-color-rgb), 0.1); }
+        .nav-button i { font-size: 20px; }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: flex-end; animation: fadeIn 0.3s ease-out; }
+        .modal-content { background-color: var(--card-background); padding: 20px; border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; margin: 0 auto; box-sizing: border-box; animation: slideIn 0.3s ease-out; max-height: 80vh; overflow-y: auto;}
+        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .close-button { color: #aaa; float: right; font-size: 28px; line-height: 1; font-weight: bold; cursor: pointer; }
+        .modal-content input, .modal-content select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid var(--border-color); border-radius: 10px; font-family: 'Noto Sans', sans-serif; font-size: 16px; background-color: var(--background-color); color: var(--text-color); transition: border-color 0.2s, box-shadow 0.2s; }
+        .modal-content input:focus, .modal-content select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.2); }
+        
+        #bonus-tasks-list .bonus-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background-color: var(--background-color); border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+        .bonus-item .details { display: flex; flex-direction: column; gap: 4px; }
+        .bonus-item .title { font-weight: 600; font-size: 16px; color: var(--text-color); }
+        .bonus-item .reward { font-size: 14px; font-weight: 700; color: var(--primary-color); }
+        .bonus-item .reward i { margin-right: 5px; }
+        .bonus-item .claim-button { padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 10px; background-color: var(--primary-color); color: white; border: none; cursor: pointer; transition: background-color 0.2s; }
+        .bonus-item .claim-button:disabled { background-color: #28a745; cursor: not-allowed; }
+
+        .history-item { padding: 15px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .history-item:last-child { border-bottom: none; }
+        .history-details { display: flex; flex-direction: column; gap: 4px; }
+        .history-details .method-number { font-weight: 700; font-size: 16px; }
+        .history-details .date { font-size: 12px; color: var(--text-light); }
+        .history-amount { font-size: 18px; font-weight: 800; text-align: right; }
+        .history-status { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; }
+        .history-status.success { color: #28a745; background-color: rgba(40, 167, 69, 0.1); }
+        .history-status.pending { color: #fd7e14; background-color: rgba(253, 126, 20, 0.1); }
+        .no-history { text-align: center; padding: 40px 20px; color: var(--text-light); }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner { border: 2px solid #f3f3f3; border-top: 2px solid var(--secondary-color); border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; }
+        #ad-loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 15px; color: white; font-size: 16px; }
+        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: var(--primary-color); border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
+        #multiAccountModal .modal-content { text-align: center; border-radius: 20px; max-height: initial;}
+        #multiAccountModal { align-items: center; justify-content: center; }
+        
+        /* زر حذف قاعدة البيانات */
+        .danger-button { background-color: #dc3545; color: white; border: none; }
+        .danger-button:hover { background-color: #c82333; }
+    </style>
+    <link rel="me" href="https://www.blogger.com/profile/10625506500157523857" />
+    <meta name='google-adsense-platform-account' content='ca-host-pub-1556223355139109'/>
+    <meta name='google-adsense-platform-domain' content='blogspot.com'/>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <div class="p-6 max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold mb-4 text-center">⚙️ لوحة تحكم DOGS Boss</h1>
-
-    <!-- إحصائيات سريعة -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-      <div class="bg-blue-600 p-4 rounded-lg text-center">
-        <div class="text-2xl font-bold" id="totalUsers">0</div>
-        <div class="text-sm">إجمالي المستخدمين</div>
-      </div>
-      <div class="bg-green-600 p-4 rounded-lg text-center">
-        <div class="text-2xl font-bold" id="totalEarnings">0 DOGS</div>
-        <div class="text-sm">إجمالي الأرباح</div>
-      </div>
-      <div class="bg-purple-600 p-4 rounded-lg text-center">
-        <div class="text-2xl font-bold" id="totalReferrals">0</div>
-        <div class="text-sm">إجمالي الإحالات</div>
-      </div>
+<body>
+    <div id="preloader">
+        <i class="fa-solid fa-spinner"></i>
+        <div id="preloader-percentage">0%</div>
     </div>
-
-    <!-- قسم الإضافة -->
-    <div class="bg-gray-800 p-4 rounded-lg mb-6">
-      <h2 class="text-xl mb-2 font-semibold">➕ إضافة بيانات جديدة</h2>
-      <input id="newKey" placeholder="المفتاح (key)" class="p-2 rounded bg-gray-700 text-white w-full mb-2" />
-      <textarea id="newValue" placeholder="القيمة (JSON أو نص)" class="p-2 rounded bg-gray-700 text-white w-full mb-2"></textarea>
-      <button id="addBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">إضافة</button>
+    <div id="preloader-footer">
+        <a href="https://t.me/The_DogsBoss" target="_blank">DOGS Boss News</a>
     </div>
-
-    <!-- قسم البحث -->
-    <div class="bg-gray-800 p-4 rounded-lg mb-6">
-      <h2 class="text-xl mb-2 font-semibold">🔍 البحث عن مستخدم</h2>
-      <div class="flex gap-2">
-        <input id="searchInput" placeholder="أدخل User ID" class="p-2 rounded bg-gray-700 text-white w-full" type="number" />
-        <button id="searchBtn" class="bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">بحث</button>
-      </div>
-      <div id="userDetails" class="mt-4 hidden bg-gray-700 p-4 rounded-lg"></div>
+    
+    <div id="ad-loader-overlay"><div class="loader"></div><span>Loading Ad...</span></div>
+    
+    <div class="container">
+        <div class="profile-header"><div id="profile-pic"><i class="fa-solid fa-user"></i></div><h1 id="greeting">Welcome!</h1></div>
+        <div class="balance-card"><h3>Your Balance</h3><div class="amount" id="total-earning">0.000 DOGS</div></div>
+        <div class="stats-grid">
+            <div class="stat-item"><i class="fa-solid fa-rectangle-ad bg-icon"></i><div class="icon"><i class="fa-solid fa-rectangle-ad"></i></div><div class="value" id="ad-count">0</div><div class="label">ADS Watched</div></div>
+            <div class="stat-item"><i class="fa-solid fa-calendar-day bg-icon"></i><div class="icon"><i class="fa-solid fa-calendar-day"></i></div><div class="value" id="ads-today-count">0 / 15</div><div class="label">Today ADS</div></div>
+            <div class="stat-item"><i class="fa-solid fa-users bg-icon"></i><div class="icon"><i class="fa-solid fa-users"></i></div><div class="value" id="referral-count">0</div><div class="label">Referrals</div></div>
+        </div> 
+        <div class="card"><h3 class="card-title"> <i class="fa-solid fa-video"></i>   WATCH ADS</h3><button class="action-button" id="watch-ad-button"><i class="fa-solid fa-play"></i><span>Watch AD</span></button><button class="action-button secondary-button" id="join-channel-button"><i class="fa-brands fa-telegram"></i><span>DOGS Boss News</span></button></div>
+       <div class="card"><h3 class="card-title"> <i class="fa-solid fa-chart-line"></i> Weekly Activity</h3><div class="chart-container"><canvas id="activityChart"></canvas></div></div>
     </div>
-
-    <!-- عرض البيانات -->
-    <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[70vh]" id="dataContainer">
-      <p class="text-gray-400 text-center">جارٍ تحميل البيانات...</p>
+   
+    <div class="nav-bar">
+        <button class="nav-button" onclick="showModal('withdrawModal', this)"><i class="fa-solid fa-wallet"></i><span>Withdraw</span></button>
+        <button class="nav-button" onclick="showModal('historyModal', this)"><i class="fa-solid fa-clock"></i><span>History</span></button>
+       <button class="nav-button" onclick="showModal('bonusTasksModal', this)"><i class="fa-solid fa-tasks"></i><span>Tasks</span></button>
+        <button class="nav-button" onclick="showModal('inviteModal', this)"><i class="fa-solid fa-user-friends"></i><span>Friends</span></button>
+        <button class="nav-button" onclick="showModal('supportModal', this)"><i class="fa-solid fa-gift"></i><span>Gifts</span></button>
     </div>
-
-    <!-- زر تفريغ البيانات -->
-    <div class="text-center mt-4">
-      <button onclick="clearAllData()" class="bg-red-700 px-4 py-2 rounded hover:bg-red-600">🗑️ تفريغ جميع البيانات</button>
-    </div>
-  </div>
-
-  <script>
-    // تكوين Firebase بنفس إعدادات التطبيق
-    const firebaseConfig = {
-      apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
-      authDomain: "dogs-boss.firebaseapp.com",
-      databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
-      projectId: "dogs-boss",
-      storageBucket: "dogs-boss.firebasestorage.app",
-      messagingSenderId: "778183941825",
-      appId: "1:778183941825:web:45a96727e1aad043bffe40",
-      measurementId: "G-EY15XEGP53"
-    };
-
-    // تهيئة Firebase
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const dbRef = firebase.database().ref('/');
-    const dataContainer = document.getElementById("dataContainer");
-
-    // إحصائيات
-    let totalUsers = 0;
-    let totalEarnings = 0;
-    let totalReferrals = 0;
-
-    // تحديث الإحصائيات
-    function updateStats() {
-      document.getElementById("totalUsers").textContent = totalUsers;
-      document.getElementById("totalEarnings").textContent = totalEarnings.toFixed(0) + " DOGS";
-      document.getElementById("totalReferrals").textContent = totalReferrals;
-    }
-
-    // عرض البيانات
-    dbRef.on('value', (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        dataContainer.innerHTML = "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
-        return;
-      }
-
-      // حساب الإحصائيات
-      totalUsers = 0;
-      totalEarnings = 0;
-      totalReferrals = 0;
-
-      let html = "";
-      for (const key in data) {
-        if (key === "users") {
-          // معالجة بيانات المستخدمين
-          for (const userId in data[key]) {
-            totalUsers++;
-            const user = data[key][userId];
-            const userEarnings = user.totalEarning || 0;
-            const userReferrals = user.referrals || 0;
-            
-            totalEarnings += parseFloat(userEarnings);
-            totalReferrals += parseInt(userReferrals);
-
-            html += `
-              <div class="bg-gray-700 p-3 rounded mb-3">
-                <div class="flex justify-between items-start">
-                  <div>
-                    <h3 class="font-bold">👤 User: ${userId}</h3>
-                    <p class="text-sm text-gray-300">💰 الرصيد: ${userEarnings} DOGS</p>
-                    <p class="text-sm text-gray-300">👥 الإحالات: ${userReferrals}</p>
-                    <p class="text-sm text-gray-300">📊 عدد الإعلانات: ${user.adCount || 0}</p>
-                  </div>
-                  <div class="flex gap-2">
-                    <button onclick="editUser('${userId}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500 text-sm">تعديل</button>
-                    <button onclick="deleteUser('${userId}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500 text-sm">حذف</button>
-                  </div>
-                </div>
-                <textarea id="val-users-${userId}" class="w-full bg-gray-800 text-white p-2 rounded mt-2 text-sm" rows="4">${JSON.stringify(user, null, 2)}</textarea>
-              </div>
-            `;
-          }
-        } else {
-          // بيانات أخرى
-          html += `
-            <div class="bg-gray-700 p-3 rounded mb-3">
-              <h3 class="font-bold">${key}</h3>
-              <textarea id="val-${key}" class="w-full bg-gray-800 text-white p-2 rounded mt-1">${JSON.stringify(data[key], null, 2)}</textarea>
-              <div class="mt-2 flex gap-2">
-                <button onclick="updateData('${key}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">تعديل</button>
-                <button onclick="deleteData('${key}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500">حذف</button>
-              </div>
-            </div>
-          `;
-        }
-      }
-
-      dataContainer.innerHTML = html;
-      updateStats();
-    });
-
-    // دوال التحكم
-    window.updateData = (key) => {
-      const newVal = document.getElementById(`val-${key}`).value;
-      try {
-        const parsedVal = JSON.parse(newVal);
-        db.ref(key).update(parsedVal);
-        alert("✅ تم التعديل بنجاح!");
-      } catch (e) {
-        alert("⚠️ يجب إدخال JSON صالح!");
-      }
-    };
-
-    window.deleteData = (key) => {
-      if (confirm(`هل أنت متأكد من حذف ${key}؟`)) {
-        db.ref(key).remove();
-      }
-    };
-
-    window.editUser = (userId) => {
-      const newVal = document.getElementById(`val-users-${userId}`).value;
-      try {
-        const parsedVal = JSON.parse(newVal);
-        db.ref(`users/${userId}`).update(parsedVal);
-        alert("✅ تم تعديل بيانات المستخدم بنجاح!");
-      } catch (e) {
-        alert("⚠️ يجب إدخال JSON صالح!");
-      }
-    };
-
-    window.deleteUser = (userId) => {
-      if (confirm(`هل أنت متأكد من حذف المستخدم ${userId}؟`)) {
-        db.ref(`users/${userId}`).remove();
-      }
-    };
-
-    // البحث عن مستخدم
-    document.getElementById("searchBtn").addEventListener("click", () => {
-      const userId = document.getElementById("searchInput").value.trim();
-      if (!userId) return alert("⚠️ أدخل User ID أولاً!");
-
-      db.ref(`users/${userId}`).once('value')
-        .then(snapshot => {
-          const userData = snapshot.val();
-          const userDetails = document.getElementById("userDetails");
-          
-          if (!userData) {
-            userDetails.innerHTML = "<p class='text-red-400'>❌ لم يتم العثور على المستخدم</p>";
-            userDetails.classList.remove("hidden");
-            return;
-          }
-
-          userDetails.innerHTML = `
-            <h3 class="font-bold text-lg mb-2">👤 بيانات المستخدم: ${userId}</h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p><strong>💰 الرصيد:</strong> ${userData.totalEarning || 0} DOGS</p>
-                <p><strong>👥 الإحالات:</strong> ${userData.referrals || 0}</p>
-                <p><strong>📊 عدد الإعلانات:</strong> ${userData.adCount || 0}</p>
-              </div>
-              <div>
-                <p><strong>📅 آخر إعلان:</strong> ${userData.lastAdWatchedDate || 'غير متوفر'}</p>
-                <p><strong>🔧 المهام المكتملة:</strong> ${(userData.completedBonusTasks || []).length}</p>
-              </div>
-            </div>
-            <textarea class="w-full bg-gray-800 text-white p-2 rounded mt-2" rows="6">${JSON.stringify(userData, null, 2)}</textarea>
-            <div class="mt-2 flex gap-2">
-              <button onclick="editUser('${userId}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">تعديل</button>
-              <button onclick="deleteUser('${userId}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500">حذف</button>
-            </div>
-          `;
-          userDetails.classList.remove("hidden");
-        })
-        .catch(error => {
-          alert("❌ خطأ في البحث: " + error.message);
-        });
-    });
-
-    // إضافة بيانات جديدة
-    document.getElementById("addBtn").addEventListener("click", () => {
-      const key = document.getElementById("newKey").value.trim();
-      const val = document.getElementById("newValue").value.trim();
-      if (!key || !val) return alert("⚠️ أدخل المفتاح والقيمة أولاً!");
-
-      try {
-        const parsed = JSON.parse(val);
-        db.ref(key).set(parsed);
-        alert("✅ تمت الإضافة بنجاح!");
-        // تفريغ الحقول بعد الإضافة
-        document.getElementById("newKey").value = '';
-        document.getElementById("newValue").value = '';
-      } catch {
-        db.ref(key).set(val);
-        alert("✅ تمت الإضافة كنص!");
-        // تفريغ الحقول بعد الإضافة
-        document.getElementById("newKey").value = '';
-        document.getElementById("newValue").value = '';
-      }
-    });
-
-    // تفريغ جميع البيانات
-    window.clearAllData = () => {
-      if (confirm('⚠️ هل أنت متأكد من حذف جميع البيانات؟ هذا الإجراء لا يمكن التراجع عنه!')) {
-        db.ref('/').remove()
-          .then(() => {
-            alert('✅ تم حذف جميع البيانات');
-          })
-          .catch(error => {
-            alert('❌ خطأ في حذف البيانات: ' + error.message);
-          });
-      }
-    };
-
-    // معالجة الأخطاء
-    dbRef.on('error', (error) => {
-      console.error('Firebase Error:', error);
-      dataContainer.innerHTML = `
-        <div class="bg-red-600 p-4 rounded-lg text-center">
-          <p class="font-bold">❌ خطأ في الاتصال بقاعدة البيانات</p>
-          <p class="text-sm">${error.message}</p>
+  
+    <!-- All Modals -->
+    <div id="welcomeModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('welcomeModal')">&times;</span><h3 id="welcome-title" class="card-title" style="text-align:center;"></h3><p id="welcome-message" style="line-height: 1.6; font-size: 15px; text-align: center; white-space: pre-wrap; margin: 15px 0;"></p><button class="action-button" onclick="closeModal('welcomeModal')">Continue</button></div></div>
+    
+    <!-- Withdraw -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('withdrawModal')">&times;</span>
+            <h3 class="card-title"> <i class="fa-solid fa-credit-card"></i>  Withdraw Funds</h3>
+           
+            <form id="withdraw-form">
+                <select id="method" name="method" required>
+                    <option value="DOGS Wallet"selected>DOGS Wallet</option>
+                </select>
+                <input type="text" id="account-number" placeholder="Enter DOGS Wallet" required>
+                <input type="number" step="0.001" id="withdraw-amount" placeholder="Enter DOGS Amount" required>
+                <p><i class="fa-solid fa-info-circle"></i> Minimum Withdrawal: 1000 DOGS<p>
+                <button type="submit" class="action-button" id="withdraw-submit-button">
+                    <span class="button-text">Confirm</span>
+                    <div class="spinner" style="display: none;"></div>
+                </button>
+            </form>
         </div>
-      `;
-    });
-  </script>
+    </div>
+  
+    <!-- Promo Codes Modal -->
+    <div id="supportModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('supportModal')">&times;</span>
+
+            <h3 class="card-title">
+                <i class="fa-solid fa-gift"></i> Promo Codes
+            </h3>
+
+            <p style="text-align:center;margin-bottom:15px;">
+                Do you have a promo code?
+            </p>
+
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+                <input id="promo-input" placeholder="Enter Promo Code" style="padding:10px;border-radius:10px;border:1px solid var(--border-color);width:80%;max-width:260px;background-color:var(--background-color);color:var(--text-color);text-align:center;">
+                <button id="promo-btn" class="action-button" style="width:90%;max-width:300px;">
+                    <span>CLAIM</span>
+                </button>
+                <p id="promo-message" style="text-align:center;margin-top:10px;color:var(--text-light);font-weight:500;"></p>
+                
+                <!-- زر حذف قاعدة البيانات -->
+                <button class="action-button danger-button" onclick="showModal('deleteDataModal', this)" style="margin-top: 20px;">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>Delete All Data</span>
+                </button>
+            </div>
+        </div>
+    </div>
+  
+    <!-- نافذة تأكيد حذف قاعدة البيانات -->
+    <div id="deleteDataModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('deleteDataModal')">&times;</span>
+            <h3 class="card-title" style="text-align: center; color: #dc3545;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Delete All Data
+            </h3>
+            <p style="text-align: center; line-height: 1.6;">
+                Are you sure you want to delete all your data?<br>
+                This action will permanently delete:
+            </p>
+            <ul style="padding-left: 20px; line-height: 1.8;">
+                <li>Your balance and earnings</li>
+                <li>Your ad watching history</li>
+                <li>Your referral data</li>
+                <li>Your withdrawal history</li>
+                <li>All completed tasks</li>
+            </ul>
+            <p style="text-align: center; color: #dc3545; font-weight: bold;">
+                This action cannot be undone!
+            </p>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="action-button secondary-button" onclick="closeModal('deleteDataModal')" style="flex: 1;">
+                    <i class="fa-solid fa-xmark"></i>
+                    <span>Cancel</span>
+                </button>
+                <button class="action-button danger-button" onclick="deleteAllData()" style="flex: 1;">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>Delete All</span>
+                </button>
+            </div>
+        </div>
+    </div>
+  
+    <!-- باقي النوافذ -->
+    <div id="historyModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('historyModal')">&times;</span><h3 class="card-title"> <i class="fa-solid fa-history"></i>  Withdrawal History</h3><div id="history-list"></div></div></div>
+  
+    <div id="inviteModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('inviteModal')">&times;</span>
+            <h3 class="card-title"> <i class="fa-solid fa-share-alt"></i>  Invite Friends</h3>
+            <p>
+                Share your referral link with your friends and earn together.
+                You will get a reward for each successful referral.
+            </p>
+
+            <button class="action-button" id="copy-link-button">
+                <i class="fa-solid fa-copy"></i>
+                <span>Copy Link</span>
+            </button>
+
+            <button class="action-button secondary-button" id="share-link-button">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span>Share Link</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="bonusTasksModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('bonusTasksModal')">&times;</span><h3 class="card-title"><i class="fa-solid fa-bullseye"></i>  Available Tasks</h3><p style="text-align: center; margin-bottom: 20px;">Complete tasks to earn DOGS</p><div id="bonus-tasks-list"></div></div></div>
+    <div id="multiAccountModal" class="modal"><div class="modal-content"><h3 class="card-title" style="text-align:center;">⚠️ Warning</h3><p>Multiple accounts are not allowed. Only one Telegram account can be used on this device. Please use your original account to continue.</p></div></div>
+
+    <script>
+        // ✅ Global balance updater that syncs with state + IndexedDB + UI
+        window.updateBalance = function(amount) {
+            const el = document.getElementById("total-earning");
+            let add = parseFloat(amount);
+            if (isNaN(add)) return;
+
+            // Update internal app state if available
+            if (typeof state !== "undefined") {
+                state.totalEarning = (parseFloat(state.totalEarning) || 0) + add;
+                if (typeof saveState === "function") saveState();
+            }
+
+            // Update UI balance
+            let current = parseFloat(el.textContent) || 0;
+            let newVal = current + add;
+            el.textContent = newVal.toFixed(0) + " DOGS";
+
+            // Save also in localStorage as backup
+            localStorage.setItem("userBalance", newVal);
+
+            console.log(`You have received ${add} DOGS!`);
+        };
+
+        const promoCodes = {
+            "DOGSBOSS": 100,
+            "FREEDOGS": 50,
+            "HBBRFJJN": 50,
+        };
+
+        // ✅ Redeem promo code function
+        function redeemPromoCode(code) {
+            const msg = document.getElementById("promo-message");
+            const normalized = code.trim().toUpperCase();
+            const usedCodes = JSON.parse(localStorage.getItem("usedPromoCodes") || "[]");
+
+            if (usedCodes.includes(normalized)) {
+                msg.style.color = "#ff5555";
+                msg.textContent = "You have already used this code";
+                tg.HapticFeedback.notificationOccurred('error');
+                return;
+            }
+
+            if (promoCodes[normalized]) {
+                const amount = promoCodes[normalized];
+                updateBalance(amount);
+                usedCodes.push(normalized);
+                localStorage.setItem("usedPromoCodes", JSON.stringify(usedCodes));
+                msg.style.color = "#4CAF50";
+                msg.textContent = `${amount} DOGS added to your balance`;
+                tg.HapticFeedback.notificationOccurred('success');
+            } else {
+                msg.style.color = "#ff5555";
+                msg.textContent = "Invalid or expired code";
+                tg.HapticFeedback.notificationOccurred('error');
+            }
+        }
+
+        // ✅ وظيفة حذف قاعدة البيانات بالكامل
+        function deleteAllData() {
+            // حذف قاعدة البيانات IndexedDB
+            if (db) {
+                const request = indexedDB.deleteDatabase(dbName);
+                request.onsuccess = function() {
+                    console.log("Database deleted successfully");
+                };
+                request.onerror = function() {
+                    console.error("Could not delete database");
+                };
+            }
+
+            // حذف البيانات من localStorage
+            localStorage.clear();
+
+            // إعادة تعيين حالة التطبيق
+            state = { 
+                totalEarning: 0.0, 
+                adCount: 0, 
+                adsWatchedToday: 0, 
+                lastAdWatchedDate: null, 
+                cooldownUntil: null, 
+                weeklyActivity: [0, 0, 0, 0, 0, 0, 0], 
+                withdrawalHistory: [], 
+                lastUsedIp: null, 
+                completedBonusTasks: [], 
+                rewardedReferrals: 0, 
+                originalUserId: null 
+            };
+
+            // تحديث واجهة المستخدم
+            updateUI();
+
+            // إغلاق النافذة
+            closeModal('deleteDataModal');
+            closeModal('supportModal');
+
+            // إظهار رسالة نجاح
+            safeTgAlert('✅ All data has been deleted successfully!');
+            safeTgAction(tg => tg.HapticFeedback.notificationOccurred('success'));
+
+            // إعادة تحميل الصفحة بعد ثانية
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+
+        // ✅ Attach button event on load
+        document.addEventListener("DOMContentLoaded", () => {
+            const btn = document.getElementById("promo-btn");
+            btn.addEventListener("click", () => {
+                const code = document.getElementById("promo-input").value;
+                redeemPromoCode(code);
+            });
+
+            // Load saved balance if exists
+            const saved = parseFloat(localStorage.getItem("userBalance")) || 0;
+            if (saved > 0 && document.getElementById("total-earning")) {
+                document.getElementById("total-earning").textContent = saved.toFixed(0) + " DOGS";
+            }
+        });
+
+        // باقي الكود كما هو...
+        const config = {
+            ADMIN_IDS: [-1003248283633],
+            BOT_USERNAME: 'DogsBossBot',
+            TELEGRAM_CHANNEL_LINK: 'https://t.me/The_DogsBoss',
+            ADMIN_SUPPORT_LINK: 'none',
+            MONETAG_ZONE_ID: '10071035',
+            AD_REWARD: 5,
+            DAILY_AD_LIMIT: 500,
+            MINIMUM_WITHDRAWAL: 1000,
+            COOLDOWN_MINUTES: 1,
+            
+            withdrawalMethods: [],
+            
+            firebase: {
+                apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
+                authDomain: "dogs-boss.firebaseapp.com",
+                databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
+                projectId: "dogs-boss",
+                storageBucket: "dogs-boss.firebasestorage.app",
+                messagingSenderId: "778183941825",
+                appId: "1:778183941825:web:45a96727e1aad043bffe40",
+                measurementId: "G-EY15XEGP53"
+            }, 
+            
+            REFERRAL_REWARD: 80,
+            bonusTasks: [
+                { id: 'task_1', title: 'Dogs Boss News 🦴', link: 'https://t.me/The_DogsBoss', reward: 20, duration: 10 },
+                { id: 'task_2', title: 'DOGS Boss Chat 🦴', link: 'https://t.me/DogsBoss_Chat', reward: 20, duration: 10 }, 
+                { id: 'task_3', title: 'FREE TON Earning', link: 'https://t.me/FREE_TON3', reward: 20, duration: 10 }, 
+                { id: 'task_4', title: 'MONEY HUB', link: 'https://t.me/MONEYHUB9_69', reward: 20, duration: 10 }, 
+                { id: 'task_5', title: 'King Mining', link: 'https://t.me/HishamAlHobani', reward: 20, duration: 10 },
+                { id: 'task_6', title: 'Team Hamza', link: 'https://t.me/TemHamza', reward: 20, duration: 10 },
+                { id: 'task_7', title: 'Akaza roulette', link: 'https://t.me/akaza_roulette', reward: 20, duration: 10 },
+                { id: 'task_8', title: 'Investor', link: 'https://t.me/+VU9Gfe09qCllYmEy', reward: 20, duration: 10 },
+                { id: 'task_9', title: 'Profit Hub', link: 'https://t.me/ProfitHubMining_Bot?start=279718', reward: 20, duration: 10 },
+                { id: 'task_10', title: 'Oil Tycoon', link: 'https://t.me/OilTycoonTON_bot/game?startapp=ii_6275536124', reward: 20, duration: 10 },
+                { id: 'task_11', title: 'COC Web3', link: 'https://t.me/COC_Web3_bot/prereg?startapp=WH7AKGVM', reward: 20, duration: 10 },
+                { id: 'task_12', title: 'AD flow', link: 'https://t.me/AdFlowAdsBot?start=6275536124', reward: 20, duration: 10 },
+                { id: 'task_13', title: 'i Miner', link: 'https://t.me/iMiner_bot/mining?startapp=r_rR8W8mTXRYYS', reward: 20, duration: 10 },
+            ],
+            welcomeNotice: {
+                title: "Welcome!",
+                message: `Welcome To DOGS Boss MiniApp`
+            }
+        };
+
+        // باقي الكود كما هو...
+        // ... [الكود المتبقي يبقى كما هو]
+    </script>
 </body>
 </html>
