@@ -243,43 +243,8 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script>
 // Submissions Review Page
-const renderSubmissions = async () => {
-    mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
-    // Load tasks to get rewards
-    const appCfgSnap = await db.ref('appConfig/tasks').once('value');
-    const tasks = appCfgSnap.val() || {};
-    // Load submissions (all tasks)
-    const subsSnap = await db.ref('taskSubmissions').once('value');
-    let rows = '';
-    subsSnap.forEach(taskNode => {
-        const taskId = taskNode.key;
-        taskNode.forEach(subNode => {
-            const s = subNode.val();
-            if (!s) return;
-            rows += `<tr>
-                <td data-label="المهمة">${tasks[taskId]?.name || taskId}<br><small>${taskId}</small></td>
-                <td data-label="المستخدم">${s.userId}<br><small>${new Date(s.timestamp).toLocaleString('ar-EG')}</small></td>
-                <td data-label="الصورة">${s.screenshot ? '<img src="'+s.screenshot+'" style="max-width:160px; max-height:120px; border-radius:8px;" />' : '—'}</td>
-                <td data-label="الحالة">${s.status || 'pending'}</td>
-                <td data-label="إجراءات">
-                    <div class="action-buttons">
-                        <button class="action-btn btn-success" onclick="window.adminActions.approveSubmission('${taskId}', '${s.id}', '${s.userId}')">قبول</button>
-                        <button class="action-btn btn-danger" onclick="window.adminActions.rejectSubmission('${taskId}', '${s.id}')">رفض</button>
-                    </div>
-                </td>
-            </tr>`;
-        });
-    });
-    mainContent.innerHTML = `<div id="submissions" class="page active">
-        <h3>مراجعة المهام (إثباتات المستخدمين)</h3>
-        <div class="card">
-            <table>
-                <thead><tr><th>المهمة</th><th>المستخدم</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="5">لا يوجد طلبات.</td></tr>'}</tbody>
-            </table>
-        </div>
-    </div>`;
-};
+if (typeof renderSubmissions === 'undefined') {
+}
 // Extend nav router
 (function(){
   const originalInit = initAdminPanel;
@@ -289,7 +254,7 @@ const renderSubmissions = async () => {
     document.querySelectorAll('.nav-menu li').forEach(item => {
       item.addEventListener('click', function(){
         const page = this.getAttribute('data-page');
-        if (page === 'submissions') renderSubmissions();
+        if (page === 'submissions') window.renderSubmissions();
       });
     });
   };
@@ -309,7 +274,7 @@ window.adminActions.approveSubmission = async (taskId, submissionId, userId) => 
         updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
         await db.ref().update(updates);
         alert('تم قبول المهمة وصرف المكافأة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل القبول: ' + e.message);
     }
@@ -318,7 +283,7 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
     try {
         await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
         alert('تم رفض المهمة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل الرفض: ' + e.message);
     }
@@ -328,7 +293,8 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script>
 // Submissions Review Page
-const renderSubmissions = async () => {
+if (typeof renderSubmissions === 'undefined') {
+window.renderSubmissions = async () => {
     mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
     // Load tasks to get rewards
     const appCfgSnap = await db.ref('appConfig/tasks').once('value');
@@ -365,6 +331,7 @@ const renderSubmissions = async () => {
         </div>
     </div>`;
 };
+}
 // Extend nav router
 (function(){
   const originalInit = initAdminPanel;
@@ -374,7 +341,7 @@ const renderSubmissions = async () => {
     document.querySelectorAll('.nav-menu li').forEach(item => {
       item.addEventListener('click', function(){
         const page = this.getAttribute('data-page');
-        if (page === 'submissions') renderSubmissions();
+        if (page === 'submissions') window.renderSubmissions();
       });
     });
   };
@@ -394,7 +361,7 @@ window.adminActions.approveSubmission = async (taskId, submissionId, userId) => 
         updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
         await db.ref().update(updates);
         alert('تم قبول المهمة وصرف المكافأة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل القبول: ' + e.message);
     }
@@ -403,7 +370,7 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
     try {
         await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
         alert('تم رفض المهمة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل الرفض: ' + e.message);
     }
@@ -1476,7 +1443,7 @@ clearCodeForm: () => {
     document.getElementById('code-title').value = '';
     document.getElementById('code-note').value = '';
     document.getElementById('code-expiry').value = '';
-    document.getElementById('code-active').checked = True if False else True;
+    document.getElementById('code-active').checked = true;
 },
 fillCodeForm: async (codeKey) => {
     const snap = await db.ref(`codes/${codeKey}`).once('value');
@@ -1492,7 +1459,7 @@ fillCodeForm: async (codeKey) => {
     document.getElementById('code-title').value = c.title || '';
     document.getElementById('code-note').value = c.note || '';
     document.getElementById('code-expiry').value = c.expiresAt ? new Date(c.expiresAt).toISOString().slice(0,16) : (c.expires ? new Date(c.expires).toISOString().slice(0,16) : '');
-    document.getElementById('code-active').checked = (c.active !== False if False else True) if False else (c.active !== False);
+    document.getElementById('code-active').checked = (c.active !== false);
 },
 // حذف كود
 
@@ -1690,43 +1657,10 @@ fillCodeForm: async (codeKey) => {
     </script>
 <script>
 // Submissions Review Page
-const renderSubmissions = async () => {
-    mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
-    // Load tasks to get rewards
-    const appCfgSnap = await db.ref('appConfig/tasks').once('value');
-    const tasks = appCfgSnap.val() || {};
-    // Load submissions (all tasks)
-    const subsSnap = await db.ref('taskSubmissions').once('value');
-    let rows = '';
-    subsSnap.forEach(taskNode => {
-        const taskId = taskNode.key;
-        taskNode.forEach(subNode => {
-            const s = subNode.val();
-            if (!s) return;
-            rows += `<tr>
-                <td data-label="المهمة">${tasks[taskId]?.name || taskId}<br><small>${taskId}</small></td>
-                <td data-label="المستخدم">${s.userId}<br><small>${new Date(s.timestamp).toLocaleString('ar-EG')}</small></td>
-                <td data-label="الصورة">${s.screenshot ? '<img src="'+s.screenshot+'" style="max-width:160px; max-height:120px; border-radius:8px;" />' : '—'}</td>
-                <td data-label="الحالة">${s.status || 'pending'}</td>
-                <td data-label="إجراءات">
-                    <div class="action-buttons">
-                        <button class="action-btn btn-success" onclick="window.adminActions.approveSubmission('${taskId}', '${s.id}', '${s.userId}')">قبول</button>
-                        <button class="action-btn btn-danger" onclick="window.adminActions.rejectSubmission('${taskId}', '${s.id}')">رفض</button>
-                    </div>
-                </td>
-            </tr>`;
-        });
-    });
-    mainContent.innerHTML = `<div id="submissions" class="page active">
-        <h3>مراجعة المهام (إثباتات المستخدمين)</h3>
-        <div class="card">
-            <table>
-                <thead><tr><th>المهمة</th><th>المستخدم</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="5">لا يوجد طلبات.</td></tr>'}</tbody>
-            </table>
-        </div>
-    </div>`;
-};
+if (typeof renderSubmissions === 'undefined') {
+/* duplicate renderSubmissions removed */
+;
+}
 // Extend nav router
 (function(){
   const originalInit = initAdminPanel;
@@ -1736,7 +1670,7 @@ const renderSubmissions = async () => {
     document.querySelectorAll('.nav-menu li').forEach(item => {
       item.addEventListener('click', function(){
         const page = this.getAttribute('data-page');
-        if (page === 'submissions') renderSubmissions();
+        if (page === 'submissions') window.renderSubmissions();
       });
     });
   };
@@ -1756,7 +1690,7 @@ window.adminActions.approveSubmission = async (taskId, submissionId, userId) => 
         updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
         await db.ref().update(updates);
         alert('تم قبول المهمة وصرف المكافأة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل القبول: ' + e.message);
     }
@@ -1765,7 +1699,7 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
     try {
         await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
         alert('تم رفض المهمة.');
-        renderSubmissions();
+        window.renderSubmissions();
     } catch (e) {
         alert('فشل الرفض: ' + e.message);
     }
