@@ -206,6 +206,19 @@
         .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .filter-bar select, .filter-bar input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; }
         
+        /* Notification Badge */
+        .notification-badge {
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            margin-right: auto;
+            margin-left: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        
         @media (min-width: 768px) {
             #app-container { display: flex; }
             #top-bar { display: none; }
@@ -1689,19 +1702,72 @@
             });
         };
 
-        // ========== دوال الصفحات الأساسية (سيتم استكمالها) ==========
+        // ========== دوال الصفحات الأساسية ==========
 
         const renderDashboard = async () => {
-            // كود لوحة التحكم الأساسية
+            const usersSnap = await db.ref('users').once('value');
+            const withdrawalsSnap = await db.ref('withdrawals/pending').once('value');
+            const contestSnap = await db.ref('contest/participants').once('value');
+            const codesSnap = await db.ref('codes').once('value');
+            const botRequestsSnap = await db.ref('botVerifications').orderByChild('status').equalTo('pending').once('value');
+            
+            let bannedUsersCount = 0;
+            let totalBalance = 0;
+            let totalReferrals = 0;
+            
+            usersSnap.forEach(child => {
+                const user = child.val();
+                if (user.banned) bannedUsersCount++;
+                totalBalance += user.balance || 0;
+                totalReferrals += user.referrals || 0;
+            });
+            
             mainContent.innerHTML = `<div id="dashboard" class="page active">
                 <h3>لوحة التحكم الرئيسية</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي المستخدمين</div>
+                        <div class="stat-value">${usersSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">المستخدمين المحظورين</div>
+                        <div class="stat-value">${bannedUsersCount}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">طلبات السحب المعلقة</div>
+                        <div class="stat-value">${withdrawalsSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">طلبات البوت المعلقة</div>
+                        <div class="stat-value">${botRequestsSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الرصيد</div>
+                        <div class="stat-value">${totalBalance.toFixed(4)}</div>
+                        <div class="stat-label">TON</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الإحالات</div>
+                        <div class="stat-value">${totalReferrals}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">مشاركين في المسابقة</div>
+                        <div class="stat-value">${contestSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">الأكواد النشطة</div>
+                        <div class="stat-value">${codesSnap.numChildren()}</div>
+                    </div>
+                </div>
+                
                 <div class="card">
-                    <p>مرحباً بك في لوحة التحكم المتقدمة لتطبيق TON Rewards</p>
-                    <p>استخدم القائمة الجانبية للوصول إلى جميع الأقسام المتاحة.</p>
+                    <h4>إحصائيات سريعة</h4>
+                    <p>مرحباً بك في لوحة التحكم المتقدمة. استخدم القائمة الجانبية للوصول إلى جميع الأقسام.</p>
                 </div>
             </div>`;
         };
 
+        // دوال الصفحات الأخرى (سيتم تنفيذها حسب الحاجة)
         const renderUsers = () => {
             mainContent.innerHTML = `<div id="users" class="page active">
                 <h3>إدارة المستخدمين</h3>
@@ -1711,13 +1777,59 @@
             </div>`;
         };
 
-        // باقي دوالت الصفحات الأساسية...
-        const renderUserSearch = () => { /* ... */ };
-        const renderWithdrawals = () => { /* ... */ };
-        const renderWithdrawalHistory = () => { /* ... */ };
-        const renderContest = () => { /* ... */ };
-        const renderSettings = () => { /* ... */ };
-        const renderBroadcast = () => { /* ... */ };
+        const renderUserSearch = () => {
+            mainContent.innerHTML = `<div id="user-search" class="page active">
+                <h3>البحث عن مستخدم</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        const renderWithdrawals = () => {
+            mainContent.innerHTML = `<div id="withdrawals" class="page active">
+                <h3>طلبات السحب المعلقة</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        const renderWithdrawalHistory = () => {
+            mainContent.innerHTML = `<div id="history" class="page active">
+                <h3>سجل السحوبات</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        const renderContest = () => {
+            mainContent.innerHTML = `<div id="contest" class="page active">
+                <h3>إدارة المسابقة</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        const renderSettings = () => {
+            mainContent.innerHTML = `<div id="settings" class="page active">
+                <h3>إعدادات التطبيق</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        const renderBroadcast = () => {
+            mainContent.innerHTML = `<div id="broadcast" class="page active">
+                <h3>البث الجماعي</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
     });
     </script>
 </body>
