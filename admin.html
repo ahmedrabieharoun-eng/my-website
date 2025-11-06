@@ -240,66 +240,13 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js">
 <script>
-// Submissions Review Page
-if (typeof renderSubmissions === 'undefined') {
-}
-// Extend nav router
-(function(){
-  const originalInit = initAdminPanel;
-  initAdminPanel = () => {
-    originalInit();
-    // Patch click handler to support submissions page
-    document.querySelectorAll('.nav-menu li').forEach(item => {
-      item.addEventListener('click', function(){
-        const page = this.getAttribute('data-page');
-        if (page === 'submissions') window.renderSubmissions();
-      });
-    });
-  };
-})();
-
-// Extend adminActions with approve/reject to credit rewards
-window.adminActions.approveSubmission = async (taskId, submissionId, userId) => {
-    try {
-        // load task reward
-        const tSnap = await db.ref(`appConfig/tasks/${taskId}`).once('value');
-        const t = tSnap.val() || {};
-        const rewardRR = Number(t.reward || t.rrReward || 0);
-        const rewardTON = Number(t.tonReward || 0);
-        const updates = {};
-        if (rewardRR > 0) updates[`users/${userId}/rrBalance`] = firebase.database.ServerValue.increment(rewardRR);
-        if (rewardTON > 0) updates[`users/${userId}/balance`] = firebase.database.ServerValue.increment(rewardTON);
-        updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
-        await db.ref().update(updates);
-        alert('تم قبول المهمة وصرف المكافأة.');
-        window.renderSubmissions();
-    } catch (e) {
-        alert('فشل القبول: ' + e.message);
-    }
-};
-window.adminActions.rejectSubmission = async (taskId, submissionId) => {
-    try {
-        await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
-        alert('تم رفض المهمة.');
-        window.renderSubmissions();
-    } catch (e) {
-        alert('فشل الرفض: ' + e.message);
-    }
-};
-</script>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script>
-// Submissions Review Page
-if (typeof renderSubmissions === 'undefined') {
-window.renderSubmissions = async () => {
+// صفحة مراجعة المهام (submissions)
+const renderSubmissions = async () => {
     mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
-    // Load tasks to get rewards
-    const appCfgSnap = await db.ref('appConfig/tasks').once('value');
-    const tasks = appCfgSnap.val() || {};
-    // Load submissions (all tasks)
+    const tasksSnap = await db.ref('appConfig/tasks').once('value');
+    const tasks = tasksSnap.val() || {};
     const subsSnap = await db.ref('taskSubmissions').once('value');
     let rows = '';
     subsSnap.forEach(taskNode => {
@@ -331,26 +278,21 @@ window.renderSubmissions = async () => {
         </div>
     </div>`;
 };
-}
-// Extend nav router
+
+// دمج في الراوتر الحالي
 (function(){
-  const originalInit = initAdminPanel;
-  initAdminPanel = () => {
-    originalInit();
-    // Patch click handler to support submissions page
-    document.querySelectorAll('.nav-menu li').forEach(item => {
-      item.addEventListener('click', function(){
-        const page = this.getAttribute('data-page');
-        if (page === 'submissions') window.renderSubmissions();
-      });
+    const sideNav = document.querySelectorAll('.nav-menu li');
+    sideNav.forEach(item => {
+        item.addEventListener('click', function(){
+            const page = this.getAttribute('data-page');
+            if (page === 'submissions') renderSubmissions();
+        });
     });
-  };
 })();
 
-// Extend adminActions with approve/reject to credit rewards
+// إجراءات القبول/الرفض وصرف المكافآت
 window.adminActions.approveSubmission = async (taskId, submissionId, userId) => {
     try {
-        // load task reward
         const tSnap = await db.ref(`appConfig/tasks/${taskId}`).once('value');
         const t = tSnap.val() || {};
         const rewardRR = Number(t.reward || t.rrReward || 0);
@@ -361,7 +303,7 @@ window.adminActions.approveSubmission = async (taskId, submissionId, userId) => 
         updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
         await db.ref().update(updates);
         alert('تم قبول المهمة وصرف المكافأة.');
-        window.renderSubmissions();
+        renderSubmissions();
     } catch (e) {
         alert('فشل القبول: ' + e.message);
     }
@@ -370,13 +312,15 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
     try {
         await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
         alert('تم رفض المهمة.');
-        window.renderSubmissions();
+        renderSubmissions();
     } catch (e) {
         alert('فشل الرفض: ' + e.message);
     }
 };
 </script>
 
+</script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const firebaseConfig = {
@@ -888,44 +832,44 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
         };
 
         // Codes Management
-        const renderCodes = async () => {
-            mainContent.innerHTML = `
-            mainContent.innerHTML = `<div id="codes" class="page active">
-                <h3>إدارة الأكواد</h3>
-                <div class="card" id="codes-list"><h4>جاري تحميل الأكواد...</h4></div>
-                <div class="card">
-                    <h4>إنشاء/تحديث كود</h4>
-                    <div class="form-group">
-                        <label>الكود (أحرف كبيرة فقط)</label>
-                        <input id="code-text" placeholder="مثال: WELCOME50" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>نوع الكود</label>
-                        <select id="code-kind">
-                            <option value="RR">RR فقط</option>
-                            <option value="TON">TON فقط</option>
-                            <option value="POINTS">نقاط المسابقة فقط</option>
-                            <option value="BOTH">RR + TON</option>
-                        </select>
-                    </div>
-                    <div class="form-group"><label>قيمة RR</label><input id="code-value-rr" type="number" step="1" value="0"></div>
-                    <div class="form-group"><label>قيمة TON</label><input id="code-value-ton" type="number" step="any" value="0"></div>
-                    <div class="form-group"><label>قيمة نقاط المسابقة</label><input id="code-value-points" type="number" step="1" value="0"></div>
-                    <div class="form-group"><label>عنوان (اختياري)</label><input id="code-title" placeholder="عنوان تسويقي"></div>
-                    <div class="form-group"><label>ملاحظة (اختياري)</label><input id="code-note" placeholder="ملاحظة داخلية"></div>
-                    <div class="form-group"><label>حد المستخدم (perUserLimit)</label><input id="code-per-user" type="number" value="1"></div>
-                    <div class="form-group"><label>إجمالي الاستخدامات (maxTotalUses، 0 = لا نهائي)</label><input id="code-max-total" type="number" value="0"></div>
-                    <div class="form-group"><label>تاريخ الانتهاء (اختياري)</label><input id="code-expiry" type="datetime-local"></div>
-                    <div class="form-group"><label><input id="code-active" type="checkbox" checked> نشط</label></div>
-                    <div class="form-group">
-                        <button class="action-btn btn-primary" onclick="window.adminActions.createOrUpdateCode()">حفظ</button>
-                        <button class="action-btn btn-danger" onclick="window.adminActions.clearCodeForm()">تفريغ النموذج</button>
-                    </div>
-                </div>
-            </div>`;
-            await loadCodes();
-    
-        };
+        
+const renderCodes = async () => {
+    mainContent.innerHTML = `<div id="codes" class="page active">
+        <h3>إدارة الأكواد</h3>
+        <div class="card" id="codes-list"><h4>جاري تحميل الأكواد...</h4></div>
+        <div class="card">
+            <h4>إنشاء/تحديث كود</h4>
+            <div class="form-group">
+                <label>الكود (أحرف كبيرة فقط)</label>
+                <input id="code-text" placeholder="مثال: WELCOME50" style="text-transform: uppercase;">
+            </div>
+            <div class="form-group">
+                <label>نوع الكود</label>
+                <select id="code-kind">
+                    <option value="RR">RR فقط</option>
+                    <option value="TON">TON فقط</option>
+                    <option value="POINTS">نقاط المسابقة فقط</option>
+                    <option value="BOTH">RR + TON</option>
+                </select>
+            </div>
+            <div class="form-group"><label>قيمة RR</label><input id="code-value-rr" type="number" step="1" value="0"></div>
+            <div class="form-group"><label>قيمة TON</label><input id="code-value-ton" type="number" step="any" value="0"></div>
+            <div class="form-group"><label>قيمة نقاط المسابقة</label><input id="code-value-points" type="number" step="1" value="0"></div>
+            <div class="form-group"><label>عنوان (اختياري)</label><input id="code-title" placeholder="عنوان تسويقي"></div>
+            <div class="form-group"><label>ملاحظة (اختياري)</label><input id="code-note" placeholder="ملاحظة داخلية"></div>
+            <div class="form-group"><label>حد المستخدم (perUserLimit)</label><input id="code-per-user" type="number" value="1"></div>
+            <div class="form-group"><label>إجمالي الاستخدامات (maxTotalUses، 0 = لا نهائي)</label><input id="code-max-total" type="number" value="0"></div>
+            <div class="form-group"><label>تاريخ الانتهاء (اختياري)</label><input id="code-expiry" type="datetime-local"></div>
+            <div class="form-group"><label><input id="code-active" type="checkbox" checked> نشط</label></div>
+            <div class="form-group">
+                <button class="action-btn btn-primary" onclick="window.adminActions.createOrUpdateCode()">حفظ</button>
+                <button class="action-btn btn-danger" onclick="window.adminActions.clearCodeForm()">تفريغ النموذج</button>
+            </div>
+        </div>
+    </div>`;
+    await loadCodes();
+};
+
 
         // Contest Management
         const renderContest = async () => {
@@ -1131,11 +1075,10 @@ const loadCodes = async () => {
     const snap = await db.ref('codes').once('value');
     let codes = [];
     snap.forEach(child => { codes.push({ key: child.key, ...child.val() }); });
-    // Sort by creation if available
     codes.sort((a,b)=> (b.created||0) - (a.created||0));
     let content = '<h4>الأكواد الحالية</h4>';
     if (codes.length > 0) {
-        content += '<table><thead><tr><th>الكود</th><th>النوع</th><th>RR</th><th>TON</th><th>نقاط</th><th>المستخدم/الحد</th><th>إجمالي</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
+        content += '<table><thead><tr><th>الكود</th><th>النوع</th><th>RR</th><th>TON</th><th>نقاط</th><th>حد المستخدم</th><th>الاستخدام</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
         codes.forEach(code => {
             const usedCount = code.usedCount || 0;
             const maxTotal = typeof code.maxTotalUses === 'number' ? code.maxTotalUses : (code.maxUses || 0);
@@ -1144,10 +1087,10 @@ const loadCodes = async () => {
             const active = code.active !== false;
             const maxText = (maxTotal && maxTotal>0) ? maxTotal : '∞';
             const status = !active ? 'معطل' : isExpired ? 'منتهي' : 'نشط';
-
+            const kind = code.kind || (code.valuePoints ? 'POINTS' : (code.valueRR && code.valueTON ? 'BOTH' : code.valueRR ? 'RR' : code.valueTON ? 'TON' : 'UNKNOWN'));
             content += `<tr>
                 <td>${code.key}</td>
-                <td>${(code.kind || (code.valuePoints ? 'POINTS' : (code.valueRR && code.valueTON ? 'BOTH' : code.valueRR ? 'RR' : code.valueTON ? 'TON' : 'UNKNOWN')))}</td>
+                <td>${kind}</td>
                 <td>${code.valueRR || 0}</td>
                 <td>${code.valueTON || 0}</td>
                 <td>${code.valuePoints || code.points || 0}</td>
@@ -1233,20 +1176,32 @@ const loadCodes = async () => {
 
         // Admin Actions
         window.adminActions = {
-            // --- RR Balance Controls ---
+            // إدارة رصيد RR
             addRR: async (userId, userName) => {
                 const amount = prompt(`أدخل مقدار RR للإضافة إلى ${userName}:`);
                 if (amount && !isNaN(parseInt(amount)) && parseInt(amount) > 0) {
-                    try { await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(parseInt(amount))); alert('تم إضافة RR بنجاح!'); renderUsers(); } catch (e) { alert('خطأ في إضافة RR.'); }
+                    try {
+                        await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(parseInt(amount)));
+                        alert('تم إضافة RR بنجاح!');
+                        renderUsers();
+                    } catch (e) {
+                        alert('خطأ في إضافة RR.');
+                    }
                 } else { alert('يرجى إدخال رقم صحيح موجب.'); }
             },
             removeRR: async (userId, userName) => {
                 const amount = prompt(`أدخل مقدار RR لخصمه من ${userName}:`);
                 if (amount && !isNaN(parseInt(amount)) && parseInt(amount) > 0) {
-                    try { await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(-parseInt(amount))); alert('تم خصم RR بنجاح!'); renderUsers(); } catch (e) { alert('خطأ في خصم RR.'); }
+                    try {
+                        await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(-parseInt(amount)));
+                        alert('تم خصم RR بنجاح!');
+                        renderUsers();
+                    } catch (e) {
+                        alert('خطأ في خصم RR.');
+                    }
                 } else { alert('يرجى إدخال رقم صحيح موجب.'); }
             },
-
+            
             // إضافة رصيد
             addBalance: async (userId, userName) => {
                 const amount = prompt(`أدخل المبلغ للإضافة إلى ${userName}:`);
@@ -1384,85 +1339,81 @@ const loadCodes = async () => {
             // حذف عنصر ديناميكي
             deleteDynamicItem: async (type, key) => {
                 if (confirm('هل أنت متأكد من رغبتك في حذف هذا العنصر?')) {
-                    await db.ref(`config/${type}/${key}`).remove(); 
+                    await db.ref(`appConfig/${type}/${key}`).remove(); 
                     loadDynamicContent(type);
                 }
             },
             
+            // إنشاء/تحديث كود جديد/قائم
+            createOrUpdateCode: async () => {
+                const codeText = document.getElementById('code-text').value.trim().toUpperCase();
+                const kind = document.getElementById('code-kind').value;
+                const valueRR = parseInt(document.getElementById('code-value-rr').value) || 0;
+                const valueTON = parseFloat(document.getElementById('code-value-ton').value) || 0;
+                const valuePoints = parseInt(document.getElementById('code-value-points').value) || 0;
+                const perUserLimit = parseInt(document.getElementById('code-per-user').value) || 1;
+                const maxTotalUses = parseInt(document.getElementById('code-max-total').value) || 0;
+                const title = document.getElementById('code-title').value.trim();
+                const note = document.getElementById('code-note').value.trim();
+                const expiry = document.getElementById('code-expiry').value;
+                const active = document.getElementById('code-active').checked;
+                
+                if (!codeText) { alert('يرجى إدخال نص الكود'); return; }
+                if (kind === 'RR' && valueRR <= 0) { alert('ضع قيمة RR > 0'); return; }
+                if (kind === 'TON' && valueTON <= 0) { alert('ضع قيمة TON > 0'); return; }
+                if (kind === 'POINTS' && valuePoints <= 0) { alert('ضع قيمة النقاط > 0'); return; }
+                if (kind === 'BOTH' && valueRR <= 0 && valueTON <= 0) { alert('ضع قيمة RR أو TON'); return; }
+                
+                const codeData = {
+                    kind, valueRR, valueTON, valuePoints,
+                    perUserLimit, maxTotalUses,
+                    title: title || null, note: note || null,
+                    active,
+                    usedCount: 0,
+                    created: firebase.database.ServerValue.TIMESTAMP
+                };
+                if (expiry) codeData.expiresAt = new Date(expiry).getTime();
+                
+                try {
+                    await db.ref(`codes/${codeText}`).update(codeData);
+                    alert('تم حفظ الكود بنجاح!');
+                    window.adminActions.clearCodeForm();
+                    await loadCodes();
+                } catch (e) {
+                    alert('خطأ في حفظ الكود: ' + e.message);
+                }
+            },
             
-// إنشاء/تحديث كود
-createOrUpdateCode: async () => {
-    const codeText = document.getElementById('code-text').value.trim().toUpperCase();
-    const kind = document.getElementById('code-kind').value;
-    const valueRR = parseInt(document.getElementById('code-value-rr').value) || 0;
-    const valueTON = parseFloat(document.getElementById('code-value-ton').value) || 0;
-    const valuePoints = parseInt(document.getElementById('code-value-points').value) || 0;
-    const perUserLimit = parseInt(document.getElementById('code-per-user').value) || 1;
-    const maxTotalUses = parseInt(document.getElementById('code-max-total').value) || 0;
-    const title = document.getElementById('code-title').value.trim();
-    const note = document.getElementById('code-note').value.trim();
-    const expiry = document.getElementById('code-expiry').value;
-    const active = document.getElementById('code-active').checked;
-
-    if (!codeText) { alert('يرجى إدخال نص الكود'); return; }
-
-    // Validate values per kind
-    if (kind === 'RR' && valueRR <= 0) { alert('ضع قيمة RR > 0'); return; }
-    if (kind === 'TON' && valueTON <= 0) { alert('ضع قيمة TON > 0'); return; }
-    if (kind === 'POINTS' && valuePoints <= 0) { alert('ضع قيمة النقاط > 0'); return; }
-    if (kind === 'BOTH' && valueRR <= 0 && valueTON <= 0) { alert('ضع قيمة RR أو TON'); return; }
-
-    const codeData = {
-        kind, valueRR, valueTON, valuePoints,
-        perUserLimit, maxTotalUses,
-        usedCount: 0,
-        title: title || null,
-        note: note || null,
-        active,
-        created: firebase.database.ServerValue.TIMESTAMP
-    };
-    if (expiry) { codeData.expiresAt = new Date(expiry).getTime(); }
-
-    try {
-        await db.ref(`codes/${codeText}`).update(codeData);
-        alert('تم حفظ الكود بنجاح!');
-        window.adminActions.clearCodeForm();
-        await loadCodes();
-    } catch (e) {
-        alert('خطأ في حفظ الكود: ' + e.message);
-    }
-},
-clearCodeForm: () => {
-    document.getElementById('code-text').value = '';
-    document.getElementById('code-kind').value = 'RR';
-    document.getElementById('code-value-rr').value = 0;
-    document.getElementById('code-value-ton').value = 0;
-    document.getElementById('code-value-points').value = 0;
-    document.getElementById('code-per-user').value = 1;
-    document.getElementById('code-max-total').value = 0;
-    document.getElementById('code-title').value = '';
-    document.getElementById('code-note').value = '';
-    document.getElementById('code-expiry').value = '';
-    document.getElementById('code-active').checked = true;
-},
-fillCodeForm: async (codeKey) => {
-    const snap = await db.ref(`codes/${codeKey}`).once('value');
-    const c = snap.val();
-    if (!c) { alert('الكود غير موجود'); return; }
-    document.getElementById('code-text').value = codeKey;
-    document.getElementById('code-kind').value = c.kind || (c.valuePoints ? 'POINTS' : (c.valueRR && c.valueTON ? 'BOTH' : c.valueRR ? 'RR' : c.valueTON ? 'TON' : 'RR'));
-    document.getElementById('code-value-rr').value = c.valueRR || 0;
-    document.getElementById('code-value-ton').value = c.valueTON || 0;
-    document.getElementById('code-value-points').value = c.valuePoints || c.points || 0;
-    document.getElementById('code-per-user').value = c.perUserLimit || 1;
-    document.getElementById('code-max-total').value = (typeof c.maxTotalUses === 'number') ? c.maxTotalUses : (c.maxUses || 0);
-    document.getElementById('code-title').value = c.title || '';
-    document.getElementById('code-note').value = c.note || '';
-    document.getElementById('code-expiry').value = c.expiresAt ? new Date(c.expiresAt).toISOString().slice(0,16) : (c.expires ? new Date(c.expires).toISOString().slice(0,16) : '');
-    document.getElementById('code-active').checked = (c.active !== false);
-},
-// حذف كود
-
+            clearCodeForm: () => {
+                document.getElementById('code-text').value = '';
+                document.getElementById('code-kind').value = 'RR';
+                document.getElementById('code-value-rr').value = 0;
+                document.getElementById('code-value-ton').value = 0;
+                document.getElementById('code-value-points').value = 0;
+                document.getElementById('code-per-user').value = 1;
+                document.getElementById('code-max-total').value = 0;
+                document.getElementById('code-title').value = '';
+                document.getElementById('code-note').value = '';
+                document.getElementById('code-expiry').value = '';
+                document.getElementById('code-active').checked = true;
+            },
+            fillCodeForm: async (codeKey) => {
+                const snap = await db.ref(`codes/${codeKey}`).once('value');
+                const c = snap.val();
+                if (!c) { alert('الكود غير موجود'); return; }
+                document.getElementById('code-text').value = codeKey;
+                document.getElementById('code-kind').value = c.kind || (c.valuePoints ? 'POINTS' : (c.valueRR && c.valueTON ? 'BOTH' : c.valueRR ? 'RR' : c.valueTON ? 'TON' : 'RR'));
+                document.getElementById('code-value-rr').value = c.valueRR || 0;
+                document.getElementById('code-value-ton').value = c.valueTON || 0;
+                document.getElementById('code-value-points').value = c.valuePoints || c.points || 0;
+                document.getElementById('code-per-user').value = c.perUserLimit || 1;
+                document.getElementById('code-max-total').value = (typeof c.maxTotalUses === 'number') ? c.maxTotalUses : (c.maxUses || 0);
+                document.getElementById('code-title').value = c.title || '';
+                document.getElementById('code-note').value = c.note || '';
+                document.getElementById('code-expiry').value = c.expiresAt ? new Date(c.expiresAt).toISOString().slice(0,16) : (c.expires ? new Date(c.expires).toISOString().slice(0,16) : '');
+                document.getElementById('code-active').checked = (c.active !== false);
+            },
+            // حذف كود
             deleteCode: async (codeText) => {
                 if (confirm(`هل أنت متأكد من رغبتك في حذف الكود ${codeText}?`)) {
                     try {
@@ -1603,7 +1554,7 @@ fillCodeForm: async (codeKey) => {
                 };
                 
                 try {
-                    await db.ref('appConfig').set(settings);
+                    await db.ref('appConfig').update(settings);
                     alert('تم حفظ الإعدادات بنجاح!');
                 } catch (e) {
                     alert('خطأ في حفظ الإعدادات: ' + e.message);
@@ -1655,56 +1606,5 @@ fillCodeForm: async (codeKey) => {
         };
     });
     </script>
-<script>
-// Submissions Review Page
-if (typeof renderSubmissions === 'undefined') {
-/* duplicate renderSubmissions removed */
-;
-}
-// Extend nav router
-(function(){
-  const originalInit = initAdminPanel;
-  initAdminPanel = () => {
-    originalInit();
-    // Patch click handler to support submissions page
-    document.querySelectorAll('.nav-menu li').forEach(item => {
-      item.addEventListener('click', function(){
-        const page = this.getAttribute('data-page');
-        if (page === 'submissions') window.renderSubmissions();
-      });
-    });
-  };
-})();
-
-// Extend adminActions with approve/reject to credit rewards
-window.adminActions.approveSubmission = async (taskId, submissionId, userId) => {
-    try {
-        // load task reward
-        const tSnap = await db.ref(`appConfig/tasks/${taskId}`).once('value');
-        const t = tSnap.val() || {};
-        const rewardRR = Number(t.reward || t.rrReward || 0);
-        const rewardTON = Number(t.tonReward || 0);
-        const updates = {};
-        if (rewardRR > 0) updates[`users/${userId}/rrBalance`] = firebase.database.ServerValue.increment(rewardRR);
-        if (rewardTON > 0) updates[`users/${userId}/balance`] = firebase.database.ServerValue.increment(rewardTON);
-        updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
-        await db.ref().update(updates);
-        alert('تم قبول المهمة وصرف المكافأة.');
-        window.renderSubmissions();
-    } catch (e) {
-        alert('فشل القبول: ' + e.message);
-    }
-};
-window.adminActions.rejectSubmission = async (taskId, submissionId) => {
-    try {
-        await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
-        alert('تم رفض المهمة.');
-        window.renderSubmissions();
-    } catch (e) {
-        alert('فشل الرفض: ' + e.message);
-    }
-};
-</script>
-
 </body>
 </html>
