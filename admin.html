@@ -1,438 +1,953 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>DOGS Boss</title>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script>
-        // --- INSTANT THEME APPLY SCRIPT ---
-        (function() {
-            try {
-                const tg = window.Telegram.WebApp;
-                const isDark = tg.colorScheme === 'dark';
-                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            } catch (e) {
-                const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-                document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-            }
-        })();
-    </script>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم TON Rewards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap');
-        :root { --primary-color: #007AFF; --primary-color-rgb: 0, 122, 255; --secondary-color: #0056B3; --background-color: #F0F2F5; --card-background: #FFFFFF; --text-color: #1D1D1F; --text-light: #6E6E73; --border-color: #E5E5EA; --glass-bg: rgba(240, 242, 245, 0.8); }
-        [data-theme="dark"] { --primary-color: #0A84FF; --primary-color-rgb: 10, 132, 255; --secondary-color: #3395FF; --background-color: #000000; --card-background: #1C1C1E; --text-color: #F5F5F7; --text-light: #8E8E93; --border-color: #3A3A3C; --glass-bg: rgba(28, 28, 30, 0.8); }
+        :root {
+            --primary: #2980B9; --secondary: #2C3E50; --light: #ECF0F1; --dark: #34495E;
+            --success: #27AE60; --danger: #C0392B; --surface: #FFFFFF;
+            --warning: #F39C12; --info: #3498DB;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Tajawal', sans-serif; background-color: var(--light); direction: rtl; }
+        #app-container { transition: filter 0.3s; }
         
-        * { box-sizing: border-box; }
-        html, body { overscroll-behavior-y: contain; }
-        body { font-family: 'Noto Sans', sans-serif; margin: 0; padding: 20px 15px 100px 15px; background-color: var(--background-color); color: var(--text-color); -webkit-font-smoothing: antialiased; transition: background-color 0.3s, color 0.3s; }
+        /* Login Page Styles */
+        #login-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        .login-card {
+            background-color: var(--surface);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+        }
+        .login-card h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--secondary);
+        }
+        .login-card .form-group {
+            margin-bottom: 20px;
+        }
+        .login-card label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+            transition: border 0.3s;
+        }
+        .login-card input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .login-btn:hover {
+            background-color: #2471A3;
+        }
+        .error-message {
+            color: var(--danger);
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
         
-        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: var(--background-color); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; transition: opacity 0.5s ease; }
-        #preloader i { font-size: 48px; color: var(--primary-color); animation: spin 1.5s linear infinite; }
-        #preloader-percentage { font-size: 20px; font-weight: 700; color: var(--text-color); }
-        #preloader-footer { position: fixed; bottom: 0; left: 0; width: 100%; text-align: center; padding: 15px; z-index: 10000; transition: opacity 0.5s ease; }
-        #preloader-footer a { font-size: 14px; font-weight: 500; color: var(--text-light); text-decoration: none; }
+        /* Security Badge */
+        .security-badge {
+            background: linear-gradient(135deg, var(--success), var(--primary));
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        /* Session Timer */
+        .session-timer {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: var(--warning);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            z-index: 3000;
+        }
+        
+        /* Top Bar */
+        #top-bar {
+            background-color: var(--secondary); color: white; padding: 0 15px;
+            display: flex; align-items: center; justify-content: space-between; height: 60px;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        #menu-toggle { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        #page-title { font-size: 1.2rem; }
+        #logout-btn { background: none; border: none; color: white; cursor: pointer; font-size: 1rem; }
 
-        .container { max-width: 500px; margin: 0 auto; display: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .profile-header { display: flex; align-items: center; gap: 15px; margin-bottom: 24px; animation: fadeIn 0.5s ease-out; }
-        #profile-pic { width: 52px; height: 52px; border-radius: 50%; background-color: var(--border-color); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 700; overflow: hidden; border: 2px solid var(--card-background); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        #profile-pic img { width: 100%; height: 100%; object-fit: cover; }
-        #greeting { font-size: 22px; font-weight: 800; }
-        
-        .balance-card { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; padding: 28px; border-radius: 24px; text-align: center; margin-bottom: 20px; box-shadow: 0 12px 25px rgba(var(--primary-color-rgb), 0.2); animation: fadeIn 0.6s ease-out; }
-        .balance-card::after { content: '\f51e'; font-family: 'Font Awesome 6 Free'; font-weight: 900; position: absolute; right: -20px; bottom: -30px; font-size: 120px; opacity: 0.1; transform: rotate(-15deg); pointer-events: none; }
-        .balance-card h3 { margin: 0 0 8px 0; font-size: 16px; font-weight: 500; opacity: 0.9; z-index: 1; position: relative; }
-        .balance-card .amount { font-size: 48px; font-weight: 800; line-height: 1.2; z-index: 1; position: relative; }
-        
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
-        .stat-item { position: relative; overflow: hidden; background-color: var(--card-background); padding: 20px; border-radius: 18px; text-align: center; border: 1px solid var(--border-color); animation: fadeIn 0.7s ease-out; transition: background-color 0.3s, border-color 0.3s; }
-        .stat-item .bg-icon { position: absolute; right: 5px; bottom: 5px; font-size: 50px; opacity: 0.08; color: var(--text-color); pointer-events: none; }
-        .stat-item .icon { font-size: 28px; color: var(--primary-color); margin-bottom: 12px; }
-        .stat-item .value { font-size: 24px; font-weight: 800; }
-        .stat-item .label { font-size: 14px; color: var(--text-light); }
-        
-        .card { background-color: var(--card-background); padding: 20px; border-radius: 18px; margin-bottom: 20px; border: 1px solid var(--border-color); animation: fadeIn 0.8s ease-out; transition: background-color 0.3s, border-color 0.3s; }
-        .card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
-        .chart-container { position: relative; height: 200px; width: 100%; }
-        
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4); } 70% { box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0); } 100% { box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0); } }
-        .action-button { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 18px; border: none; border-radius: 16px; background-color: var(--primary-color); color: white; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; }
-        .action-button.pulsing { animation: pulse 2s infinite; }
-        .action-button:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(var(--primary-color-rgb), 0.2); }
-        .action-button:disabled { background-color: #8E8E93; cursor: not-allowed; }
-        .secondary-button { background-color: transparent; color: var(--primary-color); border: 2px solid var(--primary-color); margin-top: 15px; }
-        
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); padding: 10px 15px; background: var(--glass-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); transition: background-color 0.3s, border-color 0.3s; z-index: 100; }
-        .nav-button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px; border-radius: 12px; color: var(--text-light); text-decoration: none; font-size: 12px; font-weight: 500; border: none; background: transparent; cursor: pointer; transition: all 0.2s ease; }
-        .nav-button.active, .nav-button:hover { color: var(--primary-color); background-color: rgba(var(--primary-color-rgb), 0.1); }
-        .nav-button i { font-size: 20px; }
-        
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: flex-end; animation: fadeIn 0.3s ease-out; }
-        .modal-content { background-color: var(--card-background); padding: 20px; border-radius: 20px 20px 0 0; width: 100%; max-width: 500px; margin: 0 auto; box-sizing: border-box; animation: slideIn 0.3s ease-out; max-height: 80vh; overflow-y: auto;}
-        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .close-button { color: #aaa; float: right; font-size: 28px; line-height: 1; font-weight: bold; cursor: pointer; }
-        .modal-content input, .modal-content select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid var(--border-color); border-radius: 10px; font-family: 'Noto Sans', sans-serif; font-size: 16px; background-color: var(--background-color); color: var(--text-color); transition: border-color 0.2s, box-shadow 0.2s; }
-        .modal-content input:focus, .modal-content select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.2); }
-        
-        #bonus-tasks-list .bonus-item { display: flex; align-items: center; justify-content: space-between; padding: 15px; background-color: var(--background-color); border-radius: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); }
-        .bonus-item .details { display: flex; flex-direction: column; gap: 4px; }
-        .bonus-item .title { font-weight: 600; font-size: 16px; color: var(--text-color); }
-        .bonus-item .reward { font-size: 14px; font-weight: 700; color: var(--primary-color); }
-        .bonus-item .reward i { margin-right: 5px; }
-        .bonus-item .claim-button { padding: 10px 20px; font-size: 14px; font-weight: 600; border-radius: 10px; background-color: var(--primary-color); color: white; border: none; cursor: pointer; transition: background-color 0.2s; }
-        .bonus-item .claim-button:disabled { background-color: #28a745; cursor: not-allowed; }
+        /* Sidebar */
+        #sidebar {
+            position: fixed; top: 0; right: 0; width: 260px; height: 100vh;
+            background-color: var(--secondary); color: white; z-index: 2000;
+            transform: translateX(100%); transition: transform 0.3s ease-in-out;
+            display: flex; flex-direction: column;
+        }
+        #sidebar.open { transform: translateX(0); }
+        #sidebar-header { padding: 20px; text-align: center; }
+        #sidebar-header .close-btn { position: absolute; top: 15px; left: 20px; font-size: 1.8rem; cursor: pointer; }
+        .nav-menu { list-style: none; padding: 0; margin: 0; }
+        .nav-menu li { padding: 15px 20px; cursor: pointer; border-right: 4px solid transparent; transition: all 0.2s; }
+        .nav-menu li:hover, .nav-menu li.active { background-color: var(--dark); border-right-color: var(--primary); }
+        .nav-menu li i { margin-left: 12px; width: 20px; text-align: center; }
+        #sidebar-logout-btn { margin-top: auto; }
 
-        .history-item { padding: 15px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .history-item:last-child { border-bottom: none; }
-        .history-details { display: flex; flex-direction: column; gap: 4px; }
-        .history-details .method-number { font-weight: 700; font-size: 16px; }
-        .history-details .date { font-size: 12px; color: var(--text-light); }
-        .history-amount { font-size: 18px; font-weight: 800; text-align: right; }
-        .history-status { font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 8px; }
-        .history-status.success { color: #28a745; background-color: rgba(40, 167, 69, 0.1); }
-        .history-status.pending { color: #fd7e14; background-color: rgba(253, 126, 20, 0.1); }
-        .no-history { text-align: center; padding: 40px 20px; color: var(--text-light); }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .spinner { border: 2px solid #f3f3f3; border-top: 2px solid var(--secondary-color); border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; }
-        #ad-loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 5000; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 15px; color: white; font-size: 16px; }
-        .loader { width: 48px; height: 48px; border: 5px solid #FFF; border-bottom-color: var(--primary-color); border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
-        #multiAccountModal .modal-content { text-align: center; border-radius: 20px; max-height: initial;}
-        #multiAccountModal { align-items: center; justify-content: center; }
+        /* Overlay */
+        #overlay {
+            position: fixed; top: 0; right: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); z-index: 1999; display: none;
+        }
+        #overlay.show { display: block; }
         
-        /* زر حذف قاعدة البيانات */
-        .danger-button { background-color: #dc3545; color: white; border: none; }
-        .danger-button:hover { background-color: #c82333; }
+        /* Main Content */
+        #main-content { padding: 20px; }
+        .page { display: none; } .page.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Cards */
+        .card { background-color: var(--surface); border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1, h3, h4 { color: var(--secondary); margin-bottom: 15px; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; }
+        thead { display: none; }
+        tr { display: block; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; }
+        td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        td:last-child { border-bottom: none; }
+        td::before { content: attr(data-label); font-weight: bold; margin-left: 10px; }
+        .action-buttons { text-align: left; width: 100%; }
+        .action-btn { padding: 8px 12px; border: none; border-radius: 5px; color: white; cursor: pointer; margin: 2px; font-family: 'Tajawal', sans-serif; }
+        
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; text-align: right; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        .btn-success { background-color: var(--success); } .btn-danger { background-color: var(--danger); } .btn-primary { background-color: var(--primary); } .btn-warning { background-color: var(--warning); }
+        .btn-info { background-color: var(--info); }
+        .dynamic-item-list { list-style: none; padding-right: 0; }
+        .dynamic-item-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--light); }
+        .withdraw-method-group { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        
+        /* New Styles */
+        .user-status-banned { background-color: rgba(192, 57, 43, 0.1); border-right: 4px solid var(--danger); }
+        .user-status-banned td:first-child::before { content: "🚫 " attr(data-label); }
+        .settings-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
+        .setting-card { background-color: var(--surface); border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* Search Box */
+        .search-box { margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; }
+        
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background-color: var(--surface); border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+        .stat-label { color: var(--dark); font-size: 0.9rem; }
+        
+        /* User Details */
+        .user-details-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media (min-width: 768px) { .user-details-grid { grid-template-columns: 1fr 1fr; } }
+        .user-info-card { background-color: var(--surface); border-radius: 8px; padding: 15px; }
+        .user-info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .user-info-item:last-child { border-bottom: none; }
+        
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
+        .tab { padding: 10px 15px; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: bold; }
+
+        /* Security Features */
+        .security-features {
+            background: linear-gradient(135deg, var(--info), var(--primary));
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .security-features h4 {
+            color: white;
+            margin-bottom: 10px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @media (min-width: 768px) {
+            #app-container { display: flex; }
+            #top-bar { display: none; }
+            #sidebar { position: static; transform: translateX(0); width: 250px; height: 100vh; }
+            #sidebar-header .close-btn { display: none; }
+            #main-content { flex-grow: 1; padding: 30px; }
+            thead { display: table-header-group; }
+            tr { display: table-row; margin-bottom: 0; border: none; padding: 0; }
+            td { display: table-cell; padding: 12px; border-bottom: 1px solid #ddd; }
+            td::before { display: none; }
+            .action-buttons { text-align: right; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
     </style>
-    <link rel="me" href="https://www.blogger.com/profile/10625506500157523857" />
-    <meta name='google-adsense-platform-account' content='ca-host-pub-1556223355139109'/>
-    <meta name='google-adsense-platform-domain' content='blogspot.com'/>
 </head>
 <body>
-    <div id="preloader">
-        <i class="fa-solid fa-spinner"></i>
-        <div id="preloader-percentage">0%</div>
-    </div>
-    <div id="preloader-footer">
-        <a href="https://t.me/The_DogsBoss" target="_blank">DOGS Boss News</a>
-    </div>
-    
-    <div id="ad-loader-overlay"><div class="loader"></div><span>Loading Ad...</span></div>
-    
-    <div class="container">
-        <div class="profile-header"><div id="profile-pic"><i class="fa-solid fa-user"></i></div><h1 id="greeting">Welcome!</h1></div>
-        <div class="balance-card"><h3>Your Balance</h3><div class="amount" id="total-earning">0.000 DOGS</div></div>
-        <div class="stats-grid">
-            <div class="stat-item"><i class="fa-solid fa-rectangle-ad bg-icon"></i><div class="icon"><i class="fa-solid fa-rectangle-ad"></i></div><div class="value" id="ad-count">0</div><div class="label">ADS Watched</div></div>
-            <div class="stat-item"><i class="fa-solid fa-calendar-day bg-icon"></i><div class="icon"><i class="fa-solid fa-calendar-day"></i></div><div class="value" id="ads-today-count">0 / 15</div><div class="label">Today ADS</div></div>
-            <div class="stat-item"><i class="fa-solid fa-users bg-icon"></i><div class="icon"><i class="fa-solid fa-users"></i></div><div class="value" id="referral-count">0</div><div class="label">Referrals</div></div>
-        </div> 
-        <div class="card"><h3 class="card-title"> <i class="fa-solid fa-video"></i>   WATCH ADS</h3><button class="action-button" id="watch-ad-button"><i class="fa-solid fa-play"></i><span>Watch AD</span></button><button class="action-button secondary-button" id="join-channel-button"><i class="fa-brands fa-telegram"></i><span>DOGS Boss News</span></button></div>
-       <div class="card"><h3 class="card-title"> <i class="fa-solid fa-chart-line"></i> Weekly Activity</h3><div class="chart-container"><canvas id="activityChart"></canvas></div></div>
-    </div>
-   
-    <div class="nav-bar">
-        <button class="nav-button" onclick="showModal('withdrawModal', this)"><i class="fa-solid fa-wallet"></i><span>Withdraw</span></button>
-        <button class="nav-button" onclick="showModal('historyModal', this)"><i class="fa-solid fa-clock"></i><span>History</span></button>
-       <button class="nav-button" onclick="showModal('bonusTasksModal', this)"><i class="fa-solid fa-tasks"></i><span>Tasks</span></button>
-        <button class="nav-button" onclick="showModal('inviteModal', this)"><i class="fa-solid fa-user-friends"></i><span>Friends</span></button>
-        <button class="nav-button" onclick="showModal('supportModal', this)"><i class="fa-solid fa-gift"></i><span>Gifts</span></button>
-    </div>
-  
-    <!-- All Modals -->
-    <div id="welcomeModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('welcomeModal')">&times;</span><h3 id="welcome-title" class="card-title" style="text-align:center;"></h3><p id="welcome-message" style="line-height: 1.6; font-size: 15px; text-align: center; white-space: pre-wrap; margin: 15px 0;"></p><button class="action-button" onclick="closeModal('welcomeModal')">Continue</button></div></div>
-    
-    <!-- Withdraw -->
-    <div id="withdrawModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeModal('withdrawModal')">&times;</span>
-            <h3 class="card-title"> <i class="fa-solid fa-credit-card"></i>  Withdraw Funds</h3>
-           
-            <form id="withdraw-form">
-                <select id="method" name="method" required>
-                    <option value="DOGS Wallet"selected>DOGS Wallet</option>
-                </select>
-                <input type="text" id="account-number" placeholder="Enter DOGS Wallet" required>
-                <input type="number" step="0.001" id="withdraw-amount" placeholder="Enter DOGS Amount" required>
-                <p><i class="fa-solid fa-info-circle"></i> Minimum Withdrawal: 1000 DOGS<p>
-                <button type="submit" class="action-button" id="withdraw-submit-button">
-                    <span class="button-text">Confirm</span>
-                    <div class="spinner" style="display: none;"></div>
-                </button>
-            </form>
-        </div>
-    </div>
-  
-    <!-- Promo Codes Modal -->
-    <div id="supportModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeModal('supportModal')">&times;</span>
-
-            <h3 class="card-title">
-                <i class="fa-solid fa-gift"></i> Promo Codes
-            </h3>
-
-            <p style="text-align:center;margin-bottom:15px;">
-                Do you have a promo code?
-            </p>
-
-            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
-                <input id="promo-input" placeholder="Enter Promo Code" style="padding:10px;border-radius:10px;border:1px solid var(--border-color);width:80%;max-width:260px;background-color:var(--background-color);color:var(--text-color);text-align:center;">
-                <button id="promo-btn" class="action-button" style="width:90%;max-width:300px;">
-                    <span>CLAIM</span>
-                </button>
-                <p id="promo-message" style="text-align:center;margin-top:10px;color:var(--text-light);font-weight:500;"></p>
-                
-                <!-- زر حذف قاعدة البيانات -->
-                <button class="action-button danger-button" onclick="showModal('deleteDataModal', this)" style="margin-top: 20px;">
-                    <i class="fa-solid fa-trash"></i>
-                    <span>Delete All Data</span>
-                </button>
+    <!-- Login Page -->
+    <div id="login-page">
+        <div class="login-card">
+            <div class="security-badge">
+                <i class="fas fa-shield-alt"></i>
+                نظام آمن - TON Rewards
+            </div>
+            <h2><i class="fas fa-shield-alt"></i> تسجيل الدخول للإدارة</h2>
+            <div class="form-group">
+                <label for="username"><i class="fas fa-user"></i> اسم المستخدم</label>
+                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
+            </div>
+            <div class="form-group">
+                <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
+                <input type="password" id="password" placeholder="أدخل كلمة المرور">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="remember-me">
+                    تذكرني على هذا الجهاز
+                </label>
+            </div>
+            <button class="login-btn" id="login-button">
+                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
+            </button>
+            <div class="error-message" id="login-error">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+            
+            <div class="security-features" style="margin-top: 20px; font-size: 0.8rem;">
+                <h4><i class="fas fa-shield-alt"></i> ميزات الأمان:</h4>
+                <ul class="feature-list">
+                    <li><i class="fas fa-check"></i> تشفير كلمات المرور</li>
+                    <li><i class="fas fa-check"></i> جلسات آمنة</li>
+                    <li><i class="fas fa-check"></i> تسجيل النشاط</li>
+                </ul>
             </div>
         </div>
     </div>
-  
-    <!-- نافذة تأكيد حذف قاعدة البيانات -->
-    <div id="deleteDataModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeModal('deleteDataModal')">&times;</span>
-            <h3 class="card-title" style="text-align: center; color: #dc3545;">
-                <i class="fa-solid fa-triangle-exclamation"></i> Delete All Data
-            </h3>
-            <p style="text-align: center; line-height: 1.6;">
-                Are you sure you want to delete all your data?<br>
-                This action will permanently delete:
-            </p>
-            <ul style="padding-left: 20px; line-height: 1.8;">
-                <li>Your balance and earnings</li>
-                <li>Your ad watching history</li>
-                <li>Your referral data</li>
-                <li>Your withdrawal history</li>
-                <li>All completed tasks</li>
-            </ul>
-            <p style="text-align: center; color: #dc3545; font-weight: bold;">
-                This action cannot be undone!
-            </p>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="action-button secondary-button" onclick="closeModal('deleteDataModal')" style="flex: 1;">
-                    <i class="fa-solid fa-xmark"></i>
-                    <span>Cancel</span>
-                </button>
-                <button class="action-button danger-button" onclick="deleteAllData()" style="flex: 1;">
-                    <i class="fa-solid fa-trash"></i>
-                    <span>Delete All</span>
-                </button>
+
+    <!-- Session Timer -->
+    <div class="session-timer" id="session-timer" style="display: none;">
+        <i class="fas fa-clock"></i> الجلسة تنتهي في: <span id="timer">30:00</span>
+    </div>
+
+    <!-- Admin Panel (Initially Hidden) -->
+    <div id="app-container" style="display: none;">
+        <aside id="sidebar">
+            <div>
+                <div id="sidebar-header">
+                    <h2><i class="fas fa-shield-alt"></i> لوحة التحكم</h2>
+                    <span class="close-btn">&times;</span>
+                </div>
+                <div style="padding: 0 20px 10px;">
+                    <div style="background: var(--primary); color: white; padding: 8px; border-radius: 5px; font-size: 0.8rem;">
+                        <i class="fas fa-user-shield"></i> مسؤول النظام
+                    </div>
+                </div>
+                <ul class="nav-menu">
+                    <li data-page="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</li>
+                    <li data-page="users"><i class="fas fa-users"></i> إدارة المستخدمين</li>
+                    <li data-page="user-search"><i class="fas fa-search"></i> البحث عن مستخدم</li>
+                    <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
+                    <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
+                    <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
+                    <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
+                    <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
+                    <li data-page="settings"><i class="fas fa-cog"></i> إعدادات التطبيق</li>
+                    <li data-page="security"><i class="fas fa-shield-alt"></i> الأمان والمراقبة</li>
+                    <li data-page="broadcast"><i class="fas fa-bullhorn"></i> البث الجماعي</li>
+                </ul>
             </div>
-        </div>
-    </div>
-  
-    <!-- باقي النوافذ -->
-    <div id="historyModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('historyModal')">&times;</span><h3 class="card-title"> <i class="fa-solid fa-history"></i>  Withdrawal History</h3><div id="history-list"></div></div></div>
-  
-    <div id="inviteModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" onclick="closeModal('inviteModal')">&times;</span>
-            <h3 class="card-title"> <i class="fa-solid fa-share-alt"></i>  Invite Friends</h3>
-            <p>
-                Share your referral link with your friends and earn together.
-                You will get a reward for each successful referral.
-            </p>
+            <button id="sidebar-logout-btn" class="nav-menu"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+        </aside>
+        
+        <div id="overlay"></div>
 
-            <button class="action-button" id="copy-link-button">
-                <i class="fa-solid fa-copy"></i>
-                <span>Copy Link</span>
-            </button>
-
-            <button class="action-button secondary-button" id="share-link-button">
-                <i class="fa-solid fa-share-nodes"></i>
-                <span>Share Link</span>
-            </button>
+        <div id="content-wrapper" style="width: 100%;">
+            <header id="top-bar">
+                <button id="menu-toggle"><i class="fas fa-bars"></i></button>
+                <h1 id="page-title">لوحة التحكم</h1>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="admin-name" style="font-size: 0.9rem;"></span>
+                    <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+                </div>
+            </header>
+            <main id="main-content"></main>
         </div>
     </div>
 
-    <div id="bonusTasksModal" class="modal"><div class="modal-content"><span class="close-button" onclick="closeModal('bonusTasksModal')">&times;</span><h3 class="card-title"><i class="fa-solid fa-bullseye"></i>  Available Tasks</h3><p style="text-align: center; margin-bottom: 20px;">Complete tasks to earn DOGS</p><div id="bonus-tasks-list"></div></div></div>
-    <div id="multiAccountModal" class="modal"><div class="modal-content"><h3 class="card-title" style="text-align:center;">⚠️ Warning</h3><p>Multiple accounts are not allowed. Only one Telegram account can be used on this device. Please use your original account to continue.</p></div></div>
-
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script>
-        // ✅ Global balance updater that syncs with state + IndexedDB + UI
-        window.updateBalance = function(amount) {
-            const el = document.getElementById("total-earning");
-            let add = parseFloat(amount);
-            if (isNaN(add)) return;
+    document.addEventListener('DOMContentLoaded', () => {
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+            authDomain: "earnmoney124553.firebaseapp.com",
+            databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+            projectId: "earnmoney124553",
+            storageBucket: "earnmoney124553.firebasestorage.app",
+            messagingSenderId: "325528918523",
+            appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+            measurementId: "G-G1H96Q5XCJ"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        // Security Configuration
+        const SECURITY_CONFIG = {
+            sessionTimeout: 30 * 60 * 1000, // 30 minutes
+            maxLoginAttempts: 5,
+            lockoutTime: 15 * 60 * 1000, // 15 minutes
+            passwordMinLength: 8
+        };
 
-            // Update internal app state if available
-            if (typeof state !== "undefined") {
-                state.totalEarning = (parseFloat(state.totalEarning) || 0) + add;
-                if (typeof saveState === "function") saveState();
+        // DOM Elements
+        const loginPage = document.getElementById('login-page');
+        const appContainer = document.getElementById('app-container');
+        const mainContent = document.getElementById('main-content');
+        const pageTitle = document.getElementById('page-title');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const loginButton = document.getElementById('login-button');
+        const loginError = document.getElementById('login-error');
+        const logoutButtons = document.querySelectorAll('#logout-btn, #sidebar-logout-btn');
+        const sessionTimer = document.getElementById('session-timer');
+        const timerDisplay = document.getElementById('timer');
+        const adminNameDisplay = document.getElementById('admin-name');
+
+        // Security State
+        let sessionTimerInterval;
+        let lastActivityTime;
+        let loginAttempts = 0;
+        let lockedUntil = 0;
+
+        // Password Hashing Function
+        const hashPassword = (password) => {
+            return CryptoJS.SHA256(password + 'TON_REWARDS_SALT_2024').toString();
+        };
+
+        // Initialize Default Admin
+        const initializeDefaultAdmin = async () => {
+            const adminSnap = await db.ref('admin').once('value');
+            if (!adminSnap.exists()) {
+                const defaultPassword = hashPassword('Admin@12345');
+                await db.ref('admin').set({
+                    username: 'admin',
+                    password: defaultPassword,
+                    displayName: 'مسؤول النظام',
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,
+                    lastLogin: null,
+                    isActive: true
+                });
+                console.log("تم إنشاء المسؤول الافتراضي: admin / Admin@12345");
+            }
+        };
+
+        // Check if system is locked
+        const isSystemLocked = () => {
+            return Date.now() < lockedUntil;
+        };
+
+        // Update Activity Time
+        const updateActivityTime = () => {
+            lastActivityTime = Date.now();
+            if (sessionTimer.style.display !== 'none') {
+                sessionTimer.style.display = 'block';
+            }
+        };
+
+        // Start Session Timer
+        const startSessionTimer = () => {
+            clearInterval(sessionTimerInterval);
+            lastActivityTime = Date.now();
+            
+            sessionTimerInterval = setInterval(() => {
+                const timeLeft = SECURITY_CONFIG.sessionTimeout - (Date.now() - lastActivityTime);
+                if (timeLeft <= 0) {
+                    logout();
+                    return;
+                }
+                
+                const minutes = Math.floor(timeLeft / 60000);
+                const seconds = Math.floor((timeLeft % 60000) / 1000);
+                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Warning when 5 minutes left
+                if (timeLeft <= 5 * 60 * 1000) {
+                    sessionTimer.style.background = 'var(--danger)';
+                }
+            }, 1000);
+        };
+
+        // Activity Listeners
+        const setupActivityListeners = () => {
+            ['click', 'mousemove', 'keypress', 'scroll'].forEach(event => {
+                document.addEventListener(event, updateActivityTime, { passive: true });
+            });
+        };
+
+        // Login Function
+        const login = async (username, password, rememberMe = false) => {
+            // Check if system is locked
+            if (isSystemLocked()) {
+                const remainingTime = Math.ceil((lockedUntil - Date.now()) / 60000);
+                loginError.textContent = `النظام مغلق مؤقتًا. يرجى المحاولة بعد ${remainingTime} دقيقة`;
+                loginError.style.display = 'block';
+                return false;
             }
 
-            // Update UI balance
-            let current = parseFloat(el.textContent) || 0;
-            let newVal = current + add;
-            el.textContent = newVal.toFixed(0) + " DOGS";
-
-            // Save also in localStorage as backup
-            localStorage.setItem("userBalance", newVal);
-
-            console.log(`You have received ${add} DOGS!`);
+            try {
+                const adminSnap = await db.ref('admin').once('value');
+                const adminData = adminSnap.val();
+                
+                if (adminData && adminData.username === username && adminData.password === hashPassword(password)) {
+                    // Successful login
+                    loginAttempts = 0;
+                    
+                    // Update last login
+                    await db.ref('admin').update({
+                        lastLogin: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    
+                    // Store session
+                    const sessionData = {
+                        loggedIn: true,
+                        username: username,
+                        displayName: adminData.displayName || 'مسؤول النظام',
+                        loginTime: Date.now(),
+                        rememberMe: rememberMe
+                    };
+                    
+                    if (rememberMe) {
+                        localStorage.setItem('adminSession', JSON.stringify(sessionData));
+                    } else {
+                        sessionStorage.setItem('adminSession', JSON.stringify(sessionData));
+                    }
+                    
+                    // Log login activity
+                    await db.ref('security/logs').push({
+                        type: 'login_success',
+                        username: username,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        ip: 'web_admin'
+                    });
+                    
+                    // Show admin panel
+                    adminNameDisplay.textContent = adminData.displayName || 'مسؤول النظام';
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    sessionTimer.style.display = 'block';
+                    
+                    startSessionTimer();
+                    setupActivityListeners();
+                    initAdminPanel();
+                    
+                    return true;
+                } else {
+                    // Failed login
+                    loginAttempts++;
+                    
+                    // Log failed attempt
+                    await db.ref('security/logs').push({
+                        type: 'login_failed',
+                        username: username,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP,
+                        ip: 'web_admin'
+                    });
+                    
+                    if (loginAttempts >= SECURITY_CONFIG.maxLoginAttempts) {
+                        lockedUntil = Date.now() + SECURITY_CONFIG.lockoutTime;
+                        loginError.textContent = `تم تجاوز عدد المحاولات المسموح بها. النظام مغلق لمدة ${SECURITY_CONFIG.lockoutTime / 60000} دقيقة`;
+                    } else {
+                        loginError.textContent = `اسم المستخدم أو كلمة المرور غير صحيحة. المحاولات المتبقية: ${SECURITY_CONFIG.maxLoginAttempts - loginAttempts}`;
+                    }
+                    
+                    loginError.style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                console.error("خطأ في تسجيل الدخول:", error);
+                loginError.textContent = 'خطأ في النظام. يرجى المحاولة لاحقًا';
+                loginError.style.display = 'block';
+                return false;
+            }
         };
 
-        const promoCodes = {
-            "DOGSBOSS": 100,
-            "FREEDOGS": 50,
-            "HBBRFJJN": 50,
+        // Logout Function
+        const logout = async () => {
+            // Log logout activity
+            const session = JSON.parse(localStorage.getItem('adminSession') || sessionStorage.getItem('adminSession') || '{}');
+            if (session.username) {
+                await db.ref('security/logs').push({
+                    type: 'logout',
+                    username: session.username,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    ip: 'web_admin'
+                });
+            }
+            
+            // Clear timers and listeners
+            clearInterval(sessionTimerInterval);
+            ['click', 'mousemove', 'keypress', 'scroll'].forEach(event => {
+                document.removeEventListener(event, updateActivityTime);
+            });
+            
+            // Clear storage
+            localStorage.removeItem('adminSession');
+            sessionStorage.removeItem('adminSession');
+            
+            // Reset UI
+            appContainer.style.display = 'none';
+            loginPage.style.display = 'flex';
+            sessionTimer.style.display = 'none';
+            
+            // Clear form fields
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            loginError.style.display = 'none';
         };
 
-        // ✅ Redeem promo code function
-        function redeemPromoCode(code) {
-            const msg = document.getElementById("promo-message");
-            const normalized = code.trim().toUpperCase();
-            const usedCodes = JSON.parse(localStorage.getItem("usedPromoCodes") || "[]");
+        // Check Login Status
+        const checkLoginStatus = () => {
+            const session = JSON.parse(localStorage.getItem('adminSession') || sessionStorage.getItem('adminSession') || '{}');
+            
+            if (session.loggedIn && session.loginTime) {
+                const sessionAge = Date.now() - session.loginTime;
+                if (sessionAge < SECURITY_CONFIG.sessionTimeout) {
+                    // Valid session
+                    adminNameDisplay.textContent = session.displayName;
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    sessionTimer.style.display = 'block';
+                    
+                    startSessionTimer();
+                    setupActivityListeners();
+                    initAdminPanel();
+                } else {
+                    // Session expired
+                    logout();
+                }
+            } else {
+                loginPage.style.display = 'flex';
+                appContainer.style.display = 'none';
+            }
+        };
 
-            if (usedCodes.includes(normalized)) {
-                msg.style.color = "#ff5555";
-                msg.textContent = "You have already used this code";
-                tg.HapticFeedback.notificationOccurred('error');
+        // Event Listeners
+        loginButton.addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('remember-me').checked;
+            
+            if (!username || !password) {
+                loginError.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
+                loginError.style.display = 'block';
                 return;
             }
+            
+            await login(username, password, rememberMe);
+        });
 
-            if (promoCodes[normalized]) {
-                const amount = promoCodes[normalized];
-                updateBalance(amount);
-                usedCodes.push(normalized);
-                localStorage.setItem("usedPromoCodes", JSON.stringify(usedCodes));
-                msg.style.color = "#4CAF50";
-                msg.textContent = `${amount} DOGS added to your balance`;
-                tg.HapticFeedback.notificationOccurred('success');
-            } else {
-                msg.style.color = "#ff5555";
-                msg.textContent = "Invalid or expired code";
-                tg.HapticFeedback.notificationOccurred('error');
-            }
-        }
-
-        // ✅ وظيفة حذف قاعدة البيانات بالكامل
-        function deleteAllData() {
-            // حذف قاعدة البيانات IndexedDB
-            if (db) {
-                const request = indexedDB.deleteDatabase(dbName);
-                request.onsuccess = function() {
-                    console.log("Database deleted successfully");
-                };
-                request.onerror = function() {
-                    console.error("Could not delete database");
-                };
-            }
-
-            // حذف البيانات من localStorage
-            localStorage.clear();
-
-            // إعادة تعيين حالة التطبيق
-            state = { 
-                totalEarning: 0.0, 
-                adCount: 0, 
-                adsWatchedToday: 0, 
-                lastAdWatchedDate: null, 
-                cooldownUntil: null, 
-                weeklyActivity: [0, 0, 0, 0, 0, 0, 0], 
-                withdrawalHistory: [], 
-                lastUsedIp: null, 
-                completedBonusTasks: [], 
-                rewardedReferrals: 0, 
-                originalUserId: null 
-            };
-
-            // تحديث واجهة المستخدم
-            updateUI();
-
-            // إغلاق النافذة
-            closeModal('deleteDataModal');
-            closeModal('supportModal');
-
-            // إظهار رسالة نجاح
-            safeTgAlert('✅ All data has been deleted successfully!');
-            safeTgAction(tg => tg.HapticFeedback.notificationOccurred('success'));
-
-            // إعادة تحميل الصفحة بعد ثانية
-            setTimeout(() => {
-                location.reload();
-            }, 1000);
-        }
-
-        // ✅ Attach button event on load
-        document.addEventListener("DOMContentLoaded", () => {
-            const btn = document.getElementById("promo-btn");
-            btn.addEventListener("click", () => {
-                const code = document.getElementById("promo-input").value;
-                redeemPromoCode(code);
-            });
-
-            // Load saved balance if exists
-            const saved = parseFloat(localStorage.getItem("userBalance")) || 0;
-            if (saved > 0 && document.getElementById("total-earning")) {
-                document.getElementById("total-earning").textContent = saved.toFixed(0) + " DOGS";
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginButton.click();
             }
         });
 
-        // باقي الكود كما هو...
-        const config = {
-            ADMIN_IDS: [-1003248283633],
-            BOT_USERNAME: 'DogsBossBot',
-            TELEGRAM_CHANNEL_LINK: 'https://t.me/The_DogsBoss',
-            ADMIN_SUPPORT_LINK: 'none',
-            MONETAG_ZONE_ID: '10071035',
-            AD_REWARD: 5,
-            DAILY_AD_LIMIT: 500,
-            MINIMUM_WITHDRAWAL: 1000,
-            COOLDOWN_MINUTES: 1,
+        logoutButtons.forEach(button => {
+            button.addEventListener('click', logout);
+        });
+
+        // Initialize
+        initializeDefaultAdmin();
+        checkLoginStatus();
+
+        // Dashboard
+        const renderDashboard = async () => {
+            const usersSnap = await db.ref('users').once('value');
+            const withdrawalsSnap = await db.ref('withdrawals/pending').once('value');
+            const contestSnap = await db.ref('contest/participants').once('value');
+            const codesSnap = await db.ref('codes').once('value');
             
-            withdrawalMethods: [],
+            let bannedUsersCount = 0;
+            let totalBalance = 0;
+            let totalReferrals = 0;
             
-            firebase: {
-                apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
-                authDomain: "dogs-boss.firebaseapp.com",
-                databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
-                projectId: "dogs-boss",
-                storageBucket: "dogs-boss.firebasestorage.app",
-                messagingSenderId: "778183941825",
-                appId: "1:778183941825:web:45a96727e1aad043bffe40",
-                measurementId: "G-EY15XEGP53"
-            }, 
+            usersSnap.forEach(child => {
+                const user = child.val();
+                if (user.banned) bannedUsersCount++;
+                totalBalance += user.balance || 0;
+                totalReferrals += user.referrals || 0;
+            });
             
-            REFERRAL_REWARD: 80,
-            bonusTasks: [
-                { id: 'task_1', title: 'Dogs Boss News 🦴', link: 'https://t.me/The_DogsBoss', reward: 20, duration: 10 },
-                { id: 'task_2', title: 'DOGS Boss Chat 🦴', link: 'https://t.me/DogsBoss_Chat', reward: 20, duration: 10 }, 
-                { id: 'task_3', title: 'FREE TON Earning', link: 'https://t.me/FREE_TON3', reward: 20, duration: 10 }, 
-                { id: 'task_4', title: 'MONEY HUB', link: 'https://t.me/MONEYHUB9_69', reward: 20, duration: 10 }, 
-                { id: 'task_5', title: 'King Mining', link: 'https://t.me/HishamAlHobani', reward: 20, duration: 10 },
-                { id: 'task_6', title: 'Team Hamza', link: 'https://t.me/TemHamza', reward: 20, duration: 10 },
-                { id: 'task_7', title: 'Akaza roulette', link: 'https://t.me/akaza_roulette', reward: 20, duration: 10 },
-                { id: 'task_8', title: 'Investor', link: 'https://t.me/+VU9Gfe09qCllYmEy', reward: 20, duration: 10 },
-                { id: 'task_9', title: 'Profit Hub', link: 'https://t.me/ProfitHubMining_Bot?start=279718', reward: 20, duration: 10 },
-                { id: 'task_10', title: 'Oil Tycoon', link: 'https://t.me/OilTycoonTON_bot/game?startapp=ii_6275536124', reward: 20, duration: 10 },
-                { id: 'task_11', title: 'COC Web3', link: 'https://t.me/COC_Web3_bot/prereg?startapp=WH7AKGVM', reward: 20, duration: 10 },
-                { id: 'task_12', title: 'AD flow', link: 'https://t.me/AdFlowAdsBot?start=6275536124', reward: 20, duration: 10 },
-                { id: 'task_13', title: 'i Miner', link: 'https://t.me/iMiner_bot/mining?startapp=r_rR8W8mTXRYYS', reward: 20, duration: 10 },
-            ],
-            welcomeNotice: {
-                title: "Welcome!",
-                message: `Welcome To DOGS Boss MiniApp`
+            mainContent.innerHTML = `<div id="dashboard" class="page active">
+                <div class="security-features">
+                    <h4><i class="fas fa-shield-alt"></i> نظرة عامة على الأمان</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
+                        <div>المحاولات الفاشلة: <strong>${loginAttempts}</strong></div>
+                        <div>المستخدمين المحظورين: <strong>${bannedUsersCount}</strong></div>
+                    </div>
+                </div>
+                
+                <h3>لوحة التحكم الرئيسية</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي المستخدمين</div>
+                        <div class="stat-value">${usersSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">المستخدمين المحظورين</div>
+                        <div class="stat-value">${bannedUsersCount}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">طلبات السحب المعلقة</div>
+                        <div class="stat-value">${withdrawalsSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الرصيد</div>
+                        <div class="stat-value">${totalBalance.toFixed(4)}</div>
+                        <div class="stat-label">TON</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الإحالات</div>
+                        <div class="stat-value">${totalReferrals}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">مشاركين في المسابقة</div>
+                        <div class="stat-value">${contestSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">الأكواد النشطة</div>
+                        <div class="stat-value">${codesSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الأرباح</div>
+                        <div class="stat-value">${(totalBalance + totalReferrals * 0.001).toFixed(4)}</div>
+                        <div class="stat-label">TON</div>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        // Security Page
+        const renderSecurity = async () => {
+            const logsSnap = await db.ref('security/logs').orderByChild('timestamp').limitToLast(50).once('value');
+            let logs = [];
+            logsSnap.forEach(child => {
+                logs.push({ key: child.key, ...child.val() });
+            });
+            logs.reverse();
+            
+            let logsContent = '';
+            logs.forEach(log => {
+                const typeBadge = log.type === 'login_success' ? 'success' : 
+                                 log.type === 'login_failed' ? 'danger' : 'info';
+                const typeText = log.type === 'login_success' ? 'نجح' : 
+                                log.type === 'login_failed' ? 'فشل' : 'تسجيل خروج';
+                
+                logsContent += `<tr>
+                    <td>${new Date(log.timestamp).toLocaleString('ar-EG')}</td>
+                    <td>${log.username}</td>
+                    <td><span class="action-btn btn-${typeBadge}" style="padding: 3px 8px;">${typeText}</span></td>
+                    <td>${log.ip}</td>
+                </tr>`;
+            });
+            
+            mainContent.innerHTML = `<div id="security" class="page active">
+                <h3><i class="fas fa-shield-alt"></i> الأمان والمراقبة</h3>
+                
+                <div class="card">
+                    <h4>سجل الأمان</h4>
+                    <div style="max-height: 400px; overflow-y: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>التاريخ والوقت</th>
+                                    <th>المستخدم</th>
+                                    <th>النوع</th>
+                                    <th>عنوان IP</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${logsContent || '<tr><td colspan="4">لا توجد سجلات</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4>إعدادات الأمان</h4>
+                    <div class="settings-grid">
+                        <div class="setting-card">
+                            <h5>جلسة العمل</h5>
+                            <div class="form-group">
+                                <label>مدة الجلسة (دقائق)</label>
+                                <input type="number" id="session-timeout" value="${SECURITY_CONFIG.sessionTimeout / 60000}" min="5" max="240">
+                            </div>
+                            <div class="form-group">
+                                <label>أقصى محاولات تسجيل دخول</label>
+                                <input type="number" id="max-login-attempts" value="${SECURITY_CONFIG.maxLoginAttempts}" min="1" max="10">
+                            </div>
+                        </div>
+                        <div class="setting-card">
+                            <h5>إجراءات الأمان</h5>
+                            <button class="action-btn btn-warning" onclick="window.adminActions.clearSecurityLogs()">مسح سجلات الأمان</button>
+                            <button class="action-btn btn-danger" onclick="window.adminActions.resetLoginAttempts()">إعادة تعيين المحاولات</button>
+                            <button class="action-btn btn-info" onclick="window.adminActions.exportSecurityLogs()">تصدير السجلات</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        // باقي دوالت العرض (نفس الكود السابق)
+        const renderUsers = async () => {
+            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل المستخدمين...</h3></div>';
+            const snap = await db.ref('users').orderByChild('firstName').once('value'); 
+            let tableContent = '';
+            
+            snap.forEach(child => {
+                const user = child.val();
+                const isBanned = user.banned || false;
+                const statusClass = isBanned ? 'user-status-banned' : '';
+                const banButtonText = isBanned ? 'فك الحظر' : 'حظر المستخدم';
+                const banButtonClass = isBanned ? 'btn-warning' : 'btn-danger';
+                
+                tableContent += `<tr class="${statusClass}">
+                    <td data-label="المستخدم">${user.firstName || ''} ${user.lastName || ''}<br><small>${user.id}</small>${isBanned ? ' <span style="color:red">🚫 محظور</span>' : ''}</td>
+                    <td data-label="الرصيد">${(user.balance || 0).toFixed(4)} TON</td>
+                    <td data-label="الإحالات">${user.referrals || 0}</td>
+                    <td data-label="الإجراءات">
+                        <div class="action-buttons">
+                            <button class="action-btn btn-primary" onclick="window.adminActions.addBalance('${user.id}', '${user.firstName}')">إضافة رصيد</button>
+                            <button class="action-btn btn-danger" onclick="window.adminActions.removeBalance('${user.id}', '${user.firstName}')">خصم رصيد</button>
+                            <button class="action-btn ${banButtonClass}" onclick="window.adminActions.toggleUserBan('${user.id}', '${user.firstName}', ${isBanned})">${banButtonText}</button>
+                            <button class="action-btn btn-info" onclick="window.adminActions.viewUserDetails('${user.id}')">تفاصيل</button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            
+            mainContent.innerHTML = `<div id="users" class="page active">
+                <h3>إدارة المستخدمين</h3>
+                <div class="card">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>المستخدم</th>
+                                <th>الرصيد</th>
+                                <th>الإحالات</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableContent}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        };
+
+        // ... باقي دوالت العرض (نفس الكود السابق)
+
+        // Admin Actions مع إضافة دوال الأمان
+        window.adminActions = {
+            // دوال الأمان
+            clearSecurityLogs: async () => {
+                if (confirm('هل أنت متأكد من رغبتك في مسح جميع سجلات الأمان؟')) {
+                    try {
+                        await db.ref('security/logs').remove();
+                        alert('تم مسح سجلات الأمان بنجاح!');
+                        renderSecurity();
+                    } catch (e) {
+                        alert('خطأ في مسح السجلات: ' + e.message);
+                    }
+                }
+            },
+            
+            resetLoginAttempts: () => {
+                loginAttempts = 0;
+                lockedUntil = 0;
+                alert('تم إعادة تعيين محاولات تسجيل الدخول!');
+            },
+            
+            exportSecurityLogs: async () => {
+                const logsSnap = await db.ref('security/logs').once('value');
+                let logs = [];
+                logsSnap.forEach(child => {
+                    logs.push(child.val());
+                });
+                
+                const csvContent = "data:text/csv;charset=utf-8," 
+                    + "التاريخ,المستخدم,النوع,IP\n"
+                    + logs.map(log => 
+                        `"${new Date(log.timestamp).toLocaleString('ar-EG')}","${log.username}","${log.type}","${log.ip}"`
+                    ).join("\n");
+                
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "security_logs.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            },
+            
+            // ... باقي الدوال (نفس الكود السابق)
+            addBalance: async (userId, userName) => {
+                const amount = prompt(`أدخل المبلغ للإضافة إلى ${userName}:`);
+                if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0) { 
+                    try { 
+                        await db.ref(`users/${userId}/balance`).set(firebase.database.ServerValue.increment(parseFloat(amount))); 
+                        alert('تم إضافة الرصيد بنجاح!'); 
+                        renderUsers(); 
+                    } catch (e) { 
+                        alert('خطأ في إضافة الرصيد.'); 
+                    } 
+                } else {
+                    alert('يرجى إدخال مبلغ صحيح موجب.');
+                }
+            },
+            
+            removeBalance: async (userId, userName) => {
+                const amount = prompt(`أدخل المبلغ للخصم من ${userName}:`);
+                if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0) { 
+                    try { 
+                        await db.ref(`users/${userId}/balance`).set(firebase.database.ServerValue.increment(-parseFloat(amount))); 
+                        alert('تم خصم الرصيد بنجاح!'); 
+                        renderUsers(); 
+                    } catch (e) { 
+                        alert('خطأ في خصم الرصيد.'); 
+                    } 
+                } else {
+                    alert('يرجى إدخال مبلغ صحيح موجب.');
+                }
+            },
+            
+            toggleUserBan: async (userId, userName, isCurrentlyBanned) => {
+                const action = isCurrentlyBanned ? 'unban' : 'ban';
+                const confirmMessage = isCurrentlyBanned ? 
+                    `هل أنت متأكد من رغبتك في فك حظر ${userName}?` : 
+                    `هل أنت متأكد من رغبتك في حظر ${userName}? لن يتمكن من استخدام التطبيق.`;
+                
+                if (confirm(confirmMessage)) {
+                    try {
+                        await db.ref(`users/${userId}/banned`).set(!isCurrentlyBanned);
+                        alert(`تم ${isCurrentlyBanned ? 'فك حظر' : 'حظر'} المستخدم بنجاح!`);
+                        renderUsers();
+                    } catch (e) {
+                        alert('خطأ في تحديث حالة المستخدم.');
+                    }
+                }
+            },
+            
+            viewUserDetails: (userId) => {
+                renderUserDetails(userId);
+            },
+            
+            searchUser: async () => {
+                const userId = document.getElementById('user-search-input').value.trim();
+                if (!userId) {
+                    alert('يرجى إدخال معرف المستخدم');
+                    return;
+                }
+                
+                const userSnap = await db.ref(`users/${userId}`).once('value');
+                if (!userSnap.exists()) {
+                    document.getElementById('user-search-results').innerHTML = '<div class="card"><p>المستخدم غير موجود</p></div>';
+                    return;
+                }
+                
+                renderUserDetails(userId);
             }
         };
 
-        // باقي الكود كما هو...
-        // ... [الكود المتبقي يبقى كما هو]
+        // Initialize Admin Panel
+        const initAdminPanel = () => {
+            renderDashboard();
+            document.querySelectorAll('.nav-menu li').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.nav-menu li').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    const page = this.getAttribute('data-page');
+                    pageTitle.textContent = this.textContent.trim();
+                    if (page === 'dashboard') renderDashboard();
+                    else if (page === 'users') renderUsers();
+                    else if (page === 'user-search') renderUserSearch();
+                    else if (page === 'withdrawals') renderWithdrawals();
+                    else if (page === 'history') renderWithdrawalHistory();
+                    else if (page === 'tasks') renderTasks();
+                    else if (page === 'codes') renderCodes();
+                    else if (page === 'contest') renderContest();
+                    else if (page === 'settings') renderSettings();
+                    else if (page === 'security') renderSecurity();
+                    else if (page === 'broadcast') renderBroadcast();
+                    if (window.innerWidth < 768) { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+                });
+            });
+            
+            document.getElementById('menu-toggle').addEventListener('click', () => {
+                sidebar.classList.add('open'); overlay.classList.add('show');
+            });
+            
+            document.querySelector('#sidebar .close-btn').addEventListener('click', () => {
+                sidebar.classList.remove('open'); overlay.classList.remove('show');
+            });
+            
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open'); overlay.classList.remove('show');
+            });
+        };
+    });
     </script>
 </body>
 </html>
