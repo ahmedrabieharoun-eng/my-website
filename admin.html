@@ -1,1496 +1,1724 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة تحكم Firebase - إدارة الأكواد والمهام</title>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js"></script>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم TON Rewards - الإصدار المتقدم</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+    <style>
+        :root {
+            --primary: #2980B9; --secondary: #2C3E50; --light: #ECF0F1; --dark: #34495E;
+            --success: #27AE60; --danger: #C0392B; --surface: #FFFFFF;
+            --warning: #F39C12; --info: #3498DB; --purple: #8E44AD;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Tajawal', sans-serif; background-color: var(--light); direction: rtl; }
+        
+        /* Login Page */
+        #login-page {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        .login-card {
+            background-color: var(--surface);
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+        }
+        .login-card h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: var(--secondary);
+        }
+        .login-card .form-group {
+            margin-bottom: 20px;
+        }
+        .login-card label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+            transition: border 0.3s;
+        }
+        .login-card input:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .login-btn:hover {
+            background-color: #2471A3;
+        }
+        .error-message {
+            color: var(--danger);
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        /* Admin Panel Layout */
+        #app-container { display: none; }
+        #top-bar {
+            background-color: var(--secondary); color: white; padding: 0 15px;
+            display: flex; align-items: center; justify-content: space-between; height: 60px;
+            position: sticky; top: 0; z-index: 1000;
+        }
+        #menu-toggle { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+        #page-title { font-size: 1.2rem; }
+        #logout-btn { background: none; border: none; color: white; cursor: pointer; font-size: 1rem; }
+
+        /* Sidebar */
+        #sidebar {
+            position: fixed; top: 0; right: 0; width: 280px; height: 100vh;
+            background-color: var(--secondary); color: white; z-index: 2000;
+            transform: translateX(100%); transition: transform 0.3s ease-in-out;
+            display: flex; flex-direction: column; overflow-y: auto;
+        }
+        #sidebar.open { transform: translateX(0); }
+        #sidebar-header { padding: 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        #sidebar-header .close-btn { position: absolute; top: 15px; left: 20px; font-size: 1.8rem; cursor: pointer; }
+        .nav-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .nav-menu li { padding: 15px 20px; cursor: pointer; border-right: 4px solid transparent; transition: all 0.2s; display: flex; align-items: center; }
+        .nav-menu li:hover, .nav-menu li.active { background-color: var(--dark); border-right-color: var(--primary); }
+        .nav-menu li i { margin-left: 12px; width: 20px; text-align: center; }
+        .nav-submenu { list-style: none; padding: 0; margin: 0; background: rgba(0,0,0,0.2); display: none; }
+        .nav-submenu li { padding: 12px 20px 12px 40px; font-size: 0.9rem; }
+        .nav-submenu.active { display: block; }
+        #sidebar-logout-btn { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); }
+
+        /* Overlay */
+        #overlay {
+            position: fixed; top: 0; right: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); z-index: 1999; display: none;
+        }
+        #overlay.show { display: block; }
+        
+        /* Main Content */
+        #main-content { padding: 20px; }
+        .page { display: none; } 
+        .page.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Cards */
+        .card { background-color: var(--surface); border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1, h2, h3, h4 { color: var(--secondary); margin-bottom: 15px; }
+        
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; }
+        thead { display: none; }
+        tr { display: block; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; }
+        td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
+        td:last-child { border-bottom: none; }
+        td::before { content: attr(data-label); font-weight: bold; margin-left: 10px; }
+        .action-buttons { text-align: left; width: 100%; display: flex; flex-wrap: wrap; gap: 5px; }
+        .action-btn { padding: 8px 12px; border: none; border-radius: 5px; color: white; cursor: pointer; font-family: 'Tajawal', sans-serif; font-size: 0.85rem; }
+        
+        /* Forms */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; text-align: right; }
+        .form-group input, .form-group textarea, .form-group select { 
+            width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; 
+            box-sizing: border-box; font-family: 'Tajawal', sans-serif; 
+        }
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        
+        /* Buttons */
+        .btn-success { background-color: var(--success); } 
+        .btn-danger { background-color: var(--danger); } 
+        .btn-primary { background-color: var(--primary); } 
+        .btn-warning { background-color: var(--warning); }
+        .btn-info { background-color: var(--info); }
+        .btn-purple { background-color: var(--purple); }
+        
+        /* Code Type Badges */
+        .code-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; }
+        .code-type-contest { background: rgba(255, 193, 7, 0.2); color: #ffc107; border: 1px solid #ffc107; }
+        .code-type-ton { background: rgba(33, 150, 243, 0.2); color: #2196f3; border: 1px solid #2196f3; }
+        .code-type-rr { background: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
+        
+        /* Task Type Badges */
+        .task-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .task-type-channel { background: rgba(33, 150, 243, 0.2); color: #2196f3; border: 1px solid #2196f3; }
+        .task-type-bot { background: rgba(156, 39, 176, 0.2); color: #9c27b0; border: 1px solid #9c27b0; }
+        .task-type-custom { background: rgba(255, 152, 0, 0.2); color: #ff9800; border: 1px solid #ff9800; }
+        
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .stat-card { background-color: var(--surface); border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-value { font-size: 2rem; font-weight: bold; margin: 10px 0; }
+        .stat-label { color: var(--dark); font-size: 0.9rem; }
+        
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; overflow-x: auto; }
+        .tab { padding: 10px 15px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+        .tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: bold; }
+        
+        /* Image Preview */
+        .image-preview { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: none; }
+        .image-modal { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); display: none; justify-content: center; 
+            align-items: center; z-index: 3000; 
+        }
+        .image-modal img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        .image-modal .close { 
+            position: absolute; top: 20px; right: 20px; color: white; 
+            font-size: 2rem; cursor: pointer; 
+        }
+        
+        /* Status Badges */
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .status-pending { background: rgba(255, 152, 0, 0.2); color: #ff9800; border: 1px solid #ff9800; }
+        .status-approved { background: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
+        .status-rejected { background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
+        .status-active { background: rgba(76, 175, 80, 0.2); color: #4caf50; border: 1px solid #4caf50; }
+        .status-inactive { background: rgba(158, 158, 158, 0.2); color: #9e9e9e; border: 1px solid #9e9e9e; }
+        
+        /* Search and Filter */
+        .search-box { margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .filter-bar select, .filter-bar input { padding: 8px 12px; border: 1px solid #ccc; border-radius: 5px; }
+        
+        @media (min-width: 768px) {
+            #app-container { display: flex; }
+            #top-bar { display: none; }
+            #sidebar { position: static; transform: translateX(0); width: 280px; height: 100vh; }
+            #sidebar-header .close-btn { display: none; }
+            #main-content { flex-grow: 1; padding: 30px; }
+            thead { display: table-header-group; }
+            tr { display: table-row; margin-bottom: 0; border: none; padding: 0; }
+            td { display: table-cell; padding: 12px; border-bottom: 1px solid #ddd; }
+            td::before { display: none; }
+            .action-buttons { text-align: right; justify-content: flex-end; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .form-row { flex-direction: row; }
+        }
+        
+        @media (max-width: 767px) {
+            .form-row { flex-direction: column; }
+            .action-buttons { justify-content: center; }
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
-  <div class="p-6 max-w-7xl mx-auto">
-    <h1 class="text-3xl font-bold mb-6 text-center">⚙️ لوحة تحكم Firebase - إدارة الأكواد والمهام</h1>
-
-    <!-- قسم التبويبات -->
-    <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
-      <button id="tab-data" class="tab-btn active px-4 py-2 rounded-lg bg-blue-600 text-white">📊 البيانات العامة</button>
-      <button id="tab-codes" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">🎫 إدارة الأكواد</button>
-      <button id="tab-tasks" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">📋 إدارة المهام</button>
-      <button id="tab-bot-requests" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">🤖 طلبات البوت</button>
+<body>
+    <!-- Login Page -->
+    <div id="login-page">
+        <div class="login-card">
+            <h2><i class="fas fa-shield-alt"></i> تسجيل الدخول للإدارة</h2>
+            <div class="form-group">
+                <label for="username">اسم المستخدم</label>
+                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
+            </div>
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" placeholder="أدخل كلمة المرور">
+            </div>
+            <button class="login-btn" id="login-button">تسجيل الدخول</button>
+            <div class="error-message" id="login-error">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+        </div>
     </div>
 
-    <!-- قسم البيانات العامة -->
-    <div id="section-data" class="section active">
-      <!-- قسم الإضافة -->
-      <div class="bg-gray-800 p-4 rounded-lg mb-6">
-        <h2 class="text-xl mb-2 font-semibold">➕ إضافة بيانات جديدة</h2>
-        <input id="newKey" placeholder="المفتاح (key)" class="p-2 rounded bg-gray-700 text-white w-full mb-2" />
-        <textarea id="newValue" placeholder="القيمة (JSON أو نص)" class="p-2 rounded bg-gray-700 text-white w-full mb-2"></textarea>
-        <button id="addBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">إضافة</button>
-      </div>
-
-      <!-- عرض البيانات -->
-      <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[70vh]" id="dataContainer">
-        <p class="text-gray-400 text-center">جارٍ تحميل البيانات...</p>
-      </div>
-    </div>
-
-    <!-- قسم إدارة الأكواد -->
-    <div id="section-codes" class="section">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- إنشاء أكواد جديدة -->
-        <div class="bg-gray-800 p-4 rounded-lg">
-          <h2 class="text-xl mb-4 font-semibold">🎫 إنشاء كود جديد</h2>
-          
-          <div class="space-y-4">
+    <!-- Admin Panel -->
+    <div id="app-container">
+        <aside id="sidebar">
             <div>
-              <label class="block mb-2">نوع الكود</label>
-              <select id="codeType" class="w-full p-2 rounded bg-gray-700 text-white">
-                <option value="contest">نقاط المسابقة</option>
-                <option value="ton">TON</option>
-                <option value="rr">RR</option>
-              </select>
+                <div id="sidebar-header">
+                    <h2><i class="fas fa-shield-alt"></i> لوحة التحكم</h2>
+                    <span class="close-btn">&times;</span>
+                </div>
+                <ul class="nav-menu">
+                    <li data-page="dashboard" class="active">
+                        <i class="fas fa-tachometer-alt"></i> لوحة التحكم
+                    </li>
+                    <li data-page="users">
+                        <i class="fas fa-users"></i> إدارة المستخدمين
+                    </li>
+                    <li data-page="user-search">
+                        <i class="fas fa-search"></i> البحث عن مستخدم
+                    </li>
+                    <li data-page="withdrawals">
+                        <i class="fas fa-wallet"></i> طلبات السحب المعلقة
+                    </li>
+                    <li data-page="history">
+                        <i class="fas fa-history"></i> سجل السحوبات
+                    </li>
+                    
+                    <!-- قسم إدارة الأكواد المتقدمة -->
+                    <li class="has-submenu">
+                        <i class="fas fa-ticket-alt"></i> إدارة الأكواد
+                        <i class="fas fa-chevron-down" style="margin-right: auto; font-size: 0.8rem;"></i>
+                    </li>
+                    <ul class="nav-submenu">
+                        <li data-page="codes-all">جميع الأكواد</li>
+                        <li data-page="codes-create">إنشاء كود جديد</li>
+                        <li data-page="codes-stats">إحصائيات الأكواد</li>
+                    </ul>
+                    
+                    <!-- قسم إدارة المهام المتقدمة -->
+                    <li class="has-submenu">
+                        <i class="fas fa-tasks"></i> إدارة المهام
+                        <i class="fas fa-chevron-down" style="margin-right: auto; font-size: 0.8rem;"></i>
+                    </li>
+                    <ul class="nav-submenu">
+                        <li data-page="tasks-all">جميع المهام</li>
+                        <li data-page="tasks-create">إنشاء مهمة جديدة</li>
+                        <li data-page="tasks-stats">إحصائيات المهام</li>
+                    </ul>
+                    
+                    <!-- قسم مراجعة طلبات البوت -->
+                    <li data-page="bot-requests">
+                        <i class="fas fa-robot"></i> طلبات البوت
+                        <span class="notification-badge" id="bot-requests-badge" style="display: none;">0</span>
+                    </li>
+                    
+                    <li data-page="contest">
+                        <i class="fas fa-trophy"></i> إدارة المسابقة
+                    </li>
+                    <li data-page="settings">
+                        <i class="fas fa-cog"></i> إعدادات التطبيق
+                    </li>
+                    <li data-page="broadcast">
+                        <i class="fas fa-bullhorn"></i> البث الجماعي
+                    </li>
+                </ul>
             </div>
-            
-            <div id="codeValueContainer">
-              <!-- سيتم تحديث الحقل بناءً على نوع الكود -->
-            </div>
-            
-            <div>
-              <label class="block mb-2">الحد الأقصى للاستخدام</label>
-              <input type="number" id="codeMaxUses" min="1" max="10000" value="100" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">تاريخ الانتهاء (اختياري)</label>
-              <input type="datetime-local" id="codeExpiry" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">وصف الكود</label>
-              <textarea id="codeDescription" placeholder="وصف الكود..." class="w-full p-2 rounded bg-gray-700 text-white"></textarea>
-            </div>
-            
-            <button id="generateCodeBtn" class="w-full bg-green-600 px-4 py-2 rounded hover:bg-green-500">إنشاء الكود</button>
-          </div>
-        </div>
-
-        <!-- إدارة الأكواد الحالية -->
-        <div class="bg-gray-800 p-4 rounded-lg">
-          <h2 class="text-xl mb-4 font-semibold">📋 الأكواد الحالية</h2>
-          
-          <div class="mb-4">
-            <input type="text" id="searchCodes" placeholder="بحث في الأكواد..." class="w-full p-2 rounded bg-gray-700 text-white">
-          </div>
-          
-          <div class="overflow-auto max-h-[500px]" id="codesList">
-            <p class="text-gray-400 text-center">جارٍ تحميل الأكواد...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- قسم إدارة المهام -->
-    <div id="section-tasks" class="section">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- إنشاء مهام جديدة -->
-        <div class="bg-gray-800 p-4 rounded-lg">
-          <h2 class="text-xl mb-4 font-semibold">📋 إنشاء مهمة جديدة</h2>
-          
-          <div class="space-y-4">
-            <div>
-              <label class="block mb-2">نوع المهمة</label>
-              <select id="taskType" class="w-full p-2 rounded bg-gray-700 text-white">
-                <option value="channel">انضمام قناة</option>
-                <option value="bot">مهمة البوت</option>
-                <option value="custom">مهمة مخصصة</option>
-              </select>
-            </div>
-            
-            <div id="taskFormContainer">
-              <!-- سيتم تحديث النموذج بناءً على نوع المهمة -->
-            </div>
-            
-            <button id="createTaskBtn" class="w-full bg-green-600 px-4 py-2 rounded hover:bg-green-500">إنشاء المهمة</button>
-          </div>
-        </div>
-
-        <!-- إدارة المهام الحالية -->
-        <div class="bg-gray-800 p-4 rounded-lg">
-          <h2 class="text-xl mb-4 font-semibold">📊 المهام الحالية</h2>
-          
-          <div class="mb-4 flex gap-2">
-            <select id="filterTaskType" class="flex-1 p-2 rounded bg-gray-700 text-white">
-              <option value="all">جميع الأنواع</option>
-              <option value="channel">انضمام قناة</option>
-              <option value="bot">مهمة البوت</option>
-              <option value="custom">مهمة مخصصة</option>
-            </select>
-            <input type="text" id="searchTasks" placeholder="بحث في المهام..." class="flex-1 p-2 rounded bg-gray-700 text-white">
-          </div>
-          
-          <div class="overflow-auto max-h-[500px]" id="tasksList">
-            <p class="text-gray-400 text-center">جارٍ تحميل المهام...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- قسم طلبات البوت -->
-    <div id="section-bot-requests" class="section">
-      <div class="bg-gray-800 p-4 rounded-lg">
-        <h2 class="text-xl mb-4 font-semibold">🤖 طلبات التحقق من البوت المعلقة</h2>
+            <button id="sidebar-logout-btn" class="nav-menu">
+                <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+            </button>
+        </aside>
         
-        <div class="mb-4">
-          <input type="text" id="searchBotRequests" placeholder="بحث في الطلبات..." class="w-full p-2 rounded bg-gray-700 text-white">
+        <div id="overlay"></div>
+
+        <div id="content-wrapper" style="width: 100%;">
+            <header id="top-bar">
+                <button id="menu-toggle"><i class="fas fa-bars"></i></button>
+                <h1 id="page-title">لوحة التحكم</h1>
+                <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+            </header>
+            <main id="main-content">
+                <!-- سيتم تحميل المحتوى هنا ديناميكيًا -->
+            </main>
         </div>
-        
-        <div class="overflow-auto max-h-[600px]" id="botRequestsList">
-          <p class="text-gray-400 text-center">جارٍ تحميل الطلبات...</p>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- نافذة تعديل الكود -->
-  <div id="editCodeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-      <h3 class="text-xl mb-4 font-semibold">✏️ تعديل الكود</h3>
-      <div id="editCodeForm"></div>
-      <div class="flex gap-2 mt-4">
-        <button id="saveCodeBtn" class="flex-1 bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">حفظ</button>
-        <button id="cancelEditCodeBtn" class="flex-1 bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إلغاء</button>
-      </div>
+    <!-- Modal for Image Preview -->
+    <div class="image-modal" id="imageModal">
+        <span class="close">&times;</span>
+        <img id="modalImage" src="" alt="صورة مكبرة">
     </div>
-  </div>
 
-  <!-- نافذة تعديل المهمة -->
-  <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-auto">
-      <h3 class="text-xl mb-4 font-semibold">✏️ تعديل المهمة</h3>
-      <div id="editTaskForm"></div>
-      <div class="flex gap-2 mt-4">
-        <button id="saveTaskBtn" class="flex-1 bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">حفظ</button>
-        <button id="cancelEditTaskBtn" class="flex-1 bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إلغاء</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- نافذة عرض صورة البوت -->
-  <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
-    <div class="bg-gray-800 p-4 rounded-lg max-w-3xl max-h-[90vh] overflow-auto">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-xl font-semibold">🖼️ صورة التحقق</h3>
-        <button id="closeImageModal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
-      </div>
-      <img id="modalImage" src="" alt="صورة التحقق" class="max-w-full max-h-[70vh] rounded">
-      <div class="mt-4 text-center">
-        <button id="closeImageBtn" class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إغلاق</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Toast Notification -->
-  <div id="toast" class="fixed bottom-4 left-4 bg-green-600 text-white p-4 rounded-lg shadow-lg hidden transition-opacity duration-300">
-    <span id="toastMessage"></span>
-  </div>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove, update, push } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
-      authDomain: "dogs-boss.firebaseapp.com",
-      databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
-      projectId: "dogs-boss",
-      storageBucket: "dogs-boss.firebasestorage.app",
-      messagingSenderId: "778183941825",
-      appId: "1:778183941825:web:45a96727e1aad043bffe40",
-      measurementId: "G-EY15XEGP53"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const dbRef = ref(db, '/');
-
-    // عناصر الواجهة
-    const sections = document.querySelectorAll('.section');
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    const dataContainer = document.getElementById('dataContainer');
-    const toast = document.getElementById('toast');
-    const toastMessage = document.getElementById('toastMessage');
-
-    // متغيرات التطبيق
-    let currentData = {};
-    let currentEditingCode = null;
-    let currentEditingTask = null;
-
-    // تهيئة التطبيق
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script>
     document.addEventListener('DOMContentLoaded', () => {
-      initializeTabs();
-      initializeDataSection();
-      initializeCodesSection();
-      initializeTasksSection();
-      initializeBotRequestsSection();
-      
-      // تحميل البيانات الأولية
-      loadData();
-    });
-
-    // وظيفة لعرض الإشعارات
-    function showToast(message, isError = false) {
-      toastMessage.textContent = message;
-      toast.className = `fixed bottom-4 left-4 text-white p-4 rounded-lg shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
-      toast.classList.remove('hidden');
-      
-      setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 3000);
-    }
-
-    // إدارة التبويبات
-    function initializeTabs() {
-      tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const targetSection = btn.id.replace('tab-', 'section-');
-          
-          // إخفاء جميع الأقسام وإلغاء تنشيط الأزرار
-          sections.forEach(section => section.classList.remove('active'));
-          tabBtns.forEach(tab => tab.classList.remove('active', 'bg-blue-600'));
-          
-          // إظهار القسم المحدد وتنشيط الزر
-          document.getElementById(targetSection).classList.add('active');
-          btn.classList.add('active', 'bg-blue-600');
-          
-          // تحميل البيانات الخاصة بالقسم إذا لزم الأمر
-          if (targetSection === 'section-codes') {
-            loadCodes();
-          } else if (targetSection === 'section-tasks') {
-            loadTasks();
-          } else if (targetSection === 'section-bot-requests') {
-            loadBotRequests();
-          }
-        });
-      });
-    }
-
-    // قسم البيانات العامة
-    function initializeDataSection() {
-      // إضافة بيانات جديدة
-      document.getElementById('addBtn').addEventListener('click', () => {
-        const key = document.getElementById('newKey').value.trim();
-        const val = document.getElementById('newValue').value.trim();
-        if (!key || !val) {
-          showToast("⚠️ أدخل المفتاح والقيمة أولاً!", true);
-          return;
-        }
-
-        try {
-          const parsed = JSON.parse(val);
-          set(ref(db, key), parsed);
-          showToast("✅ تمت الإضافة بنجاح!");
-          document.getElementById('newKey').value = "";
-          document.getElementById('newValue').value = "";
-        } catch {
-          set(ref(db, key), val);
-          showToast("✅ تمت الإضافة كنص!");
-          document.getElementById('newKey').value = "";
-          document.getElementById('newValue').value = "";
-        }
-      });
-    }
-
-    // قسم إدارة الأكواد
-    function initializeCodesSection() {
-      // تحديث واجهة إنشاء الكود بناءً على النوع
-      document.getElementById('codeType').addEventListener('change', updateCodeValueField);
-      
-      // تهيئة حقل القيمة
-      updateCodeValueField();
-      
-      // إنشاء كود جديد
-      document.getElementById('generateCodeBtn').addEventListener('click', generateNewCode);
-      
-      // البحث في الأكواد
-      document.getElementById('searchCodes').addEventListener('input', filterCodes);
-    }
-
-    function updateCodeValueField() {
-      const codeType = document.getElementById('codeType').value;
-      const container = document.getElementById('codeValueContainer');
-      
-      let html = '';
-      
-      switch(codeType) {
-        case 'contest':
-          html = `
-            <label class="block mb-2">عدد النقاط (10-1000)</label>
-            <input type="number" id="codeValue" min="10" max="1000" value="50" class="w-full p-2 rounded bg-gray-700 text-white">
-          `;
-          break;
-        case 'ton':
-          html = `
-            <label class="block mb-2">المبلغ (0.001 - 1 TON)</label>
-            <input type="number" id="codeValue" min="0.001" max="1" step="0.001" value="0.01" class="w-full p-2 rounded bg-gray-700 text-white">
-          `;
-          break;
-        case 'rr':
-          html = `
-            <label class="block mb-2">المبلغ (1000 - 100000 RR)</label>
-            <input type="number" id="codeValue" min="1000" max="100000" value="5000" class="w-full p-2 rounded bg-gray-700 text-white">
-          `;
-          break;
-      }
-      
-      container.innerHTML = html;
-    }
-
-    function generateNewCode() {
-      const codeType = document.getElementById('codeType').value;
-      const codeValue = parseFloat(document.getElementById('codeValue').value);
-      const maxUses = parseInt(document.getElementById('codeMaxUses').value);
-      const expiry = document.getElementById('codeExpiry').value;
-      const description = document.getElementById('codeDescription').value.trim();
-      
-      // التحقق من صحة البيانات
-      if (!codeValue || codeValue <= 0) {
-        showToast("⚠️ أدخل قيمة صحيحة للكود!", true);
-        return;
-      }
-      
-      if (!maxUses || maxUses < 1) {
-        showToast("⚠️ أدخل حد استخدام صحيح!", true);
-        return;
-      }
-      
-      // إنشاء كود عشوائي
-      const code = generateRandomCode(8);
-      
-      // تحضير بيانات الكود
-      const codeData = {
-        type: codeType,
-        value: codeValue,
-        maxUses: maxUses,
-        usedCount: 0,
-        description: description || `كود ${getCodeTypeName(codeType)}`,
-        createdAt: new Date().toISOString(),
-        isActive: true
-      };
-      
-      if (expiry) {
-        codeData.expires = new Date(expiry).getTime();
-      }
-      
-      // حفظ الكود في Firebase
-      const codesRef = ref(db, `codes/${code}`);
-      set(codesRef, codeData)
-        .then(() => {
-          showToast(`✅ تم إنشاء الكود ${code} بنجاح!`);
-          // إعادة تعيين النموذج
-          document.getElementById('codeDescription').value = '';
-          document.getElementById('codeExpiry').value = '';
-          // تحديث قائمة الأكواد
-          loadCodes();
-        })
-        .catch(error => {
-          console.error('Error creating code:', error);
-          showToast("❌ فشل في إنشاء الكود!", true);
-        });
-    }
-
-    function generateRandomCode(length) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let result = '';
-      for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    }
-
-    function getCodeTypeName(type) {
-      const names = {
-        'contest': 'نقاط المسابقة',
-        'ton': 'TON',
-        'rr': 'RR'
-      };
-      return names[type] || type;
-    }
-
-    function loadCodes() {
-      const codesRef = ref(db, 'codes');
-      onValue(codesRef, (snapshot) => {
-        const codes = snapshot.val();
-        const codesList = document.getElementById('codesList');
-        
-        if (!codes) {
-          codesList.innerHTML = '<p class="text-gray-400 text-center">لا توجد أكواد حالياً</p>';
-          return;
-        }
-        
-        let html = '';
-        Object.entries(codes).forEach(([code, data]) => {
-          const usagePercent = (data.usedCount / data.maxUses) * 100;
-          const isExpired = data.expires && new Date().getTime() > data.expires;
-          const isDisabled = !data.isActive || isExpired;
-          
-          html += `
-            <div class="bg-gray-700 p-3 rounded mb-3 ${isDisabled ? 'opacity-60' : ''}">
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <h3 class="font-bold text-lg">${code}</h3>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="code-type-badge code-type-${data.type}">${getCodeTypeName(data.type)}</span>
-                    <span class="text-sm ${isDisabled ? 'text-red-400' : 'text-green-400'}">
-                      ${isDisabled ? (isExpired ? 'منتهي' : 'معطل') : 'نشط'}
-                    </span>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="font-bold">${data.value} ${getCodeValueUnit(data.type)}</div>
-                  <div class="text-sm text-gray-400">${data.usedCount}/${data.maxUses}</div>
-                </div>
-              </div>
-              
-              <div class="mb-2">
-                <div class="w-full bg-gray-600 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" style="width: ${usagePercent}%"></div>
-                </div>
-              </div>
-              
-              <p class="text-sm text-gray-300 mb-2">${data.description}</p>
-              
-              <div class="flex justify-between text-xs text-gray-400">
-                <span>أنشئ في: ${new Date(data.createdAt).toLocaleDateString('ar-EG')}</span>
-                ${data.expires ? `<span>ينتهي في: ${new Date(data.expires).toLocaleDateString('ar-EG')}</span>` : ''}
-              </div>
-              
-              <div class="flex gap-2 mt-3">
-                <button onclick="editCode('${code}')" class="flex-1 bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-500">تعديل</button>
-                <button onclick="toggleCode('${code}', ${!isDisabled})" class="flex-1 ${isDisabled ? 'bg-green-600 hover:bg-green-500' : 'bg-yellow-600 hover:bg-yellow-500'} px-3 py-1 rounded text-sm">
-                  ${isDisabled ? 'تفعيل' : 'تعطيل'}
-                </button>
-                <button onclick="deleteCode('${code}')" class="flex-1 bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">حذف</button>
-              </div>
-            </div>
-          `;
-        });
-        
-        codesList.innerHTML = html;
-      });
-    }
-
-    function getCodeValueUnit(type) {
-      const units = {
-        'contest': 'نقطة',
-        'ton': 'TON',
-        'rr': 'RR'
-      };
-      return units[type] || '';
-    }
-
-    function filterCodes() {
-      const searchTerm = document.getElementById('searchCodes').value.toLowerCase();
-      const codeItems = document.querySelectorAll('#codesList > div');
-      
-      codeItems.forEach(item => {
-        const codeText = item.textContent.toLowerCase();
-        if (codeText.includes(searchTerm)) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
-
-    // وظائف إدارة الأكواد (سيتم استدعاؤها من الأزرار)
-    window.editCode = function(code) {
-      const codesRef = ref(db, `codes/${code}`);
-      onValue(codesRef, (snapshot) => {
-        const codeData = snapshot.val();
-        if (!codeData) return;
-        
-        currentEditingCode = code;
-        
-        let formHtml = `
-          <div class="space-y-4">
-            <div>
-              <label class="block mb-2">الكود</label>
-              <input type="text" value="${code}" class="w-full p-2 rounded bg-gray-700 text-white" readonly>
-            </div>
-            
-            <div>
-              <label class="block mb-2">نوع الكود</label>
-              <select id="editCodeType" class="w-full p-2 rounded bg-gray-700 text-white">
-                <option value="contest" ${codeData.type === 'contest' ? 'selected' : ''}>نقاط المسابقة</option>
-                <option value="ton" ${codeData.type === 'ton' ? 'selected' : ''}>TON</option>
-                <option value="rr" ${codeData.type === 'rr' ? 'selected' : ''}>RR</option>
-              </select>
-            </div>
-            
-            <div>
-              <label class="block mb-2">القيمة</label>
-              <input type="number" id="editCodeValue" value="${codeData.value}" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">الحد الأقصى للاستخدام</label>
-              <input type="number" id="editCodeMaxUses" value="${codeData.maxUses}" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">عدد مرات الاستخدام الحالي</label>
-              <input type="number" id="editCodeUsedCount" value="${codeData.usedCount}" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">وصف الكود</label>
-              <textarea id="editCodeDescription" class="w-full p-2 rounded bg-gray-700 text-white">${codeData.description || ''}</textarea>
-            </div>
-            
-            <div class="flex items-center">
-              <input type="checkbox" id="editCodeIsActive" ${codeData.isActive ? 'checked' : ''} class="mr-2">
-              <label for="editCodeIsActive">الكود نشط</label>
-            </div>
-          </div>
-        `;
-        
-        document.getElementById('editCodeForm').innerHTML = formHtml;
-        document.getElementById('editCodeModal').classList.remove('hidden');
-      }, { onlyOnce: true });
-    };
-
-    window.toggleCode = function(code, newState) {
-      const codeRef = ref(db, `codes/${code}/isActive`);
-      set(codeRef, newState)
-        .then(() => {
-          showToast(newState ? "✅ تم تفعيل الكود" : "✅ تم تعطيل الكود");
-          loadCodes();
-        })
-        .catch(error => {
-          console.error('Error toggling code:', error);
-          showToast("❌ فشل في تعديل حالة الكود!", true);
-        });
-    };
-
-    window.deleteCode = function(code) {
-      if (confirm(`هل أنت متأكد من حذف الكود ${code}؟`)) {
-        const codeRef = ref(db, `codes/${code}`);
-        remove(codeRef)
-          .then(() => {
-            showToast("✅ تم حذف الكود بنجاح");
-            loadCodes();
-          })
-          .catch(error => {
-            console.error('Error deleting code:', error);
-            showToast("❌ فشل في حذف الكود!", true);
-          });
-      }
-    };
-
-    // حفظ التعديلات على الكود
-    document.getElementById('saveCodeBtn').addEventListener('click', () => {
-      if (!currentEditingCode) return;
-      
-      const codeType = document.getElementById('editCodeType').value;
-      const codeValue = parseFloat(document.getElementById('editCodeValue').value);
-      const maxUses = parseInt(document.getElementById('editCodeMaxUses').value);
-      const usedCount = parseInt(document.getElementById('editCodeUsedCount').value);
-      const description = document.getElementById('editCodeDescription').value.trim();
-      const isActive = document.getElementById('editCodeIsActive').checked;
-      
-      const updates = {
-        type: codeType,
-        value: codeValue,
-        maxUses: maxUses,
-        usedCount: usedCount,
-        description: description,
-        isActive: isActive
-      };
-      
-      const codeRef = ref(db, `codes/${currentEditingCode}`);
-      update(codeRef, updates)
-        .then(() => {
-          showToast("✅ تم تحديث الكود بنجاح");
-          document.getElementById('editCodeModal').classList.add('hidden');
-          loadCodes();
-        })
-        .catch(error => {
-          console.error('Error updating code:', error);
-          showToast("❌ فشل في تحديث الكود!", true);
-        });
-    });
-
-    document.getElementById('cancelEditCodeBtn').addEventListener('click', () => {
-      document.getElementById('editCodeModal').classList.add('hidden');
-      currentEditingCode = null;
-    });
-
-    // قسم إدارة المهام
-    function initializeTasksSection() {
-      // تحديث واجهة إنشاء المهمة بناءً على النوع
-      document.getElementById('taskType').addEventListener('change', updateTaskForm);
-      
-      // تهيئة نموذج المهمة
-      updateTaskForm();
-      
-      // إنشاء مهمة جديدة
-      document.getElementById('createTaskBtn').addEventListener('click', createNewTask);
-      
-      // البحث والتصفية في المهام
-      document.getElementById('filterTaskType').addEventListener('change', filterTasks);
-      document.getElementById('searchTasks').addEventListener('input', filterTasks);
-    }
-
-    function updateTaskForm() {
-      const taskType = document.getElementById('taskType').value;
-      const container = document.getElementById('taskFormContainer');
-      
-      let html = '';
-      
-      switch(taskType) {
-        case 'channel':
-          html = `
-            <div>
-              <label class="block mb-2">اسم المهمة</label>
-              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم المهمة">
-            </div>
-            
-            <div>
-              <label class="block mb-2">وصف المهمة</label>
-              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
-            </div>
-            
-            <div>
-              <label class="block mb-2">رابط القناة</label>
-              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://t.me/channel">
-            </div>
-            
-            <div>
-              <label class="block mb-2">أيقونة المهمة (رابط)</label>
-              <input type="url" id="taskIcon" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://example.com/icon.png">
-            </div>
-            
-            <div>
-              <label class="block mb-2">المكافأة (RR)</label>
-              <input type="number" id="taskReward" min="100" value="1000" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div class="flex items-center">
-              <input type="checkbox" id="taskIsActive" checked class="mr-2">
-              <label for="taskIsActive">المهمة نشطة</label>
-            </div>
-          `;
-          break;
-          
-        case 'bot':
-          html = `
-            <div>
-              <label class="block mb-2">اسم المهمة</label>
-              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم مهمة البوت">
-            </div>
-            
-            <div>
-              <label class="block mb-2">وصف المهمة</label>
-              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
-            </div>
-            
-            <div>
-              <label class="block mb-2">رابط البوت</label>
-              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://t.me/bot">
-            </div>
-            
-            <div>
-              <label class="block mb-2">المكافأة (RR)</label>
-              <input type="number" id="taskReward" min="1000" value="5000" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div>
-              <label class="block mb-2">متطلبات المهمة (قائمة خطوات)</label>
-              <textarea id="taskRequirements" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اكتب كل خطوة في سطر منفصل" rows="4"></textarea>
-            </div>
-            
-            <div>
-              <label class="block mb-2">ملاحظات مهمة للمستخدم</label>
-              <textarea id="taskNotes" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="ملاحظات إضافية للمستخدم"></textarea>
-            </div>
-            
-            <div class="flex items-center">
-              <input type="checkbox" id="taskIsActive" checked class="mr-2">
-              <label for="taskIsActive">المهمة نشطة</label>
-            </div>
-          `;
-          break;
-          
-        case 'custom':
-          html = `
-            <div>
-              <label class="block mb-2">اسم المهمة</label>
-              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم المهمة المخصصة">
-            </div>
-            
-            <div>
-              <label class="block mb-2">وصف المهمة</label>
-              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
-            </div>
-            
-            <div>
-              <label class="block mb-2">نوع المهمة المخصصة</label>
-              <input type="text" id="taskCustomType" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="مثال: مشاهدة فيديو، تحميل تطبيق...">
-            </div>
-            
-            <div>
-              <label class="block mb-2">رابط المهمة (اختياري)</label>
-              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://example.com">
-            </div>
-            
-            <div>
-              <label class="block mb-2">المكافأة (RR)</label>
-              <input type="number" id="taskReward" min="100" value="1000" class="w-full p-2 rounded bg-gray-700 text-white">
-            </div>
-            
-            <div class="flex items-center">
-              <input type="checkbox" id="taskIsActive" checked class="mr-2">
-              <label for="taskIsActive">المهمة نشطة</label>
-            </div>
-          `;
-          break;
-      }
-      
-      container.innerHTML = html;
-    }
-
-    function createNewTask() {
-      const taskType = document.getElementById('taskType').value;
-      const taskName = document.getElementById('taskName').value.trim();
-      const taskDescription = document.getElementById('taskDescription').value.trim();
-      const taskReward = parseInt(document.getElementById('taskReward').value);
-      const isActive = document.getElementById('taskIsActive').checked;
-      
-      if (!taskName || !taskDescription) {
-        showToast("⚠️ أدخل اسم ووصف المهمة!", true);
-        return;
-      }
-      
-      if (!taskReward || taskReward < 100) {
-        showToast("⚠️ أدخل مكافأة صحيحة (100 RR كحد أدنى)!", true);
-        return;
-      }
-      
-      // تحضير بيانات المهمة الأساسية
-      const taskData = {
-        name: taskName,
-        description: taskDescription,
-        reward: taskReward,
-        type: taskType,
-        isActive: isActive,
-        createdAt: new Date().toISOString(),
-        completedCount: 0
-      };
-      
-      // إضافة الحقول الإضافية بناءً على نوع المهمة
-      switch(taskType) {
-        case 'channel':
-          const taskUrl = document.getElementById('taskUrl').value.trim();
-          const taskIcon = document.getElementById('taskIcon').value.trim();
-          
-          if (!taskUrl) {
-            showToast("⚠️ أدخل رابط القناة!", true);
-            return;
-          }
-          
-          taskData.url = taskUrl;
-          if (taskIcon) taskData.icon = taskIcon;
-          break;
-          
-        case 'bot':
-          const botUrl = document.getElementById('taskUrl').value.trim();
-          const taskRequirements = document.getElementById('taskRequirements').value.trim();
-          const taskNotes = document.getElementById('taskNotes').value.trim();
-          
-          if (!botUrl) {
-            showToast("⚠️ أدخل رابط البوت!", true);
-            return;
-          }
-          
-          taskData.url = botUrl;
-          if (taskRequirements) {
-            taskData.requirements = taskRequirements.split('\n').filter(step => step.trim());
-          }
-          if (taskNotes) taskData.notes = taskNotes;
-          break;
-          
-        case 'custom':
-          const customType = document.getElementById('taskCustomType').value.trim();
-          const customUrl = document.getElementById('taskUrl').value.trim();
-          
-          if (!customType) {
-            showToast("⚠️ أدخل نوع المهمة المخصصة!", true);
-            return;
-          }
-          
-          taskData.customType = customType;
-          if (customUrl) taskData.url = customUrl;
-          break;
-      }
-      
-      // إنشاء معرف فريد للمهمة
-      const taskId = 'task_' + Date.now();
-      
-      // حفظ المهمة في Firebase
-      const tasksRef = ref(db, `tasks/${taskId}`);
-      set(tasksRef, taskData)
-        .then(() => {
-          showToast("✅ تم إنشاء المهمة بنجاح!");
-          // إعادة تعيين النموذج
-          updateTaskForm();
-          // تحديث قائمة المهام
-          loadTasks();
-        })
-        .catch(error => {
-          console.error('Error creating task:', error);
-          showToast("❌ فشل في إنشاء المهمة!", true);
-        });
-    }
-
-    function loadTasks() {
-      const tasksRef = ref(db, 'tasks');
-      onValue(tasksRef, (snapshot) => {
-        const tasks = snapshot.val();
-        const tasksList = document.getElementById('tasksList');
-        
-        if (!tasks) {
-          tasksList.innerHTML = '<p class="text-gray-400 text-center">لا توجد مهام حالياً</p>';
-          return;
-        }
-        
-        let html = '';
-        Object.entries(tasks).forEach(([taskId, task]) => {
-          const taskTypeName = getTaskTypeName(task.type);
-          const rewardText = `${task.reward.toLocaleString()} RR`;
-          
-          html += `
-            <div class="bg-gray-700 p-3 rounded mb-3 ${!task.isActive ? 'opacity-60' : ''}">
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <h3 class="font-bold text-lg">${task.name}</h3>
-                  <div class="flex items-center gap-2 mt-1">
-                    <span class="task-type-badge task-type-${task.type}">${taskTypeName}</span>
-                    <span class="text-sm ${task.isActive ? 'text-green-400' : 'text-red-400'}">
-                      ${task.isActive ? 'نشط' : 'معطل'}
-                    </span>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="font-bold">${rewardText}</div>
-                  <div class="text-sm text-gray-400">${task.completedCount || 0} إكمال</div>
-                </div>
-              </div>
-              
-              <p class="text-sm text-gray-300 mb-2">${task.description}</p>
-              
-              ${task.url ? `<p class="text-xs text-blue-400 mb-2">${task.url}</p>` : ''}
-              
-              <div class="flex justify-between text-xs text-gray-400">
-                <span>أنشئت في: ${new Date(task.createdAt).toLocaleDateString('ar-EG')}</span>
-              </div>
-              
-              <div class="flex gap-2 mt-3">
-                <button onclick="editTask('${taskId}')" class="flex-1 bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-500">تعديل</button>
-                <button onclick="toggleTask('${taskId}', ${!task.isActive})" class="flex-1 ${task.isActive ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} px-3 py-1 rounded text-sm">
-                  ${task.isActive ? 'تعطيل' : 'تفعيل'}
-                </button>
-                <button onclick="deleteTask('${taskId}')" class="flex-1 bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">حذف</button>
-              </div>
-            </div>
-          `;
-        });
-        
-        tasksList.innerHTML = html;
-      });
-    }
-
-    function getTaskTypeName(type) {
-      const names = {
-        'channel': 'انضمام قناة',
-        'bot': 'مهمة البوت',
-        'custom': 'مهمة مخصصة'
-      };
-      return names[type] || type;
-    }
-
-    function filterTasks() {
-      const typeFilter = document.getElementById('filterTaskType').value;
-      const searchTerm = document.getElementById('searchTasks').value.toLowerCase();
-      const taskItems = document.querySelectorAll('#tasksList > div');
-      
-      taskItems.forEach(item => {
-        const taskText = item.textContent.toLowerCase();
-        const taskType = item.querySelector('.task-type-badge').textContent;
-        
-        const typeMatch = typeFilter === 'all' || taskType.includes(getTaskTypeName(typeFilter));
-        const searchMatch = taskText.includes(searchTerm);
-        
-        if (typeMatch && searchMatch) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
-
-    // وظائف إدارة المهام (سيتم استدعاؤها من الأزرار)
-    window.editTask = function(taskId) {
-      const taskRef = ref(db, `tasks/${taskId}`);
-      onValue(taskRef, (snapshot) => {
-        const taskData = snapshot.val();
-        if (!taskData) return;
-        
-        currentEditingTask = taskId;
-        
-        let formHtml = '';
-        
-        switch(taskData.type) {
-          case 'channel':
-            formHtml = `
-              <div class="space-y-4">
-                <div>
-                  <label class="block mb-2">اسم المهمة</label>
-                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">وصف المهمة</label>
-                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
-                </div>
-                
-                <div>
-                  <label class="block mb-2">رابط القناة</label>
-                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">أيقونة المهمة (رابط)</label>
-                  <input type="url" id="editTaskIcon" value="${taskData.icon || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">المكافأة (RR)</label>
-                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">عدد مرات الإكمال</label>
-                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div class="flex items-center">
-                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
-                  <label for="editTaskIsActive">المهمة نشطة</label>
-                </div>
-              </div>
-            `;
-            break;
-            
-          case 'bot':
-            formHtml = `
-              <div class="space-y-4">
-                <div>
-                  <label class="block mb-2">اسم المهمة</label>
-                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">وصف المهمة</label>
-                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
-                </div>
-                
-                <div>
-                  <label class="block mb-2">رابط البوت</label>
-                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">المكافأة (RR)</label>
-                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">متطلبات المهمة (قائمة خطوات)</label>
-                  <textarea id="editTaskRequirements" class="w-full p-2 rounded bg-gray-700 text-white" rows="4">${(taskData.requirements || []).join('\n')}</textarea>
-                </div>
-                
-                <div>
-                  <label class="block mb-2">ملاحظات مهمة للمستخدم</label>
-                  <textarea id="editTaskNotes" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.notes || ''}</textarea>
-                </div>
-                
-                <div>
-                  <label class="block mb-2">عدد مرات الإكمال</label>
-                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div class="flex items-center">
-                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
-                  <label for="editTaskIsActive">المهمة نشطة</label>
-                </div>
-              </div>
-            `;
-            break;
-            
-          case 'custom':
-            formHtml = `
-              <div class="space-y-4">
-                <div>
-                  <label class="block mb-2">اسم المهمة</label>
-                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">وصف المهمة</label>
-                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
-                </div>
-                
-                <div>
-                  <label class="block mb-2">نوع المهمة المخصصة</label>
-                  <input type="text" id="editTaskCustomType" value="${taskData.customType || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">رابط المهمة</label>
-                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">المكافأة (RR)</label>
-                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div>
-                  <label class="block mb-2">عدد مرات الإكمال</label>
-                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
-                </div>
-                
-                <div class="flex items-center">
-                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
-                  <label for="editTaskIsActive">المهمة نشطة</label>
-                </div>
-              </div>
-            `;
-            break;
-        }
-        
-        document.getElementById('editTaskForm').innerHTML = formHtml;
-        document.getElementById('editTaskModal').classList.remove('hidden');
-      }, { onlyOnce: true });
-    };
-
-    window.toggleTask = function(taskId, newState) {
-      const taskRef = ref(db, `tasks/${taskId}/isActive`);
-      set(taskRef, newState)
-        .then(() => {
-          showToast(newState ? "✅ تم تفعيل المهمة" : "✅ تم تعطيل المهمة");
-          loadTasks();
-        })
-        .catch(error => {
-          console.error('Error toggling task:', error);
-          showToast("❌ فشل في تعديل حالة المهمة!", true);
-        });
-    };
-
-    window.deleteTask = function(taskId) {
-      if (confirm(`هل أنت متأكد من حذف المهمة؟`)) {
-        const taskRef = ref(db, `tasks/${taskId}`);
-        remove(taskRef)
-          .then(() => {
-            showToast("✅ تم حذف المهمة بنجاح");
-            loadTasks();
-          })
-          .catch(error => {
-            console.error('Error deleting task:', error);
-            showToast("❌ فشل في حذف المهمة!", true);
-          });
-      }
-    };
-
-    // حفظ التعديلات على المهمة
-    document.getElementById('saveTaskBtn').addEventListener('click', () => {
-      if (!currentEditingTask) return;
-      
-      const taskRef = ref(db, `tasks/${currentEditingTask}`);
-      onValue(taskRef, (snapshot) => {
-        const originalTask = snapshot.val();
-        if (!originalTask) return;
-        
-        const taskName = document.getElementById('editTaskName').value.trim();
-        const taskDescription = document.getElementById('editTaskDescription').value.trim();
-        const taskReward = parseInt(document.getElementById('editTaskReward').value);
-        const completedCount = parseInt(document.getElementById('editTaskCompletedCount').value);
-        const isActive = document.getElementById('editTaskIsActive').checked;
-        
-        if (!taskName || !taskDescription) {
-          showToast("⚠️ أدخل اسم ووصف المهمة!", true);
-          return;
-        }
-        
-        if (!taskReward || taskReward < 100) {
-          showToast("⚠️ أدخل مكافأة صحيحة (100 RR كحد أدنى)!", true);
-          return;
-        }
-        
-        const updates = {
-          name: taskName,
-          description: taskDescription,
-          reward: taskReward,
-          completedCount: completedCount,
-          isActive: isActive
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+            authDomain: "earnmoney124553.firebaseapp.com",
+            databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+            projectId: "earnmoney124553",
+            storageBucket: "earnmoney124553.firebasestorage.app",
+            messagingSenderId: "325528918523",
+            appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+            measurementId: "G-G1H96Q5XCJ"
         };
         
-        // إضافة الحقول الإضافية بناءً على نوع المهمة
-        switch(originalTask.type) {
-          case 'channel':
-            const taskUrl = document.getElementById('editTaskUrl').value.trim();
-            const taskIcon = document.getElementById('editTaskIcon').value.trim();
-            
-            if (taskUrl) updates.url = taskUrl;
-            if (taskIcon) updates.icon = taskIcon;
-            break;
-            
-          case 'bot':
-            const botUrl = document.getElementById('editTaskUrl').value.trim();
-            const taskRequirements = document.getElementById('editTaskRequirements').value.trim();
-            const taskNotes = document.getElementById('editTaskNotes').value.trim();
-            
-            if (botUrl) updates.url = botUrl;
-            if (taskRequirements) {
-              updates.requirements = taskRequirements.split('\n').filter(step => step.trim());
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        
+        // عناصر DOM
+        const loginPage = document.getElementById('login-page');
+        const appContainer = document.getElementById('app-container');
+        const mainContent = document.getElementById('main-content');
+        const pageTitle = document.getElementById('page-title');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        const loginButton = document.getElementById('login-button');
+        const loginError = document.getElementById('login-error');
+        const logoutButtons = document.querySelectorAll('#logout-btn, #sidebar-logout-btn');
+        const imageModal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const modalClose = document.querySelector('.image-modal .close');
+
+        // بيانات الاعتماد الافتراضية
+        const DEFAULT_ADMIN_USERNAME = "aborabie";
+        const DEFAULT_ADMIN_PASSWORD = "KLKFijkj-48@#$lk$Uu";
+
+        // التحقق من وجود بيانات المسؤول وإنشاؤها إذا لزم الأمر
+        const checkAndCreateDefaultAdmin = async () => {
+            const adminSnap = await db.ref('admin').once('value');
+            if (!adminSnap.exists()) {
+                await db.ref('admin').set({
+                    username: DEFAULT_ADMIN_USERNAME,
+                    password: DEFAULT_ADMIN_PASSWORD
+                });
+                console.log("تم إنشاء بيانات المسؤول الافتراضية");
             }
-            if (taskNotes) updates.notes = taskNotes;
-            break;
+        };
+
+        // تسجيل الدخول
+        const login = async (username, password) => {
+            try {
+                const adminSnap = await db.ref('admin').once('value');
+                const adminData = adminSnap.val();
+                
+                if (adminData && adminData.username === username && adminData.password === password) {
+                    sessionStorage.setItem('adminLoggedIn', 'true');
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    initAdminPanel();
+                    return true;
+                } else {
+                    loginError.style.display = 'block';
+                    return false;
+                }
+            } catch (error) {
+                console.error("خطأ في تسجيل الدخول:", error);
+                loginError.style.display = 'block';
+                return false;
+            }
+        };
+
+        // تسجيل الخروج
+        const logout = () => {
+            sessionStorage.removeItem('adminLoggedIn');
+            appContainer.style.display = 'none';
+            loginPage.style.display = 'flex';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            loginError.style.display = 'none';
+        };
+
+        // التحقق من حالة تسجيل الدخول
+        const checkLoginStatus = () => {
+            if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+                loginPage.style.display = 'none';
+                appContainer.style.display = 'flex';
+                initAdminPanel();
+            } else {
+                loginPage.style.display = 'flex';
+                appContainer.style.display = 'none';
+            }
+        };
+
+        // مستمعي الأحداث لتسجيل الدخول والخروج
+        loginButton.addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
             
-          case 'custom':
-            const customType = document.getElementById('editTaskCustomType').value.trim();
-            const customUrl = document.getElementById('editTaskUrl').value.trim();
+            if (!username || !password) {
+                loginError.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
+                loginError.style.display = 'block';
+                return;
+            }
             
-            if (customType) updates.customType = customType;
-            if (customUrl) updates.url = customUrl;
-            break;
-        }
-        
-        update(taskRef, updates)
-          .then(() => {
-            showToast("✅ تم تحديث المهمة بنجاح");
-            document.getElementById('editTaskModal').classList.add('hidden');
-            loadTasks();
-          })
-          .catch(error => {
-            console.error('Error updating task:', error);
-            showToast("❌ فشل في تحديث المهمة!", true);
-          });
-      }, { onlyOnce: true });
-    });
-
-    document.getElementById('cancelEditTaskBtn').addEventListener('click', () => {
-      document.getElementById('editTaskModal').classList.add('hidden');
-      currentEditingTask = null;
-    });
-
-    // قسم طلبات البوت
-    function initializeBotRequestsSection() {
-      // البحث في طلبات البوت
-      document.getElementById('searchBotRequests').addEventListener('input', filterBotRequests);
-    }
-
-    function loadBotRequests() {
-      const botVerificationsRef = ref(db, 'botVerifications');
-      onValue(botVerificationsRef, (snapshot) => {
-        const requests = snapshot.val();
-        const requestsList = document.getElementById('botRequestsList');
-        
-        if (!requests) {
-          requestsList.innerHTML = '<p class="text-gray-400 text-center">لا توجد طلبات معلقة حالياً</p>';
-          return;
-        }
-        
-        let html = '';
-        Object.entries(requests).forEach(([userId, request]) => {
-          if (request.status !== 'pending') return;
-          
-          const userName = request.userName || 'مستخدم غير معروف';
-          const username = request.username ? `@${request.username}` : 'لا يوجد';
-          const submittedDate = new Date(request.submittedAt).toLocaleDateString('ar-EG');
-          const submittedTime = new Date(request.submittedAt).toLocaleTimeString('ar-EG');
-          
-          html += `
-            <div class="bg-gray-700 p-4 rounded mb-4">
-              <div class="flex justify-between items-start mb-3">
-                <div>
-                  <h3 class="font-bold text-lg">${userName}</h3>
-                  <div class="text-sm text-gray-400">${username} • ${userId}</div>
-                </div>
-                <div class="text-right">
-                  <div class="text-sm text-gray-400">${submittedDate}</div>
-                  <div class="text-sm text-gray-400">${submittedTime}</div>
-                </div>
-              </div>
-              
-              <div class="mb-3">
-                <h4 class="font-semibold mb-2">📋 متطلبات المهمة:</h4>
-                <div class="bg-gray-800 p-3 rounded text-sm">
-                  ${request.requirements && request.requirements.steps ? 
-                    '<ol class="list-decimal list-inside space-y-1">' + 
-                    request.requirements.steps.map(step => `<li>${step}</li>`).join('') + 
-                    '</ol>' : 
-                    'لا توجد متطلبات محددة'
-                  }
-                </div>
-              </div>
-              
-              <div class="mb-3">
-                <h4 class="font-semibold mb-2">🖼️ صورة التحقق:</h4>
-                <div class="text-center">
-                  <img src="${request.screenshot}" alt="صورة التحقق" class="max-w-full max-h-40 rounded cursor-pointer mx-auto" onclick="showImageModal('${request.screenshot}')">
-                  <div class="text-xs text-gray-400 mt-1">انقر على الصورة لتكبيرها</div>
-                </div>
-              </div>
-              
-              <div class="flex justify-between items-center text-sm text-gray-400 mb-3">
-                <div>المكافأة: ${request.rewardRR ? request.rewardRR.toLocaleString() + ' RR' : 'غير محددة'}</div>
-                <div class="status-pending-review">قيد المراجعة</div>
-              </div>
-              
-              <div class="flex gap-2">
-                <button onclick="approveBotRequest('${userId}')" class="flex-1 bg-green-600 px-4 py-2 rounded hover:bg-green-500">✅ قبول</button>
-                <button onclick="rejectBotRequest('${userId}')" class="flex-1 bg-red-600 px-4 py-2 rounded hover:bg-red-500">❌ رفض</button>
-              </div>
-            </div>
-          `;
+            await login(username, password);
         });
-        
-        if (!html) {
-          html = '<p class="text-gray-400 text-center">لا توجد طلبات معلقة حالياً</p>';
-        }
-        
-        requestsList.innerHTML = html;
-      });
-    }
 
-    function filterBotRequests() {
-      const searchTerm = document.getElementById('searchBotRequests').value.toLowerCase();
-      const requestItems = document.querySelectorAll('#botRequestsList > div');
-      
-      requestItems.forEach(item => {
-        const requestText = item.textContent.toLowerCase();
-        if (requestText.includes(searchTerm)) {
-          item.style.display = 'block';
-        } else {
-          item.style.display = 'none';
-        }
-      });
-    }
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginButton.click();
+            }
+        });
 
-    // وظائف إدارة طلبات البوت (سيتم استدعاؤها من الأزرار)
-    window.showImageModal = function(imageUrl) {
-      document.getElementById('modalImage').src = imageUrl;
-      document.getElementById('imageModal').classList.remove('hidden');
-    };
+        logoutButtons.forEach(button => {
+            button.addEventListener('click', logout);
+        });
 
-    window.approveBotRequest = function(userId) {
-      if (confirm('هل أنت متأكد من قبول هذا الطلب ومنح المكافأة للمستخدم؟')) {
-        const verificationRef = ref(db, `botVerifications/${userId}`);
-        const userRef = ref(db, `users/${userId}`);
-        
-        // الحصول على بيانات الطلب أولاً
-        onValue(verificationRef, (snapshot) => {
-          const request = snapshot.val();
-          if (!request) {
-            showToast("❌ لم يتم العثور على الطلب!", true);
-            return;
-          }
-          
-          const rewardRR = request.rewardRR || 5000;
-          
-          // تحديث حالة الطلب إلى "مقبول"
-          update(verificationRef, {
-            status: 'approved',
-            processedAt: new Date().toISOString(),
-            processedBy: 'admin'
-          })
-          .then(() => {
-            // تحديث حالة المستخدم وإضافة المكافأة
-            update(userRef, {
-              'completedTasks/join_bot_task': true,
-              pendingBotVerification: false
-            })
-            .then(() => {
-              showToast(`✅ تم قبول الطلب ومنح ${rewardRR.toLocaleString()} RR للمستخدم`);
-              loadBotRequests();
-            })
-            .catch(error => {
-              console.error('Error updating user:', error);
-              showToast("❌ فشل في تحديث بيانات المستخدم!", true);
+        // تهيئة المسؤول الافتراضي والتحقق من حالة تسجيل الدخول
+        checkAndCreateDefaultAdmin();
+        checkLoginStatus();
+
+        // ========== الأقسام الجديدة ==========
+
+        // 1. قسم إدارة الأكواد المتعددة
+        const renderCodesAll = async () => {
+            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الأكواد...</h3></div>';
+            
+            const snap = await db.ref('codes').once('value');
+            let codes = [];
+            snap.forEach(child => {
+                codes.push({ key: child.key, ...child.val() });
             });
-          })
-          .catch(error => {
-            console.error('Error approving request:', error);
-            showToast("❌ فشل في قبول الطلب!", true);
-          });
-        }, { onlyOnce: true });
-      }
-    };
+            
+            // تصفية حسب النوع
+            const filterType = document.getElementById('code-type-filter') ? document.getElementById('code-type-filter').value : 'all';
+            if (filterType !== 'all') {
+                codes = codes.filter(code => code.type === filterType);
+            }
+            
+            // تصفية حسب الحالة
+            const filterStatus = document.getElementById('code-status-filter') ? document.getElementById('code-status-filter').value : 'all';
+            if (filterStatus !== 'all') {
+                const now = Date.now();
+                if (filterStatus === 'active') {
+                    codes = codes.filter(code => 
+                        (!code.expires || code.expires > now) && 
+                        (!code.maxUses || (code.usedCount || 0) < code.maxUses)
+                    );
+                } else if (filterStatus === 'expired') {
+                    codes = codes.filter(code => code.expires && code.expires <= now);
+                } else if (filterStatus === 'used') {
+                    codes = codes.filter(code => code.maxUses && (code.usedCount || 0) >= code.maxUses);
+                }
+            }
+            
+            let tableContent = '';
+            if (codes.length > 0) {
+                codes.forEach(code => {
+                    const usedCount = code.usedCount || 0;
+                    const maxUses = code.maxUses || 0;
+                    const isExpired = code.expires && Date.now() > code.expires;
+                    const isMaxed = maxUses > 0 && usedCount >= maxUses;
+                    const status = isExpired ? 'منتهي' : isMaxed ? 'مكتمل' : 'نشط';
+                    const statusClass = isExpired || isMaxed ? 'status-inactive' : 'status-active';
+                    
+                    let typeBadge = '';
+                    if (code.type === 'contest') {
+                        typeBadge = '<span class="code-badge code-type-contest">نقاط مسابقة</span>';
+                    } else if (code.type === 'ton') {
+                        typeBadge = '<span class="code-badge code-type-ton">TON</span>';
+                    } else if (code.type === 'rr') {
+                        typeBadge = '<span class="code-badge code-type-rr">RR</span>';
+                    }
+                    
+                    let valueText = '';
+                    if (code.type === 'contest') {
+                        valueText = `${code.points || 0} نقطة`;
+                    } else if (code.type === 'ton') {
+                        valueText = `${code.amount || 0} TON`;
+                    } else if (code.type === 'rr') {
+                        valueText = `${(code.amount || 0).toLocaleString()} RR`;
+                    }
+                    
+                    tableContent += `<tr>
+                        <td data-label="الكود">
+                            <strong>${code.key}</strong>
+                            ${typeBadge}
+                            <br><small>${code.description || 'لا يوجد وصف'}</small>
+                        </td>
+                        <td data-label="القيمة">${valueText}</td>
+                        <td data-label="الاستخدام">${usedCount}/${maxUses > 0 ? maxUses : '∞'}</td>
+                        <td data-label="الحالة"><span class="status-badge ${statusClass}">${status}</span></td>
+                        <td data-label="الإجراءات">
+                            <div class="action-buttons">
+                                <button class="action-btn btn-primary" onclick="window.adminActions.editCode('${code.key}')">تعديل</button>
+                                <button class="action-btn btn-danger" onclick="window.adminActions.deleteCode('${code.key}')">حذف</button>
+                                <button class="action-btn btn-warning" onclick="window.adminActions.toggleCodeStatus('${code.key}', ${isExpired || isMaxed})">${isExpired || isMaxed ? 'تفعيل' : 'تعطيل'}</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            } else {
+                tableContent = '<tr><td colspan="5" style="text-align: center;">لا توجد أكواد.</td></tr>';
+            }
+            
+            mainContent.innerHTML = `<div id="codes-all" class="page active">
+                <h3><i class="fas fa-ticket-alt"></i> جميع الأكواد</h3>
+                
+                <div class="card">
+                    <div class="filter-bar">
+                        <select id="code-type-filter">
+                            <option value="all">جميع الأنواع</option>
+                            <option value="contest">نقاط المسابقة</option>
+                            <option value="ton">TON</option>
+                            <option value="rr">RR</option>
+                        </select>
+                        <select id="code-status-filter">
+                            <option value="all">جميع الحالات</option>
+                            <option value="active">نشط فقط</option>
+                            <option value="expired">منتهي</option>
+                            <option value="used">مكتمل الاستخدام</option>
+                        </select>
+                        <input type="text" id="code-search" placeholder="بحث في الأكواد...">
+                        <button class="action-btn btn-primary" onclick="renderCodesAll()">تطبيق</button>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الكود</th>
+                                <th>القيمة</th>
+                                <th>الاستخدام</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableContent}</tbody>
+                    </table>
+                </div>
+            </div>`;
+            
+            // إضافة مستمعي الأحداث للتصفية
+            document.getElementById('code-type-filter').addEventListener('change', renderCodesAll);
+            document.getElementById('code-status-filter').addEventListener('change', renderCodesAll);
+            document.getElementById('code-search').addEventListener('input', renderCodesAll);
+        };
 
-    window.rejectBotRequest = function(userId) {
-      if (confirm('هل أنت متأكد من رفض هذا الطلب؟')) {
-        const verificationRef = ref(db, `botVerifications/${userId}`);
-        const userRef = ref(db, `users/${userId}`);
-        
-        // تحديث حالة الطلب إلى "مرفوض"
-        update(verificationRef, {
-          status: 'rejected',
-          processedAt: new Date().toISOString(),
-          processedBy: 'admin'
-        })
-        .then(() => {
-          // إعادة تعيين حالة المستخدم للسماح بإعادة المحاولة
-          update(userRef, {
-            pendingBotVerification: false
-          })
-          .then(() => {
-            showToast("✅ تم رفض الطلب بنجاح");
-            loadBotRequests();
-          })
-          .catch(error => {
-            console.error('Error updating user:', error);
-            showToast("❌ فشل في تحديث بيانات المستخدم!", true);
-          });
-        })
-        .catch(error => {
-          console.error('Error rejecting request:', error);
-          showToast("❌ فشل في رفض الطلب!", true);
+        const renderCodesCreate = () => {
+            mainContent.innerHTML = `<div id="codes-create" class="page active">
+                <h3><i class="fas fa-plus-circle"></i> إنشاء كود جديد</h3>
+                
+                <div class="card">
+                    <h4>إعدادات الكود</h4>
+                    <div class="form-group">
+                        <label>نوع الكود</label>
+                        <select id="code-type">
+                            <option value="contest">نقاط المسابقة</option>
+                            <option value="ton">رصيد TON</option>
+                            <option value="rr">عملة RR</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>نص الكود (أحرف كبيرة فقط)</label>
+                        <input type="text" id="code-text" placeholder="مثال: WELCOME50" style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>وصف الكود (اختياري)</label>
+                        <input type="text" id="code-description" placeholder="وصف مختصر للكود">
+                    </div>
+                    
+                    <div id="code-value-container">
+                        <!-- سيتم تحديثه بناءً على نوع الكود -->
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>الحد الأقصى للاستخدام (0 = لا نهائي)</label>
+                            <input type="number" id="code-max-uses" value="100" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>تاريخ الانتهاء (اختياري)</label>
+                            <input type="datetime-local" id="code-expiry">
+                        </div>
+                    </div>
+                    
+                    <button class="action-btn btn-success" onclick="window.adminActions.createCode()" style="width: 100%; padding: 15px;">
+                        <i class="fas fa-save"></i> إنشاء الكود
+                    </button>
+                </div>
+            </div>`;
+            
+            updateCodeValueField();
+            document.getElementById('code-type').addEventListener('change', updateCodeValueField);
+        };
+
+        const updateCodeValueField = () => {
+            const type = document.getElementById('code-type').value;
+            const container = document.getElementById('code-value-container');
+            
+            let html = '';
+            if (type === 'contest') {
+                html = `
+                    <label>عدد النقاط (10-1000)</label>
+                    <input type="number" id="code-value" min="10" max="1000" value="50">
+                `;
+            } else if (type === 'ton') {
+                html = `
+                    <label>المبلغ (0.001 - 1 TON)</label>
+                    <input type="number" id="code-value" min="0.001" max="1" step="0.001" value="0.01">
+                `;
+            } else if (type === 'rr') {
+                html = `
+                    <label>المبلغ (1000 - 100000 RR)</label>
+                    <input type="number" id="code-value" min="1000" max="100000" value="5000">
+                `;
+            }
+            
+            container.innerHTML = html;
+        };
+
+        const renderCodesStats = async () => {
+            const snap = await db.ref('codes').once('value');
+            let codes = [];
+            snap.forEach(child => {
+                codes.push({ key: child.key, ...child.val() });
+            });
+            
+            const totalCodes = codes.length;
+            const activeCodes = codes.filter(code => {
+                const now = Date.now();
+                return (!code.expires || code.expires > now) && 
+                       (!code.maxUses || (code.usedCount || 0) < code.maxUses);
+            }).length;
+            
+            const contestCodes = codes.filter(code => code.type === 'contest').length;
+            const tonCodes = codes.filter(code => code.type === 'ton').length;
+            const rrCodes = codes.filter(code => code.type === 'rr').length;
+            
+            const totalUses = codes.reduce((sum, code) => sum + (code.usedCount || 0), 0);
+            const totalPoints = codes
+                .filter(code => code.type === 'contest')
+                .reduce((sum, code) => sum + ((code.points || 0) * (code.usedCount || 0)), 0);
+                
+            const totalTON = codes
+                .filter(code => code.type === 'ton')
+                .reduce((sum, code) => sum + ((code.amount || 0) * (code.usedCount || 0)), 0);
+                
+            const totalRR = codes
+                .filter(code => code.type === 'rr')
+                .reduce((sum, code) => sum + ((code.amount || 0) * (code.usedCount || 0)), 0);
+            
+            mainContent.innerHTML = `<div id="codes-stats" class="page active">
+                <h3><i class="fas fa-chart-bar"></i> إحصائيات الأكواد</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الأكواد</div>
+                        <div class="stat-value">${totalCodes}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">الأكواد النشطة</div>
+                        <div class="stat-value">${activeCodes}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">أكواد المسابقة</div>
+                        <div class="stat-value">${contestCodes}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">أكواد TON</div>
+                        <div class="stat-value">${tonCodes}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">أكواد RR</div>
+                        <div class="stat-value">${rrCodes}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي الاستخدامات</div>
+                        <div class="stat-value">${totalUses}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي النقاط الممنوحة</div>
+                        <div class="stat-value">${totalPoints}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي TON الممنوح</div>
+                        <div class="stat-value">${totalTON.toFixed(4)}</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4>أكثر الأكواد استخداماً</h4>
+                    <div id="top-codes-list">
+                        ${generateTopCodesList(codes)}
+                    </div>
+                </div>
+            </div>`;
+        };
+
+        const generateTopCodesList = (codes) => {
+            // ترتيب الأكواد حسب عدد الاستخدامات
+            const sortedCodes = codes.sort((a, b) => (b.usedCount || 0) - (a.usedCount || 0)).slice(0, 10);
+            
+            if (sortedCodes.length === 0) {
+                return '<p>لا توجد بيانات عن الأكواد.</p>';
+            }
+            
+            let html = '<table><thead><tr><th>الكود</th><th>النوع</th><th>الاستخدامات</th><th>القيمة الإجمالية</th></tr></thead><tbody>';
+            
+            sortedCodes.forEach(code => {
+                let totalValue = '';
+                if (code.type === 'contest') {
+                    totalValue = `${((code.points || 0) * (code.usedCount || 0)).toLocaleString()} نقطة`;
+                } else if (code.type === 'ton') {
+                    totalValue = `${((code.amount || 0) * (code.usedCount || 0)).toFixed(4)} TON`;
+                } else if (code.type === 'rr') {
+                    totalValue = `${((code.amount || 0) * (code.usedCount || 0)).toLocaleString()} RR`;
+                }
+                
+                let typeText = '';
+                if (code.type === 'contest') typeText = 'نقاط مسابقة';
+                else if (code.type === 'ton') typeText = 'TON';
+                else if (code.type === 'rr') typeText = 'RR';
+                
+                html += `<tr>
+                    <td>${code.key}</td>
+                    <td>${typeText}</td>
+                    <td>${code.usedCount || 0}</td>
+                    <td>${totalValue}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table>';
+            return html;
+        };
+
+        // 2. قسم إدارة المهام المتعددة
+        const renderTasksAll = async () => {
+            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل المهام...</h3></div>';
+            
+            const tasksSnap = await db.ref('config/tasks').once('value');
+            const botTasksSnap = await db.ref('botTasks').once('value');
+            
+            let tasks = [];
+            tasksSnap.forEach(child => {
+                tasks.push({ key: child.key, type: 'channel', ...child.val() });
+            });
+            
+            botTasksSnap.forEach(child => {
+                tasks.push({ key: child.key, type: 'bot', ...child.val() });
+            });
+            
+            let tableContent = '';
+            if (tasks.length > 0) {
+                tasks.forEach(task => {
+                    let typeBadge = '';
+                    if (task.type === 'channel') {
+                        typeBadge = '<span class="task-badge task-type-channel">انضمام قناة</span>';
+                    } else if (task.type === 'bot') {
+                        typeBadge = '<span class="task-badge task-type-bot">مهمة بوت</span>';
+                    }
+                    
+                    let rewardText = '';
+                    if (task.reward) {
+                        rewardText = `${task.reward} TON`;
+                    } else if (task.rewardRR) {
+                        rewardText = `${task.rewardRR.toLocaleString()} RR`;
+                    }
+                    
+                    const status = task.active === false ? 'معطلة' : 'نشطة';
+                    const statusClass = task.active === false ? 'status-inactive' : 'status-active';
+                    
+                    tableContent += `<tr>
+                        <td data-label="المهمة">
+                            <strong>${task.name}</strong>
+                            ${typeBadge}
+                            <br><small>${task.description || 'لا يوجد وصف'}</small>
+                        </td>
+                        <td data-label="المكافأة">${rewardText}</td>
+                        <td data-label="النوع">${task.type === 'channel' ? 'انضمام قناة' : 'مهمة بوت'}</td>
+                        <td data-label="الحالة"><span class="status-badge ${statusClass}">${status}</span></td>
+                        <td data-label="الإجراءات">
+                            <div class="action-buttons">
+                                <button class="action-btn btn-primary" onclick="window.adminActions.editTask('${task.key}', '${task.type}')">تعديل</button>
+                                <button class="action-btn btn-danger" onclick="window.adminActions.deleteTask('${task.key}', '${task.type}')">حذف</button>
+                                <button class="action-btn btn-warning" onclick="window.adminActions.toggleTaskStatus('${task.key}', '${task.type}', ${task.active === false})">${task.active === false ? 'تفعيل' : 'تعطيل'}</button>
+                                ${task.type === 'bot' ? `<button class="action-btn btn-info" onclick="window.adminActions.viewTaskRequirements('${task.key}')">المتطلبات</button>` : ''}
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            } else {
+                tableContent = '<tr><td colspan="5" style="text-align: center;">لا توجد مهام.</td></tr>';
+            }
+            
+            mainContent.innerHTML = `<div id="tasks-all" class="page active">
+                <h3><i class="fas fa-tasks"></i> جميع المهام</h3>
+                
+                <div class="card">
+                    <div class="filter-bar">
+                        <select id="task-type-filter">
+                            <option value="all">جميع الأنواع</option>
+                            <option value="channel">مهام القنوات</option>
+                            <option value="bot">مهام البوت</option>
+                        </select>
+                        <select id="task-status-filter">
+                            <option value="all">جميع الحالات</option>
+                            <option value="active">نشطة فقط</option>
+                            <option value="inactive">معطلة</option>
+                        </select>
+                        <input type="text" id="task-search" placeholder="بحث في المهام...">
+                        <button class="action-btn btn-primary" onclick="renderTasksAll()">تطبيق</button>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>المهمة</th>
+                                <th>المكافأة</th>
+                                <th>النوع</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableContent}</tbody>
+                    </table>
+                </div>
+            </div>`;
+            
+            // إضافة مستمعي الأحداث للتصفية
+            document.getElementById('task-type-filter').addEventListener('change', renderTasksAll);
+            document.getElementById('task-status-filter').addEventListener('change', renderTasksAll);
+            document.getElementById('task-search').addEventListener('input', renderTasksAll);
+        };
+
+        const renderTasksCreate = () => {
+            mainContent.innerHTML = `<div id="tasks-create" class="page active">
+                <h3><i class="fas fa-plus-circle"></i> إنشاء مهمة جديدة</h3>
+                
+                <div class="card">
+                    <h4>نوع المهمة</h4>
+                    <div class="form-group">
+                        <select id="task-type">
+                            <option value="channel">مهمة انضمام قناة</option>
+                            <option value="bot">مهمة بوت</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>اسم المهمة</label>
+                        <input type="text" id="task-name" placeholder="اسم المهمة">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>وصف المهمة</label>
+                        <textarea id="task-description" placeholder="وصف مختصر للمهمة"></textarea>
+                    </div>
+                    
+                    <div id="task-specific-fields">
+                        <!-- سيتم تحديثه بناءً على نوع المهمة -->
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>نوع المكافأة</label>
+                        <select id="reward-type">
+                            <option value="ton">TON</option>
+                            <option value="rr">RR</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>قيمة المكافأة</label>
+                        <input type="number" id="task-reward" step="any" placeholder="قيمة المكافأة">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>أيقونة المهمة (رابط الصورة)</label>
+                        <input type="text" id="task-icon" placeholder="رابط أيقونة المهمة">
+                    </div>
+                    
+                    <button class="action-btn btn-success" onclick="window.adminActions.createTask()" style="width: 100%; padding: 15px;">
+                        <i class="fas fa-save"></i> إنشاء المهمة
+                    </button>
+                </div>
+            </div>`;
+            
+            updateTaskSpecificFields();
+            document.getElementById('task-type').addEventListener('change', updateTaskSpecificFields);
+        };
+
+        const updateTaskSpecificFields = () => {
+            const type = document.getElementById('task-type').value;
+            const container = document.getElementById('task-specific-fields');
+            
+            let html = '';
+            if (type === 'channel') {
+                html = `
+                    <div class="form-group">
+                        <label>رابط القناة</label>
+                        <input type="text" id="task-url" placeholder="رابط القناة على التليجرام">
+                    </div>
+                `;
+            } else if (type === 'bot') {
+                html = `
+                    <div class="form-group">
+                        <label>رابط البوت</label>
+                        <input type="text" id="task-url" placeholder="رابط البوت على التليجرام">
+                    </div>
+                    <div class="form-group">
+                        <label>متطلبات المهمة (كل سطر يمثل متطلب)</label>
+                        <textarea id="task-requirements" placeholder="اكتب كل متطلب في سطر منفصل" rows="5"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>ملاحظات مهمة للمستخدم</label>
+                        <textarea id="task-notes" placeholder="ملاحظات إضافية للمستخدم" rows="3"></textarea>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        };
+
+        const renderTasksStats = async () => {
+            // جمع إحصائيات المهام
+            const tasksSnap = await db.ref('config/tasks').once('value');
+            const botTasksSnap = await db.ref('botTasks').once('value');
+            const usersSnap = await db.ref('users').once('value');
+            
+            let channelTasks = [];
+            tasksSnap.forEach(child => {
+                channelTasks.push({ key: child.key, ...child.val() });
+            });
+            
+            let botTasks = [];
+            botTasksSnap.forEach(child => {
+                botTasks.push({ key: child.key, ...child.val() });
+            });
+            
+            // حساب عدد المستخدمين الذين أكملوا كل مهمة
+            let userCompletionStats = {};
+            usersSnap.forEach(child => {
+                const user = child.val();
+                if (user.completedTasks) {
+                    Object.keys(user.completedTasks).forEach(taskKey => {
+                        if (!userCompletionStats[taskKey]) {
+                            userCompletionStats[taskKey] = 0;
+                        }
+                        userCompletionStats[taskKey]++;
+                    });
+                }
+            });
+            
+            const totalTasks = channelTasks.length + botTasks.length;
+            const activeTasks = [...channelTasks, ...botTasks].filter(task => task.active !== false).length;
+            
+            mainContent.innerHTML = `<div id="tasks-stats" class="page active">
+                <h3><i class="fas fa-chart-bar"></i> إحصائيات المهام</h3>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">إجمالي المهام</div>
+                        <div class="stat-value">${totalTasks}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">المهام النشطة</div>
+                        <div class="stat-value">${activeTasks}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">مهام القنوات</div>
+                        <div class="stat-value">${channelTasks.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">مهام البوت</div>
+                        <div class="stat-value">${botTasks.length}</div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h4>إحصائيات إكمال المهام</h4>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>المهمة</th>
+                                <th>النوع</th>
+                                <th>عدد المستخدمين الذين أكملوا</th>
+                                <th>نسبة الإكمال</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${generateTaskCompletionStats([...channelTasks, ...botTasks], userCompletionStats, usersSnap.numChildren())}
+                        </tbody>
+                    </table>
+                </div>
+            </div>`;
+        };
+
+        const generateTaskCompletionStats = (tasks, completionStats, totalUsers) => {
+            if (tasks.length === 0) {
+                return '<tr><td colspan="4" style="text-align: center;">لا توجد مهام.</td></tr>';
+            }
+            
+            let html = '';
+            tasks.forEach(task => {
+                const completions = completionStats[task.key] || 0;
+                const completionRate = totalUsers > 0 ? ((completions / totalUsers) * 100).toFixed(1) : 0;
+                
+                let typeText = '';
+                if (task.type === 'channel' || !task.type) typeText = 'انضمام قناة';
+                else if (task.type === 'bot') typeText = 'مهمة بوت';
+                
+                html += `<tr>
+                    <td>${task.name}</td>
+                    <td>${typeText}</td>
+                    <td>${completions}</td>
+                    <td>${completionRate}%</td>
+                </tr>`;
+            });
+            
+            return html;
+        };
+
+        // 3. قسم مراجعة طلبات البوت
+        const renderBotRequests = async () => {
+            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
+            
+            const snap = await db.ref('botVerifications').orderByChild('submittedAt').once('value');
+            let requests = [];
+            snap.forEach(child => {
+                requests.push({ key: child.key, ...child.val() });
+            });
+            
+            requests.reverse(); // عرض أحدث الطلبات أولاً
+            
+            let pendingRequests = requests.filter(req => req.status === 'pending');
+            let processedRequests = requests.filter(req => req.status !== 'pending');
+            
+            // تحديث عدد الإشعارات
+            const badge = document.getElementById('bot-requests-badge');
+            if (pendingRequests.length > 0) {
+                badge.textContent = pendingRequests.length;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+            
+            mainContent.innerHTML = `<div id="bot-requests" class="page active">
+                <h3><i class="fas fa-robot"></i> طلبات البوت المعلقة</h3>
+                
+                <div class="tabs">
+                    <div class="tab active" data-tab="pending">معلقة (${pendingRequests.length})</div>
+                    <div class="tab" data-tab="processed">المعالجة (${processedRequests.length})</div>
+                </div>
+                
+                <div id="pending-tab" class="tab-content active">
+                    ${generateBotRequestsTable(pendingRequests, 'pending')}
+                </div>
+                
+                <div id="processed-tab" class="tab-content">
+                    ${generateBotRequestsTable(processedRequests, 'processed')}
+                </div>
+            </div>`;
+            
+            setupBotRequestsTabs();
+        };
+
+        const generateBotRequestsTable = (requests, type) => {
+            if (requests.length === 0) {
+                return '<div class="card"><p>لا توجد طلبات.</p></div>';
+            }
+            
+            let tableContent = '';
+            requests.forEach(request => {
+                const status = request.status || 'pending';
+                const statusText = status === 'pending' ? 'قيد المراجعة' : 
+                                 status === 'approved' ? 'مقبولة' : 'مرفوضة';
+                const statusClass = status === 'pending' ? 'status-pending' : 
+                                  status === 'approved' ? 'status-approved' : 'status-rejected';
+                
+                tableContent += `<tr>
+                    <td data-label="المستخدم">
+                        <strong>${request.userName || 'غير معروف'}</strong>
+                        <br><small>@${request.username || 'لا يوجد'}</small>
+                        <br><small>ID: ${request.userId}</small>
+                    </td>
+                    <td data-label="التاريخ">
+                        ${new Date(request.submittedAt).toLocaleString('ar-EG')}
+                        ${request.processedAt ? `<br><small>معالجة: ${new Date(request.processedAt).toLocaleString('ar-EG')}</small>` : ''}
+                    </td>
+                    <td data-label="الصورة">
+                        ${request.screenshot ? 
+                            `<img src="${request.screenshot}" alt="لقطة الشاشة" class="image-preview" style="max-width: 100px; cursor: pointer;" onclick="window.adminActions.viewImage('${request.screenshot}')">` : 
+                            'لا توجد صورة'
+                        }
+                    </td>
+                    <td data-label="الحالة">
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                    <td data-label="الإجراءات">
+                        <div class="action-buttons">
+                            ${type === 'pending' ? `
+                                <button class="action-btn btn-success" onclick="window.adminActions.approveBotRequest('${request.key}', '${request.userId}')">قبول</button>
+                                <button class="action-btn btn-danger" onclick="window.adminActions.rejectBotRequest('${request.key}', '${request.userId}')">رفض</button>
+                            ` : ''}
+                            <button class="action-btn btn-info" onclick="window.adminActions.viewBotRequestDetails('${request.key}')">تفاصيل</button>
+                            ${type === 'processed' ? `
+                                <button class="action-btn btn-warning" onclick="window.adminActions.deleteBotRequest('${request.key}')">حذف</button>
+                            ` : ''}
+                        </div>
+                    </td>
+                </tr>`;
+            });
+            
+            return `<div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المستخدم</th>
+                            <th>التاريخ</th>
+                            <th>الصورة</th>
+                            <th>الحالة</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableContent}</tbody>
+                </table>
+            </div>`;
+        };
+
+        const setupBotRequestsTabs = () => {
+            const tabs = document.querySelectorAll('#bot-requests .tab');
+            const tabContents = document.querySelectorAll('#bot-requests .tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+        };
+
+        // ========== دوال المساعدة ==========
+
+        const setupSubmenus = () => {
+            const submenuItems = document.querySelectorAll('.has-submenu');
+            
+            submenuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const submenu = this.nextElementSibling;
+                    submenu.classList.toggle('active');
+                    
+                    const icon = this.querySelector('.fa-chevron-down');
+                    if (icon) {
+                        icon.classList.toggle('fa-chevron-up');
+                    }
+                });
+            });
+        };
+
+        // ========== إجراءات المسؤول ==========
+
+        window.adminActions = {
+            // إدارة الأكواد
+            createCode: async () => {
+                const type = document.getElementById('code-type').value;
+                const codeText = document.getElementById('code-text').value.trim().toUpperCase();
+                const description = document.getElementById('code-description').value.trim();
+                const value = parseFloat(document.getElementById('code-value').value);
+                const maxUses = parseInt(document.getElementById('code-max-uses').value) || 0;
+                const expiry = document.getElementById('code-expiry').value;
+                
+                if (!codeText) {
+                    alert('يرجى إدخال نص الكود');
+                    return;
+                }
+                
+                if (!value || value <= 0) {
+                    alert('يرجى إدخال قيمة صحيحة للكود');
+                    return;
+                }
+                
+                const codeData = {
+                    type: type,
+                    description: description || '',
+                    maxUses: maxUses,
+                    usedCount: 0,
+                    created: firebase.database.ServerValue.TIMESTAMP,
+                    createdBy: 'admin'
+                };
+                
+                if (type === 'contest') {
+                    codeData.points = value;
+                } else if (type === 'ton') {
+                    codeData.amount = value;
+                } else if (type === 'rr') {
+                    codeData.amount = value;
+                }
+                
+                if (expiry) {
+                    codeData.expires = new Date(expiry).getTime();
+                }
+                
+                try {
+                    // التحقق من عدم وجود كود بنفس النص
+                    const existingSnap = await db.ref(`codes/${codeText}`).once('value');
+                    if (existingSnap.exists()) {
+                        alert('هذا الكود موجود مسبقاً!');
+                        return;
+                    }
+                    
+                    await db.ref(`codes/${codeText}`).set(codeData);
+                    alert('تم إنشاء الكود بنجاح!');
+                    
+                    // إعادة تعيين الحقول
+                    document.getElementById('code-text').value = '';
+                    document.getElementById('code-description').value = '';
+                    document.getElementById('code-max-uses').value = '100';
+                    document.getElementById('code-expiry').value = '';
+                    
+                    renderCodesAll();
+                } catch (e) {
+                    alert('خطأ في إنشاء الكود: ' + e.message);
+                }
+            },
+            
+            editCode: async (codeText) => {
+                const snap = await db.ref(`codes/${codeText}`).once('value');
+                const codeData = snap.val();
+                
+                if (!codeData) {
+                    alert('الكود غير موجود');
+                    return;
+                }
+                
+                const newMaxUses = prompt(`الحد الأقصى الحالي: ${codeData.maxUses || 0}\nأدخل الحد الأقصى الجديد:`, codeData.maxUses || 100);
+                if (newMaxUses !== null) {
+                    const maxUses = parseInt(newMaxUses);
+                    if (!isNaN(maxUses) && maxUses >= 0) {
+                        try {
+                            await db.ref(`codes/${codeText}/maxUses`).set(maxUses);
+                            alert('تم تحديث الحد الأقصى للاستخدام!');
+                            renderCodesAll();
+                        } catch (e) {
+                            alert('خطأ في التحديث: ' + e.message);
+                        }
+                    } else {
+                        alert('يرجى إدخال رقم صحيح موجب');
+                    }
+                }
+            },
+            
+            deleteCode: async (codeText) => {
+                if (confirm(`هل أنت متأكد من رغبتك في حذف الكود "${codeText}"؟`)) {
+                    try {
+                        await db.ref(`codes/${codeText}`).remove();
+                        alert('تم حذف الكود بنجاح!');
+                        renderCodesAll();
+                    } catch (e) {
+                        alert('خطأ في حذف الكود: ' + e.message);
+                    }
+                }
+            },
+            
+            toggleCodeStatus: async (codeText, isInactive) => {
+                if (isInactive) {
+                    // تفعيل الكود من خلال إزالة تاريخ الانتهاء
+                    try {
+                        await db.ref(`codes/${codeText}/expires`).remove();
+                        alert('تم تفعيل الكود!');
+                        renderCodesAll();
+                    } catch (e) {
+                        alert('خطأ في التفعيل: ' + e.message);
+                    }
+                } else {
+                    // تعطيل الكود من خلال تعيين تاريخ انتهاء في الماضي
+                    try {
+                        await db.ref(`codes/${codeText}/expires`).set(Date.now() - 86400000); // قبل يوم
+                        alert('تم تعطيل الكود!');
+                        renderCodesAll();
+                    } catch (e) {
+                        alert('خطأ في التعطيل: ' + e.message);
+                    }
+                }
+            },
+            
+            // إدارة المهام
+            createTask: async () => {
+                const type = document.getElementById('task-type').value;
+                const name = document.getElementById('task-name').value.trim();
+                const description = document.getElementById('task-description').value.trim();
+                const url = document.getElementById('task-url').value.trim();
+                const rewardType = document.getElementById('reward-type').value;
+                const rewardValue = parseFloat(document.getElementById('task-reward').value);
+                const icon = document.getElementById('task-icon').value.trim();
+                
+                if (!name || !description || !url) {
+                    alert('يرجى ملء جميع الحقول الإلزامية');
+                    return;
+                }
+                
+                if (!rewardValue || rewardValue <= 0) {
+                    alert('يرجى إدخال مكافأة صحيحة');
+                    return;
+                }
+                
+                const taskData = {
+                    name: name,
+                    description: description,
+                    url: url,
+                    icon: icon || 'https://img.icons8.com/ios-filled/100/group.png',
+                    active: true,
+                    created: firebase.database.ServerValue.TIMESTAMP
+                };
+                
+                if (rewardType === 'ton') {
+                    taskData.reward = rewardValue;
+                } else if (rewardType === 'rr') {
+                    taskData.rewardRR = rewardValue;
+                }
+                
+                if (type === 'bot') {
+                    const requirements = document.getElementById('task-requirements').value.split('\n').filter(line => line.trim());
+                    const notes = document.getElementById('task-notes').value.trim();
+                    
+                    taskData.requirements = requirements;
+                    taskData.notes = notes;
+                    
+                    try {
+                        await db.ref('botTasks').push(taskData);
+                        alert('تم إنشاء مهمة البوت بنجاح!');
+                        renderTasksAll();
+                    } catch (e) {
+                        alert('خطأ في إنشاء المهمة: ' + e.message);
+                    }
+                } else {
+                    try {
+                        await db.ref('config/tasks').push(taskData);
+                        alert('تم إنشاء المهمة بنجاح!');
+                        renderTasksAll();
+                    } catch (e) {
+                        alert('خطأ في إنشاء المهمة: ' + e.message);
+                    }
+                }
+            },
+            
+            editTask: async (taskKey, taskType) => {
+                const ref = taskType === 'bot' ? db.ref(`botTasks/${taskKey}`) : db.ref(`config/tasks/${taskKey}`);
+                const snap = await ref.once('value');
+                const taskData = snap.val();
+                
+                if (!taskData) {
+                    alert('المهمة غير موجودة');
+                    return;
+                }
+                
+                const newName = prompt(`اسم المهمة الحالي: ${taskData.name}\nأدخل الاسم الجديد:`, taskData.name);
+                if (newName !== null && newName.trim()) {
+                    try {
+                        await ref.child('name').set(newName.trim());
+                        alert('تم تحديث اسم المهمة!');
+                        renderTasksAll();
+                    } catch (e) {
+                        alert('خطأ في التحديث: ' + e.message);
+                    }
+                }
+            },
+            
+            deleteTask: async (taskKey, taskType) => {
+                if (confirm('هل أنت متأكد من رغبتك في حذف هذه المهمة؟')) {
+                    try {
+                        if (taskType === 'bot') {
+                            await db.ref(`botTasks/${taskKey}`).remove();
+                        } else {
+                            await db.ref(`config/tasks/${taskKey}`).remove();
+                        }
+                        alert('تم حذف المهمة بنجاح!');
+                        renderTasksAll();
+                    } catch (e) {
+                        alert('خطأ في حذف المهمة: ' + e.message);
+                    }
+                }
+            },
+            
+            toggleTaskStatus: async (taskKey, taskType, isInactive) => {
+                try {
+                    if (taskType === 'bot') {
+                        await db.ref(`botTasks/${taskKey}/active`).set(!isInactive);
+                    } else {
+                        await db.ref(`config/tasks/${taskKey}/active`).set(!isInactive);
+                    }
+                    alert(`تم ${isInactive ? 'تفعيل' : 'تعطيل'} المهمة بنجاح!`);
+                    renderTasksAll();
+                } catch (e) {
+                    alert('خطأ في تغيير حالة المهمة: ' + e.message);
+                }
+            },
+            
+            viewTaskRequirements: async (taskKey) => {
+                const snap = await db.ref(`botTasks/${taskKey}`).once('value');
+                const taskData = snap.val();
+                
+                if (!taskData) {
+                    alert('المهمة غير موجودة');
+                    return;
+                }
+                
+                const requirements = taskData.requirements || [];
+                const notes = taskData.notes || '';
+                
+                let requirementsHTML = '';
+                if (requirements.length > 0) {
+                    requirementsHTML = '<ol>';
+                    requirements.forEach(req => {
+                        requirementsHTML += `<li>${req}</li>`;
+                    });
+                    requirementsHTML += '</ol>';
+                } else {
+                    requirementsHTML = '<p>لا توجد متطلبات محددة</p>';
+                }
+                
+                mainContent.innerHTML = `<div class="page active">
+                    <h3>متطلبات المهمة: ${taskData.name}</h3>
+                    <div class="card">
+                        <h4>المتطلبات</h4>
+                        ${requirementsHTML}
+                    </div>
+                    ${notes ? `
+                    <div class="card">
+                        <h4>ملاحظات</h4>
+                        <p>${notes}</p>
+                    </div>
+                    ` : ''}
+                    <button class="action-btn btn-primary" onclick="renderTasksAll()">العودة إلى قائمة المهام</button>
+                </div>`;
+            },
+            
+            // إدارة طلبات البوت
+            approveBotRequest: async (requestKey, userId) => {
+                if (confirm('هل أنت متأكد من قبول هذا الطلب؟')) {
+                    try {
+                        const requestRef = db.ref(`botVerifications/${requestKey}`);
+                        const requestSnap = await requestRef.once('value');
+                        const requestData = requestSnap.val();
+                        
+                        if (!requestData) {
+                            alert('الطلب غير موجود');
+                            return;
+                        }
+                        
+                        // منح المكافأة للمستخدم
+                        const userRef = db.ref(`users/${userId}`);
+                        await userRef.child('completedTasks/join_bot_task').set(true);
+                        
+                        // تحديث حالة الطلب
+                        await requestRef.update({
+                            status: 'approved',
+                            processedAt: firebase.database.ServerValue.TIMESTAMP,
+                            processedBy: 'admin'
+                        });
+                        
+                        alert('تم قبول الطلب ومنح المكافأة للمستخدم!');
+                        renderBotRequests();
+                    } catch (e) {
+                        alert('خطأ في معالجة الطلب: ' + e.message);
+                    }
+                }
+            },
+            
+            rejectBotRequest: async (requestKey, userId) => {
+                const reason = prompt('يرجى إدخال سبب الرفض (اختياري):');
+                
+                try {
+                    const requestRef = db.ref(`botVerifications/${requestKey}`);
+                    
+                    // تحديث حالة الطلب
+                    await requestRef.update({
+                        status: 'rejected',
+                        processedAt: firebase.database.ServerValue.TIMESTAMP,
+                        processedBy: 'admin',
+                        rejectionReason: reason || ''
+                    });
+                    
+                    // إعادة تعيين حالة المستخدم للسماح بإعادة المحاولة
+                    const userRef = db.ref(`users/${userId}`);
+                    await userRef.child('pendingBotVerification').set(false);
+                    
+                    alert('تم رفض الطلب!');
+                    renderBotRequests();
+                } catch (e) {
+                    alert('خطأ في معالجة الطلب: ' + e.message);
+                }
+            },
+            
+            viewBotRequestDetails: async (requestKey) => {
+                const snap = await db.ref(`botVerifications/${requestKey}`).once('value');
+                const requestData = snap.val();
+                
+                if (!requestData) {
+                    alert('الطلب غير موجود');
+                    return;
+                }
+                
+                let requirementsHTML = '';
+                if (requestData.requirements && requestData.requirements.steps) {
+                    requirementsHTML = '<ol>';
+                    requestData.requirements.steps.forEach(step => {
+                        requirementsHTML += `<li>${step}</li>`;
+                    });
+                    requirementsHTML += '</ol>';
+                }
+                
+                mainContent.innerHTML = `<div class="page active">
+                    <h3>تفاصيل طلب البوت</h3>
+                    
+                    <div class="card">
+                        <h4>معلومات المستخدم</h4>
+                        <div class="user-info-item">
+                            <span>الاسم:</span>
+                            <span>${requestData.userName || 'غير معروف'}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span>اسم المستخدم:</span>
+                            <span>@${requestData.username || 'لا يوجد'}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span>معرف المستخدم:</span>
+                            <span>${requestData.userId}</span>
+                        </div>
+                        <div class="user-info-item">
+                            <span>تاريخ الطلب:</span>
+                            <span>${new Date(requestData.submittedAt).toLocaleString('ar-EG')}</span>
+                        </div>
+                        ${requestData.processedAt ? `
+                        <div class="user-info-item">
+                            <span>تاريخ المعالجة:</span>
+                            <span>${new Date(requestData.processedAt).toLocaleString('ar-EG')}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${requirementsHTML ? `
+                    <div class="card">
+                        <h4>متطلبات المهمة</h4>
+                        ${requirementsHTML}
+                    </div>
+                    ` : ''}
+                    
+                    ${requestData.screenshot ? `
+                    <div class="card">
+                        <h4>لقطة الشاشة المرفوعة</h4>
+                        <img src="${requestData.screenshot}" alt="لقطة الشاشة" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="window.adminActions.viewImage('${requestData.screenshot}')">
+                    </div>
+                    ` : ''}
+                    
+                    <button class="action-btn btn-primary" onclick="renderBotRequests()">العودة إلى طلبات البوت</button>
+                </div>`;
+            },
+            
+            deleteBotRequest: async (requestKey) => {
+                if (confirm('هل أنت متأكد من حذف هذا الطلب؟')) {
+                    try {
+                        await db.ref(`botVerifications/${requestKey}`).remove();
+                        alert('تم حذف الطلب بنجاح!');
+                        renderBotRequests();
+                    } catch (e) {
+                        alert('خطأ في حذف الطلب: ' + e.message);
+                    }
+                }
+            },
+            
+            // عرض الصور
+            viewImage: (imageUrl) => {
+                modalImage.src = imageUrl;
+                imageModal.style.display = 'flex';
+            }
+        };
+
+        // إغلاق modal الصورة
+        modalClose.addEventListener('click', () => {
+            imageModal.style.display = 'none';
         });
-      }
-    };
 
-    // إغلاق نافذة الصورة
-    document.getElementById('closeImageModal').addEventListener('click', () => {
-      document.getElementById('imageModal').classList.add('hidden');
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                imageModal.style.display = 'none';
+            }
+        });
+
+        // ========== تهيئة لوحة التحكم ==========
+
+        const initAdminPanel = () => {
+            renderDashboard();
+            setupSubmenus();
+            
+            // مستمعي الأحداث للقائمة
+            document.querySelectorAll('.nav-menu li, .nav-submenu li').forEach(item => {
+                if (item.classList.contains('has-submenu')) return;
+                
+                item.addEventListener('click', function() {
+                    if (this.parentElement.classList.contains('nav-submenu')) {
+                        document.querySelectorAll('.nav-menu li').forEach(i => i.classList.remove('active'));
+                        this.parentElement.previousElementSibling.classList.add('active');
+                    } else {
+                        document.querySelectorAll('.nav-menu li').forEach(i => i.classList.remove('active'));
+                        this.classList.add('active');
+                    }
+                    
+                    const page = this.getAttribute('data-page');
+                    pageTitle.textContent = this.textContent.trim();
+                    
+                    // تحميل الصفحة المناسبة
+                    if (page === 'dashboard') renderDashboard();
+                    else if (page === 'users') renderUsers();
+                    else if (page === 'user-search') renderUserSearch();
+                    else if (page === 'withdrawals') renderWithdrawals();
+                    else if (page === 'history') renderWithdrawalHistory();
+                    else if (page === 'codes-all') renderCodesAll();
+                    else if (page === 'codes-create') renderCodesCreate();
+                    else if (page === 'codes-stats') renderCodesStats();
+                    else if (page === 'tasks-all') renderTasksAll();
+                    else if (page === 'tasks-create') renderTasksCreate();
+                    else if (page === 'tasks-stats') renderTasksStats();
+                    else if (page === 'bot-requests') renderBotRequests();
+                    else if (page === 'contest') renderContest();
+                    else if (page === 'settings') renderSettings();
+                    else if (page === 'broadcast') renderBroadcast();
+                    
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.remove('open');
+                        overlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            // مستمعي الأحداث للقائمة الجانبية
+            document.getElementById('menu-toggle').addEventListener('click', () => {
+                sidebar.classList.add('open');
+                overlay.classList.add('show');
+            });
+            
+            document.querySelector('#sidebar .close-btn').addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            });
+            
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('show');
+            });
+        };
+
+        // ========== دوال الصفحات الأساسية (سيتم استكمالها) ==========
+
+        const renderDashboard = async () => {
+            // كود لوحة التحكم الأساسية
+            mainContent.innerHTML = `<div id="dashboard" class="page active">
+                <h3>لوحة التحكم الرئيسية</h3>
+                <div class="card">
+                    <p>مرحباً بك في لوحة التحكم المتقدمة لتطبيق TON Rewards</p>
+                    <p>استخدم القائمة الجانبية للوصول إلى جميع الأقسام المتاحة.</p>
+                </div>
+            </div>`;
+        };
+
+        const renderUsers = () => {
+            mainContent.innerHTML = `<div id="users" class="page active">
+                <h3>إدارة المستخدمين</h3>
+                <div class="card">
+                    <p>هذا القسم قيد التطوير...</p>
+                </div>
+            </div>`;
+        };
+
+        // باقي دوالت الصفحات الأساسية...
+        const renderUserSearch = () => { /* ... */ };
+        const renderWithdrawals = () => { /* ... */ };
+        const renderWithdrawalHistory = () => { /* ... */ };
+        const renderContest = () => { /* ... */ };
+        const renderSettings = () => { /* ... */ };
+        const renderBroadcast = () => { /* ... */ };
     });
-
-    document.getElementById('closeImageBtn').addEventListener('click', () => {
-      document.getElementById('imageModal').classList.add('hidden');
-    });
-
-    // تحميل البيانات العامة
-    function loadData() {
-      onValue(dbRef, (snapshot) => {
-        const data = snapshot.val();
-        currentData = data || {};
-        
-        if (!data) {
-          dataContainer.innerHTML = "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
-          return;
-        }
-
-        let html = "";
-        for (const key in data) {
-          html += `
-            <div class="bg-gray-700 p-3 rounded mb-3">
-              <h3 class="font-bold">${key}</h3>
-              <textarea id="val-${key}" class="w-full bg-gray-800 text-white p-2 rounded mt-1">${JSON.stringify(data[key], null, 2)}</textarea>
-              <div class="mt-2 flex gap-2">
-                <button onclick="updateData('${key}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">تعديل</button>
-                <button onclick="deleteData('${key}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500">حذف</button>
-              </div>
-            </div>
-          `;
-        }
-
-        dataContainer.innerHTML = html;
-      });
-    }
-
-    // دوال التحكم في البيانات العامة
-    window.updateData = (key) => {
-      const newVal = document.getElementById(`val-${key}`).value;
-      try {
-        const parsedVal = JSON.parse(newVal);
-        update(ref(db, key), parsedVal);
-        showToast("✅ تم التعديل بنجاح!");
-      } catch (e) {
-        showToast("⚠️ يجب إدخال JSON صالح!", true);
-      }
-    };
-
-    window.deleteData = (key) => {
-      if (confirm(`هل أنت متأكد من حذف ${key}؟`)) {
-        remove(ref(db, key));
-        showToast("🗑️ تم الحذف بنجاح!");
-      }
-    };
-
-    // إضافة أنماط CSS إضافية
-    const style = document.createElement('style');
-    style.textContent = `
-      .section {
-        display: none;
-      }
-      .section.active {
-        display: block;
-        animation: fadeIn 0.3s ease-in-out;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .code-type-badge, .task-type-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-      }
-      .code-type-contest {
-        background: rgba(255, 193, 7, 0.2);
-        color: #ffc107;
-        border: 1px solid #ffc107;
-      }
-      .code-type-ton {
-        background: rgba(33, 150, 243, 0.2);
-        color: #2196f3;
-        border: 1px solid #2196f3;
-      }
-      .code-type-rr {
-        background: rgba(76, 175, 80, 0.2);
-        color: #4caf50;
-        border: 1px solid #4caf50;
-      }
-      .task-type-channel {
-        background: rgba(156, 39, 176, 0.2);
-        color: #9c27b0;
-        border: 1px solid #9c27b0;
-      }
-      .task-type-bot {
-        background: rgba(255, 87, 34, 0.2);
-        color: #ff5722;
-        border: 1px solid #ff5722;
-      }
-      .task-type-custom {
-        background: rgba(96, 125, 139, 0.2);
-        color: #607d8b;
-        border: 1px solid #607d8b;
-      }
-      .status-pending-review {
-        background: rgba(255, 152, 0, 0.2);
-        color: #ff9800;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-      }
-    `;
-    document.head.appendChild(style);
-  </script>
+    </script>
 </body>
 </html>
