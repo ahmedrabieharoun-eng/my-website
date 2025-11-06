@@ -1,953 +1,1496 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم TON Rewards</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
-    <style>
-        :root {
-            --primary: #2980B9; --secondary: #2C3E50; --light: #ECF0F1; --dark: #34495E;
-            --success: #27AE60; --danger: #C0392B; --surface: #FFFFFF;
-            --warning: #F39C12; --info: #3498DB;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Tajawal', sans-serif; background-color: var(--light); direction: rtl; }
-        #app-container { transition: filter 0.3s; }
-        
-        /* Login Page Styles */
-        #login-page {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-        }
-        .login-card {
-            background-color: var(--surface);
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            width: 90%;
-            max-width: 400px;
-        }
-        .login-card h2 {
-            text-align: center;
-            margin-bottom: 25px;
-            color: var(--secondary);
-        }
-        .login-card .form-group {
-            margin-bottom: 20px;
-        }
-        .login-card label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--dark);
-        }
-        .login-card input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-family: 'Tajawal', sans-serif;
-            transition: border 0.3s;
-        }
-        .login-card input:focus {
-            border-color: var(--primary);
-            outline: none;
-        }
-        .login-btn {
-            width: 100%;
-            padding: 12px;
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-family: 'Tajawal', sans-serif;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        .login-btn:hover {
-            background-color: #2471A3;
-        }
-        .error-message {
-            color: var(--danger);
-            text-align: center;
-            margin-top: 15px;
-            display: none;
-        }
-        
-        /* Security Badge */
-        .security-badge {
-            background: linear-gradient(135deg, var(--success), var(--primary));
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-bottom: 15px;
-        }
-        
-        /* Session Timer */
-        .session-timer {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: var(--warning);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            z-index: 3000;
-        }
-        
-        /* Top Bar */
-        #top-bar {
-            background-color: var(--secondary); color: white; padding: 0 15px;
-            display: flex; align-items: center; justify-content: space-between; height: 60px;
-            position: sticky; top: 0; z-index: 1000;
-        }
-        #menu-toggle { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
-        #page-title { font-size: 1.2rem; }
-        #logout-btn { background: none; border: none; color: white; cursor: pointer; font-size: 1rem; }
-
-        /* Sidebar */
-        #sidebar {
-            position: fixed; top: 0; right: 0; width: 260px; height: 100vh;
-            background-color: var(--secondary); color: white; z-index: 2000;
-            transform: translateX(100%); transition: transform 0.3s ease-in-out;
-            display: flex; flex-direction: column;
-        }
-        #sidebar.open { transform: translateX(0); }
-        #sidebar-header { padding: 20px; text-align: center; }
-        #sidebar-header .close-btn { position: absolute; top: 15px; left: 20px; font-size: 1.8rem; cursor: pointer; }
-        .nav-menu { list-style: none; padding: 0; margin: 0; }
-        .nav-menu li { padding: 15px 20px; cursor: pointer; border-right: 4px solid transparent; transition: all 0.2s; }
-        .nav-menu li:hover, .nav-menu li.active { background-color: var(--dark); border-right-color: var(--primary); }
-        .nav-menu li i { margin-left: 12px; width: 20px; text-align: center; }
-        #sidebar-logout-btn { margin-top: auto; }
-
-        /* Overlay */
-        #overlay {
-            position: fixed; top: 0; right: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.5); z-index: 1999; display: none;
-        }
-        #overlay.show { display: block; }
-        
-        /* Main Content */
-        #main-content { padding: 20px; }
-        .page { display: none; } .page.active { display: block; animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Cards */
-        .card { background-color: var(--surface); border-radius: 8px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
-        h1, h3, h4 { color: var(--secondary); margin-bottom: 15px; }
-        
-        /* Tables */
-        table { width: 100%; border-collapse: collapse; }
-        thead { display: none; }
-        tr { display: block; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; }
-        td { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #eee; }
-        td:last-child { border-bottom: none; }
-        td::before { content: attr(data-label); font-weight: bold; margin-left: 10px; }
-        .action-buttons { text-align: left; width: 100%; }
-        .action-btn { padding: 8px 12px; border: none; border-radius: 5px; color: white; cursor: pointer; margin: 2px; font-family: 'Tajawal', sans-serif; }
-        
-        /* Forms */
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; text-align: right; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
-        .btn-success { background-color: var(--success); } .btn-danger { background-color: var(--danger); } .btn-primary { background-color: var(--primary); } .btn-warning { background-color: var(--warning); }
-        .btn-info { background-color: var(--info); }
-        .dynamic-item-list { list-style: none; padding-right: 0; }
-        .dynamic-item-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid var(--light); }
-        .withdraw-method-group { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
-        
-        /* New Styles */
-        .user-status-banned { background-color: rgba(192, 57, 43, 0.1); border-right: 4px solid var(--danger); }
-        .user-status-banned td:first-child::before { content: "🚫 " attr(data-label); }
-        .settings-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        @media (min-width: 768px) { .settings-grid { grid-template-columns: 1fr 1fr; } }
-        .setting-card { background-color: var(--surface); border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
-        /* Search Box */
-        .search-box { margin-bottom: 20px; }
-        .search-box input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 5px; }
-        
-        /* Stats Cards */
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .stat-card { background-color: var(--surface); border-radius: 8px; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stat-value { font-size: 2rem; font-weight: bold; margin: 10px 0; }
-        .stat-label { color: var(--dark); font-size: 0.9rem; }
-        
-        /* User Details */
-        .user-details-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
-        @media (min-width: 768px) { .user-details-grid { grid-template-columns: 1fr 1fr; } }
-        .user-info-card { background-color: var(--surface); border-radius: 8px; padding: 15px; }
-        .user-info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
-        .user-info-item:last-child { border-bottom: none; }
-        
-        /* Tabs */
-        .tabs { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 15px; }
-        .tab { padding: 10px 15px; cursor: pointer; border-bottom: 2px solid transparent; }
-        .tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: bold; }
-
-        /* Security Features */
-        .security-features {
-            background: linear-gradient(135deg, var(--info), var(--primary));
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .security-features h4 {
-            color: white;
-            margin-bottom: 10px;
-        }
-        .feature-list {
-            list-style: none;
-            padding: 0;
-        }
-        .feature-list li {
-            padding: 5px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        @media (min-width: 768px) {
-            #app-container { display: flex; }
-            #top-bar { display: none; }
-            #sidebar { position: static; transform: translateX(0); width: 250px; height: 100vh; }
-            #sidebar-header .close-btn { display: none; }
-            #main-content { flex-grow: 1; padding: 30px; }
-            thead { display: table-header-group; }
-            tr { display: table-row; margin-bottom: 0; border: none; padding: 0; }
-            td { display: table-cell; padding: 12px; border-bottom: 1px solid #ddd; }
-            td::before { display: none; }
-            .action-buttons { text-align: right; }
-            .stats-grid { grid-template-columns: repeat(4, 1fr); }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة تحكم Firebase - إدارة الأكواد والمهام</title>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-    <!-- Login Page -->
-    <div id="login-page">
-        <div class="login-card">
-            <div class="security-badge">
-                <i class="fas fa-shield-alt"></i>
-                نظام آمن - TON Rewards
-            </div>
-            <h2><i class="fas fa-shield-alt"></i> تسجيل الدخول للإدارة</h2>
-            <div class="form-group">
-                <label for="username"><i class="fas fa-user"></i> اسم المستخدم</label>
-                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
-            </div>
-            <div class="form-group">
-                <label for="password"><i class="fas fa-lock"></i> كلمة المرور</label>
-                <input type="password" id="password" placeholder="أدخل كلمة المرور">
-            </div>
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" id="remember-me">
-                    تذكرني على هذا الجهاز
-                </label>
-            </div>
-            <button class="login-btn" id="login-button">
-                <i class="fas fa-sign-in-alt"></i> تسجيل الدخول
-            </button>
-            <div class="error-message" id="login-error">اسم المستخدم أو كلمة المرور غير صحيحة</div>
-            
-            <div class="security-features" style="margin-top: 20px; font-size: 0.8rem;">
-                <h4><i class="fas fa-shield-alt"></i> ميزات الأمان:</h4>
-                <ul class="feature-list">
-                    <li><i class="fas fa-check"></i> تشفير كلمات المرور</li>
-                    <li><i class="fas fa-check"></i> جلسات آمنة</li>
-                    <li><i class="fas fa-check"></i> تسجيل النشاط</li>
-                </ul>
-            </div>
-        </div>
+<body class="bg-gray-900 text-white min-h-screen">
+  <div class="p-6 max-w-7xl mx-auto">
+    <h1 class="text-3xl font-bold mb-6 text-center">⚙️ لوحة تحكم Firebase - إدارة الأكواد والمهام</h1>
+
+    <!-- قسم التبويبات -->
+    <div class="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+      <button id="tab-data" class="tab-btn active px-4 py-2 rounded-lg bg-blue-600 text-white">📊 البيانات العامة</button>
+      <button id="tab-codes" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">🎫 إدارة الأكواد</button>
+      <button id="tab-tasks" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">📋 إدارة المهام</button>
+      <button id="tab-bot-requests" class="tab-btn px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-600">🤖 طلبات البوت</button>
     </div>
 
-    <!-- Session Timer -->
-    <div class="session-timer" id="session-timer" style="display: none;">
-        <i class="fas fa-clock"></i> الجلسة تنتهي في: <span id="timer">30:00</span>
+    <!-- قسم البيانات العامة -->
+    <div id="section-data" class="section active">
+      <!-- قسم الإضافة -->
+      <div class="bg-gray-800 p-4 rounded-lg mb-6">
+        <h2 class="text-xl mb-2 font-semibold">➕ إضافة بيانات جديدة</h2>
+        <input id="newKey" placeholder="المفتاح (key)" class="p-2 rounded bg-gray-700 text-white w-full mb-2" />
+        <textarea id="newValue" placeholder="القيمة (JSON أو نص)" class="p-2 rounded bg-gray-700 text-white w-full mb-2"></textarea>
+        <button id="addBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">إضافة</button>
+      </div>
+
+      <!-- عرض البيانات -->
+      <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[70vh]" id="dataContainer">
+        <p class="text-gray-400 text-center">جارٍ تحميل البيانات...</p>
+      </div>
     </div>
 
-    <!-- Admin Panel (Initially Hidden) -->
-    <div id="app-container" style="display: none;">
-        <aside id="sidebar">
+    <!-- قسم إدارة الأكواد -->
+    <div id="section-codes" class="section">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- إنشاء أكواد جديدة -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+          <h2 class="text-xl mb-4 font-semibold">🎫 إنشاء كود جديد</h2>
+          
+          <div class="space-y-4">
             <div>
-                <div id="sidebar-header">
-                    <h2><i class="fas fa-shield-alt"></i> لوحة التحكم</h2>
-                    <span class="close-btn">&times;</span>
-                </div>
-                <div style="padding: 0 20px 10px;">
-                    <div style="background: var(--primary); color: white; padding: 8px; border-radius: 5px; font-size: 0.8rem;">
-                        <i class="fas fa-user-shield"></i> مسؤول النظام
-                    </div>
-                </div>
-                <ul class="nav-menu">
-                    <li data-page="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> لوحة التحكم</li>
-                    <li data-page="users"><i class="fas fa-users"></i> إدارة المستخدمين</li>
-                    <li data-page="user-search"><i class="fas fa-search"></i> البحث عن مستخدم</li>
-                    <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
-                    <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
-                    <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
-                    <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
-                    <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
-                    <li data-page="settings"><i class="fas fa-cog"></i> إعدادات التطبيق</li>
-                    <li data-page="security"><i class="fas fa-shield-alt"></i> الأمان والمراقبة</li>
-                    <li data-page="broadcast"><i class="fas fa-bullhorn"></i> البث الجماعي</li>
-                </ul>
+              <label class="block mb-2">نوع الكود</label>
+              <select id="codeType" class="w-full p-2 rounded bg-gray-700 text-white">
+                <option value="contest">نقاط المسابقة</option>
+                <option value="ton">TON</option>
+                <option value="rr">RR</option>
+              </select>
             </div>
-            <button id="sidebar-logout-btn" class="nav-menu"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
-        </aside>
-        
-        <div id="overlay"></div>
-
-        <div id="content-wrapper" style="width: 100%;">
-            <header id="top-bar">
-                <button id="menu-toggle"><i class="fas fa-bars"></i></button>
-                <h1 id="page-title">لوحة التحكم</h1>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span id="admin-name" style="font-size: 0.9rem;"></span>
-                    <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
-                </div>
-            </header>
-            <main id="main-content"></main>
+            
+            <div id="codeValueContainer">
+              <!-- سيتم تحديث الحقل بناءً على نوع الكود -->
+            </div>
+            
+            <div>
+              <label class="block mb-2">الحد الأقصى للاستخدام</label>
+              <input type="number" id="codeMaxUses" min="1" max="10000" value="100" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">تاريخ الانتهاء (اختياري)</label>
+              <input type="datetime-local" id="codeExpiry" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">وصف الكود</label>
+              <textarea id="codeDescription" placeholder="وصف الكود..." class="w-full p-2 rounded bg-gray-700 text-white"></textarea>
+            </div>
+            
+            <button id="generateCodeBtn" class="w-full bg-green-600 px-4 py-2 rounded hover:bg-green-500">إنشاء الكود</button>
+          </div>
         </div>
+
+        <!-- إدارة الأكواد الحالية -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+          <h2 class="text-xl mb-4 font-semibold">📋 الأكواد الحالية</h2>
+          
+          <div class="mb-4">
+            <input type="text" id="searchCodes" placeholder="بحث في الأكواد..." class="w-full p-2 rounded bg-gray-700 text-white">
+          </div>
+          
+          <div class="overflow-auto max-h-[500px]" id="codesList">
+            <p class="text-gray-400 text-center">جارٍ تحميل الأكواد...</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const firebaseConfig = {
-            apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
-            authDomain: "earnmoney124553.firebaseapp.com",
-            databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
-            projectId: "earnmoney124553",
-            storageBucket: "earnmoney124553.firebasestorage.app",
-            messagingSenderId: "325528918523",
-            appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
-            measurementId: "G-G1H96Q5XCJ"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    <!-- قسم إدارة المهام -->
+    <div id="section-tasks" class="section">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- إنشاء مهام جديدة -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+          <h2 class="text-xl mb-4 font-semibold">📋 إنشاء مهمة جديدة</h2>
+          
+          <div class="space-y-4">
+            <div>
+              <label class="block mb-2">نوع المهمة</label>
+              <select id="taskType" class="w-full p-2 rounded bg-gray-700 text-white">
+                <option value="channel">انضمام قناة</option>
+                <option value="bot">مهمة البوت</option>
+                <option value="custom">مهمة مخصصة</option>
+              </select>
+            </div>
+            
+            <div id="taskFormContainer">
+              <!-- سيتم تحديث النموذج بناءً على نوع المهمة -->
+            </div>
+            
+            <button id="createTaskBtn" class="w-full bg-green-600 px-4 py-2 rounded hover:bg-green-500">إنشاء المهمة</button>
+          </div>
+        </div>
+
+        <!-- إدارة المهام الحالية -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+          <h2 class="text-xl mb-4 font-semibold">📊 المهام الحالية</h2>
+          
+          <div class="mb-4 flex gap-2">
+            <select id="filterTaskType" class="flex-1 p-2 rounded bg-gray-700 text-white">
+              <option value="all">جميع الأنواع</option>
+              <option value="channel">انضمام قناة</option>
+              <option value="bot">مهمة البوت</option>
+              <option value="custom">مهمة مخصصة</option>
+            </select>
+            <input type="text" id="searchTasks" placeholder="بحث في المهام..." class="flex-1 p-2 rounded bg-gray-700 text-white">
+          </div>
+          
+          <div class="overflow-auto max-h-[500px]" id="tasksList">
+            <p class="text-gray-400 text-center">جارٍ تحميل المهام...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- قسم طلبات البوت -->
+    <div id="section-bot-requests" class="section">
+      <div class="bg-gray-800 p-4 rounded-lg">
+        <h2 class="text-xl mb-4 font-semibold">🤖 طلبات التحقق من البوت المعلقة</h2>
         
-        // Security Configuration
-        const SECURITY_CONFIG = {
-            sessionTimeout: 30 * 60 * 1000, // 30 minutes
-            maxLoginAttempts: 5,
-            lockoutTime: 15 * 60 * 1000, // 15 minutes
-            passwordMinLength: 8
-        };
+        <div class="mb-4">
+          <input type="text" id="searchBotRequests" placeholder="بحث في الطلبات..." class="w-full p-2 rounded bg-gray-700 text-white">
+        </div>
+        
+        <div class="overflow-auto max-h-[600px]" id="botRequestsList">
+          <p class="text-gray-400 text-center">جارٍ تحميل الطلبات...</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        // DOM Elements
-        const loginPage = document.getElementById('login-page');
-        const appContainer = document.getElementById('app-container');
-        const mainContent = document.getElementById('main-content');
-        const pageTitle = document.getElementById('page-title');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('overlay');
-        const loginButton = document.getElementById('login-button');
-        const loginError = document.getElementById('login-error');
-        const logoutButtons = document.querySelectorAll('#logout-btn, #sidebar-logout-btn');
-        const sessionTimer = document.getElementById('session-timer');
-        const timerDisplay = document.getElementById('timer');
-        const adminNameDisplay = document.getElementById('admin-name');
+  <!-- نافذة تعديل الكود -->
+  <div id="editCodeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
+      <h3 class="text-xl mb-4 font-semibold">✏️ تعديل الكود</h3>
+      <div id="editCodeForm"></div>
+      <div class="flex gap-2 mt-4">
+        <button id="saveCodeBtn" class="flex-1 bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">حفظ</button>
+        <button id="cancelEditCodeBtn" class="flex-1 bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إلغاء</button>
+      </div>
+    </div>
+  </div>
 
-        // Security State
-        let sessionTimerInterval;
-        let lastActivityTime;
-        let loginAttempts = 0;
-        let lockedUntil = 0;
+  <!-- نافذة تعديل المهمة -->
+  <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-gray-800 p-6 rounded-lg w-full max-w-2xl max-h-[90vh] overflow-auto">
+      <h3 class="text-xl mb-4 font-semibold">✏️ تعديل المهمة</h3>
+      <div id="editTaskForm"></div>
+      <div class="flex gap-2 mt-4">
+        <button id="saveTaskBtn" class="flex-1 bg-blue-600 px-4 py-2 rounded hover:bg-blue-500">حفظ</button>
+        <button id="cancelEditTaskBtn" class="flex-1 bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إلغاء</button>
+      </div>
+    </div>
+  </div>
 
-        // Password Hashing Function
-        const hashPassword = (password) => {
-            return CryptoJS.SHA256(password + 'TON_REWARDS_SALT_2024').toString();
-        };
+  <!-- نافذة عرض صورة البوت -->
+  <div id="imageModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center hidden z-50">
+    <div class="bg-gray-800 p-4 rounded-lg max-w-3xl max-h-[90vh] overflow-auto">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold">🖼️ صورة التحقق</h3>
+        <button id="closeImageModal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+      </div>
+      <img id="modalImage" src="" alt="صورة التحقق" class="max-w-full max-h-[70vh] rounded">
+      <div class="mt-4 text-center">
+        <button id="closeImageBtn" class="bg-gray-600 px-4 py-2 rounded hover:bg-gray-500">إغلاق</button>
+      </div>
+    </div>
+  </div>
 
-        // Initialize Default Admin
-        const initializeDefaultAdmin = async () => {
-            const adminSnap = await db.ref('admin').once('value');
-            if (!adminSnap.exists()) {
-                const defaultPassword = hashPassword('Admin@12345');
-                await db.ref('admin').set({
-                    username: 'admin',
-                    password: defaultPassword,
-                    displayName: 'مسؤول النظام',
-                    createdAt: firebase.database.ServerValue.TIMESTAMP,
-                    lastLogin: null,
-                    isActive: true
-                });
-                console.log("تم إنشاء المسؤول الافتراضي: admin / Admin@12345");
-            }
-        };
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 left-4 bg-green-600 text-white p-4 rounded-lg shadow-lg hidden transition-opacity duration-300">
+    <span id="toastMessage"></span>
+  </div>
 
-        // Check if system is locked
-        const isSystemLocked = () => {
-            return Date.now() < lockedUntil;
-        };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+    import { getDatabase, ref, onValue, set, remove, update, push } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
 
-        // Update Activity Time
-        const updateActivityTime = () => {
-            lastActivityTime = Date.now();
-            if (sessionTimer.style.display !== 'none') {
-                sessionTimer.style.display = 'block';
-            }
-        };
+    const firebaseConfig = {
+      apiKey: "AIzaSyAcwYjMSpnOC1_MSFpBzctqiKRmhwLOtY4",
+      authDomain: "dogs-boss.firebaseapp.com",
+      databaseURL: "https://dogs-boss-default-rtdb.firebaseio.com",
+      projectId: "dogs-boss",
+      storageBucket: "dogs-boss.firebasestorage.app",
+      messagingSenderId: "778183941825",
+      appId: "1:778183941825:web:45a96727e1aad043bffe40",
+      measurementId: "G-EY15XEGP53"
+    };
 
-        // Start Session Timer
-        const startSessionTimer = () => {
-            clearInterval(sessionTimerInterval);
-            lastActivityTime = Date.now();
-            
-            sessionTimerInterval = setInterval(() => {
-                const timeLeft = SECURITY_CONFIG.sessionTimeout - (Date.now() - lastActivityTime);
-                if (timeLeft <= 0) {
-                    logout();
-                    return;
-                }
-                
-                const minutes = Math.floor(timeLeft / 60000);
-                const seconds = Math.floor((timeLeft % 60000) / 1000);
-                timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                // Warning when 5 minutes left
-                if (timeLeft <= 5 * 60 * 1000) {
-                    sessionTimer.style.background = 'var(--danger)';
-                }
-            }, 1000);
-        };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dbRef = ref(db, '/');
 
-        // Activity Listeners
-        const setupActivityListeners = () => {
-            ['click', 'mousemove', 'keypress', 'scroll'].forEach(event => {
-                document.addEventListener(event, updateActivityTime, { passive: true });
-            });
-        };
+    // عناصر الواجهة
+    const sections = document.querySelectorAll('.section');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const dataContainer = document.getElementById('dataContainer');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
 
-        // Login Function
-        const login = async (username, password, rememberMe = false) => {
-            // Check if system is locked
-            if (isSystemLocked()) {
-                const remainingTime = Math.ceil((lockedUntil - Date.now()) / 60000);
-                loginError.textContent = `النظام مغلق مؤقتًا. يرجى المحاولة بعد ${remainingTime} دقيقة`;
-                loginError.style.display = 'block';
-                return false;
-            }
+    // متغيرات التطبيق
+    let currentData = {};
+    let currentEditingCode = null;
+    let currentEditingTask = null;
 
-            try {
-                const adminSnap = await db.ref('admin').once('value');
-                const adminData = adminSnap.val();
-                
-                if (adminData && adminData.username === username && adminData.password === hashPassword(password)) {
-                    // Successful login
-                    loginAttempts = 0;
-                    
-                    // Update last login
-                    await db.ref('admin').update({
-                        lastLogin: firebase.database.ServerValue.TIMESTAMP
-                    });
-                    
-                    // Store session
-                    const sessionData = {
-                        loggedIn: true,
-                        username: username,
-                        displayName: adminData.displayName || 'مسؤول النظام',
-                        loginTime: Date.now(),
-                        rememberMe: rememberMe
-                    };
-                    
-                    if (rememberMe) {
-                        localStorage.setItem('adminSession', JSON.stringify(sessionData));
-                    } else {
-                        sessionStorage.setItem('adminSession', JSON.stringify(sessionData));
-                    }
-                    
-                    // Log login activity
-                    await db.ref('security/logs').push({
-                        type: 'login_success',
-                        username: username,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        ip: 'web_admin'
-                    });
-                    
-                    // Show admin panel
-                    adminNameDisplay.textContent = adminData.displayName || 'مسؤول النظام';
-                    loginPage.style.display = 'none';
-                    appContainer.style.display = 'flex';
-                    sessionTimer.style.display = 'block';
-                    
-                    startSessionTimer();
-                    setupActivityListeners();
-                    initAdminPanel();
-                    
-                    return true;
-                } else {
-                    // Failed login
-                    loginAttempts++;
-                    
-                    // Log failed attempt
-                    await db.ref('security/logs').push({
-                        type: 'login_failed',
-                        username: username,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP,
-                        ip: 'web_admin'
-                    });
-                    
-                    if (loginAttempts >= SECURITY_CONFIG.maxLoginAttempts) {
-                        lockedUntil = Date.now() + SECURITY_CONFIG.lockoutTime;
-                        loginError.textContent = `تم تجاوز عدد المحاولات المسموح بها. النظام مغلق لمدة ${SECURITY_CONFIG.lockoutTime / 60000} دقيقة`;
-                    } else {
-                        loginError.textContent = `اسم المستخدم أو كلمة المرور غير صحيحة. المحاولات المتبقية: ${SECURITY_CONFIG.maxLoginAttempts - loginAttempts}`;
-                    }
-                    
-                    loginError.style.display = 'block';
-                    return false;
-                }
-            } catch (error) {
-                console.error("خطأ في تسجيل الدخول:", error);
-                loginError.textContent = 'خطأ في النظام. يرجى المحاولة لاحقًا';
-                loginError.style.display = 'block';
-                return false;
-            }
-        };
-
-        // Logout Function
-        const logout = async () => {
-            // Log logout activity
-            const session = JSON.parse(localStorage.getItem('adminSession') || sessionStorage.getItem('adminSession') || '{}');
-            if (session.username) {
-                await db.ref('security/logs').push({
-                    type: 'logout',
-                    username: session.username,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP,
-                    ip: 'web_admin'
-                });
-            }
-            
-            // Clear timers and listeners
-            clearInterval(sessionTimerInterval);
-            ['click', 'mousemove', 'keypress', 'scroll'].forEach(event => {
-                document.removeEventListener(event, updateActivityTime);
-            });
-            
-            // Clear storage
-            localStorage.removeItem('adminSession');
-            sessionStorage.removeItem('adminSession');
-            
-            // Reset UI
-            appContainer.style.display = 'none';
-            loginPage.style.display = 'flex';
-            sessionTimer.style.display = 'none';
-            
-            // Clear form fields
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-            loginError.style.display = 'none';
-        };
-
-        // Check Login Status
-        const checkLoginStatus = () => {
-            const session = JSON.parse(localStorage.getItem('adminSession') || sessionStorage.getItem('adminSession') || '{}');
-            
-            if (session.loggedIn && session.loginTime) {
-                const sessionAge = Date.now() - session.loginTime;
-                if (sessionAge < SECURITY_CONFIG.sessionTimeout) {
-                    // Valid session
-                    adminNameDisplay.textContent = session.displayName;
-                    loginPage.style.display = 'none';
-                    appContainer.style.display = 'flex';
-                    sessionTimer.style.display = 'block';
-                    
-                    startSessionTimer();
-                    setupActivityListeners();
-                    initAdminPanel();
-                } else {
-                    // Session expired
-                    logout();
-                }
-            } else {
-                loginPage.style.display = 'flex';
-                appContainer.style.display = 'none';
-            }
-        };
-
-        // Event Listeners
-        loginButton.addEventListener('click', async () => {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const rememberMe = document.getElementById('remember-me').checked;
-            
-            if (!username || !password) {
-                loginError.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
-                loginError.style.display = 'block';
-                return;
-            }
-            
-            await login(username, password, rememberMe);
-        });
-
-        document.getElementById('password').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                loginButton.click();
-            }
-        });
-
-        logoutButtons.forEach(button => {
-            button.addEventListener('click', logout);
-        });
-
-        // Initialize
-        initializeDefaultAdmin();
-        checkLoginStatus();
-
-        // Dashboard
-        const renderDashboard = async () => {
-            const usersSnap = await db.ref('users').once('value');
-            const withdrawalsSnap = await db.ref('withdrawals/pending').once('value');
-            const contestSnap = await db.ref('contest/participants').once('value');
-            const codesSnap = await db.ref('codes').once('value');
-            
-            let bannedUsersCount = 0;
-            let totalBalance = 0;
-            let totalReferrals = 0;
-            
-            usersSnap.forEach(child => {
-                const user = child.val();
-                if (user.banned) bannedUsersCount++;
-                totalBalance += user.balance || 0;
-                totalReferrals += user.referrals || 0;
-            });
-            
-            mainContent.innerHTML = `<div id="dashboard" class="page active">
-                <div class="security-features">
-                    <h4><i class="fas fa-shield-alt"></i> نظرة عامة على الأمان</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9rem;">
-                        <div>المحاولات الفاشلة: <strong>${loginAttempts}</strong></div>
-                        <div>المستخدمين المحظورين: <strong>${bannedUsersCount}</strong></div>
-                    </div>
-                </div>
-                
-                <h3>لوحة التحكم الرئيسية</h3>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">إجمالي المستخدمين</div>
-                        <div class="stat-value">${usersSnap.numChildren()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">المستخدمين المحظورين</div>
-                        <div class="stat-value">${bannedUsersCount}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">طلبات السحب المعلقة</div>
-                        <div class="stat-value">${withdrawalsSnap.numChildren()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">إجمالي الرصيد</div>
-                        <div class="stat-value">${totalBalance.toFixed(4)}</div>
-                        <div class="stat-label">TON</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">إجمالي الإحالات</div>
-                        <div class="stat-value">${totalReferrals}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">مشاركين في المسابقة</div>
-                        <div class="stat-value">${contestSnap.numChildren()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">الأكواد النشطة</div>
-                        <div class="stat-value">${codesSnap.numChildren()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">إجمالي الأرباح</div>
-                        <div class="stat-value">${(totalBalance + totalReferrals * 0.001).toFixed(4)}</div>
-                        <div class="stat-label">TON</div>
-                    </div>
-                </div>
-            </div>`;
-        };
-
-        // Security Page
-        const renderSecurity = async () => {
-            const logsSnap = await db.ref('security/logs').orderByChild('timestamp').limitToLast(50).once('value');
-            let logs = [];
-            logsSnap.forEach(child => {
-                logs.push({ key: child.key, ...child.val() });
-            });
-            logs.reverse();
-            
-            let logsContent = '';
-            logs.forEach(log => {
-                const typeBadge = log.type === 'login_success' ? 'success' : 
-                                 log.type === 'login_failed' ? 'danger' : 'info';
-                const typeText = log.type === 'login_success' ? 'نجح' : 
-                                log.type === 'login_failed' ? 'فشل' : 'تسجيل خروج';
-                
-                logsContent += `<tr>
-                    <td>${new Date(log.timestamp).toLocaleString('ar-EG')}</td>
-                    <td>${log.username}</td>
-                    <td><span class="action-btn btn-${typeBadge}" style="padding: 3px 8px;">${typeText}</span></td>
-                    <td>${log.ip}</td>
-                </tr>`;
-            });
-            
-            mainContent.innerHTML = `<div id="security" class="page active">
-                <h3><i class="fas fa-shield-alt"></i> الأمان والمراقبة</h3>
-                
-                <div class="card">
-                    <h4>سجل الأمان</h4>
-                    <div style="max-height: 400px; overflow-y: auto;">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>التاريخ والوقت</th>
-                                    <th>المستخدم</th>
-                                    <th>النوع</th>
-                                    <th>عنوان IP</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${logsContent || '<tr><td colspan="4">لا توجد سجلات</td></tr>'}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h4>إعدادات الأمان</h4>
-                    <div class="settings-grid">
-                        <div class="setting-card">
-                            <h5>جلسة العمل</h5>
-                            <div class="form-group">
-                                <label>مدة الجلسة (دقائق)</label>
-                                <input type="number" id="session-timeout" value="${SECURITY_CONFIG.sessionTimeout / 60000}" min="5" max="240">
-                            </div>
-                            <div class="form-group">
-                                <label>أقصى محاولات تسجيل دخول</label>
-                                <input type="number" id="max-login-attempts" value="${SECURITY_CONFIG.maxLoginAttempts}" min="1" max="10">
-                            </div>
-                        </div>
-                        <div class="setting-card">
-                            <h5>إجراءات الأمان</h5>
-                            <button class="action-btn btn-warning" onclick="window.adminActions.clearSecurityLogs()">مسح سجلات الأمان</button>
-                            <button class="action-btn btn-danger" onclick="window.adminActions.resetLoginAttempts()">إعادة تعيين المحاولات</button>
-                            <button class="action-btn btn-info" onclick="window.adminActions.exportSecurityLogs()">تصدير السجلات</button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        };
-
-        // باقي دوالت العرض (نفس الكود السابق)
-        const renderUsers = async () => {
-            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل المستخدمين...</h3></div>';
-            const snap = await db.ref('users').orderByChild('firstName').once('value'); 
-            let tableContent = '';
-            
-            snap.forEach(child => {
-                const user = child.val();
-                const isBanned = user.banned || false;
-                const statusClass = isBanned ? 'user-status-banned' : '';
-                const banButtonText = isBanned ? 'فك الحظر' : 'حظر المستخدم';
-                const banButtonClass = isBanned ? 'btn-warning' : 'btn-danger';
-                
-                tableContent += `<tr class="${statusClass}">
-                    <td data-label="المستخدم">${user.firstName || ''} ${user.lastName || ''}<br><small>${user.id}</small>${isBanned ? ' <span style="color:red">🚫 محظور</span>' : ''}</td>
-                    <td data-label="الرصيد">${(user.balance || 0).toFixed(4)} TON</td>
-                    <td data-label="الإحالات">${user.referrals || 0}</td>
-                    <td data-label="الإجراءات">
-                        <div class="action-buttons">
-                            <button class="action-btn btn-primary" onclick="window.adminActions.addBalance('${user.id}', '${user.firstName}')">إضافة رصيد</button>
-                            <button class="action-btn btn-danger" onclick="window.adminActions.removeBalance('${user.id}', '${user.firstName}')">خصم رصيد</button>
-                            <button class="action-btn ${banButtonClass}" onclick="window.adminActions.toggleUserBan('${user.id}', '${user.firstName}', ${isBanned})">${banButtonText}</button>
-                            <button class="action-btn btn-info" onclick="window.adminActions.viewUserDetails('${user.id}')">تفاصيل</button>
-                        </div>
-                    </td>
-                </tr>`;
-            });
-            
-            mainContent.innerHTML = `<div id="users" class="page active">
-                <h3>إدارة المستخدمين</h3>
-                <div class="card">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>المستخدم</th>
-                                <th>الرصيد</th>
-                                <th>الإحالات</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody>${tableContent}</tbody>
-                    </table>
-                </div>
-            </div>`;
-        };
-
-        // ... باقي دوالت العرض (نفس الكود السابق)
-
-        // Admin Actions مع إضافة دوال الأمان
-        window.adminActions = {
-            // دوال الأمان
-            clearSecurityLogs: async () => {
-                if (confirm('هل أنت متأكد من رغبتك في مسح جميع سجلات الأمان؟')) {
-                    try {
-                        await db.ref('security/logs').remove();
-                        alert('تم مسح سجلات الأمان بنجاح!');
-                        renderSecurity();
-                    } catch (e) {
-                        alert('خطأ في مسح السجلات: ' + e.message);
-                    }
-                }
-            },
-            
-            resetLoginAttempts: () => {
-                loginAttempts = 0;
-                lockedUntil = 0;
-                alert('تم إعادة تعيين محاولات تسجيل الدخول!');
-            },
-            
-            exportSecurityLogs: async () => {
-                const logsSnap = await db.ref('security/logs').once('value');
-                let logs = [];
-                logsSnap.forEach(child => {
-                    logs.push(child.val());
-                });
-                
-                const csvContent = "data:text/csv;charset=utf-8," 
-                    + "التاريخ,المستخدم,النوع,IP\n"
-                    + logs.map(log => 
-                        `"${new Date(log.timestamp).toLocaleString('ar-EG')}","${log.username}","${log.type}","${log.ip}"`
-                    ).join("\n");
-                
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "security_logs.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            },
-            
-            // ... باقي الدوال (نفس الكود السابق)
-            addBalance: async (userId, userName) => {
-                const amount = prompt(`أدخل المبلغ للإضافة إلى ${userName}:`);
-                if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0) { 
-                    try { 
-                        await db.ref(`users/${userId}/balance`).set(firebase.database.ServerValue.increment(parseFloat(amount))); 
-                        alert('تم إضافة الرصيد بنجاح!'); 
-                        renderUsers(); 
-                    } catch (e) { 
-                        alert('خطأ في إضافة الرصيد.'); 
-                    } 
-                } else {
-                    alert('يرجى إدخال مبلغ صحيح موجب.');
-                }
-            },
-            
-            removeBalance: async (userId, userName) => {
-                const amount = prompt(`أدخل المبلغ للخصم من ${userName}:`);
-                if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0) { 
-                    try { 
-                        await db.ref(`users/${userId}/balance`).set(firebase.database.ServerValue.increment(-parseFloat(amount))); 
-                        alert('تم خصم الرصيد بنجاح!'); 
-                        renderUsers(); 
-                    } catch (e) { 
-                        alert('خطأ في خصم الرصيد.'); 
-                    } 
-                } else {
-                    alert('يرجى إدخال مبلغ صحيح موجب.');
-                }
-            },
-            
-            toggleUserBan: async (userId, userName, isCurrentlyBanned) => {
-                const action = isCurrentlyBanned ? 'unban' : 'ban';
-                const confirmMessage = isCurrentlyBanned ? 
-                    `هل أنت متأكد من رغبتك في فك حظر ${userName}?` : 
-                    `هل أنت متأكد من رغبتك في حظر ${userName}? لن يتمكن من استخدام التطبيق.`;
-                
-                if (confirm(confirmMessage)) {
-                    try {
-                        await db.ref(`users/${userId}/banned`).set(!isCurrentlyBanned);
-                        alert(`تم ${isCurrentlyBanned ? 'فك حظر' : 'حظر'} المستخدم بنجاح!`);
-                        renderUsers();
-                    } catch (e) {
-                        alert('خطأ في تحديث حالة المستخدم.');
-                    }
-                }
-            },
-            
-            viewUserDetails: (userId) => {
-                renderUserDetails(userId);
-            },
-            
-            searchUser: async () => {
-                const userId = document.getElementById('user-search-input').value.trim();
-                if (!userId) {
-                    alert('يرجى إدخال معرف المستخدم');
-                    return;
-                }
-                
-                const userSnap = await db.ref(`users/${userId}`).once('value');
-                if (!userSnap.exists()) {
-                    document.getElementById('user-search-results').innerHTML = '<div class="card"><p>المستخدم غير موجود</p></div>';
-                    return;
-                }
-                
-                renderUserDetails(userId);
-            }
-        };
-
-        // Initialize Admin Panel
-        const initAdminPanel = () => {
-            renderDashboard();
-            document.querySelectorAll('.nav-menu li').forEach(item => {
-                item.addEventListener('click', function() {
-                    document.querySelectorAll('.nav-menu li').forEach(i => i.classList.remove('active'));
-                    this.classList.add('active');
-                    const page = this.getAttribute('data-page');
-                    pageTitle.textContent = this.textContent.trim();
-                    if (page === 'dashboard') renderDashboard();
-                    else if (page === 'users') renderUsers();
-                    else if (page === 'user-search') renderUserSearch();
-                    else if (page === 'withdrawals') renderWithdrawals();
-                    else if (page === 'history') renderWithdrawalHistory();
-                    else if (page === 'tasks') renderTasks();
-                    else if (page === 'codes') renderCodes();
-                    else if (page === 'contest') renderContest();
-                    else if (page === 'settings') renderSettings();
-                    else if (page === 'security') renderSecurity();
-                    else if (page === 'broadcast') renderBroadcast();
-                    if (window.innerWidth < 768) { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
-                });
-            });
-            
-            document.getElementById('menu-toggle').addEventListener('click', () => {
-                sidebar.classList.add('open'); overlay.classList.add('show');
-            });
-            
-            document.querySelector('#sidebar .close-btn').addEventListener('click', () => {
-                sidebar.classList.remove('open'); overlay.classList.remove('show');
-            });
-            
-            overlay.addEventListener('click', () => {
-                sidebar.classList.remove('open'); overlay.classList.remove('show');
-            });
-        };
+    // تهيئة التطبيق
+    document.addEventListener('DOMContentLoaded', () => {
+      initializeTabs();
+      initializeDataSection();
+      initializeCodesSection();
+      initializeTasksSection();
+      initializeBotRequestsSection();
+      
+      // تحميل البيانات الأولية
+      loadData();
     });
-    </script>
+
+    // وظيفة لعرض الإشعارات
+    function showToast(message, isError = false) {
+      toastMessage.textContent = message;
+      toast.className = `fixed bottom-4 left-4 text-white p-4 rounded-lg shadow-lg transition-opacity duration-300 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+      toast.classList.remove('hidden');
+      
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // إدارة التبويبات
+    function initializeTabs() {
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetSection = btn.id.replace('tab-', 'section-');
+          
+          // إخفاء جميع الأقسام وإلغاء تنشيط الأزرار
+          sections.forEach(section => section.classList.remove('active'));
+          tabBtns.forEach(tab => tab.classList.remove('active', 'bg-blue-600'));
+          
+          // إظهار القسم المحدد وتنشيط الزر
+          document.getElementById(targetSection).classList.add('active');
+          btn.classList.add('active', 'bg-blue-600');
+          
+          // تحميل البيانات الخاصة بالقسم إذا لزم الأمر
+          if (targetSection === 'section-codes') {
+            loadCodes();
+          } else if (targetSection === 'section-tasks') {
+            loadTasks();
+          } else if (targetSection === 'section-bot-requests') {
+            loadBotRequests();
+          }
+        });
+      });
+    }
+
+    // قسم البيانات العامة
+    function initializeDataSection() {
+      // إضافة بيانات جديدة
+      document.getElementById('addBtn').addEventListener('click', () => {
+        const key = document.getElementById('newKey').value.trim();
+        const val = document.getElementById('newValue').value.trim();
+        if (!key || !val) {
+          showToast("⚠️ أدخل المفتاح والقيمة أولاً!", true);
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(val);
+          set(ref(db, key), parsed);
+          showToast("✅ تمت الإضافة بنجاح!");
+          document.getElementById('newKey').value = "";
+          document.getElementById('newValue').value = "";
+        } catch {
+          set(ref(db, key), val);
+          showToast("✅ تمت الإضافة كنص!");
+          document.getElementById('newKey').value = "";
+          document.getElementById('newValue').value = "";
+        }
+      });
+    }
+
+    // قسم إدارة الأكواد
+    function initializeCodesSection() {
+      // تحديث واجهة إنشاء الكود بناءً على النوع
+      document.getElementById('codeType').addEventListener('change', updateCodeValueField);
+      
+      // تهيئة حقل القيمة
+      updateCodeValueField();
+      
+      // إنشاء كود جديد
+      document.getElementById('generateCodeBtn').addEventListener('click', generateNewCode);
+      
+      // البحث في الأكواد
+      document.getElementById('searchCodes').addEventListener('input', filterCodes);
+    }
+
+    function updateCodeValueField() {
+      const codeType = document.getElementById('codeType').value;
+      const container = document.getElementById('codeValueContainer');
+      
+      let html = '';
+      
+      switch(codeType) {
+        case 'contest':
+          html = `
+            <label class="block mb-2">عدد النقاط (10-1000)</label>
+            <input type="number" id="codeValue" min="10" max="1000" value="50" class="w-full p-2 rounded bg-gray-700 text-white">
+          `;
+          break;
+        case 'ton':
+          html = `
+            <label class="block mb-2">المبلغ (0.001 - 1 TON)</label>
+            <input type="number" id="codeValue" min="0.001" max="1" step="0.001" value="0.01" class="w-full p-2 rounded bg-gray-700 text-white">
+          `;
+          break;
+        case 'rr':
+          html = `
+            <label class="block mb-2">المبلغ (1000 - 100000 RR)</label>
+            <input type="number" id="codeValue" min="1000" max="100000" value="5000" class="w-full p-2 rounded bg-gray-700 text-white">
+          `;
+          break;
+      }
+      
+      container.innerHTML = html;
+    }
+
+    function generateNewCode() {
+      const codeType = document.getElementById('codeType').value;
+      const codeValue = parseFloat(document.getElementById('codeValue').value);
+      const maxUses = parseInt(document.getElementById('codeMaxUses').value);
+      const expiry = document.getElementById('codeExpiry').value;
+      const description = document.getElementById('codeDescription').value.trim();
+      
+      // التحقق من صحة البيانات
+      if (!codeValue || codeValue <= 0) {
+        showToast("⚠️ أدخل قيمة صحيحة للكود!", true);
+        return;
+      }
+      
+      if (!maxUses || maxUses < 1) {
+        showToast("⚠️ أدخل حد استخدام صحيح!", true);
+        return;
+      }
+      
+      // إنشاء كود عشوائي
+      const code = generateRandomCode(8);
+      
+      // تحضير بيانات الكود
+      const codeData = {
+        type: codeType,
+        value: codeValue,
+        maxUses: maxUses,
+        usedCount: 0,
+        description: description || `كود ${getCodeTypeName(codeType)}`,
+        createdAt: new Date().toISOString(),
+        isActive: true
+      };
+      
+      if (expiry) {
+        codeData.expires = new Date(expiry).getTime();
+      }
+      
+      // حفظ الكود في Firebase
+      const codesRef = ref(db, `codes/${code}`);
+      set(codesRef, codeData)
+        .then(() => {
+          showToast(`✅ تم إنشاء الكود ${code} بنجاح!`);
+          // إعادة تعيين النموذج
+          document.getElementById('codeDescription').value = '';
+          document.getElementById('codeExpiry').value = '';
+          // تحديث قائمة الأكواد
+          loadCodes();
+        })
+        .catch(error => {
+          console.error('Error creating code:', error);
+          showToast("❌ فشل في إنشاء الكود!", true);
+        });
+    }
+
+    function generateRandomCode(length) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    function getCodeTypeName(type) {
+      const names = {
+        'contest': 'نقاط المسابقة',
+        'ton': 'TON',
+        'rr': 'RR'
+      };
+      return names[type] || type;
+    }
+
+    function loadCodes() {
+      const codesRef = ref(db, 'codes');
+      onValue(codesRef, (snapshot) => {
+        const codes = snapshot.val();
+        const codesList = document.getElementById('codesList');
+        
+        if (!codes) {
+          codesList.innerHTML = '<p class="text-gray-400 text-center">لا توجد أكواد حالياً</p>';
+          return;
+        }
+        
+        let html = '';
+        Object.entries(codes).forEach(([code, data]) => {
+          const usagePercent = (data.usedCount / data.maxUses) * 100;
+          const isExpired = data.expires && new Date().getTime() > data.expires;
+          const isDisabled = !data.isActive || isExpired;
+          
+          html += `
+            <div class="bg-gray-700 p-3 rounded mb-3 ${isDisabled ? 'opacity-60' : ''}">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h3 class="font-bold text-lg">${code}</h3>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="code-type-badge code-type-${data.type}">${getCodeTypeName(data.type)}</span>
+                    <span class="text-sm ${isDisabled ? 'text-red-400' : 'text-green-400'}">
+                      ${isDisabled ? (isExpired ? 'منتهي' : 'معطل') : 'نشط'}
+                    </span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold">${data.value} ${getCodeValueUnit(data.type)}</div>
+                  <div class="text-sm text-gray-400">${data.usedCount}/${data.maxUses}</div>
+                </div>
+              </div>
+              
+              <div class="mb-2">
+                <div class="w-full bg-gray-600 rounded-full h-2">
+                  <div class="bg-blue-600 h-2 rounded-full" style="width: ${usagePercent}%"></div>
+                </div>
+              </div>
+              
+              <p class="text-sm text-gray-300 mb-2">${data.description}</p>
+              
+              <div class="flex justify-between text-xs text-gray-400">
+                <span>أنشئ في: ${new Date(data.createdAt).toLocaleDateString('ar-EG')}</span>
+                ${data.expires ? `<span>ينتهي في: ${new Date(data.expires).toLocaleDateString('ar-EG')}</span>` : ''}
+              </div>
+              
+              <div class="flex gap-2 mt-3">
+                <button onclick="editCode('${code}')" class="flex-1 bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-500">تعديل</button>
+                <button onclick="toggleCode('${code}', ${!isDisabled})" class="flex-1 ${isDisabled ? 'bg-green-600 hover:bg-green-500' : 'bg-yellow-600 hover:bg-yellow-500'} px-3 py-1 rounded text-sm">
+                  ${isDisabled ? 'تفعيل' : 'تعطيل'}
+                </button>
+                <button onclick="deleteCode('${code}')" class="flex-1 bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">حذف</button>
+              </div>
+            </div>
+          `;
+        });
+        
+        codesList.innerHTML = html;
+      });
+    }
+
+    function getCodeValueUnit(type) {
+      const units = {
+        'contest': 'نقطة',
+        'ton': 'TON',
+        'rr': 'RR'
+      };
+      return units[type] || '';
+    }
+
+    function filterCodes() {
+      const searchTerm = document.getElementById('searchCodes').value.toLowerCase();
+      const codeItems = document.querySelectorAll('#codesList > div');
+      
+      codeItems.forEach(item => {
+        const codeText = item.textContent.toLowerCase();
+        if (codeText.includes(searchTerm)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // وظائف إدارة الأكواد (سيتم استدعاؤها من الأزرار)
+    window.editCode = function(code) {
+      const codesRef = ref(db, `codes/${code}`);
+      onValue(codesRef, (snapshot) => {
+        const codeData = snapshot.val();
+        if (!codeData) return;
+        
+        currentEditingCode = code;
+        
+        let formHtml = `
+          <div class="space-y-4">
+            <div>
+              <label class="block mb-2">الكود</label>
+              <input type="text" value="${code}" class="w-full p-2 rounded bg-gray-700 text-white" readonly>
+            </div>
+            
+            <div>
+              <label class="block mb-2">نوع الكود</label>
+              <select id="editCodeType" class="w-full p-2 rounded bg-gray-700 text-white">
+                <option value="contest" ${codeData.type === 'contest' ? 'selected' : ''}>نقاط المسابقة</option>
+                <option value="ton" ${codeData.type === 'ton' ? 'selected' : ''}>TON</option>
+                <option value="rr" ${codeData.type === 'rr' ? 'selected' : ''}>RR</option>
+              </select>
+            </div>
+            
+            <div>
+              <label class="block mb-2">القيمة</label>
+              <input type="number" id="editCodeValue" value="${codeData.value}" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">الحد الأقصى للاستخدام</label>
+              <input type="number" id="editCodeMaxUses" value="${codeData.maxUses}" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">عدد مرات الاستخدام الحالي</label>
+              <input type="number" id="editCodeUsedCount" value="${codeData.usedCount}" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">وصف الكود</label>
+              <textarea id="editCodeDescription" class="w-full p-2 rounded bg-gray-700 text-white">${codeData.description || ''}</textarea>
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="editCodeIsActive" ${codeData.isActive ? 'checked' : ''} class="mr-2">
+              <label for="editCodeIsActive">الكود نشط</label>
+            </div>
+          </div>
+        `;
+        
+        document.getElementById('editCodeForm').innerHTML = formHtml;
+        document.getElementById('editCodeModal').classList.remove('hidden');
+      }, { onlyOnce: true });
+    };
+
+    window.toggleCode = function(code, newState) {
+      const codeRef = ref(db, `codes/${code}/isActive`);
+      set(codeRef, newState)
+        .then(() => {
+          showToast(newState ? "✅ تم تفعيل الكود" : "✅ تم تعطيل الكود");
+          loadCodes();
+        })
+        .catch(error => {
+          console.error('Error toggling code:', error);
+          showToast("❌ فشل في تعديل حالة الكود!", true);
+        });
+    };
+
+    window.deleteCode = function(code) {
+      if (confirm(`هل أنت متأكد من حذف الكود ${code}؟`)) {
+        const codeRef = ref(db, `codes/${code}`);
+        remove(codeRef)
+          .then(() => {
+            showToast("✅ تم حذف الكود بنجاح");
+            loadCodes();
+          })
+          .catch(error => {
+            console.error('Error deleting code:', error);
+            showToast("❌ فشل في حذف الكود!", true);
+          });
+      }
+    };
+
+    // حفظ التعديلات على الكود
+    document.getElementById('saveCodeBtn').addEventListener('click', () => {
+      if (!currentEditingCode) return;
+      
+      const codeType = document.getElementById('editCodeType').value;
+      const codeValue = parseFloat(document.getElementById('editCodeValue').value);
+      const maxUses = parseInt(document.getElementById('editCodeMaxUses').value);
+      const usedCount = parseInt(document.getElementById('editCodeUsedCount').value);
+      const description = document.getElementById('editCodeDescription').value.trim();
+      const isActive = document.getElementById('editCodeIsActive').checked;
+      
+      const updates = {
+        type: codeType,
+        value: codeValue,
+        maxUses: maxUses,
+        usedCount: usedCount,
+        description: description,
+        isActive: isActive
+      };
+      
+      const codeRef = ref(db, `codes/${currentEditingCode}`);
+      update(codeRef, updates)
+        .then(() => {
+          showToast("✅ تم تحديث الكود بنجاح");
+          document.getElementById('editCodeModal').classList.add('hidden');
+          loadCodes();
+        })
+        .catch(error => {
+          console.error('Error updating code:', error);
+          showToast("❌ فشل في تحديث الكود!", true);
+        });
+    });
+
+    document.getElementById('cancelEditCodeBtn').addEventListener('click', () => {
+      document.getElementById('editCodeModal').classList.add('hidden');
+      currentEditingCode = null;
+    });
+
+    // قسم إدارة المهام
+    function initializeTasksSection() {
+      // تحديث واجهة إنشاء المهمة بناءً على النوع
+      document.getElementById('taskType').addEventListener('change', updateTaskForm);
+      
+      // تهيئة نموذج المهمة
+      updateTaskForm();
+      
+      // إنشاء مهمة جديدة
+      document.getElementById('createTaskBtn').addEventListener('click', createNewTask);
+      
+      // البحث والتصفية في المهام
+      document.getElementById('filterTaskType').addEventListener('change', filterTasks);
+      document.getElementById('searchTasks').addEventListener('input', filterTasks);
+    }
+
+    function updateTaskForm() {
+      const taskType = document.getElementById('taskType').value;
+      const container = document.getElementById('taskFormContainer');
+      
+      let html = '';
+      
+      switch(taskType) {
+        case 'channel':
+          html = `
+            <div>
+              <label class="block mb-2">اسم المهمة</label>
+              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم المهمة">
+            </div>
+            
+            <div>
+              <label class="block mb-2">وصف المهمة</label>
+              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
+            </div>
+            
+            <div>
+              <label class="block mb-2">رابط القناة</label>
+              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://t.me/channel">
+            </div>
+            
+            <div>
+              <label class="block mb-2">أيقونة المهمة (رابط)</label>
+              <input type="url" id="taskIcon" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://example.com/icon.png">
+            </div>
+            
+            <div>
+              <label class="block mb-2">المكافأة (RR)</label>
+              <input type="number" id="taskReward" min="100" value="1000" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="taskIsActive" checked class="mr-2">
+              <label for="taskIsActive">المهمة نشطة</label>
+            </div>
+          `;
+          break;
+          
+        case 'bot':
+          html = `
+            <div>
+              <label class="block mb-2">اسم المهمة</label>
+              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم مهمة البوت">
+            </div>
+            
+            <div>
+              <label class="block mb-2">وصف المهمة</label>
+              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
+            </div>
+            
+            <div>
+              <label class="block mb-2">رابط البوت</label>
+              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://t.me/bot">
+            </div>
+            
+            <div>
+              <label class="block mb-2">المكافأة (RR)</label>
+              <input type="number" id="taskReward" min="1000" value="5000" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div>
+              <label class="block mb-2">متطلبات المهمة (قائمة خطوات)</label>
+              <textarea id="taskRequirements" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اكتب كل خطوة في سطر منفصل" rows="4"></textarea>
+            </div>
+            
+            <div>
+              <label class="block mb-2">ملاحظات مهمة للمستخدم</label>
+              <textarea id="taskNotes" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="ملاحظات إضافية للمستخدم"></textarea>
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="taskIsActive" checked class="mr-2">
+              <label for="taskIsActive">المهمة نشطة</label>
+            </div>
+          `;
+          break;
+          
+        case 'custom':
+          html = `
+            <div>
+              <label class="block mb-2">اسم المهمة</label>
+              <input type="text" id="taskName" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="اسم المهمة المخصصة">
+            </div>
+            
+            <div>
+              <label class="block mb-2">وصف المهمة</label>
+              <textarea id="taskDescription" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="وصف المهمة"></textarea>
+            </div>
+            
+            <div>
+              <label class="block mb-2">نوع المهمة المخصصة</label>
+              <input type="text" id="taskCustomType" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="مثال: مشاهدة فيديو، تحميل تطبيق...">
+            </div>
+            
+            <div>
+              <label class="block mb-2">رابط المهمة (اختياري)</label>
+              <input type="url" id="taskUrl" class="w-full p-2 rounded bg-gray-700 text-white" placeholder="https://example.com">
+            </div>
+            
+            <div>
+              <label class="block mb-2">المكافأة (RR)</label>
+              <input type="number" id="taskReward" min="100" value="1000" class="w-full p-2 rounded bg-gray-700 text-white">
+            </div>
+            
+            <div class="flex items-center">
+              <input type="checkbox" id="taskIsActive" checked class="mr-2">
+              <label for="taskIsActive">المهمة نشطة</label>
+            </div>
+          `;
+          break;
+      }
+      
+      container.innerHTML = html;
+    }
+
+    function createNewTask() {
+      const taskType = document.getElementById('taskType').value;
+      const taskName = document.getElementById('taskName').value.trim();
+      const taskDescription = document.getElementById('taskDescription').value.trim();
+      const taskReward = parseInt(document.getElementById('taskReward').value);
+      const isActive = document.getElementById('taskIsActive').checked;
+      
+      if (!taskName || !taskDescription) {
+        showToast("⚠️ أدخل اسم ووصف المهمة!", true);
+        return;
+      }
+      
+      if (!taskReward || taskReward < 100) {
+        showToast("⚠️ أدخل مكافأة صحيحة (100 RR كحد أدنى)!", true);
+        return;
+      }
+      
+      // تحضير بيانات المهمة الأساسية
+      const taskData = {
+        name: taskName,
+        description: taskDescription,
+        reward: taskReward,
+        type: taskType,
+        isActive: isActive,
+        createdAt: new Date().toISOString(),
+        completedCount: 0
+      };
+      
+      // إضافة الحقول الإضافية بناءً على نوع المهمة
+      switch(taskType) {
+        case 'channel':
+          const taskUrl = document.getElementById('taskUrl').value.trim();
+          const taskIcon = document.getElementById('taskIcon').value.trim();
+          
+          if (!taskUrl) {
+            showToast("⚠️ أدخل رابط القناة!", true);
+            return;
+          }
+          
+          taskData.url = taskUrl;
+          if (taskIcon) taskData.icon = taskIcon;
+          break;
+          
+        case 'bot':
+          const botUrl = document.getElementById('taskUrl').value.trim();
+          const taskRequirements = document.getElementById('taskRequirements').value.trim();
+          const taskNotes = document.getElementById('taskNotes').value.trim();
+          
+          if (!botUrl) {
+            showToast("⚠️ أدخل رابط البوت!", true);
+            return;
+          }
+          
+          taskData.url = botUrl;
+          if (taskRequirements) {
+            taskData.requirements = taskRequirements.split('\n').filter(step => step.trim());
+          }
+          if (taskNotes) taskData.notes = taskNotes;
+          break;
+          
+        case 'custom':
+          const customType = document.getElementById('taskCustomType').value.trim();
+          const customUrl = document.getElementById('taskUrl').value.trim();
+          
+          if (!customType) {
+            showToast("⚠️ أدخل نوع المهمة المخصصة!", true);
+            return;
+          }
+          
+          taskData.customType = customType;
+          if (customUrl) taskData.url = customUrl;
+          break;
+      }
+      
+      // إنشاء معرف فريد للمهمة
+      const taskId = 'task_' + Date.now();
+      
+      // حفظ المهمة في Firebase
+      const tasksRef = ref(db, `tasks/${taskId}`);
+      set(tasksRef, taskData)
+        .then(() => {
+          showToast("✅ تم إنشاء المهمة بنجاح!");
+          // إعادة تعيين النموذج
+          updateTaskForm();
+          // تحديث قائمة المهام
+          loadTasks();
+        })
+        .catch(error => {
+          console.error('Error creating task:', error);
+          showToast("❌ فشل في إنشاء المهمة!", true);
+        });
+    }
+
+    function loadTasks() {
+      const tasksRef = ref(db, 'tasks');
+      onValue(tasksRef, (snapshot) => {
+        const tasks = snapshot.val();
+        const tasksList = document.getElementById('tasksList');
+        
+        if (!tasks) {
+          tasksList.innerHTML = '<p class="text-gray-400 text-center">لا توجد مهام حالياً</p>';
+          return;
+        }
+        
+        let html = '';
+        Object.entries(tasks).forEach(([taskId, task]) => {
+          const taskTypeName = getTaskTypeName(task.type);
+          const rewardText = `${task.reward.toLocaleString()} RR`;
+          
+          html += `
+            <div class="bg-gray-700 p-3 rounded mb-3 ${!task.isActive ? 'opacity-60' : ''}">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h3 class="font-bold text-lg">${task.name}</h3>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="task-type-badge task-type-${task.type}">${taskTypeName}</span>
+                    <span class="text-sm ${task.isActive ? 'text-green-400' : 'text-red-400'}">
+                      ${task.isActive ? 'نشط' : 'معطل'}
+                    </span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="font-bold">${rewardText}</div>
+                  <div class="text-sm text-gray-400">${task.completedCount || 0} إكمال</div>
+                </div>
+              </div>
+              
+              <p class="text-sm text-gray-300 mb-2">${task.description}</p>
+              
+              ${task.url ? `<p class="text-xs text-blue-400 mb-2">${task.url}</p>` : ''}
+              
+              <div class="flex justify-between text-xs text-gray-400">
+                <span>أنشئت في: ${new Date(task.createdAt).toLocaleDateString('ar-EG')}</span>
+              </div>
+              
+              <div class="flex gap-2 mt-3">
+                <button onclick="editTask('${taskId}')" class="flex-1 bg-blue-600 px-3 py-1 rounded text-sm hover:bg-blue-500">تعديل</button>
+                <button onclick="toggleTask('${taskId}', ${!task.isActive})" class="flex-1 ${task.isActive ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'} px-3 py-1 rounded text-sm">
+                  ${task.isActive ? 'تعطيل' : 'تفعيل'}
+                </button>
+                <button onclick="deleteTask('${taskId}')" class="flex-1 bg-red-600 px-3 py-1 rounded text-sm hover:bg-red-500">حذف</button>
+              </div>
+            </div>
+          `;
+        });
+        
+        tasksList.innerHTML = html;
+      });
+    }
+
+    function getTaskTypeName(type) {
+      const names = {
+        'channel': 'انضمام قناة',
+        'bot': 'مهمة البوت',
+        'custom': 'مهمة مخصصة'
+      };
+      return names[type] || type;
+    }
+
+    function filterTasks() {
+      const typeFilter = document.getElementById('filterTaskType').value;
+      const searchTerm = document.getElementById('searchTasks').value.toLowerCase();
+      const taskItems = document.querySelectorAll('#tasksList > div');
+      
+      taskItems.forEach(item => {
+        const taskText = item.textContent.toLowerCase();
+        const taskType = item.querySelector('.task-type-badge').textContent;
+        
+        const typeMatch = typeFilter === 'all' || taskType.includes(getTaskTypeName(typeFilter));
+        const searchMatch = taskText.includes(searchTerm);
+        
+        if (typeMatch && searchMatch) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // وظائف إدارة المهام (سيتم استدعاؤها من الأزرار)
+    window.editTask = function(taskId) {
+      const taskRef = ref(db, `tasks/${taskId}`);
+      onValue(taskRef, (snapshot) => {
+        const taskData = snapshot.val();
+        if (!taskData) return;
+        
+        currentEditingTask = taskId;
+        
+        let formHtml = '';
+        
+        switch(taskData.type) {
+          case 'channel':
+            formHtml = `
+              <div class="space-y-4">
+                <div>
+                  <label class="block mb-2">اسم المهمة</label>
+                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">وصف المهمة</label>
+                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
+                </div>
+                
+                <div>
+                  <label class="block mb-2">رابط القناة</label>
+                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">أيقونة المهمة (رابط)</label>
+                  <input type="url" id="editTaskIcon" value="${taskData.icon || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">المكافأة (RR)</label>
+                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">عدد مرات الإكمال</label>
+                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div class="flex items-center">
+                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
+                  <label for="editTaskIsActive">المهمة نشطة</label>
+                </div>
+              </div>
+            `;
+            break;
+            
+          case 'bot':
+            formHtml = `
+              <div class="space-y-4">
+                <div>
+                  <label class="block mb-2">اسم المهمة</label>
+                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">وصف المهمة</label>
+                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
+                </div>
+                
+                <div>
+                  <label class="block mb-2">رابط البوت</label>
+                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">المكافأة (RR)</label>
+                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">متطلبات المهمة (قائمة خطوات)</label>
+                  <textarea id="editTaskRequirements" class="w-full p-2 rounded bg-gray-700 text-white" rows="4">${(taskData.requirements || []).join('\n')}</textarea>
+                </div>
+                
+                <div>
+                  <label class="block mb-2">ملاحظات مهمة للمستخدم</label>
+                  <textarea id="editTaskNotes" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.notes || ''}</textarea>
+                </div>
+                
+                <div>
+                  <label class="block mb-2">عدد مرات الإكمال</label>
+                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div class="flex items-center">
+                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
+                  <label for="editTaskIsActive">المهمة نشطة</label>
+                </div>
+              </div>
+            `;
+            break;
+            
+          case 'custom':
+            formHtml = `
+              <div class="space-y-4">
+                <div>
+                  <label class="block mb-2">اسم المهمة</label>
+                  <input type="text" id="editTaskName" value="${taskData.name}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">وصف المهمة</label>
+                  <textarea id="editTaskDescription" class="w-full p-2 rounded bg-gray-700 text-white">${taskData.description}</textarea>
+                </div>
+                
+                <div>
+                  <label class="block mb-2">نوع المهمة المخصصة</label>
+                  <input type="text" id="editTaskCustomType" value="${taskData.customType || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">رابط المهمة</label>
+                  <input type="url" id="editTaskUrl" value="${taskData.url || ''}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">المكافأة (RR)</label>
+                  <input type="number" id="editTaskReward" value="${taskData.reward}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div>
+                  <label class="block mb-2">عدد مرات الإكمال</label>
+                  <input type="number" id="editTaskCompletedCount" value="${taskData.completedCount || 0}" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                
+                <div class="flex items-center">
+                  <input type="checkbox" id="editTaskIsActive" ${taskData.isActive ? 'checked' : ''} class="mr-2">
+                  <label for="editTaskIsActive">المهمة نشطة</label>
+                </div>
+              </div>
+            `;
+            break;
+        }
+        
+        document.getElementById('editTaskForm').innerHTML = formHtml;
+        document.getElementById('editTaskModal').classList.remove('hidden');
+      }, { onlyOnce: true });
+    };
+
+    window.toggleTask = function(taskId, newState) {
+      const taskRef = ref(db, `tasks/${taskId}/isActive`);
+      set(taskRef, newState)
+        .then(() => {
+          showToast(newState ? "✅ تم تفعيل المهمة" : "✅ تم تعطيل المهمة");
+          loadTasks();
+        })
+        .catch(error => {
+          console.error('Error toggling task:', error);
+          showToast("❌ فشل في تعديل حالة المهمة!", true);
+        });
+    };
+
+    window.deleteTask = function(taskId) {
+      if (confirm(`هل أنت متأكد من حذف المهمة؟`)) {
+        const taskRef = ref(db, `tasks/${taskId}`);
+        remove(taskRef)
+          .then(() => {
+            showToast("✅ تم حذف المهمة بنجاح");
+            loadTasks();
+          })
+          .catch(error => {
+            console.error('Error deleting task:', error);
+            showToast("❌ فشل في حذف المهمة!", true);
+          });
+      }
+    };
+
+    // حفظ التعديلات على المهمة
+    document.getElementById('saveTaskBtn').addEventListener('click', () => {
+      if (!currentEditingTask) return;
+      
+      const taskRef = ref(db, `tasks/${currentEditingTask}`);
+      onValue(taskRef, (snapshot) => {
+        const originalTask = snapshot.val();
+        if (!originalTask) return;
+        
+        const taskName = document.getElementById('editTaskName').value.trim();
+        const taskDescription = document.getElementById('editTaskDescription').value.trim();
+        const taskReward = parseInt(document.getElementById('editTaskReward').value);
+        const completedCount = parseInt(document.getElementById('editTaskCompletedCount').value);
+        const isActive = document.getElementById('editTaskIsActive').checked;
+        
+        if (!taskName || !taskDescription) {
+          showToast("⚠️ أدخل اسم ووصف المهمة!", true);
+          return;
+        }
+        
+        if (!taskReward || taskReward < 100) {
+          showToast("⚠️ أدخل مكافأة صحيحة (100 RR كحد أدنى)!", true);
+          return;
+        }
+        
+        const updates = {
+          name: taskName,
+          description: taskDescription,
+          reward: taskReward,
+          completedCount: completedCount,
+          isActive: isActive
+        };
+        
+        // إضافة الحقول الإضافية بناءً على نوع المهمة
+        switch(originalTask.type) {
+          case 'channel':
+            const taskUrl = document.getElementById('editTaskUrl').value.trim();
+            const taskIcon = document.getElementById('editTaskIcon').value.trim();
+            
+            if (taskUrl) updates.url = taskUrl;
+            if (taskIcon) updates.icon = taskIcon;
+            break;
+            
+          case 'bot':
+            const botUrl = document.getElementById('editTaskUrl').value.trim();
+            const taskRequirements = document.getElementById('editTaskRequirements').value.trim();
+            const taskNotes = document.getElementById('editTaskNotes').value.trim();
+            
+            if (botUrl) updates.url = botUrl;
+            if (taskRequirements) {
+              updates.requirements = taskRequirements.split('\n').filter(step => step.trim());
+            }
+            if (taskNotes) updates.notes = taskNotes;
+            break;
+            
+          case 'custom':
+            const customType = document.getElementById('editTaskCustomType').value.trim();
+            const customUrl = document.getElementById('editTaskUrl').value.trim();
+            
+            if (customType) updates.customType = customType;
+            if (customUrl) updates.url = customUrl;
+            break;
+        }
+        
+        update(taskRef, updates)
+          .then(() => {
+            showToast("✅ تم تحديث المهمة بنجاح");
+            document.getElementById('editTaskModal').classList.add('hidden');
+            loadTasks();
+          })
+          .catch(error => {
+            console.error('Error updating task:', error);
+            showToast("❌ فشل في تحديث المهمة!", true);
+          });
+      }, { onlyOnce: true });
+    });
+
+    document.getElementById('cancelEditTaskBtn').addEventListener('click', () => {
+      document.getElementById('editTaskModal').classList.add('hidden');
+      currentEditingTask = null;
+    });
+
+    // قسم طلبات البوت
+    function initializeBotRequestsSection() {
+      // البحث في طلبات البوت
+      document.getElementById('searchBotRequests').addEventListener('input', filterBotRequests);
+    }
+
+    function loadBotRequests() {
+      const botVerificationsRef = ref(db, 'botVerifications');
+      onValue(botVerificationsRef, (snapshot) => {
+        const requests = snapshot.val();
+        const requestsList = document.getElementById('botRequestsList');
+        
+        if (!requests) {
+          requestsList.innerHTML = '<p class="text-gray-400 text-center">لا توجد طلبات معلقة حالياً</p>';
+          return;
+        }
+        
+        let html = '';
+        Object.entries(requests).forEach(([userId, request]) => {
+          if (request.status !== 'pending') return;
+          
+          const userName = request.userName || 'مستخدم غير معروف';
+          const username = request.username ? `@${request.username}` : 'لا يوجد';
+          const submittedDate = new Date(request.submittedAt).toLocaleDateString('ar-EG');
+          const submittedTime = new Date(request.submittedAt).toLocaleTimeString('ar-EG');
+          
+          html += `
+            <div class="bg-gray-700 p-4 rounded mb-4">
+              <div class="flex justify-between items-start mb-3">
+                <div>
+                  <h3 class="font-bold text-lg">${userName}</h3>
+                  <div class="text-sm text-gray-400">${username} • ${userId}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm text-gray-400">${submittedDate}</div>
+                  <div class="text-sm text-gray-400">${submittedTime}</div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h4 class="font-semibold mb-2">📋 متطلبات المهمة:</h4>
+                <div class="bg-gray-800 p-3 rounded text-sm">
+                  ${request.requirements && request.requirements.steps ? 
+                    '<ol class="list-decimal list-inside space-y-1">' + 
+                    request.requirements.steps.map(step => `<li>${step}</li>`).join('') + 
+                    '</ol>' : 
+                    'لا توجد متطلبات محددة'
+                  }
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <h4 class="font-semibold mb-2">🖼️ صورة التحقق:</h4>
+                <div class="text-center">
+                  <img src="${request.screenshot}" alt="صورة التحقق" class="max-w-full max-h-40 rounded cursor-pointer mx-auto" onclick="showImageModal('${request.screenshot}')">
+                  <div class="text-xs text-gray-400 mt-1">انقر على الصورة لتكبيرها</div>
+                </div>
+              </div>
+              
+              <div class="flex justify-between items-center text-sm text-gray-400 mb-3">
+                <div>المكافأة: ${request.rewardRR ? request.rewardRR.toLocaleString() + ' RR' : 'غير محددة'}</div>
+                <div class="status-pending-review">قيد المراجعة</div>
+              </div>
+              
+              <div class="flex gap-2">
+                <button onclick="approveBotRequest('${userId}')" class="flex-1 bg-green-600 px-4 py-2 rounded hover:bg-green-500">✅ قبول</button>
+                <button onclick="rejectBotRequest('${userId}')" class="flex-1 bg-red-600 px-4 py-2 rounded hover:bg-red-500">❌ رفض</button>
+              </div>
+            </div>
+          `;
+        });
+        
+        if (!html) {
+          html = '<p class="text-gray-400 text-center">لا توجد طلبات معلقة حالياً</p>';
+        }
+        
+        requestsList.innerHTML = html;
+      });
+    }
+
+    function filterBotRequests() {
+      const searchTerm = document.getElementById('searchBotRequests').value.toLowerCase();
+      const requestItems = document.querySelectorAll('#botRequestsList > div');
+      
+      requestItems.forEach(item => {
+        const requestText = item.textContent.toLowerCase();
+        if (requestText.includes(searchTerm)) {
+          item.style.display = 'block';
+        } else {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    // وظائف إدارة طلبات البوت (سيتم استدعاؤها من الأزرار)
+    window.showImageModal = function(imageUrl) {
+      document.getElementById('modalImage').src = imageUrl;
+      document.getElementById('imageModal').classList.remove('hidden');
+    };
+
+    window.approveBotRequest = function(userId) {
+      if (confirm('هل أنت متأكد من قبول هذا الطلب ومنح المكافأة للمستخدم؟')) {
+        const verificationRef = ref(db, `botVerifications/${userId}`);
+        const userRef = ref(db, `users/${userId}`);
+        
+        // الحصول على بيانات الطلب أولاً
+        onValue(verificationRef, (snapshot) => {
+          const request = snapshot.val();
+          if (!request) {
+            showToast("❌ لم يتم العثور على الطلب!", true);
+            return;
+          }
+          
+          const rewardRR = request.rewardRR || 5000;
+          
+          // تحديث حالة الطلب إلى "مقبول"
+          update(verificationRef, {
+            status: 'approved',
+            processedAt: new Date().toISOString(),
+            processedBy: 'admin'
+          })
+          .then(() => {
+            // تحديث حالة المستخدم وإضافة المكافأة
+            update(userRef, {
+              'completedTasks/join_bot_task': true,
+              pendingBotVerification: false
+            })
+            .then(() => {
+              showToast(`✅ تم قبول الطلب ومنح ${rewardRR.toLocaleString()} RR للمستخدم`);
+              loadBotRequests();
+            })
+            .catch(error => {
+              console.error('Error updating user:', error);
+              showToast("❌ فشل في تحديث بيانات المستخدم!", true);
+            });
+          })
+          .catch(error => {
+            console.error('Error approving request:', error);
+            showToast("❌ فشل في قبول الطلب!", true);
+          });
+        }, { onlyOnce: true });
+      }
+    };
+
+    window.rejectBotRequest = function(userId) {
+      if (confirm('هل أنت متأكد من رفض هذا الطلب؟')) {
+        const verificationRef = ref(db, `botVerifications/${userId}`);
+        const userRef = ref(db, `users/${userId}`);
+        
+        // تحديث حالة الطلب إلى "مرفوض"
+        update(verificationRef, {
+          status: 'rejected',
+          processedAt: new Date().toISOString(),
+          processedBy: 'admin'
+        })
+        .then(() => {
+          // إعادة تعيين حالة المستخدم للسماح بإعادة المحاولة
+          update(userRef, {
+            pendingBotVerification: false
+          })
+          .then(() => {
+            showToast("✅ تم رفض الطلب بنجاح");
+            loadBotRequests();
+          })
+          .catch(error => {
+            console.error('Error updating user:', error);
+            showToast("❌ فشل في تحديث بيانات المستخدم!", true);
+          });
+        })
+        .catch(error => {
+          console.error('Error rejecting request:', error);
+          showToast("❌ فشل في رفض الطلب!", true);
+        });
+      }
+    };
+
+    // إغلاق نافذة الصورة
+    document.getElementById('closeImageModal').addEventListener('click', () => {
+      document.getElementById('imageModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeImageBtn').addEventListener('click', () => {
+      document.getElementById('imageModal').classList.add('hidden');
+    });
+
+    // تحميل البيانات العامة
+    function loadData() {
+      onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        currentData = data || {};
+        
+        if (!data) {
+          dataContainer.innerHTML = "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
+          return;
+        }
+
+        let html = "";
+        for (const key in data) {
+          html += `
+            <div class="bg-gray-700 p-3 rounded mb-3">
+              <h3 class="font-bold">${key}</h3>
+              <textarea id="val-${key}" class="w-full bg-gray-800 text-white p-2 rounded mt-1">${JSON.stringify(data[key], null, 2)}</textarea>
+              <div class="mt-2 flex gap-2">
+                <button onclick="updateData('${key}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">تعديل</button>
+                <button onclick="deleteData('${key}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500">حذف</button>
+              </div>
+            </div>
+          `;
+        }
+
+        dataContainer.innerHTML = html;
+      });
+    }
+
+    // دوال التحكم في البيانات العامة
+    window.updateData = (key) => {
+      const newVal = document.getElementById(`val-${key}`).value;
+      try {
+        const parsedVal = JSON.parse(newVal);
+        update(ref(db, key), parsedVal);
+        showToast("✅ تم التعديل بنجاح!");
+      } catch (e) {
+        showToast("⚠️ يجب إدخال JSON صالح!", true);
+      }
+    };
+
+    window.deleteData = (key) => {
+      if (confirm(`هل أنت متأكد من حذف ${key}؟`)) {
+        remove(ref(db, key));
+        showToast("🗑️ تم الحذف بنجاح!");
+      }
+    };
+
+    // إضافة أنماط CSS إضافية
+    const style = document.createElement('style');
+    style.textContent = `
+      .section {
+        display: none;
+      }
+      .section.active {
+        display: block;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .code-type-badge, .task-type-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .code-type-contest {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+        border: 1px solid #ffc107;
+      }
+      .code-type-ton {
+        background: rgba(33, 150, 243, 0.2);
+        color: #2196f3;
+        border: 1px solid #2196f3;
+      }
+      .code-type-rr {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+        border: 1px solid #4caf50;
+      }
+      .task-type-channel {
+        background: rgba(156, 39, 176, 0.2);
+        color: #9c27b0;
+        border: 1px solid #9c27b0;
+      }
+      .task-type-bot {
+        background: rgba(255, 87, 34, 0.2);
+        color: #ff5722;
+        border: 1px solid #ff5722;
+      }
+      .task-type-custom {
+        background: rgba(96, 125, 139, 0.2);
+        color: #607d8b;
+        border: 1px solid #607d8b;
+      }
+      .status-pending-review {
+        background: rgba(255, 152, 0, 0.2);
+        color: #ff9800;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
 </body>
 </html>
