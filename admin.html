@@ -216,8 +216,8 @@
                     <li data-page="users"><i class="fas fa-users"></i> إدارة المستخدمين</li>
                     <li data-page="user-search"><i class="fas fa-search"></i> البحث عن مستخدم</li>
                     <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
-<li data-page="submissions"><i class="fas fa-check-square"></i> مراجعة المهام</li>
                     <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
+<li data-page="submissions"><i class="fas fa-check-square"></i> مراجعة المهام</li>
                     <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
                     <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
                     <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
@@ -240,86 +240,7 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js">
-<script>
-// صفحة مراجعة المهام (submissions)
-const renderSubmissions = async () => {
-    mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
-    const tasksSnap = await db.ref('appConfig/tasks').once('value');
-    const tasks = tasksSnap.val() || {};
-    const subsSnap = await db.ref('taskSubmissions').once('value');
-    let rows = '';
-    subsSnap.forEach(taskNode => {
-        const taskId = taskNode.key;
-        taskNode.forEach(subNode => {
-            const s = subNode.val();
-            if (!s) return;
-            rows += `<tr>
-                <td data-label="المهمة">${tasks[taskId]?.name || taskId}<br><small>${taskId}</small></td>
-                <td data-label="المستخدم">${s.userId}<br><small>${new Date(s.timestamp).toLocaleString('ar-EG')}</small></td>
-                <td data-label="الصورة">${s.screenshot ? '<img src="'+s.screenshot+'" style="max-width:160px; max-height:120px; border-radius:8px;" />' : '—'}</td>
-                <td data-label="الحالة">${s.status || 'pending'}</td>
-                <td data-label="إجراءات">
-                    <div class="action-buttons">
-                        <button class="action-btn btn-success" onclick="window.adminActions.approveSubmission('${taskId}', '${s.id}', '${s.userId}')">قبول</button>
-                        <button class="action-btn btn-danger" onclick="window.adminActions.rejectSubmission('${taskId}', '${s.id}')">رفض</button>
-                    </div>
-                </td>
-            </tr>`;
-        });
-    });
-    mainContent.innerHTML = `<div id="submissions" class="page active">
-        <h3>مراجعة المهام (إثباتات المستخدمين)</h3>
-        <div class="card">
-            <table>
-                <thead><tr><th>المهمة</th><th>المستخدم</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="5">لا يوجد طلبات.</td></tr>'}</tbody>
-            </table>
-        </div>
-    </div>`;
-};
-
-// دمج في الراوتر الحالي
-(function(){
-    const sideNav = document.querySelectorAll('.nav-menu li');
-    sideNav.forEach(item => {
-        item.addEventListener('click', function(){
-            const page = this.getAttribute('data-page');
-            if (page === 'submissions') renderSubmissions();
-        });
-    });
-})();
-
-// إجراءات القبول/الرفض وصرف المكافآت
-window.adminActions.approveSubmission = async (taskId, submissionId, userId) => {
-    try {
-        const tSnap = await db.ref(`appConfig/tasks/${taskId}`).once('value');
-        const t = tSnap.val() || {};
-        const rewardRR = Number(t.reward || t.rrReward || 0);
-        const rewardTON = Number(t.tonReward || 0);
-        const updates = {};
-        if (rewardRR > 0) updates[`users/${userId}/rrBalance`] = firebase.database.ServerValue.increment(rewardRR);
-        if (rewardTON > 0) updates[`users/${userId}/balance`] = firebase.database.ServerValue.increment(rewardTON);
-        updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
-        await db.ref().update(updates);
-        alert('تم قبول المهمة وصرف المكافأة.');
-        renderSubmissions();
-    } catch (e) {
-        alert('فشل القبول: ' + e.message);
-    }
-};
-window.adminActions.rejectSubmission = async (taskId, submissionId) => {
-    try {
-        await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
-        alert('تم رفض المهمة.');
-        renderSubmissions();
-    } catch (e) {
-        alert('فشل الرفض: ' + e.message);
-    }
-};
-</script>
-
-</script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -811,13 +732,23 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
                 <h3>إدارة المهام والروابط</h3>
                 <div class="card" id="tasks-list"><h4>جاري تحميل المهام...</h4></div>
                 <div class="card">
-                    <h4>إضافة مهمة جديدة</h4>
-                    <div class="form-group"><input id="task-name" placeholder="اسم المهمة (مثال: انضم للتليجرام)"></div>
-                    <div class="form-group"><input id="task-url" placeholder="الرابط"></div>
-                    <div class="form-group"><input id="task-reward" type="number" step="any" placeholder="مقدار المكافأة"></div>
-                    <div class="form-group"><input id="task-icon" placeholder="رابط الصورة"></div>
-                    <button class="action-btn btn-primary" onclick="window.adminActions.addTask()">إضافة مهمة</button>
-                </div>
+    <h4>إضافة مهمة جديدة</h4>
+    <div class="form-group"><label>نوع المهمة</label>
+        <select id="task-type">
+            <option value="general">عامّة</option>
+            <option value="telegramBot">مهمة انضمام لبوت التليجرام</option>
+        </select>
+    </div>
+    <div class="form-group"><input id="task-name" placeholder="اسم المهمة (مثال: انضم للتليجرام)"></div>
+    <div class="form-group"><input id="task-url" placeholder="الرابط / لينك البوت"></div>
+    <div class="form-group"><label>مكافأة RR</label><input id="task-reward" type="number" step="1" placeholder="مثال: 300"></div>
+    <div class="form-group"><label>مكافأة TON (اختياري)</label><input id="task-reward-ton" type="number" step="any" placeholder="مثال: 0.005"></div>
+    <div class="form-group"><input id="task-icon" placeholder="رابط الصورة"></div>
+    <div class="form-group"><label>المتطلبات (لبوت التليجرام)</label>
+        <textarea id="task-requirements" rows="3" placeholder="مثال: اشترك في البوت وأرسل /start ثم التقط لقطة شاشة"></textarea>
+    </div>
+    <button class="action-btn btn-primary" onclick="window.adminActions.addTask()">إضافة مهمة</button>
+</div>
                 <div class="card" id="links-list"><h4>جاري تحميل الروابط...</h4></div>
                 <div class="card">
                     <h4>إضافة رابط/زر جديد</h4>
@@ -832,44 +763,33 @@ window.adminActions.rejectSubmission = async (taskId, submissionId) => {
         };
 
         // Codes Management
-        
-const renderCodes = async () => {
-    mainContent.innerHTML = `<div id="codes" class="page active">
-        <h3>إدارة الأكواد</h3>
-        <div class="card" id="codes-list"><h4>جاري تحميل الأكواد...</h4></div>
-        <div class="card">
-            <h4>إنشاء/تحديث كود</h4>
-            <div class="form-group">
-                <label>الكود (أحرف كبيرة فقط)</label>
-                <input id="code-text" placeholder="مثال: WELCOME50" style="text-transform: uppercase;">
-            </div>
-            <div class="form-group">
-                <label>نوع الكود</label>
-                <select id="code-kind">
-                    <option value="RR">RR فقط</option>
-                    <option value="TON">TON فقط</option>
-                    <option value="POINTS">نقاط المسابقة فقط</option>
-                    <option value="BOTH">RR + TON</option>
-                </select>
-            </div>
-            <div class="form-group"><label>قيمة RR</label><input id="code-value-rr" type="number" step="1" value="0"></div>
-            <div class="form-group"><label>قيمة TON</label><input id="code-value-ton" type="number" step="any" value="0"></div>
-            <div class="form-group"><label>قيمة نقاط المسابقة</label><input id="code-value-points" type="number" step="1" value="0"></div>
-            <div class="form-group"><label>عنوان (اختياري)</label><input id="code-title" placeholder="عنوان تسويقي"></div>
-            <div class="form-group"><label>ملاحظة (اختياري)</label><input id="code-note" placeholder="ملاحظة داخلية"></div>
-            <div class="form-group"><label>حد المستخدم (perUserLimit)</label><input id="code-per-user" type="number" value="1"></div>
-            <div class="form-group"><label>إجمالي الاستخدامات (maxTotalUses، 0 = لا نهائي)</label><input id="code-max-total" type="number" value="0"></div>
-            <div class="form-group"><label>تاريخ الانتهاء (اختياري)</label><input id="code-expiry" type="datetime-local"></div>
-            <div class="form-group"><label><input id="code-active" type="checkbox" checked> نشط</label></div>
-            <div class="form-group">
-                <button class="action-btn btn-primary" onclick="window.adminActions.createOrUpdateCode()">حفظ</button>
-                <button class="action-btn btn-danger" onclick="window.adminActions.clearCodeForm()">تفريغ النموذج</button>
-            </div>
-        </div>
-    </div>`;
-    await loadCodes();
-};
-
+        const renderCodes = async () => {
+            mainContent.innerHTML = `<div id="codes" class="page active">
+                <h3>إدارة الأكواد</h3>
+                <div class="card" id="codes-list"><h4>جاري تحميل الأكواد...</h4></div>
+                <div class="card">
+                    <h4>إنشاء كود جديد</h4>
+                    <div class="form-group">
+                        <label>الكود (أحرف كبيرة فقط)</label>
+                        <input id="code-text" placeholder="مثال: WELCOME50" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>النقاط</label>
+                        <input id="code-points" type="number" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>الحد الأقصى للاستخدام (0 = لا نهائي)</label>
+                        <input id="code-max-uses" type="number" value="100">
+                    </div>
+                    <div class="form-group">
+                        <label>تاريخ الانتهاء (اختياري)</label>
+                        <input id="code-expiry" type="datetime-local">
+                    </div>
+                    <button class="action-btn btn-primary" onclick="window.adminActions.createCode()">إنشاء كود</button>
+                </div>
+            </div>`;
+            await loadCodes();
+        };
 
         // Contest Management
         const renderContest = async () => {
@@ -911,7 +831,7 @@ const renderCodes = async () => {
 
         // Settings
         const renderSettings = async () => {
-            const snap = await db.ref('appConfig').once('value'); 
+            const snap = await db.ref('config').once('value'); 
             const config = snap.val() || {};
             
             // الحصول على إعدادات التسجيل اليومي
@@ -1050,10 +970,47 @@ const renderCodes = async () => {
             </div>`;
         };
 
+
+        // Submissions Review
+        const renderSubmissions = async () => {
+            mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
+            const tasksSnap = await db.ref('config/tasks').once('value');
+            const tasks = tasksSnap.val() || {};
+            const subsSnap = await db.ref('taskSubmissions').once('value');
+            let rows = '';
+            subsSnap.forEach(taskNode => {
+                const taskId = taskNode.key;
+                taskNode.forEach(subNode => {
+                    const s = subNode.val();
+                    if (!s) return;
+                    rows += `<tr>
+                        <td data-label="المهمة">${tasks[taskId]?.name || taskId}<br><small>${taskId}</small></td>
+                        <td data-label="المستخدم">${s.userId}<br><small>${new Date(s.timestamp).toLocaleString('ar-EG')}</small></td>
+                        <td data-label="الصورة">${s.screenshot ? '<img src="'+s.screenshot+'" style="max-width:160px; max-height:120px; border-radius:8px;" />' : '—'}</td>
+                        <td data-label="الحالة">${s.status || 'pending'}</td>
+                        <td data-label="إجراءات">
+                            <div class="action-buttons">
+                                <button class="action-btn btn-success" onclick="window.adminActions.approveSubmission('${taskId}', '${s.id}', '${s.userId}')">قبول</button>
+                                <button class="action-btn btn-danger" onclick="window.adminActions.rejectSubmission('${taskId}', '${s.id}')">رفض</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+            });
+            mainContent.innerHTML = `<div id="submissions" class="page active">
+                <h3>مراجعة المهام (إثباتات المستخدمين)</h3>
+                <div class="card">
+                    <table>
+                        <thead><tr><th>المهمة</th><th>المستخدم</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="5">لا يوجد طلبات.</td></tr>'}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        };
         // Helper Functions
         const loadDynamicContent = async (type) => {
             const container = document.getElementById(`${type}-list`);
-            const snap = await db.ref(`appConfig/${type}`).once('value');
+            const snap = await db.ref(`config/${type}`).once('value');
             let items = [];
             snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
             items.reverse(); // Show newest first
@@ -1069,47 +1026,38 @@ const renderCodes = async () => {
             container.innerHTML = content;
         };
         
-        
-const loadCodes = async () => {
-    const container = document.getElementById('codes-list');
-    const snap = await db.ref('codes').once('value');
-    let codes = [];
-    snap.forEach(child => { codes.push({ key: child.key, ...child.val() }); });
-    codes.sort((a,b)=> (b.created||0) - (a.created||0));
-    let content = '<h4>الأكواد الحالية</h4>';
-    if (codes.length > 0) {
-        content += '<table><thead><tr><th>الكود</th><th>النوع</th><th>RR</th><th>TON</th><th>نقاط</th><th>حد المستخدم</th><th>الاستخدام</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>';
-        codes.forEach(code => {
-            const usedCount = code.usedCount || 0;
-            const maxTotal = typeof code.maxTotalUses === 'number' ? code.maxTotalUses : (code.maxUses || 0);
-            const perUser = code.perUserLimit || 1;
-            const isExpired = code.expiresAt ? (Date.now() > code.expiresAt) : (code.expires ? Date.now() > code.expires : false);
-            const active = code.active !== false;
-            const maxText = (maxTotal && maxTotal>0) ? maxTotal : '∞';
-            const status = !active ? 'معطل' : isExpired ? 'منتهي' : 'نشط';
-            const kind = code.kind || (code.valuePoints ? 'POINTS' : (code.valueRR && code.valueTON ? 'BOTH' : code.valueRR ? 'RR' : code.valueTON ? 'TON' : 'UNKNOWN'));
-            content += `<tr>
-                <td>${code.key}</td>
-                <td>${kind}</td>
-                <td>${code.valueRR || 0}</td>
-                <td>${code.valueTON || 0}</td>
-                <td>${code.valuePoints || code.points || 0}</td>
-                <td>${perUser}</td>
-                <td>${usedCount}/${maxText}</td>
-                <td>${status}</td>
-                <td>
-                    <button class="action-btn btn-info" onclick="window.adminActions.fillCodeForm('${code.key}')">تعديل</button>
-                    <button class="action-btn btn-danger" onclick="window.adminActions.deleteCode('${code.key}')">حذف</button>
-                </td>
-            </tr>`;
-        });
-        content += '</tbody></table>';
-    } else {
-        content += '<p>لا توجد أكواد.</p>';
-    }
-    container.innerHTML = content;
-};
-
+        const loadCodes = async () => {
+            const container = document.getElementById('codes-list');
+            const snap = await db.ref('codes').once('value');
+            let codes = [];
+            snap.forEach(child => { codes.push({ key: child.key, ...child.val() }); });
+            
+            let content = '<h4>الأكواد الحالية</h4>';
+            if (codes.length > 0) {
+                content += '<table><thead><tr><th>الكود</th><th>النقاط</th><th>المستخدم</th><th>الحد الأقصى</th><th>الإجراءات</th></tr></thead><tbody>';
+                codes.forEach(code => {
+                    const usedCount = code.usedCount || 0;
+                    const maxUses = code.maxUses || 0;
+                    const isExpired = code.expires && Date.now() > code.expires;
+                    const isMaxed = maxUses > 0 && usedCount >= maxUses;
+                    const status = isExpired ? 'منتهي' : isMaxed ? 'مكتمل' : 'نشط';
+                    
+                    content += `<tr>
+                        <td>${code.key}</td>
+                        <td>${code.points || 0}</td>
+                        <td>${usedCount}/${maxUses > 0 ? maxUses : '∞'}</td>
+                        <td>${status}</td>
+                        <td>
+                            <button class="action-btn btn-danger" onclick="window.adminActions.deleteCode('${code.key}')">حذف</button>
+                        </td>
+                    </tr>`;
+                });
+                content += '</tbody></table>';
+            } else {
+                content += '<p>لا توجد أكواد.</p>';
+            }
+            container.innerHTML = content;
+        };
         
         const loadContestLeaderboard = async () => {
             const container = document.getElementById('contest-leaderboard');
@@ -1176,32 +1124,6 @@ const loadCodes = async () => {
 
         // Admin Actions
         window.adminActions = {
-            // إدارة رصيد RR
-            addRR: async (userId, userName) => {
-                const amount = prompt(`أدخل مقدار RR للإضافة إلى ${userName}:`);
-                if (amount && !isNaN(parseInt(amount)) && parseInt(amount) > 0) {
-                    try {
-                        await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(parseInt(amount)));
-                        alert('تم إضافة RR بنجاح!');
-                        renderUsers();
-                    } catch (e) {
-                        alert('خطأ في إضافة RR.');
-                    }
-                } else { alert('يرجى إدخال رقم صحيح موجب.'); }
-            },
-            removeRR: async (userId, userName) => {
-                const amount = prompt(`أدخل مقدار RR لخصمه من ${userName}:`);
-                if (amount && !isNaN(parseInt(amount)) && parseInt(amount) > 0) {
-                    try {
-                        await db.ref(`users/${userId}/rrBalance`).set(firebase.database.ServerValue.increment(-parseInt(amount)));
-                        alert('تم خصم RR بنجاح!');
-                        renderUsers();
-                    } catch (e) {
-                        alert('خطأ في خصم RR.');
-                    }
-                } else { alert('يرجى إدخال رقم صحيح موجب.'); }
-            },
-            
             // إضافة رصيد
             addBalance: async (userId, userName) => {
                 const amount = prompt(`أدخل المبلغ للإضافة إلى ${userName}:`);
@@ -1306,16 +1228,19 @@ const loadCodes = async () => {
             // إضافة مهمة
             addTask: async () => {
                 const data = { 
+                    type: document.getElementById('task-type').value,
                     name: document.getElementById('task-name').value, 
                     url: document.getElementById('task-url').value, 
-                    reward: parseFloat(document.getElementById('task-reward').value), 
-                    icon: document.getElementById('task-icon').value 
+                    reward: parseFloat(document.getElementById('task-reward').value) || 0,
+                    tonReward: parseFloat(document.getElementById('task-reward-ton').value) || 0,
+                    icon: document.getElementById('task-icon').value,
+                    requirements: document.getElementById('task-requirements').value || ''
                 };
-                if (!data.name || !data.url || !data.reward || !data.icon) { 
+                if (!data.name || !data.url || data.reward === undefined || isNaN(data.reward) || !data.icon) { 
                     alert('جميع الحقول مطلوبة.'); 
                     return; 
                 }
-                await db.ref('appConfig/tasks').push(data); 
+                await db.ref('config/tasks').push(data); 
                 alert('تم إضافة المهمة!'); 
                 renderTasks();
             },
@@ -1331,7 +1256,7 @@ const loadCodes = async () => {
                     alert('الاسم والرابط ورابط الصورة مطلوبة.'); 
                     return; 
                 }
-                await db.ref('appConfig/links').push(data); 
+                await db.ref('config/links').push(data); 
                 alert('تم إضافة الرابط!'); 
                 renderTasks();
             },
@@ -1339,80 +1264,47 @@ const loadCodes = async () => {
             // حذف عنصر ديناميكي
             deleteDynamicItem: async (type, key) => {
                 if (confirm('هل أنت متأكد من رغبتك في حذف هذا العنصر?')) {
-                    await db.ref(`appConfig/${type}/${key}`).remove(); 
+                    await db.ref(`config/${type}/${key}`).remove(); 
                     loadDynamicContent(type);
                 }
             },
             
-            // إنشاء/تحديث كود جديد/قائم
-            createOrUpdateCode: async () => {
+            // إنشاء كود جديد
+            createCode: async () => {
                 const codeText = document.getElementById('code-text').value.trim().toUpperCase();
-                const kind = document.getElementById('code-kind').value;
-                const valueRR = parseInt(document.getElementById('code-value-rr').value) || 0;
-                const valueTON = parseFloat(document.getElementById('code-value-ton').value) || 0;
-                const valuePoints = parseInt(document.getElementById('code-value-points').value) || 0;
-                const perUserLimit = parseInt(document.getElementById('code-per-user').value) || 1;
-                const maxTotalUses = parseInt(document.getElementById('code-max-total').value) || 0;
-                const title = document.getElementById('code-title').value.trim();
-                const note = document.getElementById('code-note').value.trim();
+                const points = parseInt(document.getElementById('code-points').value) || 10;
+                const maxUses = parseInt(document.getElementById('code-max-uses').value) || 100;
                 const expiry = document.getElementById('code-expiry').value;
-                const active = document.getElementById('code-active').checked;
                 
-                if (!codeText) { alert('يرجى إدخال نص الكود'); return; }
-                if (kind === 'RR' && valueRR <= 0) { alert('ضع قيمة RR > 0'); return; }
-                if (kind === 'TON' && valueTON <= 0) { alert('ضع قيمة TON > 0'); return; }
-                if (kind === 'POINTS' && valuePoints <= 0) { alert('ضع قيمة النقاط > 0'); return; }
-                if (kind === 'BOTH' && valueRR <= 0 && valueTON <= 0) { alert('ضع قيمة RR أو TON'); return; }
+                if (!codeText) {
+                    alert('يرجى إدخال نص الكود');
+                    return;
+                }
                 
                 const codeData = {
-                    kind, valueRR, valueTON, valuePoints,
-                    perUserLimit, maxTotalUses,
-                    title: title || null, note: note || null,
-                    active,
+                    points: points,
+                    maxUses: maxUses,
                     usedCount: 0,
                     created: firebase.database.ServerValue.TIMESTAMP
                 };
-                if (expiry) codeData.expiresAt = new Date(expiry).getTime();
+                
+                if (expiry) {
+                    codeData.expires = new Date(expiry).getTime();
+                }
                 
                 try {
-                    await db.ref(`codes/${codeText}`).update(codeData);
-                    alert('تم حفظ الكود بنجاح!');
-                    window.adminActions.clearCodeForm();
+                    await db.ref(`codes/${codeText}`).set(codeData);
+                    alert('تم إنشاء الكود بنجاح!');
+                    document.getElementById('code-text').value = '';
+                    document.getElementById('code-points').value = '10';
+                    document.getElementById('code-max-uses').value = '100';
+                    document.getElementById('code-expiry').value = '';
                     await loadCodes();
                 } catch (e) {
-                    alert('خطأ في حفظ الكود: ' + e.message);
+                    alert('خطأ في إنشاء الكود: ' + e.message);
                 }
             },
             
-            clearCodeForm: () => {
-                document.getElementById('code-text').value = '';
-                document.getElementById('code-kind').value = 'RR';
-                document.getElementById('code-value-rr').value = 0;
-                document.getElementById('code-value-ton').value = 0;
-                document.getElementById('code-value-points').value = 0;
-                document.getElementById('code-per-user').value = 1;
-                document.getElementById('code-max-total').value = 0;
-                document.getElementById('code-title').value = '';
-                document.getElementById('code-note').value = '';
-                document.getElementById('code-expiry').value = '';
-                document.getElementById('code-active').checked = true;
-            },
-            fillCodeForm: async (codeKey) => {
-                const snap = await db.ref(`codes/${codeKey}`).once('value');
-                const c = snap.val();
-                if (!c) { alert('الكود غير موجود'); return; }
-                document.getElementById('code-text').value = codeKey;
-                document.getElementById('code-kind').value = c.kind || (c.valuePoints ? 'POINTS' : (c.valueRR && c.valueTON ? 'BOTH' : c.valueRR ? 'RR' : c.valueTON ? 'TON' : 'RR'));
-                document.getElementById('code-value-rr').value = c.valueRR || 0;
-                document.getElementById('code-value-ton').value = c.valueTON || 0;
-                document.getElementById('code-value-points').value = c.valuePoints || c.points || 0;
-                document.getElementById('code-per-user').value = c.perUserLimit || 1;
-                document.getElementById('code-max-total').value = (typeof c.maxTotalUses === 'number') ? c.maxTotalUses : (c.maxUses || 0);
-                document.getElementById('code-title').value = c.title || '';
-                document.getElementById('code-note').value = c.note || '';
-                document.getElementById('code-expiry').value = c.expiresAt ? new Date(c.expiresAt).toISOString().slice(0,16) : (c.expires ? new Date(c.expires).toISOString().slice(0,16) : '');
-                document.getElementById('code-active').checked = (c.active !== false);
-            },
             // حذف كود
             deleteCode: async (codeText) => {
                 if (confirm(`هل أنت متأكد من رغبتك في حذف الكود ${codeText}?`)) {
@@ -1554,14 +1446,38 @@ const loadCodes = async () => {
                 };
                 
                 try {
-                    await db.ref('appConfig').update(settings);
+                    await db.ref('config').set(settings);
                     alert('تم حفظ الإعدادات بنجاح!');
                 } catch (e) {
                     alert('خطأ في حفظ الإعدادات: ' + e.message);
                 }
             },
             
-            // إرسال بث
+            // قبول/رفض تقديم مهمة مع صرف المكافآت
+approveSubmission: async (taskId, submissionId, userId) => {
+    try {
+        const tSnap = await db.ref(`config/tasks/${taskId}`).once('value');
+        const t = tSnap.val() || {};
+        const rewardRR = Number(t.reward || t.rrReward || 0);
+        const rewardTON = Number(t.tonReward || 0);
+        const updates = {};
+        if (rewardRR > 0) updates[`users/${userId}/rrBalance`] = firebase.database.ServerValue.increment(rewardRR);
+        if (rewardTON > 0) updates[`users/${userId}/balance`] = firebase.database.ServerValue.increment(rewardTON);
+        updates[`taskSubmissions/${taskId}/${submissionId}/status`] = 'approved';
+        await db.ref().update(updates);
+        alert('تم قبول المهمة وصرف المكافأة.');
+        renderSubmissions();
+    } catch (e) { alert('فشل القبول: ' + e.message); }
+},
+rejectSubmission: async (taskId, submissionId) => {
+    try {
+        await db.ref(`taskSubmissions/${taskId}/${submissionId}/status`).set('rejected');
+        alert('تم رفض المهمة.');
+        renderSubmissions();
+    } catch (e) { alert('فشل الرفض: ' + e.message); }
+},
+
+// إرسال بث
             sendBroadcast: () => {
                 const message = document.getElementById('broadcast-message').value;
                 if (!message) { alert('يرجى إدخال رسالة.'); return; }
@@ -1588,6 +1504,7 @@ const loadCodes = async () => {
                     else if (page === 'contest') renderContest();
                     else if (page === 'settings') renderSettings();
                     else if (page === 'broadcast') renderBroadcast();
+                    else if (page === 'submissions') renderSubmissions();
                     if (window.innerWidth < 768) { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
                 });
             });
