@@ -4713,5 +4713,149 @@
         document.head.appendChild(style); 
     })();
     </script>
+
+<!-- START: Anti-Multi-Account (IP + Fingerprint) with Firebase v8 transactions -->
+<script>
+// ======= Anti-Multi helpers (global) =======
+function getDBv8() {
+  if (window.firebase && window.firebase.database) return window.firebase.database();
+  throw new Error('Firebase DB not ready.');
+}
+
+async function generateFingerprint() {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 200; canvas.height = 50;
+    ctx.textBaseline = 'top';
+    ctx.font = '16px "Arial"';
+    ctx.fillStyle = '#f60'; ctx.fillRect(125,1,62,20);
+    ctx.fillStyle = '#069'; ctx.fillText('fp-' + navigator.userAgent, 2, 2);
+    const dataUrl = canvas.toDataURL();
+    const features = [
+      navigator.userAgent || '',
+      navigator.platform || '',
+      navigator.language || '',
+      (screen.width + 'x' + screen.height),
+      (new Date()).getTimezoneOffset(),
+      (Intl && Intl.DateTimeFormat ? Intl.DateTimeFormat().resolvedOptions().timeZone || '' : ''),
+      (localStorage.getItem('app_device_id') || ''),
+      dataUrl.slice(-120)
+    ].join('||');
+    if (!localStorage.getItem('app_device_id')) localStorage.setItem('app_device_id', 'dev_' + Date.now());
+    const enc = new TextEncoder();
+    const buf = await crypto.subtle.digest('SHA-256', enc.encode(features));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  } catch (e) {
+    console.error('generateFingerprint error', e);
+    return null;
+  }
+}
+
+function tryClaimIndexTx(indexPath, ownerId) {
+  const db = getDBv8();
+  const ref = db.ref(indexPath);
+  return new Promise((resolve) => {
+    ref.transaction(current => {
+      if (current === null) return ownerId;     // empty -> claim
+      if (current === ownerId) return;          // already ours -> ok (no change)
+      return;                                   // someone else -> no change (fail commit)
+    }, (error, committed, snapshot) => {
+      if (error) return resolve({ success: False, error });
+      const val = snapshot ? snapshot.val() : null;
+      if (!committed && val && val !== ownerId) {
+        return resolve({ success: false, owner: val });
+      }
+      return resolve({ success: true, owner: val });
+    }, false);
+  });
+}
+
+async function releaseIndexIfOwned(indexPath, ownerId) {
+  try {
+    const db = getDBv8();
+    const snap = await db.ref(indexPath).once('value');
+    if (snap.val() === ownerId) {
+      await db.ref(indexPath).remove();
+      return true;
+    }
+    return false;
+  } catch (e) {
+    console.error('releaseIndexIfOwned error', e);
+    return false;
+  }
+}
+
+function showMultiBlock(reason) {
+  const modal = document.getElementById('multiAccountModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    const txt = modal.querySelector('p');
+    if (txt) txt.textContent = reason || 'Multiple accounts are not allowed.';
+  } else {
+    alert(reason || 'Multiple accounts are not allowed.');
+  }
+}
+
+async function enforceAntiMultiOrBlock() {
+  try {
+    // Ensure Firebase auth (anonymous) exists
+    if (!firebase.auth().currentUser) {
+      try { await firebase.auth().signInAnonymously(); } catch (e) { console.warn('Anonymous auth failed (may already be signed in).', e); }
+    }
+
+    // Owner id prefers Telegram ID; fallback to Firebase auth uid
+    const tgId = (window.tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) ? String(tg.initDataUnsafe.user.id) : null;
+    const ownerId = tgId ? ('tg_' + tgId) : (firebase.auth().currentUser ? firebase.auth().currentUser.uid : null);
+    if (!ownerId) return { success: false, reason: 'no_owner' };
+
+    // Gather IP + fingerprint
+    const ip = await getIpAddress(); // from existing code
+    const fp = await generateFingerprint();
+
+    const claims = [];
+
+    // Claim IP index
+    if (ip) {
+      const ipKey = encodeURIComponent(ip);
+      const resIp = await tryClaimIndexTx(`ipIndex/${ipKey}`, ownerId);
+      if (!resIp.success) {
+        showMultiBlock('This IP is already linked to another account.');
+        return { success: false, reason: 'duplicate_ip', detail: resIp };
+      }
+      claims.push({ path: `ipIndex/${ipKey}` });
+    }
+
+    // Claim fingerprint index
+    if (fp) {
+      const fpKey = encodeURIComponent(fp);
+      const resFp = await tryClaimIndexTx(`fpIndex/${fpKey}`, ownerId);
+      if (!resFp.success) {
+        // rollback previous claim(s)
+        for (const c of claims) { await releaseIndexIfOwned(c.path, ownerId); }
+        showMultiBlock('This device is already linked to another account.');
+        return { success: false, reason: 'duplicate_fp', detail: resFp };
+      }
+      claims.push({ path: `fpIndex/${fpKey}` });
+    }
+
+    // Optionally persist on /users/{ownerId} for auditing
+    try {
+      await getDBv8().ref(`users/${ownerId}`).update({
+        lastSeenIp: ip || null,
+        lastSeenFingerprint: fp || null,
+        updatedAt: firebase.database.ServerValue.TIMESTAMP
+      });
+    } catch (e) { console.warn('Could not update user audit node', e); }
+
+    return { success: true, ownerId, ip, fp };
+  } catch (e) {
+    console.error('enforceAntiMultiOrBlock error', e);
+    return { success: false, reason: 'error', error: e };
+  }
+}
+</script>
+<!-- END: Anti-Multi-Account -->
+
 </body>
 </html>
