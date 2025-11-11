@@ -348,6 +348,14 @@
             margin-bottom: 10px;
             color: #4FC3F7;
         }
+        
+        .auto-mode-status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -396,6 +404,10 @@
                 <div style="margin: 20px 0;">
                     <span class="status-indicator" id="status-indicator"></span>
                     <span id="status-text">جاري التحميل...</span>
+                </div>
+                
+                <div class="auto-mode-status" id="auto-mode-status">
+                    <strong>وضع التلقائي:</strong> <span id="auto-status-text">غير نشط</span>
                 </div>
                 
                 <button class="btn btn-primary" id="start-auto-btn" onclick="startAutoPayments()">
@@ -490,6 +502,7 @@
         const processBtn = document.getElementById('process-pending-btn');
         const paymentLog = document.getElementById('payment-log');
         const notification = document.getElementById('notification');
+        const autoStatusText = document.getElementById('auto-status-text');
 
         // 🔄 تهيئة Firebase
         function initializeFirebase() {
@@ -522,6 +535,7 @@
             document.getElementById('total-ton').textContent = totalTON.toFixed(4);
             
             document.getElementById('auto-mode').textContent = isAutoMode ? 'ON' : 'OFF';
+            autoStatusText.textContent = isAutoMode ? 'نشط' : 'غير نشط';
         }
 
         // 📝 إضافة سجل
@@ -570,10 +584,11 @@
                 pendingWithdrawals = [];
                 
                 if (withdrawalsData) {
-                    Object.values(withdrawalsData).forEach(withdrawal => {
+                    Object.keys(withdrawalsData).forEach(key => {
+                        const withdrawal = withdrawalsData[key];
                         if (withdrawal.status === 'pending') {
                             pendingWithdrawals.push({
-                                id: withdrawal.id,
+                                id: key, // استخدام المفتاح كمعرف
                                 amount: withdrawal.amount,
                                 method: withdrawal.method,
                                 account: withdrawal.account,
@@ -770,10 +785,14 @@
                 
                 // إرسال رسالة للمستخدم
                 if (withdrawal.telegramId && isSuccess) {
-                    const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from Tara Tower Faucet has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow’s top withdrawer 🏆`;
+                    const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from Tara Tower Faucet has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow's top withdrawer 🏆`;
                     
-                    await sendTelegramMessage(botToken, withdrawal.telegramId, userMessage);
-                    addLog(`📨 تم إرسال إشعار النجاح للمستخدم`, 'success');
+                    const userSent = await sendTelegramMessage(botToken, withdrawal.telegramId, userMessage);
+                    if (userSent) {
+                        addLog(`📨 تم إرسال إشعار النجاح للمستخدم ${userDisplay}`, 'success');
+                    } else {
+                        addLog(`⚠️ فشل إرسال إشعار النجاح للمستخدم ${userDisplay}`, 'error');
+                    }
                 }
                 
                 // إرسال رسالة للقناة
@@ -783,8 +802,12 @@
                     
                     const channelMessage = `💰 NEW WITHDRAWAL REQUEST 💰\n\n👤 User Information:\n• Name: ${userDisplay}\n• Username: ${withdrawal.username ? '@' + withdrawal.username : 'N/A'}\n• User ID: ${withdrawal.userId}\n\n💳 Withdrawal Details:\n• Amount: ${withdrawal.amount.toFixed(8)} TON\n• Method: ${withdrawal.method}\n• Wallet: ${maskedAccount}\n\n📅 Date & Time: ${date} ${time}\n🆔 Request ID: ${withdrawal.id}\n\n✅ Status: Success Approval\n\nJoin bot @RealEarnBot_bot`;
                     
-                    await sendTelegramMessage(botToken, channel, channelMessage);
-                    addLog(`📢 تم إرسال إشعار النجاح للقناة`, 'success');
+                    const channelSent = await sendTelegramMessage(botToken, channel, channelMessage);
+                    if (channelSent) {
+                        addLog(`📢 تم إرسال إشعار النجاح للقناة`, 'success');
+                    } else {
+                        addLog(`⚠️ فشل إرسال إشعار النجاح للقناة`, 'error');
+                    }
                 }
                 
             } catch (error) {
@@ -798,14 +821,19 @@
                 const botToken = document.getElementById('telegram-bot-token').value;
                 
                 if (!botToken || !withdrawal.telegramId) {
+                    addLog('⚠️ لا يمكن إرسال إشعار فشل - معرف التليجرام غير متوفر', 'info');
                     return;
                 }
                 
                 const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
                 const failureMessage = `❌ Withdrawal Failed\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON could not be processed.\n\nReason: ${errorMessage}\n\nPlease check your wallet details and try again.`;
                 
-                await sendTelegramMessage(botToken, withdrawal.telegramId, failureMessage);
-                addLog(`📨 تم إرسال إشعار الفشل للمستخدم`, 'info');
+                const sent = await sendTelegramMessage(botToken, withdrawal.telegramId, failureMessage);
+                if (sent) {
+                    addLog(`📨 تم إرسال إشعار الفشل للمستخدم ${userDisplay}`, 'info');
+                } else {
+                    addLog(`⚠️ فشل إرسال إشعار الفشل للمستخدم ${userDisplay}`, 'error');
+                }
                 
             } catch (error) {
                 addLog(`❌ خطأ في إرسال إشعار الفشل: ${error.message}`, 'error');
@@ -828,7 +856,12 @@
                 });
                 
                 const result = await response.json();
-                return result.ok;
+                if (result.ok) {
+                    return true;
+                } else {
+                    console.error('Telegram API Error:', result);
+                    return false;
+                }
             } catch (error) {
                 console.error('Error sending Telegram message:', error);
                 return false;
@@ -950,6 +983,10 @@
             addLog('🔄 تم بدء وضع الدفع التلقائي', 'info');
             showNotification('تم تشغيل الدفع التلقائي', 'success');
             
+            // حفظ حالة التشغيل التلقائي في localStorage
+            localStorage.setItem('autoPaymentMode', 'true');
+            localStorage.setItem('autoPaymentInterval', interval.toString());
+            
             // معالجة فورية أولى
             processAllPendingWithdrawals();
             
@@ -973,6 +1010,10 @@
             updateStatus('inactive', 'متوقف');
             addLog('⏹️ تم إيقاف وضع الدفع التلقائي', 'info');
             showNotification('تم إيقاف الدفع التلقائي', 'info');
+            
+            // إزالة حالة التشغيل التلقائي من localStorage
+            localStorage.removeItem('autoPaymentMode');
+            localStorage.removeItem('autoPaymentInterval');
         }
 
         // 🔄 معالجة السحوبات المعلقة يدوياً
@@ -980,6 +1021,33 @@
             updateStatus('processing', 'جاري معالجة السحوبات المعلقة...');
             await processAllPendingWithdrawals();
             updateStatus('inactive', 'جاهز');
+        }
+
+        // 🔄 استعادة التشغيل التلقائي عند تحميل الصفحة
+        function restoreAutoMode() {
+            const savedAutoMode = localStorage.getItem('autoPaymentMode');
+            const savedInterval = localStorage.getItem('autoPaymentInterval');
+            
+            if (savedAutoMode === 'true' && savedInterval) {
+                addLog('🔄 استعادة وضع التشغيل التلقائي المحفوظ', 'info');
+                
+                isAutoMode = true;
+                const interval = parseInt(savedInterval);
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                
+                updateStatus('active', 'جاري التشغيل التلقائي');
+                
+                // معالجة فورية أولى
+                processAllPendingWithdrawals();
+                
+                // ضبط الفاصل الزمني
+                checkInterval = setInterval(async () => {
+                    await fetchPendingWithdrawals();
+                    await processAllPendingWithdrawals();
+                }, interval);
+            }
         }
 
         // 🎯 التهيئة
@@ -996,6 +1064,9 @@
             // جلب البيانات الأولية
             await fetchPendingWithdrawals();
             updateStats();
+            
+            // محاولة استعادة التشغيل التلقائي
+            restoreAutoMode();
             
             updateStatus('inactive', 'جاهز للتشغيل التلقائي');
             addLog('✅ النظام جاهز للعمل', 'success');
