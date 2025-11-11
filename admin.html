@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto Payment Dashboard</title>
+    <!-- إضافة Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         * {
             margin: 0;
@@ -164,6 +167,8 @@
 
         .withdrawals-list {
             margin-top: 30px;
+            max-height: 400px;
+            overflow-y: auto;
         }
 
         .withdrawal-item {
@@ -196,6 +201,11 @@
             font-size: 0.9rem;
             opacity: 0.8;
             margin-top: 5px;
+        }
+
+        .withdrawal-user {
+            font-weight: bold;
+            color: #FFD700;
         }
 
         .withdrawal-status {
@@ -300,75 +310,101 @@
         .notification.info {
             background: #2196F3;
         }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .filter-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn.active {
+            background: #4FC3F7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #4FC3F7;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>🤖 Auto Payment Dashboard</h1>
-            <p>إدارة السحوبات التلقائية - FaucetPay</p>
+            <p>إدارة السحوبات التلقائية - متصل بقاعدة البيانات الحقيقية</p>
         </div>
 
         <div class="dashboard">
             <div class="card">
-                <h2>📊 Statistics</h2>
+                <h2>📊 إحصائيات حية</h2>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-number" id="total-processed">0</div>
-                        <div class="stat-label">Total Processed</div>
+                        <div class="stat-number" id="total-pending">0</div>
+                        <div class="stat-label">سحوبات معلقة</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="successful-payments">0</div>
-                        <div class="stat-label">Successful</div>
+                        <div class="stat-label">ناجحة</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="failed-payments">0</div>
-                        <div class="stat-label">Failed</div>
+                        <div class="stat-label">فاشلة</div>
                     </div>
                 </div>
 
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-number" id="total-ton">0.0000</div>
-                        <div class="stat-label">Total TON</div>
+                        <div class="stat-label">إجمالي TON</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-number" id="pending-count">0</div>
-                        <div class="stat-label">Pending</div>
+                        <div class="stat-number" id="faucetpay-count">0</div>
+                        <div class="stat-label">FaucetPay</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="auto-mode">OFF</div>
-                        <div class="stat-label">Auto Mode</div>
+                        <div class="stat-label">وضع التلقائي</div>
                     </div>
                 </div>
             </div>
 
             <div class="card control-panel">
-                <h2>🎮 Control Panel</h2>
+                <h2>🎮 لوحة التحكم</h2>
                 <div style="margin: 20px 0;">
                     <span class="status-indicator" id="status-indicator"></span>
-                    <span id="status-text">Loading...</span>
+                    <span id="status-text">جاري التحميل...</span>
                 </div>
                 
                 <button class="btn btn-primary" id="start-auto-btn" onclick="startAutoPayments()">
-                    🚀 Start Auto Payments
+                    🚀 تشغيل السحب التلقائي
                 </button>
                 
                 <button class="btn btn-danger" id="stop-auto-btn" onclick="stopAutoPayments()" disabled>
-                    ⏹️ Stop Auto Payments
+                    ⏹️ إيقاف التلقائي
                 </button>
                 
                 <button class="btn btn-primary" id="process-pending-btn" onclick="processPendingWithdrawals()">
-                    🔄 Process Pending Now
+                    🔄 معالجة المعلقة الآن
                 </button>
 
                 <div class="settings-panel">
                     <div class="setting-item">
-                        <label for="max-amount">Max Auto Amount (TON):</label>
+                        <label for="max-amount">الحد الأقصى للتلقائي (TON):</label>
                         <input type="number" id="max-amount" value="0.001" step="0.0001" min="0.0001">
                     </div>
                     <div class="setting-item">
-                        <label for="check-interval">Check Interval (seconds):</label>
+                        <label for="check-interval">فاصل الفحص (ثانية):</label>
                         <input type="number" id="check-interval" value="30" min="10">
                     </div>
                 </div>
@@ -376,22 +412,21 @@
         </div>
 
         <div class="card">
-            <h2>📋 Recent Withdrawals</h2>
+            <h2>📋 السحوبات المعلقة من Firebase</h2>
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterWithdrawals('all')">الكل</button>
+                <button class="filter-btn" onclick="filterWithdrawals('faucetpay')">FaucetPay فقط</button>
+                <button class="filter-btn" onclick="filterWithdrawals('small')">صغيرة (&lt;0.001)</button>
+            </div>
             <div id="withdrawals-container">
-                <div class="withdrawal-item">
-                    <div class="withdrawal-info">
-                        <div class="withdrawal-amount">0.0005 TON</div>
-                        <div class="withdrawal-details">user@example.com • 2 minutes ago</div>
-                    </div>
-                    <div class="withdrawal-status status-pending">Pending</div>
-                </div>
+                <div class="loading">⏳ جاري تحميل السحوبات من قاعدة البيانات...</div>
             </div>
         </div>
 
         <div class="card">
-            <h2>📝 Auto Payment Log</h2>
+            <h2>📝 سجل المدفوعات التلقائية</h2>
             <div class="auto-payment-log" id="payment-log">
-                <div class="log-entry log-info">System started - Ready to process payments</div>
+                <div class="log-entry log-info">تم بدء النظام - جاهز لمعالجة المدفوعات</div>
             </div>
         </div>
     </div>
@@ -399,14 +434,28 @@
     <div class="notification" id="notification"></div>
 
     <script>
-        // إعدادات التطبيق
+        // 🔧 إعدادات Firebase - نفس إعدادات التطبيق الرئيسي
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+            authDomain: "earnmoney124553.firebaseapp.com",
+            databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+            projectId: "earnmoney124553",
+            storageBucket: "earnmoney124553.firebasestorage.app",
+            messagingSenderId: "325528918523",
+            appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+            measurementId: "G-G1H96Q5XCJ"
+        };
+
+        // 🔑 إعدادات الدفع
         const API_KEY = "21c756eae3ffb458d1fcef45685aacb78b110c179dcea7128c2593e0fc8fdcf0";
         const FAUCETPAY_ENDPOINT = "https://faucetpay.io/api/v1/send";
         
+        // متغيرات التطبيق
         let isAutoMode = false;
         let checkInterval = null;
         let pendingWithdrawals = [];
         let processedWithdrawals = [];
+        let db;
 
         // عناصر DOM
         const statusIndicator = document.getElementById('status-indicator');
@@ -417,14 +466,30 @@
         const paymentLog = document.getElementById('payment-log');
         const notification = document.getElementById('notification');
 
-        // تحديث الإحصائيات
+        // 🔄 تهيئة Firebase
+        function initializeFirebase() {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                addLog('✅ تم الاتصال بـ Firebase بنجاح', 'success');
+                return true;
+            } catch (error) {
+                addLog(`❌ خطأ في الاتصال بـ Firebase: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 📊 تحديث الإحصائيات
         function updateStats() {
-            document.getElementById('total-processed').textContent = processedWithdrawals.length;
+            const faucetpayPending = pendingWithdrawals.filter(w => w.method === 'FaucetPay').length;
+            const smallPending = pendingWithdrawals.filter(w => w.amount <= 0.001).length;
+            
+            document.getElementById('total-pending').textContent = pendingWithdrawals.length;
             document.getElementById('successful-payments').textContent = 
                 processedWithdrawals.filter(w => w.status === 'completed').length;
             document.getElementById('failed-payments').textContent = 
                 processedWithdrawals.filter(w => w.status === 'failed').length;
-            document.getElementById('pending-count').textContent = pendingWithdrawals.length;
+            document.getElementById('faucetpay-count').textContent = faucetpayPending;
             
             const totalTON = processedWithdrawals
                 .filter(w => w.status === 'completed')
@@ -434,7 +499,7 @@
             document.getElementById('auto-mode').textContent = isAutoMode ? 'ON' : 'OFF';
         }
 
-        // إضافة سجل
+        // 📝 إضافة سجل
         function addLog(message, type = 'info') {
             const logEntry = document.createElement('div');
             logEntry.className = `log-entry log-${type}`;
@@ -443,7 +508,7 @@
             paymentLog.scrollTop = paymentLog.scrollHeight;
         }
 
-        // عرض إشعار
+        // 🔔 عرض إشعار
         function showNotification(message, type = 'info') {
             notification.textContent = message;
             notification.className = `notification ${type} show`;
@@ -452,7 +517,7 @@
             }, 3000);
         }
 
-        // تحديث حالة النظام
+        // 🔄 تحديث حالة النظام
         function updateStatus(status, text) {
             statusIndicator.className = 'status-indicator';
             if (status === 'active') {
@@ -465,76 +530,132 @@
             statusText.textContent = text;
         }
 
-        // جلب السحوبات المعلقة من Firebase
+        // 📥 جلب السحوبات المعلقة من Firebase
         async function fetchPendingWithdrawals() {
             try {
-                // هنا سيتم الاتصال بـ Firebase لجلب السحوبات المعلقة
-                // هذا مثال محاكي للبيانات
-                const mockWithdrawals = [
-                    {
-                        id: '1',
-                        amount: 0.0005,
-                        email: 'user1@gmail.com',
-                        userName: 'User One',
-                        timestamp: Date.now() - 120000
-                    },
-                    {
-                        id: '2', 
-                        amount: 0.0008,
-                        email: 'user2@gmail.com',
-                        userName: 'User Two',
-                        timestamp: Date.now() - 300000
-                    }
-                ];
+                if (!db) {
+                    addLog('❌ قاعدة البيانات غير متاحة', 'error');
+                    return;
+                }
+
+                const withdrawalsRef = db.ref('withdrawals/pending');
+                const snapshot = await withdrawalsRef.once('value');
+                const withdrawalsData = snapshot.val();
                 
-                pendingWithdrawals = mockWithdrawals;
+                pendingWithdrawals = [];
+                
+                if (withdrawalsData) {
+                    Object.values(withdrawalsData).forEach(withdrawal => {
+                        if (withdrawal.status === 'pending') {
+                            pendingWithdrawals.push({
+                                id: withdrawal.id,
+                                amount: withdrawal.amount,
+                                method: withdrawal.method,
+                                account: withdrawal.account,
+                                userName: withdrawal.userName,
+                                username: withdrawal.username,
+                                userId: withdrawal.userId,
+                                timestamp: withdrawal.timestamp,
+                                memo: withdrawal.memo
+                            });
+                        }
+                    });
+                    
+                    // ترتيب حسب الأقدم
+                    pendingWithdrawals.sort((a, b) => a.timestamp - b.timestamp);
+                    
+                    addLog(`📥 تم تحميل ${pendingWithdrawals.length} سحب معلق`, 'info');
+                } else {
+                    addLog('📭 لا توجد سحوبات معلقة', 'info');
+                }
+                
                 updateWithdrawalsList();
                 updateStats();
                 
             } catch (error) {
-                addLog(`Error fetching withdrawals: ${error.message}`, 'error');
+                addLog(`❌ خطأ في جلب السحوبات: ${error.message}`, 'error');
             }
         }
 
-        // تحديث قائمة السحوبات
-        function updateWithdrawalsList() {
+        // 🎯 تصفية السحوبات
+        function filterWithdrawals(filterType) {
+            // تحديث أزرار التصفية
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            updateWithdrawalsList(filterType);
+        }
+
+        // 📋 تحديث قائمة السحوبات
+        function updateWithdrawalsList(filterType = 'all') {
             const container = document.getElementById('withdrawals-container');
+            
+            if (pendingWithdrawals.length === 0) {
+                container.innerHTML = '<div class="loading">📭 لا توجد سحوبات معلقة حالياً</div>';
+                return;
+            }
+            
+            let filteredWithdrawals = pendingWithdrawals;
+            
+            if (filterType === 'faucetpay') {
+                filteredWithdrawals = pendingWithdrawals.filter(w => w.method === 'FaucetPay');
+            } else if (filterType === 'small') {
+                filteredWithdrawals = pendingWithdrawals.filter(w => w.amount <= 0.001);
+            }
+            
             container.innerHTML = '';
             
-            pendingWithdrawals.forEach(withdrawal => {
+            filteredWithdrawals.forEach(withdrawal => {
                 const item = document.createElement('div');
                 item.className = 'withdrawal-item';
+                
+                const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
+                const isEligible = withdrawal.method === 'FaucetPay' && withdrawal.amount <= 0.001;
+                
                 item.innerHTML = `
                     <div class="withdrawal-info">
                         <div class="withdrawal-amount">${withdrawal.amount.toFixed(4)} TON</div>
                         <div class="withdrawal-details">
-                            ${withdrawal.email} • ${formatTime(withdrawal.timestamp)}
+                            <span class="withdrawal-user">${userDisplay}</span> • 
+                            ${withdrawal.account} • 
+                            ${formatTime(withdrawal.timestamp)}
+                            ${withdrawal.memo ? ` • Memo: ${withdrawal.memo}` : ''}
                         </div>
                     </div>
-                    <div class="withdrawal-status status-pending">Pending</div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 0.8rem; opacity: 0.7;">${withdrawal.method}</span>
+                        <div class="withdrawal-status status-pending">
+                            ${isEligible ? '🟢 قابل للتلقائي' : '🟡 يدوي'}
+                        </div>
+                    </div>
                 `;
                 container.appendChild(item);
             });
         }
 
-        // تنسيق الوقت
+        // ⏰ تنسيق الوقت
         function formatTime(timestamp) {
+            if (!timestamp) return 'غير معروف';
+            
             const now = Date.now();
             const diff = now - timestamp;
             const minutes = Math.floor(diff / 60000);
             const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
             
-            if (minutes < 1) return 'Just now';
-            if (minutes < 60) return `${minutes} minutes ago`;
-            if (hours < 24) return `${hours} hours ago`;
-            return new Date(timestamp).toLocaleDateString();
+            if (minutes < 1) return 'الآن';
+            if (minutes < 60) return `منذ ${minutes} دقيقة`;
+            if (hours < 24) return `منذ ${hours} ساعة`;
+            if (days < 7) return `منذ ${days} يوم`;
+            
+            return new Date(timestamp).toLocaleDateString('ar-EG');
         }
 
-        // معالجة الدفع عبر FaucetPay
+        // 💰 معالجة الدفع عبر FaucetPay
         async function processPayment(withdrawal) {
             try {
-                addLog(`Processing payment: ${withdrawal.amount} TON to ${withdrawal.email}`, 'info');
-                updateStatus('processing', `Processing ${withdrawal.amount} TON...`);
+                addLog(`🔧 جاري معالجة: ${withdrawal.amount} TON إلى ${withdrawal.account}`, 'info');
+                updateStatus('processing', `جاري دفع ${withdrawal.amount} TON...`);
                 
                 const amountSatoshi = Math.floor(withdrawal.amount * 100000000);
                 
@@ -542,7 +663,7 @@
                     "api_key": API_KEY,
                     "currency": "TON",
                     "amount": amountSatoshi.toString(),
-                    "to": withdrawal.email
+                    "to": withdrawal.account
                 });
 
                 const response = await fetch(FAUCETPAY_ENDPOINT, {
@@ -556,8 +677,8 @@
                 const result = await response.json();
                 
                 if (result.status === 200) {
-                    addLog(`✅ Payment successful! TX: ${result.payment_id}`, 'success');
-                    showNotification(`Payment sent: ${withdrawal.amount} TON`, 'success');
+                    addLog(`✅ تم الدفع بنجاح! رقم المعاملة: ${result.payment_id}`, 'success');
+                    showNotification(`تم الدفع: ${withdrawal.amount} TON`, 'success');
                     
                     return {
                         success: true,
@@ -565,8 +686,8 @@
                         withdrawal: withdrawal
                     };
                 } else {
-                    addLog(`❌ Payment failed: ${result.message}`, 'error');
-                    showNotification(`Payment failed: ${result.message}`, 'error');
+                    addLog(`❌ فشل الدفع: ${result.message}`, 'error');
+                    showNotification(`فشل الدفع: ${result.message}`, 'error');
                     
                     return {
                         success: false,
@@ -576,8 +697,8 @@
                 }
                 
             } catch (error) {
-                addLog(`❌ Payment error: ${error.message}`, 'error');
-                showNotification(`Payment error: ${error.message}`, 'error');
+                addLog(`❌ خطأ في الدفع: ${error.message}`, 'error');
+                showNotification(`خطأ في الدفع: ${error.message}`, 'error');
                 
                 return {
                     success: false,
@@ -587,25 +708,62 @@
             }
         }
 
-        // معالجة جميع السحوبات المعلقة
+        // 🔄 تحديث حالة السحب في Firebase
+        async function updateWithdrawalStatus(withdrawalId, status, transactionId = null) {
+            try {
+                const withdrawalRef = db.ref(`withdrawals/pending/${withdrawalId}`);
+                const snapshot = await withdrawalRef.once('value');
+                const withdrawalData = snapshot.val();
+                
+                if (withdrawalData) {
+                    // نقل إلى المكتملة
+                    await db.ref(`withdrawals/completed/${withdrawalId}`).set({
+                        ...withdrawalData,
+                        status: status,
+                        transactionId: transactionId,
+                        processedAt: Date.now(),
+                        processedBy: 'auto_payment_dashboard'
+                    });
+                    
+                    // حذف من المعلقة
+                    await withdrawalRef.remove();
+                    
+                    addLog(`📝 تم تحديث حالة السحب ${withdrawalId} إلى ${status}`, 'info');
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                addLog(`❌ خطأ في تحديث حالة السحب: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 🎯 معالجة جميع السحوبات المعلقة
         async function processAllPendingWithdrawals() {
             const maxAmount = parseFloat(document.getElementById('max-amount').value);
             
-            // تصفية السحوبات حسب المبلغ الأقصى
-            const eligibleWithdrawals = pendingWithdrawals.filter(w => w.amount <= maxAmount);
+            // تصفية السحوبات المؤهلة للتلقائي
+            const eligibleWithdrawals = pendingWithdrawals.filter(w => 
+                w.method === 'FaucetPay' && 
+                w.amount <= maxAmount
+            );
             
             if (eligibleWithdrawals.length === 0) {
-                addLog('No eligible withdrawals to process', 'info');
+                addLog('⚠️ لا توجد سحوبات مؤهلة للمعالجة التلقائية', 'info');
                 return;
             }
             
-            addLog(`Processing ${eligibleWithdrawals.length} eligible withdrawals...`, 'info');
+            addLog(`🔧 جاري معالجة ${eligibleWithdrawals.length} سحب مؤهل...`, 'info');
             
             for (const withdrawal of eligibleWithdrawals) {
                 const result = await processPayment(withdrawal);
                 
-                // تحديث السجلات
                 if (result.success) {
+                    // تحديث Firebase
+                    await updateWithdrawalStatus(withdrawal.id, 'completed', result.transactionId);
+                    
+                    // تحديث السجلات المحلية
                     processedWithdrawals.push({
                         ...withdrawal,
                         status: 'completed',
@@ -616,6 +774,7 @@
                     // إزالة من قائمة المعلقة
                     pendingWithdrawals = pendingWithdrawals.filter(w => w.id !== withdrawal.id);
                 } else {
+                    // في حالة الفشل، نتركها معلقة للمعالجة اليدوية
                     processedWithdrawals.push({
                         ...withdrawal,
                         status: 'failed',
@@ -627,15 +786,15 @@
                 updateStats();
                 updateWithdrawalsList();
                 
-                // انتظار 2 ثانية بين كل عملية دفع
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                // انتظار 3 ثواني بين كل عملية دفع
+                await new Promise(resolve => setTimeout(resolve, 3000));
             }
             
-            updateStatus('active', 'Auto payments running');
-            addLog('Finished processing all eligible withdrawals', 'info');
+            updateStatus('active', 'جاري التشغيل التلقائي');
+            addLog('✅ تم الانتهاء من معالجة جميع السحوبات المؤهلة', 'success');
         }
 
-        // بدء السحب التلقائي
+        // 🚀 بدء السحب التلقائي
         function startAutoPayments() {
             if (isAutoMode) return;
             
@@ -645,9 +804,9 @@
             startBtn.disabled = true;
             stopBtn.disabled = false;
             
-            updateStatus('active', 'Auto payments running');
-            addLog('🔄 Auto payment mode started', 'info');
-            showNotification('Auto payments started', 'success');
+            updateStatus('active', 'جاري التشغيل التلقائي');
+            addLog('🔄 تم بدء وضع الدفع التلقائي', 'info');
+            showNotification('تم تشغيل الدفع التلقائي', 'success');
             
             // معالجة فورية أولى
             processAllPendingWithdrawals();
@@ -659,7 +818,7 @@
             }, interval);
         }
 
-        // إيقاف السحب التلقائي
+        // ⏹️ إيقاف السحب التلقائي
         function stopAutoPayments() {
             if (!isAutoMode) return;
             
@@ -669,30 +828,38 @@
             startBtn.disabled = false;
             stopBtn.disabled = true;
             
-            updateStatus('inactive', 'Auto payments stopped');
-            addLog('⏹️ Auto payment mode stopped', 'info');
-            showNotification('Auto payments stopped', 'info');
+            updateStatus('inactive', 'متوقف');
+            addLog('⏹️ تم إيقاف وضع الدفع التلقائي', 'info');
+            showNotification('تم إيقاف الدفع التلقائي', 'info');
         }
 
-        // معالجة السحوبات المعلقة يدوياً
+        // 🔄 معالجة السحوبات المعلقة يدوياً
         async function processPendingWithdrawals() {
-            updateStatus('processing', 'Processing pending withdrawals...');
+            updateStatus('processing', 'جاري معالجة السحوبات المعلقة...');
             await processAllPendingWithdrawals();
-            updateStatus('inactive', 'Ready');
+            updateStatus('inactive', 'جاهز');
         }
 
-        // التهيئة
+        // 🎯 التهيئة
         async function init() {
-            updateStatus('inactive', 'Loading...');
-            addLog('System initialized', 'info');
+            updateStatus('inactive', 'جاري التهيئة...');
+            addLog('🔧 جاري تهيئة النظام...', 'info');
             
+            // تهيئة Firebase
+            if (!initializeFirebase()) {
+                updateStatus('inactive', 'خطأ في الاتصال');
+                return;
+            }
+            
+            // جلب البيانات الأولية
             await fetchPendingWithdrawals();
             updateStats();
             
-            updateStatus('inactive', 'Ready to start auto payments');
+            updateStatus('inactive', 'جاهز للتشغيل التلقائي');
+            addLog('✅ النظام جاهز للعمل', 'success');
             
-            // تحديث البيانات كل 30 ثانية
-            setInterval(fetchPendingWithdrawals, 30000);
+            // تحديث البيانات كل 20 ثانية
+            setInterval(fetchPendingWithdrawals, 20000);
         }
 
         // بدء التطبيق
