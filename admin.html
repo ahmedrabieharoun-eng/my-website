@@ -356,6 +356,15 @@
             margin: 10px 0;
             text-align: center;
         }
+        
+        .service-worker-status {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -408,6 +417,10 @@
                 
                 <div class="auto-mode-status" id="auto-mode-status">
                     <strong>وضع التلقائي:</strong> <span id="auto-status-text">غير نشط</span>
+                </div>
+                
+                <div class="service-worker-status" id="sw-status">
+                    <strong>حالة الخلفية:</strong> <span id="sw-status-text">جارِ التحقق...</span>
                 </div>
                 
                 <button class="btn btn-primary" id="start-auto-btn" onclick="startAutoPayments()">
@@ -493,6 +506,7 @@
         let pendingWithdrawals = [];
         let processedWithdrawals = [];
         let db;
+        let backgroundSyncSupported = false;
 
         // عناصر DOM
         const statusIndicator = document.getElementById('status-indicator');
@@ -503,6 +517,7 @@
         const paymentLog = document.getElementById('payment-log');
         const notification = document.getElementById('notification');
         const autoStatusText = document.getElementById('auto-status-text');
+        const swStatusText = document.getElementById('sw-status-text');
 
         // 🔄 تهيئة Firebase
         function initializeFirebase() {
@@ -702,16 +717,6 @@
                 addLog(`🔧 جاري معالجة: ${withdrawal.amount} TON إلى ${withdrawal.account}`, 'info');
                 updateStatus('processing', `جاري دفع ${withdrawal.amount} TON...`);
                 
-                // التحقق من أن الحساب موثق
-                if (withdrawal.account.includes('not verified')) {
-                    addLog(`❌ تم رفض السحب: الحساب غير موثق`, 'error');
-                    return {
-                        success: false,
-                        error: "This account is not verified",
-                        withdrawal: withdrawal
-                    };
-                }
-                
                 const amountSatoshi = Math.floor(withdrawal.amount * 100000000);
                 
                 const payload = new URLSearchParams({
@@ -747,8 +752,13 @@
                     addLog(`❌ فشل الدفع: ${result.message}`, 'error');
                     showNotification(`فشل الدفع: ${result.message}`, 'error');
                     
-                    // إرسال إشعار فشل للمستخدم فقط
-                    await sendFailureNotification(withdrawal, result.message);
+                    // إذا كان الخطأ بسبب حساب غير موثق، نرفض السحب نهائياً
+                    if (result.message.includes('not verified')) {
+                        await rejectWithdrawal(withdrawal.id, result.message);
+                    } else {
+                        // إرسال إشعار فشل للمستخدم فقط
+                        await sendFailureNotification(withdrawal, result.message);
+                    }
                     
                     return {
                         success: false,
@@ -769,6 +779,41 @@
             }
         }
 
+        // 🚫 رفض السحب نهائياً
+        async function rejectWithdrawal(withdrawalId, reason) {
+            try {
+                const withdrawalRef = db.ref(`withdrawals/pending/${withdrawalId}`);
+                const snapshot = await withdrawalRef.once('value');
+                const withdrawalData = snapshot.val();
+                
+                if (withdrawalData) {
+                    // نقل إلى المرفوضة
+                    await db.ref(`withdrawals/rejected/${withdrawalId}`).set({
+                        ...withdrawalData,
+                        status: 'rejected',
+                        rejectionReason: reason,
+                        rejectedAt: Date.now(),
+                        rejectedBy: 'auto_payment_dashboard'
+                    });
+                    
+                    // حذف من المعلقة
+                    await withdrawalRef.remove();
+                    
+                    addLog(`🚫 تم رفض السحب ${withdrawalId} بسبب: ${reason}`, 'error');
+                    
+                    // إرسال إشعار رفض للمستخدم
+                    await sendRejectionNotification(withdrawalData, reason);
+                    
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                addLog(`❌ خطأ في رفض السحب: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
         // 📨 إرسال إشعارات التليجرام بعد السحب الناجح
         async function sendTelegramNotifications(withdrawal, transactionId, isSuccess) {
             try {
@@ -783,11 +828,12 @@
                 const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
                 const maskedAccount = maskAccount(withdrawal.account);
                 
-                // إرسال رسالة للمستخدم
-                if (withdrawal.telegramId && isSuccess) {
+                // إرسال رسالة للمستخدم - النص المطلوب بالضبط
+                if (withdrawal.userId && isSuccess) {
                     const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from Tara Tower Faucet has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow's top withdrawer 🏆`;
                     
-                    const userSent = await sendTelegramMessage(botToken, withdrawal.telegramId, userMessage);
+                    // محاولة إرسال الرسالة باستخدام معرف المستخدم
+                    const userSent = await sendTelegramMessageByUserId(botToken, withdrawal.userId, userMessage);
                     if (userSent) {
                         addLog(`📨 تم إرسال إشعار النجاح للمستخدم ${userDisplay}`, 'success');
                     } else {
@@ -820,15 +866,15 @@
             try {
                 const botToken = document.getElementById('telegram-bot-token').value;
                 
-                if (!botToken || !withdrawal.telegramId) {
-                    addLog('⚠️ لا يمكن إرسال إشعار فشل - معرف التليجرام غير متوفر', 'info');
+                if (!botToken || !withdrawal.userId) {
+                    addLog('⚠️ لا يمكن إرسال إشعار فشل - معرف المستخدم غير متوفر', 'info');
                     return;
                 }
                 
                 const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
                 const failureMessage = `❌ Withdrawal Failed\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON could not be processed.\n\nReason: ${errorMessage}\n\nPlease check your wallet details and try again.`;
                 
-                const sent = await sendTelegramMessage(botToken, withdrawal.telegramId, failureMessage);
+                const sent = await sendTelegramMessageByUserId(botToken, withdrawal.userId, failureMessage);
                 if (sent) {
                     addLog(`📨 تم إرسال إشعار الفشل للمستخدم ${userDisplay}`, 'info');
                 } else {
@@ -837,6 +883,55 @@
                 
             } catch (error) {
                 addLog(`❌ خطأ في إرسال إشعار الفشل: ${error.message}`, 'error');
+            }
+        }
+
+        // 📨 إرسال إشعار رفض للمستخدم
+        async function sendRejectionNotification(withdrawal, reason) {
+            try {
+                const botToken = document.getElementById('telegram-bot-token').value;
+                
+                if (!botToken || !withdrawal.userId) {
+                    return;
+                }
+                
+                const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
+                const rejectionMessage = `🚫 Withdrawal Rejected\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON has been rejected.\n\nReason: ${reason}\n\nPlease contact support if you believe this is an error.`;
+                
+                await sendTelegramMessageByUserId(botToken, withdrawal.userId, rejectionMessage);
+                addLog(`📨 تم إرسال إشعار الرفض للمستخدم ${userDisplay}`, 'info');
+                
+            } catch (error) {
+                addLog(`❌ خطأ في إرسال إشعار الرفض: ${error.message}`, 'error');
+            }
+        }
+
+        // 📤 إرسال رسالة تليجرام باستخدام معرف المستخدم
+        async function sendTelegramMessageByUserId(botToken, userId, text) {
+            try {
+                // محاولة إرسال الرسالة مباشرة إلى معرف المستخدم
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: userId,
+                        text: text,
+                        parse_mode: 'HTML'
+                    })
+                });
+                
+                const result = await response.json();
+                if (result.ok) {
+                    return true;
+                } else {
+                    console.error('Telegram API Error:', result);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error sending Telegram message:', error);
+                return false;
             }
         }
 
@@ -920,8 +1015,7 @@
             // تصفية السحوبات المؤهلة للتلقائي (موثقة + ضمن الحد)
             const eligibleWithdrawals = pendingWithdrawals.filter(w => 
                 w.method === 'FaucetPay' && 
-                w.amount <= maxAmount &&
-                !w.account.includes('not verified') // استبعاد الحسابات غير الموثقة
+                w.amount <= maxAmount
             );
             
             if (eligibleWithdrawals.length === 0) {
@@ -949,13 +1043,15 @@
                     // إزالة من قائمة المعلقة
                     pendingWithdrawals = pendingWithdrawals.filter(w => w.id !== withdrawal.id);
                 } else {
-                    // في حالة الفشل، نتركها معلقة للمعالجة اليدوية
-                    processedWithdrawals.push({
-                        ...withdrawal,
-                        status: 'failed',
-                        error: result.error,
-                        processedAt: Date.now()
-                    });
+                    // في حالة الفشل، نتركها معلقة للمعالجة اليدوية ما لم يكن السبب حساب غير موثق
+                    if (!result.error.includes('not verified')) {
+                        processedWithdrawals.push({
+                            ...withdrawal,
+                            status: 'failed',
+                            error: result.error,
+                            processedAt: Date.now()
+                        });
+                    }
                 }
                 
                 updateStats();
@@ -986,6 +1082,7 @@
             // حفظ حالة التشغيل التلقائي في localStorage
             localStorage.setItem('autoPaymentMode', 'true');
             localStorage.setItem('autoPaymentInterval', interval.toString());
+            localStorage.setItem('autoPaymentStarted', Date.now().toString());
             
             // معالجة فورية أولى
             processAllPendingWithdrawals();
@@ -1014,6 +1111,7 @@
             // إزالة حالة التشغيل التلقائي من localStorage
             localStorage.removeItem('autoPaymentMode');
             localStorage.removeItem('autoPaymentInterval');
+            localStorage.removeItem('autoPaymentStarted');
         }
 
         // 🔄 معالجة السحوبات المعلقة يدوياً
@@ -1027,26 +1125,40 @@
         function restoreAutoMode() {
             const savedAutoMode = localStorage.getItem('autoPaymentMode');
             const savedInterval = localStorage.getItem('autoPaymentInterval');
+            const startedTime = localStorage.getItem('autoPaymentStarted');
             
             if (savedAutoMode === 'true' && savedInterval) {
-                addLog('🔄 استعادة وضع التشغيل التلقائي المحفوظ', 'info');
+                // التحقق من أن التشغيل التلقائي لم يتجاوز 24 ساعة
+                const now = Date.now();
+                const startTime = parseInt(startedTime);
+                const hoursRunning = (now - startTime) / (1000 * 60 * 60);
                 
-                isAutoMode = true;
-                const interval = parseInt(savedInterval);
-                
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                
-                updateStatus('active', 'جاري التشغيل التلقائي');
-                
-                // معالجة فورية أولى
-                processAllPendingWithdrawals();
-                
-                // ضبط الفاصل الزمني
-                checkInterval = setInterval(async () => {
-                    await fetchPendingWithdrawals();
-                    await processAllPendingWithdrawals();
-                }, interval);
+                if (hoursRunning < 24) {
+                    addLog('🔄 استعادة وضع التشغيل التلقائي المحفوظ', 'info');
+                    
+                    isAutoMode = true;
+                    const interval = parseInt(savedInterval);
+                    
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    
+                    updateStatus('active', 'جاري التشغيل التلقائي');
+                    
+                    // معالجة فورية أولى
+                    processAllPendingWithdrawals();
+                    
+                    // ضبط الفاصل الزمني
+                    checkInterval = setInterval(async () => {
+                        await fetchPendingWithdrawals();
+                        await processAllPendingWithdrawals();
+                    }, interval);
+                } else {
+                    // تنظيف localStorage إذا تجاوز 24 ساعة
+                    localStorage.removeItem('autoPaymentMode');
+                    localStorage.removeItem('autoPaymentInterval');
+                    localStorage.removeItem('autoPaymentStarted');
+                    addLog('⏰ انتهت مدة التشغيل التلقائي (24 ساعة)', 'info');
+                }
             }
         }
 
@@ -1054,6 +1166,16 @@
         async function init() {
             updateStatus('inactive', 'جاري التهيئة...');
             addLog('🔧 جاري تهيئة النظام...', 'info');
+            
+            // التحقق من دعم Service Worker
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                backgroundSyncSupported = true;
+                swStatusText.textContent = 'مدعوم';
+                addLog('✅ دعم التشغيل في الخلفية مفعل', 'success');
+            } else {
+                swStatusText.textContent = 'غير مدعوم';
+                addLog('⚠️ التشغيل في الخلفية غير مدعوم في هذا المتصفح', 'info');
+            }
             
             // تهيئة Firebase
             if (!initializeFirebase()) {
