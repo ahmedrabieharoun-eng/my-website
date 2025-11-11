@@ -1149,6 +1149,93 @@
             cursor: not-allowed;
         }
 
+        /* الأنماط الجديدة للمهام اليدوية */
+        .manual-task-container {
+            background: linear-gradient(45deg, rgba(155, 89, 182, 0.1), rgba(142, 68, 173, 0.1));
+            border: 2px solid #9b59b6;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .screenshot-upload-area {
+            border: 2px dashed var(--ship-gold);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin: 15px 0;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .screenshot-upload-area:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .screenshot-preview {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #9b59b6, #8e44ad);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(155, 89, 182, 0.4);
+        }
+
+        .task-status {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background: rgba(255, 165, 0, 0.2);
+            color: var(--pending);
+            border: 1px solid var(--pending);
+        }
+
+        .status-approved {
+            background: rgba(76, 175, 80, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-rejected {
+            background: rgba(244, 67, 54, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .change-screenshot-btn {
+            background: transparent;
+            border: 1px solid var(--ship-gold);
+            color: var(--ship-gold);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .change-screenshot-btn:hover {
+            background: rgba(255, 215, 0, 0.1);
+        }
+
         @media (max-width: 380px) {
             .subscription-container {
                 padding: 8px;
@@ -1426,7 +1513,7 @@
                         <i class="fas fa-ticket-alt" style="font-size: 1.2rem; color: var(--ship-gold); margin-right: 10px;"></i>
                         <div class="task-info" style="flex: 1;">
                             <h3 style="font-size: 1rem;">Redeem Code</h3>
-                            <p style="font-size: 0.8rem;">Enter code for contest points</p>
+                            <p style="font-size: 0.8rem;">Enter code for rewards</p>
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <input type="text" id="redeem-code-input" class="code-input" 
@@ -1445,6 +1532,10 @@
                 
                 <h2>Bonus Tasks</h2>
                 <div id="dynamic-tasks-container"></div>
+                
+                <!-- قسم المهام اليدوية -->
+                <h2>Manual Tasks</h2>
+                <div id="manual-tasks-container"></div>
             </div>
 
             <div id="contest-page" class="page">
@@ -1686,6 +1777,10 @@
         // ✅ متغيرات العملة الصفراء
         let userRRBalance = 0;
         const RR_TO_TON_RATE = 10000000;
+
+        // ✅ بيانات المهام اليدوية
+        let manualTasks = [];
+        let userManualTasks = {};
 
         // 🌍 متغيرات كشف الدولة
         let userCountryData = null;
@@ -2343,6 +2438,9 @@
 
                 await loadAdChannels(db);
 
+                // ✅ تحميل المهام اليدوية
+                await loadManualTasks(db);
+
                 userRRBalance = parseInt(localStorage.getItem(`userRRBalance_${tgUser.id || 'guest'}`) || '0');
 
                 showPopup(`
@@ -2585,6 +2683,32 @@
                 
             } catch (error) {
                 console.error('Error loading ad channels:', error);
+            }
+        };
+
+        // ✅ دالة لتحميل المهام اليدوية
+        const loadManualTasks = async (db) => {
+            try {
+                const manualTasksRef = db.ref('manualTasks');
+                const manualTasksSnap = await manualTasksRef.once('value');
+                const savedTasks = manualTasksSnap.val();
+                
+                if (savedTasks) {
+                    // تصفية المهام النشطة فقط
+                    manualTasks = Object.values(savedTasks).filter(task => task.active !== false);
+                }
+                
+                // تحميل حالة المهام للمستخدم الحالي
+                const userManualTasksRef = db.ref(`userManualTasks/${tgUser.id}`);
+                const userManualTasksSnap = await userManualTasksRef.once('value');
+                const userTasksData = userManualTasksSnap.val();
+                
+                if (userTasksData) {
+                    userManualTasks = userTasksData;
+                }
+                
+            } catch (error) {
+                console.error('Error loading manual tasks:', error);
             }
         };
 
@@ -3048,6 +3172,7 @@
             renderAdTask(); 
             renderAdProgress(); 
             renderDynamicTasks(); 
+            renderManualTasks();
             renderReferralsPage();
             renderWithdrawSection(); 
             renderConverter(); 
@@ -3317,6 +3442,247 @@
                         </button>`;
                     container.appendChild(el);
                 });
+            }
+        };
+
+        // ✅ دالة لعرض المهام اليدوية
+        const renderManualTasks = () => {
+            const container = document.getElementById('manual-tasks-container');
+            container.innerHTML = '';
+            
+            if (manualTasks.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: var(--text-secondary-dark); padding: 20px;">No manual tasks available at the moment.</p>';
+                return;
+            }
+            
+            manualTasks.forEach(task => {
+                const userTask = userManualTasks && userManualTasks[task.id];
+                const isCompleted = userTask && userTask.status === 'approved';
+                const isPending = userTask && userTask.status === 'pending';
+                const isRejected = userTask && userTask.status === 'rejected';
+                
+                let statusText = '';
+                let statusClass = '';
+                
+                if (isCompleted) {
+                    statusText = '✅ Approved';
+                    statusClass = 'status-approved';
+                } else if (isPending) {
+                    statusText = '⏳ Pending Review';
+                    statusClass = 'status-pending';
+                } else if (isRejected) {
+                    statusText = '❌ Rejected';
+                    statusClass = 'status-rejected';
+                }
+                
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task-container manual-task-container';
+                taskElement.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+                        <img class="task-icon-img" src="${task.icon}" alt="icon">
+                        <div class="task-info" style="flex: 1;">
+                            <h3>${task.name}</h3>
+                            <p>${task.description}</p>
+                            <p style="color: var(--ship-gold); font-weight: 600;">
+                                Reward: ${task.rewardType === 'TON' ? task.rewardValue + ' TON' : 
+                                        task.rewardType === 'RR' ? task.rewardValue.toLocaleString() + ' RR' : 
+                                        task.rewardValue + ' Points'}
+                            </p>
+                        </div>
+                        ${statusText ? `<span class="task-status ${statusClass}">${statusText}</span>` : ''}
+                    </div>
+                    
+                    ${!isCompleted && !isPending ? `
+                    <div class="screenshot-upload-area" id="upload-area-${task.id}">
+                        <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--ship-gold); margin-bottom: 10px;"></i>
+                        <p>Click to upload screenshot proof</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary-dark);">
+                            Upload a clear screenshot showing you completed the task
+                        </p>
+                        <input type="file" id="screenshot-input-${task.id}" accept="image/*" style="display: none;">
+                        <img class="screenshot-preview" id="preview-${task.id}">
+                    </div>
+                    
+                    <div style="display: ${userTask && userTask.screenshot ? 'block' : 'none'};" id="submission-section-${task.id}">
+                        <p style="color: var(--success); margin-bottom: 10px;">
+                            <i class="fas fa-check-circle"></i> Screenshot uploaded successfully!
+                        </p>
+                        <button class="change-screenshot-btn" onclick="changeScreenshot('${task.id}')">
+                            Change Screenshot
+                        </button>
+                        <button class="upload-btn" onclick="submitManualTask('${task.id}')" style="width: 100%; margin-top: 10px;">
+                            Submit for Review
+                        </button>
+                    </div>
+                    ` : ''}
+                    
+                    ${isPending ? `
+                    <div style="background: rgba(255, 165, 0, 0.1); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                        <p style="margin: 0; color: var(--pending); font-size: 0.9rem;">
+                            <i class="fas fa-clock"></i> Your submission is under review. Please wait for admin approval.
+                        </p>
+                    </div>
+                    ` : ''}
+                    
+                    ${isRejected ? `
+                    <div style="background: rgba(244, 67, 54, 0.1); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                        <p style="margin: 0; color: var(--danger); font-size: 0.9rem;">
+                            <i class="fas fa-exclamation-triangle"></i> Your submission was rejected. 
+                            ${userTask.rejectionReason ? `Reason: ${userTask.rejectionReason}` : 'Please try again with a clearer screenshot.'}
+                        </p>
+                        <button class="change-screenshot-btn" onclick="changeScreenshot('${task.id}')" style="margin-top: 8px;">
+                            Upload New Screenshot
+                        </button>
+                    </div>
+                    ` : ''}
+                `;
+                
+                container.appendChild(taskElement);
+                
+                // إعداد مستمعي الأحداث للرفع
+                if (!isCompleted && !isPending) {
+                    setupScreenshotUpload(task.id);
+                }
+            });
+        };
+
+        // ✅ دالة لإعداد رفع الصور
+        const setupScreenshotUpload = (taskId) => {
+            const uploadArea = document.getElementById(`upload-area-${taskId}`);
+            const fileInput = document.getElementById(`screenshot-input-${taskId}`);
+            const preview = document.getElementById(`preview-${taskId}`);
+            const submissionSection = document.getElementById(`submission-section-${taskId}`);
+            
+            if (uploadArea && fileInput) {
+                uploadArea.addEventListener('click', () => {
+                    fileInput.click();
+                });
+                
+                fileInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            preview.src = e.target.result;
+                            preview.style.display = 'block';
+                            submissionSection.style.display = 'block';
+                            
+                            // حفظ الصورة مؤقتاً
+                            if (!userManualTasks[taskId]) {
+                                userManualTasks[taskId] = {};
+                            }
+                            userManualTasks[taskId].screenshot = e.target.result;
+                            userManualTasks[taskId].timestamp = Date.now();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        };
+
+        // ✅ دالة لتغيير الصورة
+        window.changeScreenshot = (taskId) => {
+            const fileInput = document.getElementById(`screenshot-input-${taskId}`);
+            if (fileInput) {
+                fileInput.click();
+            }
+        };
+
+        // ✅ دالة لإرسال المهمة اليدوية للمراجعة
+        window.submitManualTask = async (taskId) => {
+            try {
+                const task = manualTasks.find(t => t.id === taskId);
+                if (!task) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("Task not found!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                const userTask = userManualTasks[taskId];
+                if (!userTask || !userTask.screenshot) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("Please upload a screenshot first!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                const db = firebase.database();
+                
+                // تحديث حالة المهمة إلى قيد المراجعة
+                userManualTasks[taskId].status = 'pending';
+                userManualTasks[taskId].submittedAt = Date.now();
+                
+                const userManualTasksRef = db.ref(`userManualTasks/${tgUser.id}`);
+                await userManualTasksRef.set(userManualTasks);
+                
+                // إرسال إشعار للإدمن
+                await sendManualTaskNotification(task, userTask);
+                
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert("Task submitted for review! We will notify you once it's approved."); 
+                }catch{}
+                
+                // تحديث الواجهة
+                renderManualTasks();
+                
+            } catch (error) {
+                console.error('Error submitting manual task:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to submit task. Please try again."); 
+                }catch{} 
+            }
+        };
+
+        // ✅ دالة لإرسال إشعار المهمة اليدوية
+        const sendManualTaskNotification = async (task, userTask) => {
+            try {
+                const botToken = appConfig.botToken;
+                
+                if (!botToken) {
+                    console.error('❌ Bot token not configured in Firebase');
+                    return;
+                }
+
+                const adminMessage = `
+📋 NEW MANUAL TASK SUBMISSION
+
+👤 User Information:
+• Name: ${userState.firstName || ''} ${userState.lastName || ''}
+• Username: @${tgUser.username || 'N/A'}
+• User ID: ${tgUser.id}
+
+📝 Task Details:
+• Task: ${task.name}
+• Description: ${task.description}
+• Reward: ${task.rewardValue} ${task.rewardType}
+• Submitted: ${new Date().toLocaleString()}
+
+🖼️ Screenshot uploaded and ready for review.
+
+✅ Please review the submission in Firebase:
+/database/userManualTasks/${tgUser.id}/${task.id}
+                `.trim();
+
+                const adminChatId = appConfig.adminChatId || "6294480939";
+                
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: adminChatId,
+                        text: adminMessage
+                    })
+                });
+
+                const result = await response.json();
+                console.log('📨 Manual task notification sent:', result.ok);
+                
+            } catch (error) {
+                console.error('Error sending manual task notification:', error);
             }
         };
 
@@ -4039,7 +4405,7 @@
             }
         };
 
-        // ✅ دالة محسنة لاستبدال الكود - مع التحقق من حالة المسابقة
+        // ✅ دالة محسنة لاستبدال الكود - تدعم الأنواع المختلفة
         const redeemCode = async () => {
             try {
                 const codeInput = document.getElementById('redeem-code-input');
@@ -4096,33 +4462,63 @@
                     return;
                 }
                 
-                const points = codeData.points || 10;
+                // ✅ معالجة أنواع المكافآت المختلفة
+                let successMessage = '';
                 
-                // ✅ التعديل: منح نقاط المسابقة فقط إذا كانت المسابقة نشطة
-                if (contestData.isActive) {
-                    await awardContestPoints(points);
-                } else {
-                    // إذا كانت المسابقة غير نشطة، إعطاء مكافأة بديلة من RR
-                    const rewardAmountRR = points * 100; // 100 RR لكل نقطة
-                    userRRBalance += rewardAmountRR;
+                if (codeData.rewardType === 'TON') {
+                    // مكافأة TON مباشرة
+                    const tonAmount = codeData.rewardValue || 0;
+                    userState.balance = (userState.balance || 0) + tonAmount;
+                    successMessage = `🎉 Code redeemed! You earned ${tonAmount.toFixed(4)} TON!`;
+                    
+                    // تحديث في Firebase
+                    const userRef = db.ref(`users/${tgUser.id}`);
+                    await userRef.child('balance').set(firebase.database.ServerValue.increment(tonAmount));
+                    
+                } else if (codeData.rewardType === 'RR') {
+                    // مكافأة RR
+                    const rrAmount = codeData.rewardValue || 0;
+                    userRRBalance += rrAmount;
                     localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                    successMessage = `🎉 Code redeemed! You earned ${rrAmount.toLocaleString()} RR!`;
+                    
+                } else if (codeData.rewardType === 'points') {
+                    // مكافأة نقاط المسابقة
+                    const points = codeData.rewardValue || 0;
+                    if (contestData.isActive) {
+                        await awardContestPoints(points);
+                        successMessage = `🎉 Code redeemed! You earned ${points} contest points!`;
+                    } else {
+                        // إذا كانت المسابقة غير نشطة، إعطاء مكافأة بديلة من RR
+                        const rewardAmountRR = points * 100;
+                        userRRBalance += rewardAmountRR;
+                        localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                        successMessage = `🎉 Code redeemed! You earned ${rewardAmountRR.toLocaleString()} RR!`;
+                    }
+                } else {
+                    // النوع الافتراضي (نقاط المسابقة)
+                    const points = codeData.rewardValue || 10;
+                    if (contestData.isActive) {
+                        await awardContestPoints(points);
+                        successMessage = `🎉 Code redeemed! You earned ${points} contest points!`;
+                    } else {
+                        const rewardAmountRR = points * 100;
+                        userRRBalance += rewardAmountRR;
+                        localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                        successMessage = `🎉 Code redeemed! You earned ${rewardAmountRR.toLocaleString()} RR!`;
+                    }
                 }
                 
+                // تحديث بيانات الكود
                 await codesRef.child(code).update({
                     usedCount: firebase.database.ServerValue.increment(1),
-                    lastUsed: firebase.database.ServerValue.TIMESTAMP
+                    lastUsed: firebase.database.ServerValue.TIMESTAMP,
+                    lastUsedBy: tgUser.id
                 });
                 
                 redeemedCodes.push(code);
                 const redeemedCodesRef = db.ref(`redeemedCodes/${tgUser.id}`);
                 await redeemedCodesRef.set(redeemedCodes);
-                
-                let successMessage = '';
-                if (contestData.isActive) {
-                    successMessage = `🎉 Code redeemed! You earned ${points} contest points!`;
-                } else {
-                    successMessage = `🎉 Code redeemed! You earned ${points * 100} RR!`;
-                }
                 
                 try{ 
                     if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
@@ -4133,9 +4529,8 @@
                 redeemBtn.disabled = false;
                 redeemBtn.textContent = 'Redeem';
                 
-                if (document.getElementById('contest-page').classList.contains('active')) {
-                    renderContestPage();
-                }
+                // تحديث الواجهة
+                renderUI();
                 
             } catch (error) {
                 console.error('Error redeeming code:', error);
