@@ -365,6 +365,15 @@
             text-align: center;
             font-size: 0.9rem;
         }
+        
+        .last-processed {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -421,6 +430,10 @@
                 
                 <div class="service-worker-status" id="sw-status">
                     <strong>حالة الخلفية:</strong> <span id="sw-status-text">جارِ التحقق...</span>
+                </div>
+                
+                <div class="last-processed" id="last-processed">
+                    <strong>آخر معالجة:</strong> <span id="last-processed-time">لم تتم بعد</span>
                 </div>
                 
                 <button class="btn btn-primary" id="start-auto-btn" onclick="startAutoPayments()">
@@ -507,6 +520,7 @@
         let processedWithdrawals = [];
         let db;
         let backgroundSyncSupported = false;
+        let lastProcessedTime = null;
 
         // عناصر DOM
         const statusIndicator = document.getElementById('status-indicator');
@@ -518,6 +532,7 @@
         const notification = document.getElementById('notification');
         const autoStatusText = document.getElementById('auto-status-text');
         const swStatusText = document.getElementById('sw-status-text');
+        const lastProcessedTimeElement = document.getElementById('last-processed-time');
 
         // 🔄 تهيئة Firebase
         function initializeFirebase() {
@@ -551,6 +566,11 @@
             
             document.getElementById('auto-mode').textContent = isAutoMode ? 'ON' : 'OFF';
             autoStatusText.textContent = isAutoMode ? 'نشط' : 'غير نشط';
+            
+            // تحديث وقت آخر معالجة
+            if (lastProcessedTime) {
+                lastProcessedTimeElement.textContent = new Date(lastProcessedTime).toLocaleTimeString('ar-EG');
+            }
         }
 
         // 📝 إضافة سجل
@@ -740,6 +760,10 @@
                     addLog(`✅ تم الدفع بنجاح! رقم المعاملة: ${result.payment_id}`, 'success');
                     showNotification(`تم الدفع: ${withdrawal.amount} TON`, 'success');
                     
+                    // تحديث وقت آخر معالجة
+                    lastProcessedTime = Date.now();
+                    updateStats();
+                    
                     // إرسال إشعارات التليجرام
                     await sendTelegramNotifications(withdrawal, result.payment_id, true);
                     
@@ -828,9 +852,9 @@
                 const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
                 const maskedAccount = maskAccount(withdrawal.account);
                 
-                // إرسال رسالة للمستخدم - النص المطلوب بالضبط
+                // إرسال رسالة للمستخدم - النص المطلوب بالضبط مع تعديل اسم البوت
                 if (withdrawal.userId && isSuccess) {
-                    const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from Tara Tower Faucet has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow's top withdrawer 🏆`;
+                    const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from RealEarnBot_bot has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow's top withdrawer 🏆`;
                     
                     // محاولة إرسال الرسالة باستخدام معرف المستخدم
                     const userSent = await sendTelegramMessageByUserId(botToken, withdrawal.userId, userMessage);
@@ -1080,9 +1104,13 @@
             showNotification('تم تشغيل الدفع التلقائي', 'success');
             
             // حفظ حالة التشغيل التلقائي في localStorage
-            localStorage.setItem('autoPaymentMode', 'true');
-            localStorage.setItem('autoPaymentInterval', interval.toString());
-            localStorage.setItem('autoPaymentStarted', Date.now().toString());
+            const autoPaymentData = {
+                mode: 'true',
+                interval: interval,
+                startedAt: Date.now(),
+                lastProcessed: lastProcessedTime
+            };
+            localStorage.setItem('autoPaymentData', JSON.stringify(autoPaymentData));
             
             // معالجة فورية أولى
             processAllPendingWithdrawals();
@@ -1109,9 +1137,7 @@
             showNotification('تم إيقاف الدفع التلقائي', 'info');
             
             // إزالة حالة التشغيل التلقائي من localStorage
-            localStorage.removeItem('autoPaymentMode');
-            localStorage.removeItem('autoPaymentInterval');
-            localStorage.removeItem('autoPaymentStarted');
+            localStorage.removeItem('autoPaymentData');
         }
 
         // 🔄 معالجة السحوبات المعلقة يدوياً
@@ -1123,41 +1149,48 @@
 
         // 🔄 استعادة التشغيل التلقائي عند تحميل الصفحة
         function restoreAutoMode() {
-            const savedAutoMode = localStorage.getItem('autoPaymentMode');
-            const savedInterval = localStorage.getItem('autoPaymentInterval');
-            const startedTime = localStorage.getItem('autoPaymentStarted');
+            const savedData = localStorage.getItem('autoPaymentData');
             
-            if (savedAutoMode === 'true' && savedInterval) {
-                // التحقق من أن التشغيل التلقائي لم يتجاوز 24 ساعة
-                const now = Date.now();
-                const startTime = parseInt(startedTime);
-                const hoursRunning = (now - startTime) / (1000 * 60 * 60);
-                
-                if (hoursRunning < 24) {
-                    addLog('🔄 استعادة وضع التشغيل التلقائي المحفوظ', 'info');
+            if (savedData) {
+                try {
+                    const autoPaymentData = JSON.parse(savedData);
                     
-                    isAutoMode = true;
-                    const interval = parseInt(savedInterval);
+                    // التحقق من أن التشغيل التلقائي لم يتجاوز 24 ساعة
+                    const now = Date.now();
+                    const hoursRunning = (now - autoPaymentData.startedAt) / (1000 * 60 * 60);
                     
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                    
-                    updateStatus('active', 'جاري التشغيل التلقائي');
-                    
-                    // معالجة فورية أولى
-                    processAllPendingWithdrawals();
-                    
-                    // ضبط الفاصل الزمني
-                    checkInterval = setInterval(async () => {
-                        await fetchPendingWithdrawals();
-                        await processAllPendingWithdrawals();
-                    }, interval);
-                } else {
-                    // تنظيف localStorage إذا تجاوز 24 ساعة
-                    localStorage.removeItem('autoPaymentMode');
-                    localStorage.removeItem('autoPaymentInterval');
-                    localStorage.removeItem('autoPaymentStarted');
-                    addLog('⏰ انتهت مدة التشغيل التلقائي (24 ساعة)', 'info');
+                    if (hoursRunning < 24) {
+                        addLog('🔄 استعادة وضع التشغيل التلقائي المحفوظ', 'info');
+                        
+                        isAutoMode = true;
+                        const interval = autoPaymentData.interval;
+                        
+                        // استعادة وقت آخر معالجة
+                        if (autoPaymentData.lastProcessed) {
+                            lastProcessedTime = autoPaymentData.lastProcessed;
+                        }
+                        
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                        
+                        updateStatus('active', 'جاري التشغيل التلقائي');
+                        
+                        // معالجة فورية أولى
+                        processAllPendingWithdrawals();
+                        
+                        // ضبط الفاصل الزمني
+                        checkInterval = setInterval(async () => {
+                            await fetchPendingWithdrawals();
+                            await processAllPendingWithdrawals();
+                        }, interval);
+                    } else {
+                        // تنظيف localStorage إذا تجاوز 24 ساعة
+                        localStorage.removeItem('autoPaymentData');
+                        addLog('⏰ انتهت مدة التشغيل التلقائي (24 ساعة)', 'info');
+                    }
+                } catch (error) {
+                    console.error('Error restoring auto mode:', error);
+                    localStorage.removeItem('autoPaymentData');
                 }
             }
         }
