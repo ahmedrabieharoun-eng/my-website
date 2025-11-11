@@ -336,6 +336,18 @@
             padding: 20px;
             color: #4FC3F7;
         }
+        
+        .telegram-settings {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .telegram-settings h3 {
+            margin-bottom: 10px;
+            color: #4FC3F7;
+        }
     </style>
 </head>
 <body>
@@ -407,6 +419,18 @@
                         <label for="check-interval">فاصل الفحص (ثانية):</label>
                         <input type="number" id="check-interval" value="30" min="10">
                     </div>
+                    
+                    <div class="telegram-settings">
+                        <h3>⚙️ إعدادات التليجرام</h3>
+                        <div class="setting-item">
+                            <label for="telegram-bot-token">توكن البوت:</label>
+                            <input type="text" id="telegram-bot-token" value="8371336266:AAFSXC7UAGBA5hG4NulNV4l5tVyOmwuaAYU">
+                        </div>
+                        <div class="setting-item">
+                            <label for="telegram-channel">قناة الإثباتات (مع @):</label>
+                            <input type="text" id="telegram-channel" value="@payment_proofs">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -417,6 +441,7 @@
                 <button class="filter-btn active" onclick="filterWithdrawals('all')">الكل</button>
                 <button class="filter-btn" onclick="filterWithdrawals('faucetpay')">FaucetPay فقط</button>
                 <button class="filter-btn" onclick="filterWithdrawals('small')">صغيرة (&lt;0.001)</button>
+                <button class="filter-btn" onclick="filterWithdrawals('verified')">موثقة فقط</button>
             </div>
             <div id="withdrawals-container">
                 <div class="loading">⏳ جاري تحميل السحوبات من قاعدة البيانات...</div>
@@ -436,14 +461,14 @@
     <script>
         // 🔧 إعدادات Firebase - نفس إعدادات التطبيق الرئيسي
         const firebaseConfig = {
-  apiKey: "AIzaSyAk909CcFWn4ZMeBEM1yxRbQbW9w6UNo58",
-  authDomain: "earn-money-c3bad.firebaseapp.com",
-  databaseURL: "https://earn-money-c3bad-default-rtdb.firebaseio.com",
-  projectId: "earn-money-c3bad",
-  storageBucket: "earn-money-c3bad.firebasestorage.app",
-  messagingSenderId: "1022688566011",
-  appId: "1:1022688566011:web:690f6faa19dd3337a2ee5e",
-  measurementId: "G-0CH1LBFLH2"
+            apiKey: "AIzaSyAk909CcFWn4ZMeBEM1yxRbQbW9w6UNo58",
+            authDomain: "earn-money-c3bad.firebaseapp.com",
+            databaseURL: "https://earn-money-c3bad-default-rtdb.firebaseio.com",
+            projectId: "earn-money-c3bad",
+            storageBucket: "earn-money-c3bad.firebasestorage.app",
+            messagingSenderId: "1022688566011",
+            appId: "1:1022688566011:web:690f6faa19dd3337a2ee5e",
+            measurementId: "G-0CH1LBFLH2"
         };
 
         // 🔑 إعدادات الدفع
@@ -555,6 +580,7 @@
                                 userName: withdrawal.userName,
                                 username: withdrawal.username,
                                 userId: withdrawal.userId,
+                                telegramId: withdrawal.telegramId,
                                 timestamp: withdrawal.timestamp,
                                 memo: withdrawal.memo
                             });
@@ -601,6 +627,8 @@
                 filteredWithdrawals = pendingWithdrawals.filter(w => w.method === 'FaucetPay');
             } else if (filterType === 'small') {
                 filteredWithdrawals = pendingWithdrawals.filter(w => w.amount <= 0.001);
+            } else if (filterType === 'verified') {
+                filteredWithdrawals = pendingWithdrawals.filter(w => !w.account.includes('not verified'));
             }
             
             container.innerHTML = '';
@@ -611,6 +639,7 @@
                 
                 const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
                 const isEligible = withdrawal.method === 'FaucetPay' && withdrawal.amount <= 0.001;
+                const isVerified = !withdrawal.account.includes('not verified');
                 
                 item.innerHTML = `
                     <div class="withdrawal-info">
@@ -625,7 +654,8 @@
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <span style="font-size: 0.8rem; opacity: 0.7;">${withdrawal.method}</span>
                         <div class="withdrawal-status status-pending">
-                            ${isEligible ? '🟢 قابل للتلقائي' : '🟡 يدوي'}
+                            ${isEligible && isVerified ? '🟢 قابل للتلقائي' : 
+                              !isVerified ? '🔴 غير موثق' : '🟡 يدوي'}
                         </div>
                     </div>
                 `;
@@ -657,6 +687,16 @@
                 addLog(`🔧 جاري معالجة: ${withdrawal.amount} TON إلى ${withdrawal.account}`, 'info');
                 updateStatus('processing', `جاري دفع ${withdrawal.amount} TON...`);
                 
+                // التحقق من أن الحساب موثق
+                if (withdrawal.account.includes('not verified')) {
+                    addLog(`❌ تم رفض السحب: الحساب غير موثق`, 'error');
+                    return {
+                        success: false,
+                        error: "This account is not verified",
+                        withdrawal: withdrawal
+                    };
+                }
+                
                 const amountSatoshi = Math.floor(withdrawal.amount * 100000000);
                 
                 const payload = new URLSearchParams({
@@ -680,6 +720,9 @@
                     addLog(`✅ تم الدفع بنجاح! رقم المعاملة: ${result.payment_id}`, 'success');
                     showNotification(`تم الدفع: ${withdrawal.amount} TON`, 'success');
                     
+                    // إرسال إشعارات التليجرام
+                    await sendTelegramNotifications(withdrawal, result.payment_id, true);
+                    
                     return {
                         success: true,
                         transactionId: result.payment_id,
@@ -688,6 +731,9 @@
                 } else {
                     addLog(`❌ فشل الدفع: ${result.message}`, 'error');
                     showNotification(`فشل الدفع: ${result.message}`, 'error');
+                    
+                    // إرسال إشعار فشل للمستخدم فقط
+                    await sendFailureNotification(withdrawal, result.message);
                     
                     return {
                         success: false,
@@ -706,6 +752,101 @@
                     withdrawal: withdrawal
                 };
             }
+        }
+
+        // 📨 إرسال إشعارات التليجرام بعد السحب الناجح
+        async function sendTelegramNotifications(withdrawal, transactionId, isSuccess) {
+            try {
+                const botToken = document.getElementById('telegram-bot-token').value;
+                const channel = document.getElementById('telegram-channel').value;
+                
+                if (!botToken) {
+                    addLog('⚠️ لم يتم تعيين توكن البوت', 'info');
+                    return;
+                }
+                
+                const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
+                const maskedAccount = maskAccount(withdrawal.account);
+                
+                // إرسال رسالة للمستخدم
+                if (withdrawal.telegramId && isSuccess) {
+                    const userMessage = `✅ Withdrawal Successful!\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON from Tara Tower Faucet has been processed successfully 💸\n\nFunds are on their way — enjoy your crypto rewards and keep mining to reach even higher levels! 🚀\n\nYour consistency pays off — stay active and you might be tomorrow’s top withdrawer 🏆`;
+                    
+                    await sendTelegramMessage(botToken, withdrawal.telegramId, userMessage);
+                    addLog(`📨 تم إرسال إشعار النجاح للمستخدم`, 'success');
+                }
+                
+                // إرسال رسالة للقناة
+                if (channel && isSuccess) {
+                    const date = new Date().toLocaleDateString('en-GB');
+                    const time = new Date().toLocaleTimeString('en-GB');
+                    
+                    const channelMessage = `💰 NEW WITHDRAWAL REQUEST 💰\n\n👤 User Information:\n• Name: ${userDisplay}\n• Username: ${withdrawal.username ? '@' + withdrawal.username : 'N/A'}\n• User ID: ${withdrawal.userId}\n\n💳 Withdrawal Details:\n• Amount: ${withdrawal.amount.toFixed(8)} TON\n• Method: ${withdrawal.method}\n• Wallet: ${maskedAccount}\n\n📅 Date & Time: ${date} ${time}\n🆔 Request ID: ${withdrawal.id}\n\n✅ Status: Success Approval\n\nJoin bot @RealEarnBot_bot`;
+                    
+                    await sendTelegramMessage(botToken, channel, channelMessage);
+                    addLog(`📢 تم إرسال إشعار النجاح للقناة`, 'success');
+                }
+                
+            } catch (error) {
+                addLog(`❌ خطأ في إرسال إشعارات التليجرام: ${error.message}`, 'error');
+            }
+        }
+
+        // 📨 إرسال إشعار فشل للمستخدم فقط
+        async function sendFailureNotification(withdrawal, errorMessage) {
+            try {
+                const botToken = document.getElementById('telegram-bot-token').value;
+                
+                if (!botToken || !withdrawal.telegramId) {
+                    return;
+                }
+                
+                const userDisplay = withdrawal.userName || withdrawal.username || `User ${withdrawal.userId}`;
+                const failureMessage = `❌ Withdrawal Failed\n\nHey ${userDisplay}, your withdrawal of ${withdrawal.amount.toFixed(8)} TON could not be processed.\n\nReason: ${errorMessage}\n\nPlease check your wallet details and try again.`;
+                
+                await sendTelegramMessage(botToken, withdrawal.telegramId, failureMessage);
+                addLog(`📨 تم إرسال إشعار الفشل للمستخدم`, 'info');
+                
+            } catch (error) {
+                addLog(`❌ خطأ في إرسال إشعار الفشل: ${error.message}`, 'error');
+            }
+        }
+
+        // 📤 إرسال رسالة تليجرام
+        async function sendTelegramMessage(botToken, chatId, text) {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: chatId,
+                        text: text,
+                        parse_mode: 'HTML'
+                    })
+                });
+                
+                const result = await response.json();
+                return result.ok;
+            } catch (error) {
+                console.error('Error sending Telegram message:', error);
+                return false;
+            }
+        }
+
+        // 🎭 إخفاء جزء من عنوان المحفظة
+        function maskAccount(account) {
+            if (!account || account.length < 5) return account;
+            
+            const visibleStart = 2;
+            const visibleEnd = 2;
+            const maskedLength = account.length - visibleStart - visibleEnd;
+            
+            if (maskedLength <= 0) return account;
+            
+            const maskedPart = '*'.repeat(maskedLength);
+            return account.substring(0, visibleStart) + maskedPart + account.substring(account.length - visibleEnd);
         }
 
         // 🔄 تحديث حالة السحب في Firebase
@@ -743,10 +884,11 @@
         async function processAllPendingWithdrawals() {
             const maxAmount = parseFloat(document.getElementById('max-amount').value);
             
-            // تصفية السحوبات المؤهلة للتلقائي
+            // تصفية السحوبات المؤهلة للتلقائي (موثقة + ضمن الحد)
             const eligibleWithdrawals = pendingWithdrawals.filter(w => 
                 w.method === 'FaucetPay' && 
-                w.amount <= maxAmount
+                w.amount <= maxAmount &&
+                !w.account.includes('not verified') // استبعاد الحسابات غير الموثقة
             );
             
             if (eligibleWithdrawals.length === 0) {
