@@ -373,7 +373,16 @@
             const contestSnap = await db.ref('contest/participants').once('value');
             const codesSnap = await db.ref('codes').once('value');
             const manualTasksSnap = await db.ref('manualTasks').once('value');
-            const taskRequestsSnap = await db.ref('userManualTasks').orderByChild('status').equalTo('pending').once('value');
+            
+            // الحصول على طلبات المهام المعلقة يدوياً
+            const allTasksSnap = await db.ref('userManualTasks').once('value');
+            let pendingTaskRequestsCount = 0;
+            allTasksSnap.forEach(child => {
+                const request = child.val();
+                if (request.status && request.status.includes('pending')) {
+                    pendingTaskRequestsCount++;
+                }
+            });
             
             // حساب المستخدمين المحظورين
             let bannedUsersCount = 0;
@@ -404,7 +413,7 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">طلبات المهام المعلقة</div>
-                        <div class="stat-value">${taskRequestsSnap.numChildren()}</div>
+                        <div class="stat-value">${pendingTaskRequestsCount}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">إجمالي الرصيد</div>
@@ -759,13 +768,21 @@
             loadDynamicContent('links');
         };
 
-        // Manual Tasks Management - IMPROVED VERSION
+        // Manual Tasks Management - UPDATED VERSION
         const renderManualTasks = async () => {
             mainContent.innerHTML = `<div id="manual-tasks" class="page active">
                 <h3>إدارة المهام اليدوية</h3>
                 
                 <div class="card">
-                    <h4>طلبات المهام المعلقة</h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h4 style="margin: 0;">طلبات المهام المعلقة</h4>
+                        <button class="action-btn btn-info" onclick="diagnoseTaskRequests().then(count => { 
+                            alert('تم فحص قاعدة البيانات\\nالطلبات المعلقة: ' + count); 
+                            loadPendingTaskRequests(); 
+                        })">
+                            <i class="fas fa-search"></i> فحص البيانات
+                        </button>
+                    </div>
                     <div id="pending-task-requests"><h4>جاري تحميل الطلبات...</h4></div>
                 </div>
                 
@@ -789,8 +806,8 @@
                         <textarea id="manual-task-description" placeholder="وصف تفصيلي للمهمة"></textarea>
                     </div>
                     <div class="form-group">
-                        <label>رابط الإحالة (للبوت أو القناة)</label>
-                        <input id="manual-task-referral-link" placeholder="https://t.me/your_bot?start=ref123">
+                        <label>رابط البوت (botUrl)</label>
+                        <input id="manual-task-bot-url" placeholder="https://t.me/your_bot?start=ref123">
                     </div>
                     <div class="form-group">
                         <label>رابط الأيقونة</label>
@@ -1101,7 +1118,7 @@
             container.innerHTML = content;
         };
         
-        // IMPROVED: Manual Tasks Loading with Completion Counts
+        // FIXED: Manual Tasks Loading with Completion Counts
         const loadManualTasks = async () => {
             const container = document.getElementById('manual-tasks-list');
             
@@ -1124,9 +1141,9 @@
                     const taskRequest = child.val();
                     const taskId = taskRequest.taskId;
                     
-                    if (taskRequest.status === 'approved') {
+                    if (taskRequest.status && taskRequest.status.includes('approved')) {
                         completedCounts[taskId] = (completedCounts[taskId] || 0) + 1;
-                    } else if (taskRequest.status === 'pending') {
+                    } else if (taskRequest.status && taskRequest.status.includes('pending')) {
                         pendingCounts[taskId] = (pendingCounts[taskId] || 0) + 1;
                     }
                 });
@@ -1142,7 +1159,7 @@
                             <td>
                                 <strong>${task.name}</strong>
                                 <br><small>${task.id}</small>
-                                ${task.referralLink ? `<br><small><a href="${task.referralLink}" target="_blank">${task.referralLink}</a></small>` : ''}
+                                ${task.botUrl ? `<br><small><a href="${task.botUrl}" target="_blank">${task.botUrl}</a></small>` : ''}
                             </td>
                             <td>${task.rewardType}</td>
                             <td>${task.rewardValue}</td>
@@ -1166,65 +1183,158 @@
             }
         };
         
-        // IMPROVED: Pending Task Requests Loading
+        // FIXED: Pending Task Requests Loading
         const loadPendingTaskRequests = async () => {
             const container = document.getElementById('pending-task-requests');
             
             try {
-                // الحصول على جميع الطلبات المعلقة
-                const snap = await db.ref('userManualTasks').orderByChild('status').equalTo('pending').once('value');
+                // جلب جميع البيانات وتصفيتها يدوياً بسبب مشكلة القيمة "pending ABC"
+                const allTasksSnap = await db.ref('userManualTasks').once('value');
                 let requests = [];
-                snap.forEach(child => { 
-                    requests.push({ key: child.key, ...child.val() }); 
+                
+                allTasksSnap.forEach(child => {
+                    const request = child.val();
+                    console.log("فحص طلب:", child.key, request);
+                    
+                    // تصفية يدوية للطلبات المعلقة (بما في ذلك "pending ABC")
+                    if (request.status && request.status.includes('pending')) {
+                        requests.push({ 
+                            key: child.key, 
+                            ...request,
+                            // إضافة قيم افتراضية للبيانات المفقودة
+                            userName: request.userName || 'غير معروف',
+                            userId: request.userId || 'غير معروف',
+                            taskName: request.taskName || 'مهمة غير معروفة',
+                            timestamp: request.timestamp || request.submittedAt || Date.now(),
+                            proofType: request.proofType || 'غير محدد'
+                        });
+                    }
                 });
+                
+                console.log(`تم العثور على ${requests.length} طلب معلق`);
                 
                 // ترتيب الطلبات من الأحدث إلى الأقدم
                 requests.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                 
                 let content = '';
                 if (requests.length > 0) {
+                    content += `<div class="card" style="background: #e8f5e8; margin-bottom: 15px;">
+                        <h4 style="color: var(--success); margin: 0;">
+                            <i class="fas fa-check-circle"></i> تم العثور على ${requests.length} طلب معلق
+                        </h4>
+                    </div>`;
+                    
                     requests.forEach(request => {
                         content += `
-                            <div class="card" style="margin-bottom: 15px;">
-                                <h4>طلب مهمة: ${request.taskName || 'غير معروف'}</h4>
+                            <div class="card" style="margin-bottom: 15px; border-left: 4px solid var(--warning);">
+                                <h4>📋 طلب مهمة: ${request.taskName}</h4>
                                 <div class="user-info-item">
-                                    <span>المستخدم:</span>
-                                    <span>${request.userName || 'غير معروف'} (${request.userId || 'غير معروف'})</span>
+                                    <span>👤 المستخدم:</span>
+                                    <span>${request.userName} (${request.userId})</span>
                                 </div>
                                 <div class="user-info-item">
-                                    <span>التاريخ:</span>
-                                    <span>${new Date(request.timestamp || Date.now()).toLocaleString('ar-EG')}</span>
+                                    <span>🆔 معرف المهمة:</span>
+                                    <span>${request.taskId || 'غير معروف'}</span>
                                 </div>
                                 <div class="user-info-item">
-                                    <span>نوع الإثبات:</span>
-                                    <span>${request.proofType || 'غير محدد'}</span>
+                                    <span>📅 التاريخ:</span>
+                                    <span>${new Date(request.timestamp).toLocaleString('ar-EG')}</span>
                                 </div>
-                                ${request.screenshot ? `
-                                    <div class="user-info-item">
-                                        <span>الصورة المرفوعة:</span>
-                                        <img src="${request.screenshot}" class="task-request-image" alt="إثبات المهمة">
-                                    </div>
-                                ` : ''}
-                                ${request.proofText ? `
-                                    <div class="user-info-item">
-                                        <span>النص المرفوع:</span>
-                                        <span>${request.proofText}</span>
-                                    </div>
-                                ` : ''}
-                                <div class="action-buttons" style="margin-top: 10px;">
-                                    <button class="action-btn btn-success" onclick="window.adminActions.handleTaskRequest('${request.key}', 'approve')">قبول الطلب</button>
-                                    <button class="action-btn btn-danger" onclick="window.adminActions.handleTaskRequest('${request.key}', 'reject')">رفض الطلب</button>
+                                <div class="user-info-item">
+                                    <span>🔍 نوع الإثبات:</span>
+                                    <span>${request.proofType}</span>
+                                </div>
+                                <div class="user-info-item">
+                                    <span>📊 الحالة:</span>
+                                    <span class="task-status-pending">${request.status}</span>
+                                </div>`;
+                        
+                        if (request.screenshot && request.screenshot !== 'temp' && !request.screenshot.includes('temp')) {
+                            content += `
+                                <div class="user-info-item">
+                                    <span>🖼️ الصورة المرفوعة:</span>
+                                    <img src="${request.screenshot}" class="task-request-image" alt="إثبات المهمة" style="max-width: 300px; cursor: pointer;" onclick="this.style.maxWidth=this.style.maxWidth=='100%'?'300px':'100%'">
+                                </div>`;
+                        }
+                        
+                        if (request.proofText) {
+                            content += `
+                                <div class="user-info-item">
+                                    <span>📝 النص المرفوع:</span>
+                                    <span style="background: #f5f5f5; padding: 8px; border-radius: 4px; display: block; margin-top: 5px;">${request.proofText}</span>
+                                </div>`;
+                        }
+                        
+                        content += `
+                                <div class="action-buttons" style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                                    <button class="action-btn btn-success" onclick="window.adminActions.handleTaskRequest('${request.key}', 'approve')">
+                                        <i class="fas fa-check"></i> قبول الطلب
+                                    </button>
+                                    <button class="action-btn btn-danger" onclick="window.adminActions.handleTaskRequest('${request.key}', 'reject')">
+                                        <i class="fas fa-times"></i> رفض الطلب
+                                    </button>
+                                    <button class="action-btn btn-info" onclick="window.adminActions.viewTaskRequestDetails('${request.key}')">
+                                        <i class="fas fa-info-circle"></i> تفاصيل
+                                    </button>
                                 </div>
                             </div>
                         `;
                     });
                 } else {
-                    content = '<p>لا توجد طلبات معلقة.</p>';
+                    content = `
+                        <div class="card" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: #ccc; margin-bottom: 15px;"></i>
+                            <h4 style="color: #666;">لا توجد طلبات معلقة</h4>
+                            <p style="color: #888;">سيظهر هنا أي طلبات جديدة يقدمها المستخدمون</p>
+                            <button class="action-btn btn-primary" onclick="diagnoseTaskRequests().then(count => { alert('الطلبات المعلقة: ' + count); })">
+                                <i class="fas fa-search"></i> فحص قاعدة البيانات
+                            </button>
+                        </div>`;
                 }
+                
                 container.innerHTML = content;
+                
             } catch (error) {
                 console.error("خطأ في تحميل الطلبات المعلقة:", error);
-                container.innerHTML = '<p>حدث خطأ في تحميل الطلبات المعلقة. يرجى المحاولة مرة أخرى.</p>';
+                container.innerHTML = `
+                    <div class="card" style="border-left: 4px solid var(--danger);">
+                        <h4 style="color: var(--danger);">⚠️ خطأ في تحميل البيانات</h4>
+                        <p>حدث خطأ أثناء تحميل الطلبات المعلقة. يرجى المحاولة مرة أخرى.</p>
+                        <button class="action-btn btn-warning" onclick="loadPendingTaskRequests()">
+                            <i class="fas fa-redo"></i> إعادة تحميل
+                        </button>
+                        <button class="action-btn btn-info" onclick="diagnoseTaskRequests()">
+                            <i class="fas fa-bug"></i> تشخيص المشكلة
+                        </button>
+                    </div>`;
+            }
+        };
+        
+        // دالة تشخيصية للتحقق من البيانات
+        const diagnoseTaskRequests = async () => {
+            try {
+                console.log("=== تشخيص طلبات المهام ===");
+                
+                // التحقق من جميع البيانات في userManualTasks
+                const allTasksSnap = await db.ref('userManualTasks').once('value');
+                console.log("جميع طلبات المهام:", allTasksSnap.val());
+                
+                // عد الطلبات المعلقة يدوياً
+                let pendingCount = 0;
+                allTasksSnap.forEach(child => {
+                    const request = child.val();
+                    if (request.status && request.status.includes('pending')) {
+                        pendingCount++;
+                        console.log(`طلب معلق ${pendingCount}:`, child.key, request);
+                    }
+                });
+                
+                console.log(`إجمالي الطلبات المعلقة: ${pendingCount}`);
+                
+                return pendingCount;
+            } catch (error) {
+                console.error("خطأ في التشخيص:", error);
+                return 0;
             }
         };
         
@@ -1486,13 +1596,13 @@
                 }
             },
             
-            // إضافة مهمة يدوية
+            // إضافة مهمة يدوية - UPDATED
             addManualTask: async () => {
                 const taskData = {
                     id: document.getElementById('manual-task-id').value,
                     name: document.getElementById('manual-task-name').value,
                     description: document.getElementById('manual-task-description').value,
-                    referralLink: document.getElementById('manual-task-referral-link').value,
+                    botUrl: document.getElementById('manual-task-bot-url').value, // استخدام botUrl بدلاً من referralLink
                     icon: document.getElementById('manual-task-icon').value,
                     rewardType: document.getElementById('manual-task-reward-type').value,
                     rewardValue: parseFloat(document.getElementById('manual-task-reward-value').value) || 0,
@@ -1515,7 +1625,7 @@
                     document.getElementById('manual-task-id').value = '';
                     document.getElementById('manual-task-name').value = '';
                     document.getElementById('manual-task-description').value = '';
-                    document.getElementById('manual-task-referral-link').value = '';
+                    document.getElementById('manual-task-bot-url').value = '';
                     document.getElementById('manual-task-icon').value = '';
                     document.getElementById('manual-task-reward-value').value = '';
                 } catch (e) {
@@ -1600,6 +1710,38 @@
                 
                 await loadPendingTaskRequests();
                 await loadManualTasks();
+            },
+            
+            // عرض تفاصيل طلب المهمة
+            viewTaskRequestDetails: async (requestId) => {
+                try {
+                    const requestSnap = await db.ref(`userManualTasks/${requestId}`).once('value');
+                    const request = requestSnap.val();
+                    
+                    if (!request) {
+                        alert('الطلب غير موجود');
+                        return;
+                    }
+                    
+                    let details = `تفاصيل الطلب:\n\n`;
+                    details += `المستخدم: ${request.userName || 'غير معروف'}\n`;
+                    details += `معرف المستخدم: ${request.userId || 'غير معروف'}\n`;
+                    details += `المهمة: ${request.taskName || 'غير معروفة'}\n`;
+                    details += `معرف المهمة: ${request.taskId || 'غير معروف'}\n`;
+                    details += `الحالة: ${request.status || 'غير معروفة'}\n`;
+                    details += `نوع الإثبات: ${request.proofType || 'غير محدد'}\n`;
+                    details += `التاريخ: ${new Date(request.timestamp || Date.now()).toLocaleString('ar-EG')}\n`;
+                    
+                    if (request.proofText) {
+                        details += `\nالنص المرفوع:\n${request.proofText}\n`;
+                    }
+                    
+                    console.log("تفاصيل الطلب:", request);
+                    alert(details);
+                } catch (error) {
+                    console.error("خطأ في عرض التفاصيل:", error);
+                    alert('خطأ في تحميل تفاصيل الطلب');
+                }
             },
             
             // تحديث إعدادات المسابقة
