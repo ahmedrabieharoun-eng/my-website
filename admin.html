@@ -227,6 +227,7 @@
                     <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
                     <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
                     <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
+<li onclick="renderManualSubmissions()" style="cursor:pointer;">إرسالات المهام المعلقة</li>
                     <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
                     <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
                     <li data-page="settings"><i class="fas fa-cog"></i> إعدادات التطبيق</li>
@@ -1679,6 +1680,74 @@
             });
         };
     });
-    </script>
+    
+// --- Manual submissions: show pending userManualTasks ---
+const renderManualSubmissions = async () => {
+    mainContent.innerHTML = '<div class="card"><h3>جاري تحميل إرسالات المهام...</h3></div>';
+    const snap = await db.ref('userManualTasks').once('value');
+    let tableContent = '';
+    snap.forEach(userNode => {
+        // userNode.key === userId
+        userNode.forEach(taskNode => {
+            const submission = taskNode.val();
+            if (!submission) return;
+            if (submission.status !== 'pending') return; // show only pending
+            const submissionId = taskNode.key;
+            const userId = userNode.key;
+            tableContent += `<tr>
+                <td data-label="المستخدم">${submission.userName || userId}<br><small>${new Date(submission.timestamp || Date.now()).toLocaleString('ar-EG')}</small></td>
+                <td data-label="المهمة">${submission.taskId || submission.taskName || '-'}</td>
+                <td data-label="اللقطة">${submission.screenshot ? `<a href="${submission.screenshot}" target="_blank">عرض الصورة</a>` : '-'}</td>
+                <td data-label="الحالة">${submission.status}</td>
+                <td data-label="الإجراءات">
+                    <div class="action-buttons">
+                        <button class="action-btn btn-success" onclick="handleManualSubmission('${userId}','${submissionId}','approve')">موافقة</button>
+                        <button class="action-btn btn-danger" onclick="handleManualSubmission('${userId}','${submissionId}','reject')">رفض</button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+    });
+
+    if (!tableContent) tableContent = '<tr><td colspan="5">لا توجد إرسالات معلقة</td></tr>';
+
+    mainContent.innerHTML = `<div id="manual-submissions" class="page active">
+        <h3>إرسالات المهام اليدوية المعلقة</h3>
+        <div class="card">
+            <table>
+                <thead><tr><th>المستخدم</th><th>المهمة</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                <tbody>${tableContent}</tbody>
+            </table>
+        </div>
+    </div>`;
+};
+
+// Handler to approve/reject submissions
+const handleManualSubmission = async (userId, submissionId, action) => {
+    try {
+        const refPath = `userManualTasks/${userId}/${submissionId}`;
+        if (action === 'approve') {
+            // mark approved and set reviewed time
+            await db.ref(refPath).update({ status: 'approved', reviewedAt: Date.now() });
+            // Optional: increment completions for related task if taskId present
+            const snapshot = await db.ref(refPath).once('value');
+            const data = snapshot.val();
+            if (data && data.taskId) {
+                const taskRef = db.ref(`manualTasks/${data.taskId}/completions`);
+                const completionsSnap = await taskRef.once('value');
+                const current = completionsSnap.val() || 0;
+                await taskRef.set(current + 1);
+            }
+        } else {
+            await db.ref(refPath).update({ status: 'rejected', reviewedAt: Date.now() });
+        }
+        // reload the list
+        renderManualSubmissions();
+    } catch (err) {
+        console.error('handleManualSubmission error', err);
+        alert('حدث خطأ أثناء معالجة الإرسال. افتح Console للمزيد.');
+    }
+};
+</script>
 </body>
 </html>
