@@ -227,7 +227,6 @@
                     <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
                     <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
                     <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
-<li onclick="(window.renderManualSubmissions ? window.renderManualSubmissions() : alert('الوظيفة غير متاحة الآن - أعد تحميل الصفحة'))" style="cursor:pointer;">إرسالات المهام المعلقة</li>
                     <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
                     <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
                     <li data-page="settings"><i class="fas fa-cog"></i> إعدادات التطبيق</li>
@@ -254,14 +253,14 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const firebaseConfig = {
-  apiKey: "AIzaSyAk909CcFWn4ZMeBEM1yxRbQbW9w6UNo58",
-  authDomain: "earn-money-c3bad.firebaseapp.com",
-  databaseURL: "https://earn-money-c3bad-default-rtdb.firebaseio.com",
-  projectId: "earn-money-c3bad",
-  storageBucket: "earn-money-c3bad.firebasestorage.app",
-  messagingSenderId: "1022688566011",
-  appId: "1:1022688566011:web:690f6faa19dd3337a2ee5e",
-  measurementId: "G-0CH1LBFLH2"
+            apiKey: "AIzaSyAk909CcFWn4ZMeBEM1yxRbQbW9w6UNo58",
+            authDomain: "earn-money-c3bad.firebaseapp.com",
+            databaseURL: "https://earn-money-c3bad-default-rtdb.firebaseio.com",
+            projectId: "earn-money-c3bad",
+            storageBucket: "earn-money-c3bad.firebasestorage.app",
+            messagingSenderId: "1022688566011",
+            appId: "1:1022688566011:web:690f6faa19dd3337a2ee5e",
+            measurementId: "G-0CH1LBFLH2"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -269,77 +268,7 @@
         const loginPage = document.getElementById('login-page');
         const appContainer = document.getElementById('app-container');
         const mainContent = document.getElementById('main-content');
-        
-
-// --- Manual submissions: show pending userManualTasks ---
-window.renderManualSubmissions = async function() {
-    mainContent.innerHTML = '<div class="card"><h3>جاري تحميل إرسالات المهام...</h3></div>';
-    const snap = await db.ref('userManualTasks').once('value');
-    let tableContent = '';
-    snap.forEach(userNode => {
-        // userNode.key === userId
-        userNode.forEach(taskNode => {
-            const submission = taskNode.val();
-            if (!submission) return;
-            if (submission.status !== 'pending') return; // show only pending
-            const submissionId = taskNode.key;
-            const userId = userNode.key;
-            tableContent += `<tr>
-                <td data-label="المستخدم">${submission.userName || userId}<br><small>${new Date(submission.timestamp || Date.now()).toLocaleString('ar-EG')}</small></td>
-                <td data-label="المهمة">${submission.taskId || submission.taskName || '-'}</td>
-                <td data-label="اللقطة">${submission.screenshot ? `<a href="${submission.screenshot}" target="_blank">عرض الصورة</a>` : '-'}</td>
-                <td data-label="الحالة">${submission.status}</td>
-                <td data-label="الإجراءات">
-                    <div class="action-buttons">
-                        <button class="action-btn btn-success" onclick="handleManualSubmission('${userId}','${submissionId}','approve')">موافقة</button>
-                        <button class="action-btn btn-danger" onclick="handleManualSubmission('${userId}','${submissionId}','reject')">رفض</button>
-                    </div>
-                </td>
-            </tr>`;
-        });
-    });
-
-    if (!tableContent) tableContent = '<tr><td colspan="5">لا توجد إرسالات معلقة</td></tr>';
-
-    mainContent.innerHTML = `<div id="manual-submissions" class="page active">
-        <h3>إرسالات المهام اليدوية المعلقة</h3>
-        <div class="card">
-            <table>
-                <thead><tr><th>المستخدم</th><th>المهمة</th><th>الصورة</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
-                <tbody>${tableContent}</tbody>
-            </table>
-        </div>
-    </div>`;
-};
-
-// Handler to approve/reject submissions
-window.handleManualSubmission = async function(userId, submissionId, action) {
-    try {
-        const refPath = `userManualTasks/${userId}/${submissionId}`;
-        if (action === 'approve') {
-            // mark approved and set reviewed time
-            await db.ref(refPath).update({ status: 'approved', reviewedAt: Date.now() });
-            // Optional: increment completions for related task if taskId present
-            const snapshot = await db.ref(refPath).once('value');
-            const data = snapshot.val();
-            if (data && data.taskId) {
-                const taskRef = db.ref(`manualTasks/${data.taskId}/completions`);
-                const completionsSnap = await taskRef.once('value');
-                const current = completionsSnap.val() || 0;
-                await taskRef.set(current + 1);
-            }
-        } else {
-            await db.ref(refPath).update({ status: 'rejected', reviewedAt: Date.now() });
-        }
-        // reload the list
-        renderManualSubmissions();
-    } catch (err) {
-        console.error('handleManualSubmission error', err);
-        alert('حدث خطأ أثناء معالجة الإرسال. افتح Console للمزيد.');
-    }
-};
-
-const pageTitle = document.getElementById('page-title');
+        const pageTitle = document.getElementById('page-title');
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         const loginButton = document.getElementById('login-button');
@@ -505,7 +434,7 @@ const pageTitle = document.getElementById('page-title');
             const snap = await db.ref('users').orderByChild('firstName').once('value'); 
             let tableContent = '';
             
-            snap.forEach(child => { if (child.key === 'undefined') return;
+            snap.forEach(child => {
                 const user = child.val();
                 const isBanned = user.banned || false;
                 const statusClass = isBanned ? 'user-status-banned' : '';
@@ -581,7 +510,7 @@ const pageTitle = document.getElementById('page-title');
             const referralsSnap = await db.ref('users').orderByChild('referredBy').equalTo(userId).once('value');
             const referredUsers = [];
             referralsSnap.forEach(child => {
-                referredUsers.push({ id: child.key, ....child.val() });
+                referredUsers.push(child.val());
             });
             
             mainContent.innerHTML = `<div id="user-details" class="page active">
@@ -709,10 +638,7 @@ const pageTitle = document.getElementById('page-title');
             const snap = await db.ref('withdrawals/pending').orderByChild('timestamp').once('value'); 
             let tableContent = '';
             let requests = [];
-            snap.forEach(child => {
-    if (child.key === 'undefined') return;
-     requests.push({ id: child.key, ....child.val() });
-});
+            snap.forEach(child => { requests.push(child.val()); });
             requests.reverse(); // Show newest first
             requests.forEach(req => {
                 tableContent += `<tr>
@@ -751,7 +677,7 @@ const pageTitle = document.getElementById('page-title');
             let completedRows = '', rejectedRows = '';
             
             let completed = [];
-            completedSnap.forEach(child => { completed.push({ id: child.key, ....child.val() }); });
+            completedSnap.forEach(child => { completed.push(child.val()); });
             completed.reverse();
             completed.forEach(req => { 
                 completedRows += `<tr>
@@ -763,7 +689,7 @@ const pageTitle = document.getElementById('page-title');
             });
 
             let rejected = [];
-            rejectedSnap.forEach(child => { rejected.push({ id: child.key, ....child.val() }); });
+            rejectedSnap.forEach(child => { rejected.push(child.val()); });
             rejected.reverse();
             rejected.forEach(req => { 
                 rejectedRows += `<tr>
@@ -863,6 +789,12 @@ const pageTitle = document.getElementById('page-title');
                     <button class="action-btn btn-primary" onclick="window.adminActions.addManualTask()">إضافة مهمة يدوية</button>
                 </div>
                 
+                <!-- طلبات المهام اليدوية المعلقة -->
+                <div class="card" id="pending-manual-tasks-container">
+                    <h4>طلبات المهام اليدوية المعلقة</h4>
+                    <div id="pending-manual-tasks">جاري تحميل الطلبات...</div>
+                </div>
+                
                 <!-- قائمة المهام الحالية -->
                 <div class="card" id="tasks-list">
                     <h4>المهام الحالية</h4>
@@ -890,6 +822,7 @@ const pageTitle = document.getElementById('page-title');
                 </div>
             </div>`;
             
+            await loadPendingManualTasks();
             await loadTasksWithStats();
             loadDynamicContent('links');
         };
@@ -1115,7 +1048,7 @@ const pageTitle = document.getElementById('page-title');
             const container = document.getElementById(`${type}-list`);
             const snap = await db.ref(`config/${type}`).once('value');
             let items = [];
-            snap.forEach(child => { if (child.key === 'undefined') return; items.push({ key: child.key, ....child.val() }); });
+            snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
             items.reverse(); // Show newest first
             
             let content = `<h4>${type === 'tasks' ? 'المهام الحالية' : 'الروابط الحالية'}</h4>`;
@@ -1136,11 +1069,11 @@ const pageTitle = document.getElementById('page-title');
             
             let tasks = [];
             tasksSnap.forEach(child => {
-                tasks.push({ key: child.key, type: 'auto', ....child.val() });
+                tasks.push({ key: child.key, type: 'auto', ...child.val() });
             });
             
             manualTasksSnap.forEach(child => {
-                tasks.push({ key: child.key, type: 'manual', ....child.val() });
+                tasks.push({ key: child.key, type: 'manual', ...child.val() });
             });
             
             let content = '';
@@ -1190,11 +1123,54 @@ const pageTitle = document.getElementById('page-title');
             container.innerHTML = content;
         };
         
+        const loadPendingManualTasks = async () => {
+            const container = document.getElementById('pending-manual-tasks');
+            const snap = await db.ref('userManualTasks').once('value');
+            let pendingTasks = [];
+            
+            snap.forEach(child => {
+                const task = child.val();
+                if (task.status === 'pending') {
+                    pendingTasks.push({ key: child.key, ...task });
+                }
+            });
+            
+            let content = '';
+            if (pendingTasks.length > 0) {
+                content += '<table><thead><tr><th>المستخدم</th><th>المهمة</th><th>وقت التقديم</th><th>الصورة</th><th>الإجراءات</th></tr></thead><tbody>';
+                
+                pendingTasks.forEach(task => {
+                    const submitTime = task.submittime ? new Date(parseInt(task.submittime)).toLocaleString('ar-EG') : 'غير معروف';
+                    
+                    content += `<tr>
+                        <td>${task.key}</td>
+                        <td>${task.taskId || 'مهمة يدوية'}</td>
+                        <td>${submitTime}</td>
+                        <td>
+                            ${task.screenshot ? 
+                                `<button class="action-btn btn-info" onclick="window.adminActions.viewScreenshot('${task.key}', '${task.screenshot}')">عرض الصورة</button>` : 
+                                'لا توجد صورة'
+                            }
+                        </td>
+                        <td>
+                            <button class="action-btn btn-success" onclick="window.adminActions.approveManualTask('${task.key}')">موافقة</button>
+                            <button class="action-btn btn-danger" onclick="window.adminActions.rejectManualTask('${task.key}')">رفض</button>
+                        </td>
+                    </tr>`;
+                });
+                
+                content += '</tbody></table>';
+            } else {
+                content = '<p>لا توجد طلبات معلقة للمهام اليدوية.</p>';
+            }
+            container.innerHTML = content;
+        };
+        
         const loadCodes = async () => {
             const container = document.getElementById('codes-list');
             const snap = await db.ref('codes').once('value');
             let codes = [];
-            snap.forEach(child => { if (child.key === 'undefined') return; codes.push({ key: child.key, ....child.val() }); });
+            snap.forEach(child => { codes.push({ key: child.key, ...child.val() }); });
             
             let content = '<h4>الأكواد الحالية</h4>';
             if (codes.length > 0) {
@@ -1235,7 +1211,7 @@ const pageTitle = document.getElementById('page-title');
             const container = document.getElementById('contest-leaderboard');
             const snap = await db.ref('contest/participants').orderByChild('points').limitToLast(50).once('value');
             let participants = [];
-            snap.forEach(child => { if (child.key === 'undefined') return; participants.push({ ....child.val(), id: child.key }); });
+            snap.forEach(child => { participants.push({ ...child.val(), id: child.key }); });
             participants.reverse(); // Show highest first
             
             let content = '';
@@ -1395,6 +1371,51 @@ const pageTitle = document.getElementById('page-title');
                 await reqRef.remove(); 
                 alert(`تم ${status === 'completed' ? 'الموافقة على' : 'رفض'} الطلب.`); 
                 renderWithdrawals();
+            },
+            
+            // عرض صورة المهمة
+            viewScreenshot: (userId, screenshotData) => {
+                const win = window.open('', '_blank');
+                win.document.write(`
+                    <html>
+                        <head><title>صورة إثبات المهمة</title></head>
+                        <body style="text-align: center; background: #f0f0f0;">
+                            <h3>صورة إثبات المهمة - المستخدم: ${userId}</h3>
+                            <img src="${screenshotData}" style="max-width: 90%; border: 2px solid #333; border-radius: 8px;">
+                            <br><br>
+                            <button onclick="window.close()" style="padding: 10px 20px; background: #2980b9; color: white; border: none; border-radius: 5px; cursor: pointer;">إغلاق</button>
+                        </body>
+                    </html>
+                `);
+            },
+
+            // الموافقة على المهمة اليدوية
+            approveManualTask: async (userId) => {
+                if (confirm('هل أنت متأكد من الموافقة على هذه المهمة؟')) {
+                    try {
+                        // هنا يمكنك إضافة رصيد للمستخدم أو تنفيذ الإجراء المناسب
+                        await db.ref(`userManualTasks/${userId}/status`).set('approved');
+                        alert('تمت الموافقة على المهمة بنجاح!');
+                        renderTasks(); // إعادة تحميل الصفحة
+                    } catch (e) {
+                        alert('خطأ في الموافقة على المهمة: ' + e.message);
+                    }
+                }
+            },
+
+            // رفض المهمة اليدوية
+            rejectManualTask: async (userId) => {
+                const reason = prompt('يرجى إدخال سبب الرفض (اختياري):');
+                try {
+                    await db.ref(`userManualTasks/${userId}/status`).set('rejected');
+                    if (reason) {
+                        await db.ref(`userManualTasks/${userId}/rejectionReason`).set(reason);
+                    }
+                    alert('تم رفض المهمة بنجاح!');
+                    renderTasks(); // إعادة تحميل الصفحة
+                } catch (e) {
+                    alert('خطأ في رفض المهمة: ' + e.message);
+                }
             },
             
             // إضافة مهمة يدوية
@@ -1750,8 +1771,6 @@ const pageTitle = document.getElementById('page-title');
             });
         };
     });
-    
-
-</script>
+    </script>
 </body>
 </html>
