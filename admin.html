@@ -173,14 +173,11 @@
         .tab { padding: 10px 15px; cursor: pointer; border-bottom: 2px solid transparent; }
         .tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: bold; }
 
-        /* Reward Type Badges */
-        .reward-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin: 0 2px; }
-        .reward-ton { background-color: #0088cc; color: white; }
-        .reward-rr { background-color: #ff9900; color: white; }
-        .reward-points { background-color: #27ae60; color: white; }
-
-        /* Task Completion Stats */
-        .completion-stats { display: flex; justify-content: space-between; margin-top: 5px; font-size: 0.85rem; color: var(--dark); }
+        /* Manual Tasks Styles */
+        .task-request-image { max-width: 100%; max-height: 200px; margin: 10px 0; border-radius: 5px; }
+        .task-status-pending { color: var(--warning); }
+        .task-status-approved { color: var(--success); }
+        .task-status-rejected { color: var(--danger); }
 
         @media (min-width: 768px) {
             #app-container { display: flex; }
@@ -227,6 +224,7 @@
                     <li data-page="withdrawals"><i class="fas fa-wallet"></i> طلبات السحب المعلقة</li>
                     <li data-page="history"><i class="fas fa-history"></i> سجل السحوبات</li>
                     <li data-page="tasks"><i class="fas fa-tasks"></i> المهام والروابط</li>
+                    <li data-page="manual-tasks"><i class="fas fa-clipboard-check"></i> المهام اليدوية</li>
                     <li data-page="codes"><i class="fas fa-ticket-alt"></i> إدارة الأكواد</li>
                     <li data-page="contest"><i class="fas fa-trophy"></i> إدارة المسابقة</li>
                     <li data-page="settings"><i class="fas fa-cog"></i> إعدادات التطبيق</li>
@@ -374,6 +372,8 @@
             const withdrawalsSnap = await db.ref('withdrawals/pending').once('value');
             const contestSnap = await db.ref('contest/participants').once('value');
             const codesSnap = await db.ref('codes').once('value');
+            const manualTasksSnap = await db.ref('manualTasks').once('value');
+            const taskRequestsSnap = await db.ref('userManualTasks').orderByChild('status').equalTo('pending').once('value');
             
             // حساب المستخدمين المحظورين
             let bannedUsersCount = 0;
@@ -403,6 +403,10 @@
                         <div class="stat-value">${withdrawalsSnap.numChildren()}</div>
                     </div>
                     <div class="stat-card">
+                        <div class="stat-label">طلبات المهام المعلقة</div>
+                        <div class="stat-value">${taskRequestsSnap.numChildren()}</div>
+                    </div>
+                    <div class="stat-card">
                         <div class="stat-label">إجمالي الرصيد</div>
                         <div class="stat-value">${totalBalance.toFixed(4)}</div>
                         <div class="stat-label">TON</div>
@@ -416,13 +420,8 @@
                         <div class="stat-value">${contestSnap.numChildren()}</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-label">الأكواد النشطة</div>
-                        <div class="stat-value">${codesSnap.numChildren()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">إجمالي الأرباح</div>
-                        <div class="stat-value">${(totalBalance + totalReferrals * 0.001).toFixed(4)}</div>
-                        <div class="stat-label">TON</div>
+                        <div class="stat-label">المهام اليدوية</div>
+                        <div class="stat-value">${manualTasksSnap.numChildren()}</div>
                     </div>
                 </div>
             </div>`;
@@ -736,76 +735,17 @@
 
         // Tasks Management
         const renderTasks = async () => {
-            // الحصول على إحصائيات المهام
-            const tasksSnap = await db.ref('config/tasks').once('value');
-            const tasksStats = {};
-            
-            tasksSnap.forEach(child => {
-                const task = child.val();
-                tasksStats[child.key] = {
-                    name: task.name,
-                    completions: task.completions || 0
-                };
-            });
-            
-            mainContent.innerHTML = `<div id="tasks" class="page active">
+             mainContent.innerHTML = `<div id="tasks" class="page active">
                 <h3>إدارة المهام والروابط</h3>
-                
-                <!-- مهام البوتات اليدوية -->
+                <div class="card" id="tasks-list"><h4>جاري تحميل المهام...</h4></div>
                 <div class="card">
-                    <h4>مهام البوتات اليدوية</h4>
-                    <div class="form-group">
-                        <label>اسم المهمة</label>
-                        <input id="manual-task-name" placeholder="مثال: انضم لقناة التليجرام">
-                    </div>
-                    <div class="form-group">
-                        <label>وصف المهمة</label>
-                        <textarea id="manual-task-description" placeholder="وصف تفصيلي للمهمة"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>رابط المهمة</label>
-                        <input id="manual-task-url" placeholder="https://t.me/yourchannel">
-                    </div>
-                    <div class="form-group">
-                        <label>أيقونة المهمة (رابط)</label>
-                        <input id="manual-task-icon" placeholder="https://example.com/icon.png">
-                    </div>
-                    <div class="form-group">
-                        <label>نوع المكافأة</label>
-                        <select id="manual-task-reward-type">
-                            <option value="ton">TON</option>
-                            <option value="rr">RR</option>
-                            <option value="points">نقاط المسابقة</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>قيمة المكافأة</label>
-                        <input type="number" step="any" id="manual-task-reward" placeholder="0.001">
-                    </div>
-                    <div class="form-group">
-                        <label>الحد الأقصى للإكمال (0 = لا نهائي)</label>
-                        <input type="number" id="manual-task-max-completions" value="0">
-                    </div>
-                    <button class="action-btn btn-primary" onclick="window.adminActions.addManualTask()">إضافة مهمة يدوية</button>
-                </div>
-                
-                <!-- قائمة المهام الحالية -->
-                <div class="card" id="tasks-list">
-                    <h4>المهام الحالية</h4>
-                    <div id="tasks-table-container">جاري تحميل المهام...</div>
-                </div>
-                
-                <!-- إضافة مهمة تلقائية -->
-                <div class="card">
-                    <h4>إضافة مهمة تلقائية</h4>
+                    <h4>إضافة مهمة جديدة</h4>
                     <div class="form-group"><input id="task-name" placeholder="اسم المهمة (مثال: انضم للتليجرام)"></div>
                     <div class="form-group"><input id="task-url" placeholder="الرابط"></div>
                     <div class="form-group"><input id="task-reward" type="number" step="any" placeholder="مقدار المكافأة"></div>
                     <div class="form-group"><input id="task-icon" placeholder="رابط الصورة"></div>
                     <button class="action-btn btn-primary" onclick="window.adminActions.addTask()">إضافة مهمة</button>
                 </div>
-                
-                <!-- إضافة روابط -->
                 <div class="card" id="links-list"><h4>جاري تحميل الروابط...</h4></div>
                 <div class="card">
                     <h4>إضافة رابط/زر جديد</h4>
@@ -815,9 +755,81 @@
                     <button class="action-btn btn-primary" onclick="window.adminActions.addLink()">إضافة رابط</button>
                 </div>
             </div>`;
-            
-            await loadTasksWithStats();
+            loadDynamicContent('tasks'); 
             loadDynamicContent('links');
+        };
+
+        // Manual Tasks Management
+        const renderManualTasks = async () => {
+            mainContent.innerHTML = `<div id="manual-tasks" class="page active">
+                <h3>إدارة المهام اليدوية</h3>
+                
+                <div class="card">
+                    <h4>طلبات المهام المعلقة</h4>
+                    <div id="pending-task-requests"><h4>جاري تحميل الطلبات...</h4></div>
+                </div>
+                
+                <div class="card">
+                    <h4>المهام اليدوية الحالية</h4>
+                    <div id="manual-tasks-list"><h4>جاري تحميل المهام...</h4></div>
+                </div>
+                
+                <div class="card">
+                    <h4>إضافة مهمة يدوية جديدة</h4>
+                    <div class="form-group">
+                        <label>معرف المهمة (ID)</label>
+                        <input id="manual-task-id" placeholder="مثال: join_bot_1">
+                    </div>
+                    <div class="form-group">
+                        <label>اسم المهمة</label>
+                        <input id="manual-task-name" placeholder="مثال: انضم إلى البوت الرسمي">
+                    </div>
+                    <div class="form-group">
+                        <label>وصف المهمة</label>
+                        <textarea id="manual-task-description" placeholder="وصف تفصيلي للمهمة"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>رابط الإحالة (للبوت أو القناة)</label>
+                        <input id="manual-task-referral-link" placeholder="https://t.me/your_bot?start=ref123">
+                    </div>
+                    <div class="form-group">
+                        <label>رابط الأيقونة</label>
+                        <input id="manual-task-icon" placeholder="رابط صورة الأيقونة">
+                    </div>
+                    <div class="form-group">
+                        <label>نوع المكافأة</label>
+                        <select id="manual-task-reward-type">
+                            <option value="TON">TON</option>
+                            <option value="RR">RR</option>
+                            <option value="points">نقاط المسابقة</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>قيمة المكافأة</label>
+                        <input id="manual-task-reward-value" type="number" step="any" placeholder="قيمة المكافأة">
+                    </div>
+                    <div class="form-group">
+                        <label>نوع المهمة</label>
+                        <select id="manual-task-type">
+                            <option value="join_bot">انضم إلى بوت</option>
+                            <option value="join_channel">انضم إلى قناة</option>
+                            <option value="share">شارك المحتوى</option>
+                            <option value="other">أخرى</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>نوع الإثبات المطلوب</label>
+                        <select id="manual-task-proof-type">
+                            <option value="screenshot">لقطة شاشة (Screenshot)</option>
+                            <option value="username">اسم المستخدم</option>
+                            <option value="link">رابط</option>
+                        </select>
+                    </div>
+                    <button class="action-btn btn-primary" onclick="window.adminActions.addManualTask()">إضافة مهمة يدوية</button>
+                </div>
+            </div>`;
+            await loadManualTasks();
+            await loadPendingTaskRequests();
         };
 
         // Codes Management
@@ -834,14 +846,14 @@
                     <div class="form-group">
                         <label>نوع المكافأة</label>
                         <select id="code-reward-type">
-                            <option value="ton">TON</option>
-                            <option value="rr">RR</option>
+                            <option value="TON">TON</option>
+                            <option value="RR">RR</option>
                             <option value="points">نقاط المسابقة</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>قيمة المكافأة</label>
-                        <input id="code-reward-value" type="number" step="any" value="0.001">
+                        <input id="code-reward-value" type="number" step="any" value="10">
                     </div>
                     <div class="form-group">
                         <label>الحد الأقصى للاستخدام (0 = لا نهائي)</label>
@@ -1055,67 +1067,6 @@
             container.innerHTML = content;
         };
         
-        const loadTasksWithStats = async () => {
-            const container = document.getElementById('tasks-table-container');
-            const tasksSnap = await db.ref('config/tasks').once('value');
-            const manualTasksSnap = await db.ref('manualTasks').once('value');
-            
-            let tasks = [];
-            tasksSnap.forEach(child => {
-                tasks.push({ key: child.key, type: 'auto', ...child.val() });
-            });
-            
-            manualTasksSnap.forEach(child => {
-                tasks.push({ key: child.key, type: 'manual', ...child.val() });
-            });
-            
-            let content = '';
-            if (tasks.length > 0) {
-                content += '<table><thead><tr><th>اسم المهمة</th><th>النوع</th><th>المكافأة</th><th>الإكمالات</th><th>الإجراءات</th></tr></thead><tbody>';
-                
-                tasks.forEach(task => {
-                    let rewardBadge = '';
-                    if (task.rewardType) {
-                        if (task.rewardType === 'ton') rewardBadge = `<span class="reward-badge reward-ton">TON</span>`;
-                        else if (task.rewardType === 'rr') rewardBadge = `<span class="reward-badge reward-rr">RR</span>`;
-                        else if (task.rewardType === 'points') rewardBadge = `<span class="reward-badge reward-points">نقاط</span>`;
-                    }
-                    
-                    const rewardValue = task.reward || task.rewardValue || 0;
-                    const completions = task.completions || 0;
-                    const maxCompletions = task.maxCompletions || 0;
-                    
-                    content += `<tr>
-                        <td>${task.name} ${rewardBadge}</td>
-                        <td>${task.type === 'manual' ? 'يدوية' : 'تلقائية'}</td>
-                        <td>${rewardValue} ${task.rewardType === 'points' ? 'نقطة' : ''}</td>
-                        <td>
-                            <div>${completions} إكمال</div>
-                            ${maxCompletions > 0 ? 
-                                `<div class="completion-stats">
-                                    <span>${((completions / maxCompletions) * 100).toFixed(1)}%</span>
-                                    <span>${maxCompletions - completions} متبقي</span>
-                                </div>` : 
-                                '<div class="completion-stats"><span>لا نهائي</span></div>'
-                            }
-                        </td>
-                        <td>
-                            <button class="action-btn btn-danger" onclick="window.adminActions.deleteTask('${task.key}', '${task.type}')">حذف</button>
-                            ${task.type === 'manual' ? 
-                                `<button class="action-btn btn-warning" onclick="window.adminActions.editManualTask('${task.key}')">تعديل</button>` : 
-                                ''
-                            }
-                        </td>
-                    </tr>`;
-                });
-                
-                content += '</tbody></table>';
-            } else {
-                content = '<p>لا توجد مهام.</p>';
-            }
-            container.innerHTML = content;
-        };
-        
         const loadCodes = async () => {
             const container = document.getElementById('codes-list');
             const snap = await db.ref('codes').once('value');
@@ -1124,7 +1075,7 @@
             
             let content = '<h4>الأكواد الحالية</h4>';
             if (codes.length > 0) {
-                content += '<table><thead><tr><th>الكود</th><th>نوع المكافأة</th><th>القيمة</th><th>المستخدم</th><th>الحد الأقصى</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>';
+                content += '<table><thead><tr><th>الكود</th><th>نوع المكافأة</th><th>قيمة المكافأة</th><th>المستخدم</th><th>الحد الأقصى</th><th>الإجراءات</th></tr></thead><tbody>';
                 codes.forEach(code => {
                     const usedCount = code.usedCount || 0;
                     const maxUses = code.maxUses || 0;
@@ -1132,16 +1083,9 @@
                     const isMaxed = maxUses > 0 && usedCount >= maxUses;
                     const status = isExpired ? 'منتهي' : isMaxed ? 'مكتمل' : 'نشط';
                     
-                    let rewardBadge = '';
-                    if (code.rewardType) {
-                        if (code.rewardType === 'ton') rewardBadge = `<span class="reward-badge reward-ton">TON</span>`;
-                        else if (code.rewardType === 'rr') rewardBadge = `<span class="reward-badge reward-rr">RR</span>`;
-                        else if (code.rewardType === 'points') rewardBadge = `<span class="reward-badge reward-points">نقاط</span>`;
-                    }
-                    
                     content += `<tr>
                         <td>${code.key}</td>
-                        <td>${rewardBadge}</td>
+                        <td>${code.rewardType || 'TON'}</td>
                         <td>${code.rewardValue || code.points || 0}</td>
                         <td>${usedCount}/${maxUses > 0 ? maxUses : '∞'}</td>
                         <td>${status}</td>
@@ -1153,6 +1097,101 @@
                 content += '</tbody></table>';
             } else {
                 content += '<p>لا توجد أكواد.</p>';
+            }
+            container.innerHTML = content;
+        };
+        
+        const loadManualTasks = async () => {
+            const container = document.getElementById('manual-tasks-list');
+            const tasksSnap = await db.ref('manualTasks').once('value');
+            const completedTasksSnap = await db.ref('userManualTasks').once('value');
+            
+            let tasks = [];
+            tasksSnap.forEach(child => { tasks.push({ key: child.key, ...child.val() }); });
+            
+            // حساب عدد المستخدمين الذين أكملوا كل مهمة
+            const completedCounts = {};
+            completedTasksSnap.forEach(child => {
+                const taskRequest = child.val();
+                if (taskRequest.status === 'approved') {
+                    const taskId = taskRequest.taskId;
+                    completedCounts[taskId] = (completedCounts[taskId] || 0) + 1;
+                }
+            });
+            
+            let content = '';
+            if (tasks.length > 0) {
+                content += '<table><thead><tr><th>المهمة</th><th>نوع المكافأة</th><th>قيمة المكافأة</th><th>المستخدمين المكتملين</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>';
+                tasks.forEach(task => {
+                    const completedCount = completedCounts[task.id] || 0;
+                    
+                    content += `<tr>
+                        <td>
+                            <strong>${task.name}</strong>
+                            ${task.referralLink ? `<br><small><a href="${task.referralLink}" target="_blank">${task.referralLink}</a></small>` : ''}
+                        </td>
+                        <td>${task.rewardType}</td>
+                        <td>${task.rewardValue}</td>
+                        <td>${completedCount}</td>
+                        <td>${task.active ? 'نشط' : 'غير نشط'}</td>
+                        <td>
+                            <button class="action-btn btn-warning" onclick="window.adminActions.toggleManualTask('${task.key}', ${task.active})">${task.active ? 'إيقاف' : 'تفعيل'}</button>
+                            <button class="action-btn btn-danger" onclick="window.adminActions.deleteManualTask('${task.key}')">حذف</button>
+                        </td>
+                    </tr>`;
+                });
+                content += '</tbody></table>';
+            } else {
+                content = '<p>لا توجد مهام يدوية.</p>';
+            }
+            container.innerHTML = content;
+        };
+        
+        const loadPendingTaskRequests = async () => {
+            const container = document.getElementById('pending-task-requests');
+            const snap = await db.ref('userManualTasks').orderByChild('status').equalTo('pending').once('value');
+            let requests = [];
+            snap.forEach(child => { requests.push({ key: child.key, ...child.val() }); });
+            
+            let content = '';
+            if (requests.length > 0) {
+                requests.forEach(request => {
+                    content += `
+                        <div class="card" style="margin-bottom: 15px;">
+                            <h4>طلب مهمة: ${request.taskName}</h4>
+                            <div class="user-info-item">
+                                <span>المستخدم:</span>
+                                <span>${request.userName} (${request.userId})</span>
+                            </div>
+                            <div class="user-info-item">
+                                <span>التاريخ:</span>
+                                <span>${new Date(request.timestamp).toLocaleString('ar-EG')}</span>
+                            </div>
+                            <div class="user-info-item">
+                                <span>نوع الإثبات:</span>
+                                <span>${request.proofType}</span>
+                            </div>
+                            ${request.screenshot ? `
+                                <div class="user-info-item">
+                                    <span>الصورة المرفوعة:</span>
+                                    <img src="${request.screenshot}" class="task-request-image" alt="إثبات المهمة">
+                                </div>
+                            ` : ''}
+                            ${request.proofText ? `
+                                <div class="user-info-item">
+                                    <span>النص المرفوع:</span>
+                                    <span>${request.proofText}</span>
+                                </div>
+                            ` : ''}
+                            <div class="action-buttons" style="margin-top: 10px;">
+                                <button class="action-btn btn-success" onclick="window.adminActions.handleTaskRequest('${request.key}', 'approve')">قبول الطلب</button>
+                                <button class="action-btn btn-danger" onclick="window.adminActions.handleTaskRequest('${request.key}', 'reject')">رفض الطلب</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                content = '<p>لا توجد طلبات معلقة.</p>';
             }
             container.innerHTML = content;
         };
@@ -1323,82 +1362,6 @@
                 renderWithdrawals();
             },
             
-            // إضافة مهمة يدوية
-            addManualTask: async () => {
-                const data = { 
-                    name: document.getElementById('manual-task-name').value,
-                    description: document.getElementById('manual-task-description').value,
-                    url: document.getElementById('manual-task-url').value,
-                    icon: document.getElementById('manual-task-icon').value,
-                    rewardType: document.getElementById('manual-task-reward-type').value,
-                    rewardValue: parseFloat(document.getElementById('manual-task-reward').value),
-                    maxCompletions: parseInt(document.getElementById('manual-task-max-completions').value) || 0,
-                    completions: 0,
-                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                };
-                
-                if (!data.name || !data.url || !data.rewardValue) { 
-                    alert('الاسم والرابط وقيمة المكافأة مطلوبة.'); 
-                    return; 
-                }
-                
-                try {
-                    await db.ref('manualTasks').push(data);
-                    alert('تم إضافة المهمة اليدوية بنجاح!');
-                    // تنظيف الحقول
-                    document.getElementById('manual-task-name').value = '';
-                    document.getElementById('manual-task-description').value = '';
-                    document.getElementById('manual-task-url').value = '';
-                    document.getElementById('manual-task-icon').value = '';
-                    document.getElementById('manual-task-reward').value = '';
-                    document.getElementById('manual-task-max-completions').value = '0';
-                    
-                    renderTasks();
-                } catch (e) {
-                    alert('خطأ في إضافة المهمة: ' + e.message);
-                }
-            },
-            
-            // تعديل مهمة يدوية
-            editManualTask: async (taskId) => {
-                const taskSnap = await db.ref(`manualTasks/${taskId}`).once('value');
-                const task = taskSnap.val();
-                
-                if (!task) {
-                    alert('المهمة غير موجودة');
-                    return;
-                }
-                
-                // في تطبيق حقيقي، يمكن فتح نموذج تعديل
-                const newName = prompt('اسم المهمة الجديد:', task.name);
-                if (newName !== null) {
-                    try {
-                        await db.ref(`manualTasks/${taskId}/name`).set(newName);
-                        alert('تم تحديث اسم المهمة بنجاح!');
-                        renderTasks();
-                    } catch (e) {
-                        alert('خطأ في تحديث المهمة: ' + e.message);
-                    }
-                }
-            },
-            
-            // حذف مهمة
-            deleteTask: async (taskId, taskType) => {
-                if (confirm('هل أنت متأكد من رغبتك في حذف هذه المهمة?')) {
-                    try {
-                        if (taskType === 'manual') {
-                            await db.ref(`manualTasks/${taskId}`).remove();
-                        } else {
-                            await db.ref(`config/tasks/${taskId}`).remove();
-                        }
-                        alert('تم حذف المهمة بنجاح!');
-                        renderTasks();
-                    } catch (e) {
-                        alert('خطأ في حذف المهمة.');
-                    }
-                }
-            },
-            
             // إضافة مهمة
             addTask: async () => {
                 const data = { 
@@ -1444,17 +1407,12 @@
             createCode: async () => {
                 const codeText = document.getElementById('code-text').value.trim().toUpperCase();
                 const rewardType = document.getElementById('code-reward-type').value;
-                const rewardValue = parseFloat(document.getElementById('code-reward-value').value) || 0;
+                const rewardValue = parseFloat(document.getElementById('code-reward-value').value) || 10;
                 const maxUses = parseInt(document.getElementById('code-max-uses').value) || 100;
                 const expiry = document.getElementById('code-expiry').value;
                 
                 if (!codeText) {
                     alert('يرجى إدخال نص الكود');
-                    return;
-                }
-                
-                if (rewardValue <= 0) {
-                    alert('يرجى إدخال قيمة مكافأة صحيحة');
                     return;
                 }
                 
@@ -1473,9 +1431,8 @@
                 try {
                     await db.ref(`codes/${codeText}`).set(codeData);
                     alert('تم إنشاء الكود بنجاح!');
-                    // تنظيف الحقول
                     document.getElementById('code-text').value = '';
-                    document.getElementById('code-reward-value').value = '0.001';
+                    document.getElementById('code-reward-value').value = '10';
                     document.getElementById('code-max-uses').value = '100';
                     document.getElementById('code-expiry').value = '';
                     await loadCodes();
@@ -1495,6 +1452,121 @@
                         alert('خطأ في حذف الكود.');
                     }
                 }
+            },
+            
+            // إضافة مهمة يدوية
+            addManualTask: async () => {
+                const taskData = {
+                    id: document.getElementById('manual-task-id').value,
+                    name: document.getElementById('manual-task-name').value,
+                    description: document.getElementById('manual-task-description').value,
+                    referralLink: document.getElementById('manual-task-referral-link').value,
+                    icon: document.getElementById('manual-task-icon').value,
+                    rewardType: document.getElementById('manual-task-reward-type').value,
+                    rewardValue: parseFloat(document.getElementById('manual-task-reward-value').value) || 0,
+                    taskType: document.getElementById('manual-task-type').value,
+                    requiredProof: document.getElementById('manual-task-proof-type').value,
+                    active: true
+                };
+                
+                if (!taskData.id || !taskData.name || !taskData.rewardValue) {
+                    alert('يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                }
+                
+                try {
+                    await db.ref(`manualTasks/${taskData.id}`).set(taskData);
+                    alert('تم إضافة المهمة اليدوية بنجاح!');
+                    await loadManualTasks();
+                    
+                    // Clear form
+                    document.getElementById('manual-task-id').value = '';
+                    document.getElementById('manual-task-name').value = '';
+                    document.getElementById('manual-task-description').value = '';
+                    document.getElementById('manual-task-referral-link').value = '';
+                    document.getElementById('manual-task-icon').value = '';
+                    document.getElementById('manual-task-reward-value').value = '';
+                } catch (e) {
+                    alert('خطأ في إضافة المهمة: ' + e.message);
+                }
+            },
+            
+            // تفعيل/إيقاف مهمة يدوية
+            toggleManualTask: async (taskId, isActive) => {
+                try {
+                    await db.ref(`manualTasks/${taskId}/active`).set(!isActive);
+                    alert(`تم ${!isActive ? 'تفعيل' : 'إيقاف'} المهمة بنجاح!`);
+                    await loadManualTasks();
+                } catch (e) {
+                    alert('خطأ في تحديث حالة المهمة.');
+                }
+            },
+            
+            // حذف مهمة يدوية
+            deleteManualTask: async (taskId) => {
+                if (confirm('هل أنت متأكد من رغبتك في حذف هذه المهمة?')) {
+                    try {
+                        await db.ref(`manualTasks/${taskId}`).remove();
+                        alert('تم حذف المهمة بنجاح!');
+                        await loadManualTasks();
+                    } catch (e) {
+                        alert('خطأ في حذف المهمة.');
+                    }
+                }
+            },
+            
+            // معالجة طلبات المهام اليدوية
+            handleTaskRequest: async (requestId, action) => {
+                const requestRef = db.ref(`userManualTasks/${requestId}`);
+                const snap = await requestRef.once('value');
+                const request = snap.val();
+                
+                if (!request) {
+                    alert('الطلب غير موجود');
+                    return;
+                }
+                
+                if (action === 'approve') {
+                    // منح المكافأة للمستخدم
+                    const taskSnap = await db.ref(`manualTasks/${request.taskId}`).once('value');
+                    const task = taskSnap.val();
+                    
+                    if (task) {
+                        const userRef = db.ref(`users/${request.userId}`);
+                        
+                        if (task.rewardType === 'TON') {
+                            await userRef.child('balance').set(firebase.database.ServerValue.increment(task.rewardValue));
+                        } else if (task.rewardType === 'RR') {
+                            await userRef.child('rrBalance').set(firebase.database.ServerValue.increment(task.rewardValue));
+                        } else if (task.rewardType === 'points') {
+                            const contestRef = db.ref(`contest/participants/${request.userId}`);
+                            const contestSnap = await contestRef.once('value');
+                            const contestData = contestSnap.val() || { points: 0 };
+                            await contestRef.update({ points: (contestData.points || 0) + task.rewardValue });
+                        }
+                        
+                        // تحديث حالة الطلب
+                        await requestRef.update({ 
+                            status: 'approved',
+                            reviewedAt: firebase.database.ServerValue.TIMESTAMP
+                        });
+                        
+                        alert('تم قبول الطلب ومنح المكافأة للمستخدم!');
+                    } else {
+                        alert('المهمة غير موجودة');
+                        return;
+                    }
+                } else if (action === 'reject') {
+                    const reason = prompt('يرجى إدخال سبب الرفض (اختياري):');
+                    await requestRef.update({ 
+                        status: 'rejected',
+                        reviewReason: reason || '',
+                        reviewedAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    alert('تم رفض الطلب!');
+                }
+                
+                await loadPendingTaskRequests();
             },
             
             // تحديث إعدادات المسابقة
@@ -1655,6 +1727,7 @@
                     else if (page === 'withdrawals') renderWithdrawals();
                     else if (page === 'history') renderWithdrawalHistory();
                     else if (page === 'tasks') renderTasks();
+                    else if (page === 'manual-tasks') renderManualTasks();
                     else if (page === 'codes') renderCodes();
                     else if (page === 'contest') renderContest();
                     else if (page === 'settings') renderSettings();
