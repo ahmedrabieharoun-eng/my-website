@@ -1149,6 +1149,24 @@
             cursor: not-allowed;
         }
 
+        /* أنماط إضافية للمهام اليومية */
+        .daily-task-claimed {
+            background: rgba(76, 175, 80, 0.1) !important;
+            border: 2px solid var(--success) !important;
+        }
+
+        .daily-task-progress {
+            font-size: 0.8rem;
+            color: var(--text-secondary-dark);
+            margin-top: 5px;
+        }
+
+        .task-container .disabled {
+            background: #808B96 !important;
+            cursor: not-allowed !important;
+            opacity: 0.7;
+        }
+
         @media (max-width: 380px) {
             .subscription-container {
                 padding: 8px;
@@ -1446,6 +1464,18 @@
                 <h2>Bonus Tasks</h2>
                 <div id="dynamic-tasks-container"></div>
                 
+                <!-- قسم المهام اليومية الجديد -->
+                <div id="daily-tasks-container" style="margin-top: 20px;">
+                    <h2>📅 Daily Tasks</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary-dark); margin-bottom: 15px;">
+                        Complete daily tasks to earn extra RR rewards! Resets daily at midnight.
+                    </p>
+                    
+                    <div id="daily-tasks-list">
+                        <!-- سيتم إضافة المهام اليومية هنا ديناميكياً -->
+                    </div>
+                </div>
+                
                 <!-- تم إزالة قسم المهام اليدوية المصغرة -->
             </div>
 
@@ -1651,11 +1681,6 @@
 
         let isUserBanned = false;
         let banReason = "";
-
-        // ✅ متغيرات جديدة لنظام السلسلة الإعلانية
-        let adChainStep = 0; // 0: إعلان أساسي 1, 1: إعلان أساسي 2, 2: إعلان إجباري
-        let adChainInProgress = false;
-        let basicAdsWatchedInChain = 0;
 
         // باقي المتغيرات تبقى كما هي
         let lastAdWatchTime = 0;
@@ -1934,7 +1959,7 @@
             });
         };
 
-        // ✅ دالة محسنة لمشاهدة الإعلان - مع نظام السلسلة الإعلانية الجديد
+        // ✅ دالة محسنة لمشاهدة الإعلان - مع الإعلان الإجباري
         const handleWatchAd = async () => {
             // 🌍 التحقق من الدولة المسموحة أولاً
             if (!isUserCountryAllowed) {
@@ -1989,67 +2014,29 @@
                 watchBtn.textContent = 'Loading...';
             }
 
-            // ✅ تحديد نوع الإعلان بناءً على الخطوة الحالية في السلسلة
-            let adType = '';
-            let adMessage = '';
-            
-            if (adChainStep === 0) {
-                adType = 'Basic Ad 1';
-                adMessage = 'First ad in sequence';
-            } else if (adChainStep === 1) {
-                adType = 'Basic Ad 2';
-                adMessage = 'Second ad in sequence';
-            } else {
-                adType = 'Bonus Ad';
-                adMessage = 'Final bonus ad to claim reward';
-            }
-
             showPopup(`
                 <div style="margin-bottom:10px;">
                     <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
                 </div>
-                <h2>Loading ${adType}</h2>
-                <p>${adMessage}</p>
-                <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary-dark);">
-                    Step ${adChainStep + 1} of 3
-                </div>
+                <h2>Loading Ad</h2>
+                <p>Please wait a moment...</p>
             `);
 
             try {
                 adStartTime = Date.now();
                 isAdInProgress = true;
-                adChainInProgress = true;
 
-                // 🎬 الخطوة 1: مشاهدة الإعلان الحالي في السلسلة
+                // 🎬 الخطوة 1: مشاهدة الإعلان العادي
                 await adFunction();
                 
-                // ✅ تحديث حالة السلسلة
-                if (adChainStep < 2) {
-                    // إذا كانت إعلانات أساسية
-                    adChainStep++;
-                    basicAdsWatchedInChain++;
-                    
-                    closePopup();
-                    
-                    // عرض رسالة تقدمية
-                    showPopup(`
-                        <div style="text-align: center;">
-                            <div style="font-size: 3rem; margin-bottom: 15px;">✅</div>
-                            <h2 style="color: var(--ship-gold); margin-bottom: 10px;">Ad ${basicAdsWatchedInChain} Complete!</h2>
-                            <p style="margin-bottom: 20px; color: var(--text-primary-dark);">
-                                You've watched ${basicAdsWatchedInChain} of 2 basic ads.
-                            </p>
-                            <div style="background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary-dark);">
-                                    Next: ${adChainStep === 1 ? 'Second basic ad' : 'Bonus ad for reward'}
-                                </p>
-                            </div>
-                            <button class="popup-close-btn" onclick="closePopup(); handleWatchAd();" 
-                                    style="background: linear-gradient(45deg, var(--ship-gold), #ffa500); color: #000; width: 100%;">
-                                Continue to Next Ad
-                            </button>
-                        </div>
-                    `);
+                // ✅ الخطوة 2: الإعلان الإجباري قبل المكافأة
+                const bonusWatched = await showMandatoryBonusAd();
+                
+                if (!bonusWatched) {
+                    // إذا لم يكمل الإعلان الإجباري، لا يعطي مكافأة
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("You need to complete the bonus ad to receive your reward."); 
+                    }catch{}
                     
                     if (watchBtn) {
                         watchBtn.disabled = false;
@@ -2058,120 +2045,80 @@
                     
                     isAdInProgress = false;
                     return;
-                } else {
-                    // ✅ الخطوة 3: الإعلان الإجباري (الخطوة الأخيرة)
-                    const bonusWatched = await showMandatoryBonusAd();
-                    
-                    if (!bonusWatched) {
-                        // إذا لم يكمل الإعلان الإجباري، لا يعطي مكافأة
-                        try{ 
-                            if (tg.showAlert) tg.showAlert("You need to complete the bonus ad to receive your reward."); 
-                        }catch{}
-                        
-                        // إعادة تعيين السلسلة
-                        adChainStep = 0;
-                        basicAdsWatchedInChain = 0;
-                        adChainInProgress = false;
-                        
-                        if (watchBtn) {
-                            watchBtn.disabled = false;
-                            watchBtn.textContent = 'Watch Ad';
-                        }
-                        
-                        isAdInProgress = false;
-                        return;
-                    }
+                }
 
-                    closePopup();
-                    
-                    const adEndTime = Date.now();
-                    const adDuration = adEndTime - adStartTime;
-                    
-                    // ✅ التعديل: التحقق من 5 ثواني فقط
-                    if (adDuration < minAdDuration) {
-                        try{ 
-                            if (tg.showAlert) tg.showAlert(`Ad watched too quickly! Please watch the ad for at least ${minAdDuration/1000} seconds to earn rewards.`); 
-                        }catch{}
-                        
-                        // إعادة تعيين السلسلة
-                        adChainStep = 0;
-                        basicAdsWatchedInChain = 0;
-                        adChainInProgress = false;
-                        
-                        if (watchBtn) {
-                            watchBtn.disabled = false;
-                            watchBtn.textContent = 'Watch Ad';
-                        }
-                        
-                        isAdInProgress = false;
-                        return;
-                    }
-                    
-                    lastAdWatchTime = Date.now();
-                    const adValueRR = 1000;
-
-                    // 🎁 منح المكافأة الأساسية فقط (بدون إضافية)
-                    userRRBalance += adValueRR;
-                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
-
-                    userState.dailyAdCount++;
-                    userState.lifetimeAdCount++;
-                    userState.totalEarned = (userState.totalEarned || 0) + (adValueRR / RR_TO_TON_RATE);
-
-                    const db = firebase.database(); 
-                    const userRef = db.ref(`users/${tgUser.id}`);
-                    const updates = {};
-                    updates.dailyAdCount = userState.dailyAdCount;
-                    updates.lifetimeAdCount = userState.lifetimeAdCount;
-                    updates.totalEarned = userState.totalEarned;
-                    
-                    if ((userState.dailyAdCount) % (appConfig.adsPerBreak || 0) === 0 && (appConfig.adsPerBreak || 0) > 0) {
-                        updates.breakUntil = Date.now() + ((appConfig.breakDuration || 0) * 60000);
-                        userState.breakUntil = updates.breakUntil;
-                    }
-                    await userRef.update(updates);
-
-                    const today = new Date().toISOString().slice(0, 10);
-                    await db.ref(`userEarnings/${tgUser.id}/${today}`).set(firebase.database.ServerValue.increment(adValueRR / RR_TO_TON_RATE));
-
-                    if (userState.referredBy) {
-                        await updateReferralEarnings(tgUser.id, adValueRR);
-                    }
-
-                    // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
-                    if (contestData.isActive) {
-                        await updateContestPointsOnAdWatch();
-                    }
-
-                    // ✅ إعادة تعيين السلسلة بعد اكتمالها
-                    adChainStep = 0;
-                    basicAdsWatchedInChain = 0;
-                    adChainInProgress = false;
-
-                    // ✅ رسالة النجاح
-                    let rewardMessage = `+${adValueRR.toLocaleString()} RR added to your balance.`;
-                    if (contestData.isActive) {
-                        rewardMessage += ` +1 Contest Point!`;
-                    }
-                    
+                closePopup();
+                
+                const adEndTime = Date.now();
+                const adDuration = adEndTime - adStartTime;
+                
+                // ✅ التعديل: التحقق من 5 ثواني فقط
+                if (adDuration < minAdDuration) {
                     try{ 
-                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                        if (tg.showAlert) tg.showAlert(rewardMessage); 
+                        if (tg.showAlert) tg.showAlert(`Ad watched too quickly! Please watch the ad for at least ${minAdDuration/1000} seconds to earn rewards.`); 
                     }catch{}
                     
-                    renderUI();
-
+                    if (watchBtn) {
+                        watchBtn.disabled = false;
+                        watchBtn.textContent = 'Watch Ad';
+                    }
+                    
+                    isAdInProgress = false;
+                    return;
                 }
+                
+                lastAdWatchTime = Date.now();
+                const adValueRR = 1000;
+
+                // 🎁 منح المكافأة الأساسية فقط (بدون إضافية)
+                userRRBalance += adValueRR;
+                localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+
+                userState.dailyAdCount++;
+                userState.lifetimeAdCount++;
+                userState.totalEarned = (userState.totalEarned || 0) + (adValueRR / RR_TO_TON_RATE);
+
+                const db = firebase.database(); 
+                const userRef = db.ref(`users/${tgUser.id}`);
+                const updates = {};
+                updates.dailyAdCount = userState.dailyAdCount;
+                updates.lifetimeAdCount = userState.lifetimeAdCount;
+                updates.totalEarned = userState.totalEarned;
+                
+                if ((userState.dailyAdCount) % (appConfig.adsPerBreak || 0) === 0 && (appConfig.adsPerBreak || 0) > 0) {
+                    updates.breakUntil = Date.now() + ((appConfig.breakDuration || 0) * 60000);
+                    userState.breakUntil = updates.breakUntil;
+                }
+                await userRef.update(updates);
+
+                const today = new Date().toISOString().slice(0, 10);
+                await db.ref(`userEarnings/${tgUser.id}/${today}`).set(firebase.database.ServerValue.increment(adValueRR / RR_TO_TON_RATE));
+
+                if (userState.referredBy) {
+                    await updateReferralEarnings(tgUser.id, adValueRR);
+                }
+
+                // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
+                if (contestData.isActive) {
+                    await updateContestPointsOnAdWatch();
+                }
+
+                // ✅ رسالة النجاح
+                let rewardMessage = `+${adValueRR.toLocaleString()} RR added to your balance.`;
+                if (contestData.isActive) {
+                    rewardMessage += ` +1 Contest Point!`;
+                }
+                
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert(rewardMessage); 
+                }catch{}
+                
+                renderUI();
 
             } catch (error) {
                 console.error("Ad failed to load:", error);
                 closePopup();
-                
-                // إعادة تعيين السلسلة في حالة الخطأ
-                adChainStep = 0;
-                basicAdsWatchedInChain = 0;
-                adChainInProgress = false;
-                
                 try{ 
                     if (tg.showAlert) tg.showAlert("Ad could not be loaded. Please try again."); 
                 }catch{}
@@ -2519,6 +2466,9 @@
                 await historyPromise;
 
                 loadAdSdk(appConfig.adZoneId);
+
+                // إعادة تعيين المهام اليومية إذا لزم الأمر
+                resetDailyTasks();
 
                 renderUI(); 
                 setupNavigation(); 
@@ -3152,6 +3102,9 @@
             
             // إعداد المستمعين الإضافيين
             setupAdditionalEventListeners();
+            
+            // تحميل المهام اليومية
+            loadDailyTasks();
         };
 
         const renderAdProgress = () => {
@@ -3349,26 +3302,17 @@
                     </div>`;
             } else {
                 const adValueRR = 1000;
-                // ✅ تحديث نص الزر بناءً على حالة السلسلة
-                let buttonText = 'Watch Ad';
-                let progressText = '';
-                
-                if (adChainInProgress) {
-                    buttonText = `Continue (${basicAdsWatchedInChain + 1}/3)`;
-                    progressText = `<p class="ad-progress-inline">Step ${basicAdsWatchedInChain + 1} of 3 - Watch 2 basic ads + 1 bonus ad</p>`;
-                } else {
-                    progressText = `<p class="ad-progress-inline">⏱️ Must watch for 5+ seconds to earn</p>`;
-                }
-                
                 html = `
                     <div class="task-container">
                         <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/play-button-circled.png" alt="icon">
                         <div class="task-info">
                             <h3>Watch Ad</h3>
                             <p>Earn ${adValueRR.toLocaleString()} RR for every ad.</p>
-                            ${progressText}
+                            <p class="ad-progress-inline">
+                                ⏱️ Must watch for 5+ seconds to earn
+                            </p>
                         </div>
-                        <button id="watch-ad-btn" class="action-btn">${buttonText}</button>
+                        <button id="watch-ad-btn" class="action-btn">Watch Ad</button>
                     </div>`;
             }
             container.innerHTML = html;
@@ -4835,6 +4779,120 @@
         // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
         window.closeDailyCalendar = () => {
             document.getElementById('daily-calendar-popup').style.display = 'none';
+        };
+
+        // ✅ دالة لتحميل وعرض المهام اليومية
+        const loadDailyTasks = () => {
+            const dailyTasksList = document.getElementById('daily-tasks-list');
+            if (!dailyTasksList) return;
+
+            // الحصول على عدد الإعلانات اليومية من Daily Ad Progress
+            const watchedCount = userState.dailyAdCount || 0;
+            
+            // تعريف المهام اليومية
+            const dailyTasks = [
+                { id: 'daily_login', name: 'Daily Login', required: 0, current: 1, reward: 5000, claimed: false },
+                { id: 'watch_100_ads', name: 'Watch 100 Ads', required: 100, current: watchedCount, reward: 20000, claimed: false },
+                { id: 'watch_300_ads', name: 'Watch 300 Ads', required: 300, current: watchedCount, reward: 60000, claimed: false },
+                { id: 'watch_600_ads', name: 'Watch 600 Ads', required: 600, current: watchedCount, reward: 120000, claimed: false },
+                { id: 'watch_1000_ads', name: 'Watch 1000 Ads', required: 1000, current: watchedCount, reward: 200000, claimed: false },
+                { id: 'watch_5000_ads', name: 'Watch 5000 Ads', required: 5000, current: watchedCount, reward: 500000, claimed: false }
+            ];
+
+            // التحقق من المهام المطالب بها مسبقاً
+            const claimedTasks = JSON.parse(localStorage.getItem(`claimedDailyTasks_${tgUser.id || 'guest'}`) || '{}');
+            
+            let tasksHTML = '';
+            
+            dailyTasks.forEach(task => {
+                const isCompleted = task.current >= task.required;
+                const isClaimed = claimedTasks[task.id] || false;
+                const progressPercentage = Math.min(100, (task.current / task.required) * 100);
+                
+                tasksHTML += `
+                    <div class="task-container" style="position: relative;">
+                        <div class="task-info" style="flex: 1;">
+                            <h3>${task.name}</h3>
+                            <p>Watch ${task.required.toLocaleString()} ads - Reward: ${task.reward.toLocaleString()} RR</p>
+                            
+                            <!-- شريط التقدم -->
+                            <div class="progress-container-inline" style="margin: 8px 0;">
+                                <div class="progress-info-inline">
+                                    <span>Progress</span>
+                                    <span>${task.current.toLocaleString()} / ${task.required.toLocaleString()}</span>
+                                </div>
+                                <div class="progress-bar-bg-inline">
+                                    <div class="progress-bar-fg-inline" style="width: ${progressPercentage}%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button class="action-btn ${isCompleted && !isClaimed ? '' : 'disabled'}" 
+                                data-task-id="${task.id}" 
+                                data-task-reward="${task.reward}"
+                                ${isCompleted && !isClaimed ? '' : 'disabled'}
+                                style="min-width: 80px;">
+                            ${isClaimed ? '✅ Claimed' : (isCompleted ? '🎁 Claim' : 'In Progress')}
+                        </button>
+                        
+                        ${isClaimed ? '<div style="position: absolute; top: 5px; right: 5px; background: var(--success); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Claimed</div>' : ''}
+                    </div>
+                `;
+            });
+            
+            dailyTasksList.innerHTML = tasksHTML;
+            
+            // إضافة event listeners لأزرار Claim
+            document.querySelectorAll('#daily-tasks-list .action-btn:not(.disabled)').forEach(btn => {
+                btn.addEventListener('click', handleDailyTaskClaim);
+            });
+        };
+
+        // ✅ دالة للمطالبة بمهمة يومية
+        const handleDailyTaskClaim = async (e) => {
+            const taskId = e.target.dataset.taskId;
+            const reward = parseInt(e.target.dataset.taskReward);
+            
+            if (!taskId || !reward) return;
+            
+            try {
+                // تحديث الرصيد
+                userRRBalance += reward;
+                localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                
+                // حفظ حالة المهمة كمطالب بها
+                const claimedTasks = JSON.parse(localStorage.getItem(`claimedDailyTasks_${tgUser.id || 'guest'}`) || '{}');
+                claimedTasks[taskId] = true;
+                localStorage.setItem(`claimedDailyTasks_${tgUser.id || 'guest'}`, JSON.stringify(claimedTasks));
+                
+                // تحديث الواجهة
+                loadDailyTasks();
+                renderUI();
+                
+                // إظهار رسالة النجاح
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert(`🎉 Task completed! You earned ${reward.toLocaleString()} RR!`); 
+                }catch{}
+                
+            } catch (error) {
+                console.error('Error claiming daily task:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to claim task reward. Please try again."); 
+                }catch{}
+            }
+        };
+
+        // ✅ دالة لإعادة تعيين المهام اليومية (تستدعى يومياً)
+        const resetDailyTasks = () => {
+            const lastReset = localStorage.getItem(`lastDailyReset_${tgUser.id || 'guest'}`);
+            const today = new Date().toDateString();
+            
+            if (lastReset !== today) {
+                // إعادة تعيين جميع المهام اليومية
+                localStorage.removeItem(`claimedDailyTasks_${tgUser.id || 'guest'}`);
+                localStorage.setItem(`lastDailyReset_${tgUser.id || 'guest'}`, today);
+            }
         };
 
         // بدء التطبيق
