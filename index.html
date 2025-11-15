@@ -1652,6 +1652,11 @@
         let isUserBanned = false;
         let banReason = "";
 
+        // ✅ متغيرات جديدة لنظام السلسلة الإعلانية
+        let adChainStep = 0; // 0: إعلان أساسي 1, 1: إعلان أساسي 2, 2: إعلان إجباري
+        let adChainInProgress = false;
+        let basicAdsWatchedInChain = 0;
+
         // باقي المتغيرات تبقى كما هي
         let lastAdWatchTime = 0;
         let adStartTime = 0;
@@ -1929,7 +1934,7 @@
             });
         };
 
-        // ✅ دالة محسنة لمشاهدة الإعلان - مع الإعلان الإجباري
+        // ✅ دالة محسنة لمشاهدة الإعلان - مع نظام السلسلة الإعلانية الجديد
         const handleWatchAd = async () => {
             // 🌍 التحقق من الدولة المسموحة أولاً
             if (!isUserCountryAllowed) {
@@ -1984,29 +1989,67 @@
                 watchBtn.textContent = 'Loading...';
             }
 
+            // ✅ تحديد نوع الإعلان بناءً على الخطوة الحالية في السلسلة
+            let adType = '';
+            let adMessage = '';
+            
+            if (adChainStep === 0) {
+                adType = 'Basic Ad 1';
+                adMessage = 'First ad in sequence';
+            } else if (adChainStep === 1) {
+                adType = 'Basic Ad 2';
+                adMessage = 'Second ad in sequence';
+            } else {
+                adType = 'Bonus Ad';
+                adMessage = 'Final bonus ad to claim reward';
+            }
+
             showPopup(`
                 <div style="margin-bottom:10px;">
                     <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
                 </div>
-                <h2>Loading Ad</h2>
-                <p>Please wait a moment...</p>
+                <h2>Loading ${adType}</h2>
+                <p>${adMessage}</p>
+                <div style="margin-top: 10px; font-size: 0.8rem; color: var(--text-secondary-dark);">
+                    Step ${adChainStep + 1} of 3
+                </div>
             `);
 
             try {
                 adStartTime = Date.now();
                 isAdInProgress = true;
+                adChainInProgress = true;
 
-                // 🎬 الخطوة 1: مشاهدة الإعلان العادي
+                // 🎬 الخطوة 1: مشاهدة الإعلان الحالي في السلسلة
                 await adFunction();
                 
-                // ✅ الخطوة 2: الإعلان الإجباري قبل المكافأة
-                const bonusWatched = await showMandatoryBonusAd();
-                
-                if (!bonusWatched) {
-                    // إذا لم يكمل الإعلان الإجباري، لا يعطي مكافأة
-                    try{ 
-                        if (tg.showAlert) tg.showAlert("You need to complete the bonus ad to receive your reward."); 
-                    }catch{}
+                // ✅ تحديث حالة السلسلة
+                if (adChainStep < 2) {
+                    // إذا كانت إعلانات أساسية
+                    adChainStep++;
+                    basicAdsWatchedInChain++;
+                    
+                    closePopup();
+                    
+                    // عرض رسالة تقدمية
+                    showPopup(`
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 15px;">✅</div>
+                            <h2 style="color: var(--ship-gold); margin-bottom: 10px;">Ad ${basicAdsWatchedInChain} Complete!</h2>
+                            <p style="margin-bottom: 20px; color: var(--text-primary-dark);">
+                                You've watched ${basicAdsWatchedInChain} of 2 basic ads.
+                            </p>
+                            <div style="background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                                <p style="margin: 0; font-size: 0.9rem; color: var(--text-secondary-dark);">
+                                    Next: ${adChainStep === 1 ? 'Second basic ad' : 'Bonus ad for reward'}
+                                </p>
+                            </div>
+                            <button class="popup-close-btn" onclick="closePopup(); handleWatchAd();" 
+                                    style="background: linear-gradient(45deg, var(--ship-gold), #ffa500); color: #000; width: 100%;">
+                                Continue to Next Ad
+                            </button>
+                        </div>
+                    `);
                     
                     if (watchBtn) {
                         watchBtn.disabled = false;
@@ -2015,80 +2058,120 @@
                     
                     isAdInProgress = false;
                     return;
-                }
-
-                closePopup();
-                
-                const adEndTime = Date.now();
-                const adDuration = adEndTime - adStartTime;
-                
-                // ✅ التعديل: التحقق من 5 ثواني فقط
-                if (adDuration < minAdDuration) {
-                    try{ 
-                        if (tg.showAlert) tg.showAlert(`Ad watched too quickly! Please watch the ad for at least ${minAdDuration/1000} seconds to earn rewards.`); 
-                    }catch{}
+                } else {
+                    // ✅ الخطوة 3: الإعلان الإجباري (الخطوة الأخيرة)
+                    const bonusWatched = await showMandatoryBonusAd();
                     
-                    if (watchBtn) {
-                        watchBtn.disabled = false;
-                        watchBtn.textContent = 'Watch Ad';
+                    if (!bonusWatched) {
+                        // إذا لم يكمل الإعلان الإجباري، لا يعطي مكافأة
+                        try{ 
+                            if (tg.showAlert) tg.showAlert("You need to complete the bonus ad to receive your reward."); 
+                        }catch{}
+                        
+                        // إعادة تعيين السلسلة
+                        adChainStep = 0;
+                        basicAdsWatchedInChain = 0;
+                        adChainInProgress = false;
+                        
+                        if (watchBtn) {
+                            watchBtn.disabled = false;
+                            watchBtn.textContent = 'Watch Ad';
+                        }
+                        
+                        isAdInProgress = false;
+                        return;
+                    }
+
+                    closePopup();
+                    
+                    const adEndTime = Date.now();
+                    const adDuration = adEndTime - adStartTime;
+                    
+                    // ✅ التعديل: التحقق من 5 ثواني فقط
+                    if (adDuration < minAdDuration) {
+                        try{ 
+                            if (tg.showAlert) tg.showAlert(`Ad watched too quickly! Please watch the ad for at least ${minAdDuration/1000} seconds to earn rewards.`); 
+                        }catch{}
+                        
+                        // إعادة تعيين السلسلة
+                        adChainStep = 0;
+                        basicAdsWatchedInChain = 0;
+                        adChainInProgress = false;
+                        
+                        if (watchBtn) {
+                            watchBtn.disabled = false;
+                            watchBtn.textContent = 'Watch Ad';
+                        }
+                        
+                        isAdInProgress = false;
+                        return;
                     }
                     
-                    isAdInProgress = false;
-                    return;
+                    lastAdWatchTime = Date.now();
+                    const adValueRR = 1000;
+
+                    // 🎁 منح المكافأة الأساسية فقط (بدون إضافية)
+                    userRRBalance += adValueRR;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+
+                    userState.dailyAdCount++;
+                    userState.lifetimeAdCount++;
+                    userState.totalEarned = (userState.totalEarned || 0) + (adValueRR / RR_TO_TON_RATE);
+
+                    const db = firebase.database(); 
+                    const userRef = db.ref(`users/${tgUser.id}`);
+                    const updates = {};
+                    updates.dailyAdCount = userState.dailyAdCount;
+                    updates.lifetimeAdCount = userState.lifetimeAdCount;
+                    updates.totalEarned = userState.totalEarned;
+                    
+                    if ((userState.dailyAdCount) % (appConfig.adsPerBreak || 0) === 0 && (appConfig.adsPerBreak || 0) > 0) {
+                        updates.breakUntil = Date.now() + ((appConfig.breakDuration || 0) * 60000);
+                        userState.breakUntil = updates.breakUntil;
+                    }
+                    await userRef.update(updates);
+
+                    const today = new Date().toISOString().slice(0, 10);
+                    await db.ref(`userEarnings/${tgUser.id}/${today}`).set(firebase.database.ServerValue.increment(adValueRR / RR_TO_TON_RATE));
+
+                    if (userState.referredBy) {
+                        await updateReferralEarnings(tgUser.id, adValueRR);
+                    }
+
+                    // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
+                    if (contestData.isActive) {
+                        await updateContestPointsOnAdWatch();
+                    }
+
+                    // ✅ إعادة تعيين السلسلة بعد اكتمالها
+                    adChainStep = 0;
+                    basicAdsWatchedInChain = 0;
+                    adChainInProgress = false;
+
+                    // ✅ رسالة النجاح
+                    let rewardMessage = `+${adValueRR.toLocaleString()} RR added to your balance.`;
+                    if (contestData.isActive) {
+                        rewardMessage += ` +1 Contest Point!`;
+                    }
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(rewardMessage); 
+                    }catch{}
+                    
+                    renderUI();
+
                 }
-                
-                lastAdWatchTime = Date.now();
-                const adValueRR = 1000;
-
-                // 🎁 منح المكافأة الأساسية فقط (بدون إضافية)
-                userRRBalance += adValueRR;
-                localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
-
-                userState.dailyAdCount++;
-                userState.lifetimeAdCount++;
-                userState.totalEarned = (userState.totalEarned || 0) + (adValueRR / RR_TO_TON_RATE);
-
-                const db = firebase.database(); 
-                const userRef = db.ref(`users/${tgUser.id}`);
-                const updates = {};
-                updates.dailyAdCount = userState.dailyAdCount;
-                updates.lifetimeAdCount = userState.lifetimeAdCount;
-                updates.totalEarned = userState.totalEarned;
-                
-                if ((userState.dailyAdCount) % (appConfig.adsPerBreak || 0) === 0 && (appConfig.adsPerBreak || 0) > 0) {
-                    updates.breakUntil = Date.now() + ((appConfig.breakDuration || 0) * 60000);
-                    userState.breakUntil = updates.breakUntil;
-                }
-                await userRef.update(updates);
-
-                const today = new Date().toISOString().slice(0, 10);
-                await db.ref(`userEarnings/${tgUser.id}/${today}`).set(firebase.database.ServerValue.increment(adValueRR / RR_TO_TON_RATE));
-
-                if (userState.referredBy) {
-                    await updateReferralEarnings(tgUser.id, adValueRR);
-                }
-
-                // ✅ التعديل: تحديث نقاط المسابقة فقط إذا كانت المسابقة نشطة
-                if (contestData.isActive) {
-                    await updateContestPointsOnAdWatch();
-                }
-
-                // ✅ رسالة النجاح
-                let rewardMessage = `+${adValueRR.toLocaleString()} RR added to your balance.`;
-                if (contestData.isActive) {
-                    rewardMessage += ` +1 Contest Point!`;
-                }
-                
-                try{ 
-                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
-                    if (tg.showAlert) tg.showAlert(rewardMessage); 
-                }catch{}
-                
-                renderUI();
 
             } catch (error) {
                 console.error("Ad failed to load:", error);
                 closePopup();
+                
+                // إعادة تعيين السلسلة في حالة الخطأ
+                adChainStep = 0;
+                basicAdsWatchedInChain = 0;
+                adChainInProgress = false;
+                
                 try{ 
                     if (tg.showAlert) tg.showAlert("Ad could not be loaded. Please try again."); 
                 }catch{}
@@ -3266,17 +3349,26 @@
                     </div>`;
             } else {
                 const adValueRR = 1000;
+                // ✅ تحديث نص الزر بناءً على حالة السلسلة
+                let buttonText = 'Watch Ad';
+                let progressText = '';
+                
+                if (adChainInProgress) {
+                    buttonText = `Continue (${basicAdsWatchedInChain + 1}/3)`;
+                    progressText = `<p class="ad-progress-inline">Step ${basicAdsWatchedInChain + 1} of 3 - Watch 2 basic ads + 1 bonus ad</p>`;
+                } else {
+                    progressText = `<p class="ad-progress-inline">⏱️ Must watch for 5+ seconds to earn</p>`;
+                }
+                
                 html = `
                     <div class="task-container">
                         <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/play-button-circled.png" alt="icon">
                         <div class="task-info">
                             <h3>Watch Ad</h3>
                             <p>Earn ${adValueRR.toLocaleString()} RR for every ad.</p>
-                            <p class="ad-progress-inline">
-                                ⏱️ Must watch for 5+ seconds to earn
-                            </p>
+                            ${progressText}
                         </div>
-                        <button id="watch-ad-btn" class="action-btn">Watch Ad</button>
+                        <button id="watch-ad-btn" class="action-btn">${buttonText}</button>
                     </div>`;
             }
             container.innerHTML = html;
