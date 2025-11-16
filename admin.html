@@ -203,15 +203,15 @@
         <div class="login-card">
             <h2><i class="fas fa-shield-alt"></i> تسجيل الدخول للإدارة</h2>
             <div class="form-group">
-                <label for="username">اسم المستخدم</label>
-                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
+                <label for="username">البريد الإلكتروني</label>
+                <input type="email" id="username" placeholder="أدخل البريد الإلكتروني">
             </div>
             <div class="form-group">
                 <label for="password">كلمة المرور</label>
                 <input type="password" id="password" placeholder="أدخل كلمة المرور">
             </div>
             <button class="login-btn" id="login-button">تسجيل الدخول</button>
-            <div class="error-message" id="login-error">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+            <div class="error-message" id="login-error">البريد الإلكتروني أو كلمة المرور غير صحيحة</div>
         </div>
     </div>
 
@@ -250,6 +250,7 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const firebaseConfig = {
@@ -264,6 +265,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const auth = firebase.auth();
         
         const loginPage = document.getElementById('login-page');
         const appContainer = document.getElementById('app-container');
@@ -275,85 +277,106 @@
         const loginError = document.getElementById('login-error');
         const logoutButtons = document.querySelectorAll('#logout-btn, #sidebar-logout-btn');
 
-        // Default admin credentials
-        const DEFAULT_ADMIN_USERNAME = "aborabie";
-        const DEFAULT_ADMIN_PASSWORD = "KLKFijkj-48@#$lk$Uu";
+        // بيانات الاعتماد الافتراضية للمسؤول
+        const ADMIN_EMAIL = "backup-bot@yourdomain.com";
+        const ADMIN_PASSWORD = "Mohamed2872008";
 
-        // Check if admin credentials exist in Firebase, if not, create default
+        // التحقق من وجود مستخدم مسؤول وإنشائه إذا لم يكن موجوداً
         const checkAndCreateDefaultAdmin = async () => {
-            const adminSnap = await db.ref('admin').once('value');
-            if (!adminSnap.exists()) {
-                await db.ref('admin').set({
-                    username: DEFAULT_ADMIN_USERNAME,
-                    password: DEFAULT_ADMIN_PASSWORD
-                });
-                console.log("تم إنشاء بيانات المسؤول الافتراضية");
+            try {
+                // محاولة تسجيل الدخول أولاً
+                await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+                console.log("تم تسجيل الدخول باستخدام بيانات المسؤول الافتراضية");
+            } catch (error) {
+                if (error.code === 'auth/user-not-found') {
+                    // إنشاء المستخدم إذا لم يكن موجوداً
+                    try {
+                        await auth.createUserWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+                        console.log("تم إنشاء مستخدم المسؤول الافتراضي");
+                    } catch (createError) {
+                        console.error("خطأ في إنشاء مستخدم المسؤول:", createError);
+                    }
+                } else {
+                    console.error("خطأ في تسجيل الدخول:", error);
+                }
             }
         };
 
-        // Login function
-        const login = async (username, password) => {
+        // دالة تسجيل الدخول
+        const login = async (email, password) => {
             try {
-                const adminSnap = await db.ref('admin').once('value');
-                const adminData = adminSnap.val();
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
                 
-                if (adminData && adminData.username === username && adminData.password === password) {
-                    // Successful login
+                // التحقق من أن المستخدم هو المسؤول المعتمد
+                if (userCredential.user.email === ADMIN_EMAIL) {
+                    // تسجيل الدخول ناجح
                     sessionStorage.setItem('adminLoggedIn', 'true');
                     loginPage.style.display = 'none';
                     appContainer.style.display = 'flex';
                     initAdminPanel();
                     return true;
                 } else {
-                    // Failed login
+                    // المستخدم غير مصرح له
+                    await auth.signOut();
+                    loginError.textContent = 'غير مصرح لك بالدخول إلى لوحة التحكم';
                     loginError.style.display = 'block';
                     return false;
                 }
             } catch (error) {
                 console.error("خطأ في تسجيل الدخول:", error);
+                loginError.textContent = 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
                 loginError.style.display = 'block';
                 return false;
             }
         };
 
-        // Logout function
-        const logout = () => {
-            sessionStorage.removeItem('adminLoggedIn');
-            appContainer.style.display = 'none';
-            loginPage.style.display = 'flex';
-            // Clear form fields
-            document.getElementById('username').value = '';
-            document.getElementById('password').value = '';
-            loginError.style.display = 'none';
-        };
-
-        // Check if user is already logged in
-        const checkLoginStatus = () => {
-            if (sessionStorage.getItem('adminLoggedIn') === 'true') {
-                loginPage.style.display = 'none';
-                appContainer.style.display = 'flex';
-                initAdminPanel();
-            } else {
-                loginPage.style.display = 'flex';
+        // دالة تسجيل الخروج
+        const logout = async () => {
+            try {
+                await auth.signOut();
+                sessionStorage.removeItem('adminLoggedIn');
                 appContainer.style.display = 'none';
+                loginPage.style.display = 'flex';
+                // مسح حقول النموذج
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                loginError.style.display = 'none';
+            } catch (error) {
+                console.error("خطأ في تسجيل الخروج:", error);
             }
         };
 
-        // Event listeners for login/logout
+        // التحقق من حالة تسجيل الدخول
+        const checkLoginStatus = () => {
+            auth.onAuthStateChanged(async (user) => {
+                if (user && user.email === ADMIN_EMAIL) {
+                    sessionStorage.setItem('adminLoggedIn', 'true');
+                    loginPage.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    initAdminPanel();
+                } else {
+                    sessionStorage.removeItem('adminLoggedIn');
+                    loginPage.style.display = 'flex';
+                    appContainer.style.display = 'none';
+                }
+            });
+        };
+
+        // مستمعي الأحداث لتسجيل الدخول/الخروج
         loginButton.addEventListener('click', async () => {
-            const username = document.getElementById('username').value;
+            const email = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             
-            if (!username || !password) {
-                loginError.textContent = 'يرجى إدخال اسم المستخدم وكلمة المرور';
+            if (!email || !password) {
+                loginError.textContent = 'يرجى إدخال البريد الإلكتروني وكلمة المرور';
                 loginError.style.display = 'block';
                 return;
             }
             
-            await login(username, password);
+            await login(email, password);
         });
 
-        // Allow login with Enter key
+        // السماح بتسجيل الدخول باستخدام مفتاح Enter
         document.getElementById('password').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 loginButton.click();
@@ -364,11 +387,11 @@
             button.addEventListener('click', logout);
         });
 
-        // Initialize default admin and check login status
+        // تهيئة المسؤول الافتراضي والتحقق من حالة تسجيل الدخول
         checkAndCreateDefaultAdmin();
         checkLoginStatus();
 
-        // Dashboard
+        // لوحة التحكم
         const renderDashboard = async () => {
             const usersSnap = await db.ref('users').once('value');
             const withdrawalsSnap = await db.ref('withdrawals/pending').once('value');
@@ -428,7 +451,7 @@
             </div>`;
         };
         
-        // Users Management
+        // إدارة المستخدمين
         const renderUsers = async () => {
             mainContent.innerHTML = '<div class="card"><h3>جاري تحميل المستخدمين...</h3></div>';
             const snap = await db.ref('users').orderByChild('firstName').once('value'); 
@@ -474,7 +497,7 @@
             </div>`;
         };
         
-        // User Search
+        // البحث عن مستخدم
         const renderUserSearch = () => {
             mainContent.innerHTML = `<div id="user-search" class="page active">
                 <h3>البحث عن مستخدم</h3>
@@ -488,7 +511,7 @@
             </div>`;
         };
         
-        // User Details
+        // تفاصيل المستخدم
         const renderUserDetails = async (userId) => {
             const userSnap = await db.ref(`users/${userId}`).once('value');
             const user = userSnap.val();
@@ -632,14 +655,14 @@
             </div>`;
         };
         
-        // Pending Withdrawals
+        // طلبات السحب المعلقة
         const renderWithdrawals = async () => {
             mainContent.innerHTML = '<div class="card"><h3>جاري تحميل الطلبات...</h3></div>';
             const snap = await db.ref('withdrawals/pending').orderByChild('timestamp').once('value'); 
             let tableContent = '';
             let requests = [];
             snap.forEach(child => { requests.push(child.val()); });
-            requests.reverse(); // Show newest first
+            requests.reverse(); // عرض الأحدث أولاً
             requests.forEach(req => {
                 tableContent += `<tr>
                     <td data-label="المستخدم">${req.userName}<br><small>${new Date(req.timestamp).toLocaleString('ar-EG')}</small></td>
@@ -669,7 +692,7 @@
             </div>`;
         };
         
-        // Withdrawal History
+        // سجل السحوبات
         const renderWithdrawalHistory = async () => {
             mainContent.innerHTML = '<div class="card"><h3>جاري تحميل السجل...</h3></div>';
             const completedSnap = await db.ref('withdrawals/completed').orderByChild('timestamp').limitToLast(100).once('value');
@@ -734,7 +757,7 @@
                 </div>`;
         };
 
-        // Tasks Management
+        // إدارة المهام
         const renderTasks = async () => {
             // الحصول على إحصائيات المهام
             const tasksSnap = await db.ref('config/tasks').once('value');
@@ -827,7 +850,7 @@
             loadDynamicContent('links');
         };
 
-        // Codes Management
+        // إدارة الأكواد
         const renderCodes = async () => {
             mainContent.innerHTML = `<div id="codes" class="page active">
                 <h3>إدارة الأكواد</h3>
@@ -864,7 +887,7 @@
             await loadCodes();
         };
 
-        // Contest Management
+        // إدارة المسابقة
         const renderContest = async () => {
             const contestSnap = await db.ref('contest').once('value');
             const contestData = contestSnap.val() || {};
@@ -902,7 +925,7 @@
             await loadContestLeaderboard();
         };
 
-        // Settings
+        // الإعدادات
         const renderSettings = async () => {
             const snap = await db.ref('config').once('value'); 
             const config = snap.val() || {};
@@ -1029,7 +1052,7 @@
             setupSettingsTabs();
         };
         
-        // Broadcast
+        // البث الجماعي
         const renderBroadcast = () => {
              mainContent.innerHTML = `<div id="broadcast" class="page active">
                 <h3>البث الجماعي</h3>
@@ -1043,13 +1066,13 @@
             </div>`;
         };
 
-        // Helper Functions
+        // دوال مساعدة
         const loadDynamicContent = async (type) => {
             const container = document.getElementById(`${type}-list`);
             const snap = await db.ref(`config/${type}`).once('value');
             let items = [];
             snap.forEach(child => { items.push({ key: child.key, ...child.val() }); });
-            items.reverse(); // Show newest first
+            items.reverse(); // عرض الأحدث أولاً
             
             let content = `<h4>${type === 'tasks' ? 'المهام الحالية' : 'الروابط الحالية'}</h4>`;
             if (items.length > 0) {
@@ -1212,7 +1235,7 @@
             const snap = await db.ref('contest/participants').orderByChild('points').limitToLast(50).once('value');
             let participants = [];
             snap.forEach(child => { participants.push({ ...child.val(), id: child.key }); });
-            participants.reverse(); // Show highest first
+            participants.reverse(); // عرض الأعلى نقاطاً أولاً
             
             let content = '';
             if (participants.length > 0) {
@@ -1258,11 +1281,11 @@
             
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
-                    // Remove active class from all tabs and contents
+                    // إزالة الصف النشط من جميع الألسنة والمحتويات
                     tabs.forEach(t => t.classList.remove('active'));
                     tabContents.forEach(c => c.classList.remove('active'));
                     
-                    // Add active class to clicked tab and corresponding content
+                    // إضافة الصف النشط للسان والنافذة المقابلة
                     tab.classList.add('active');
                     const tabId = tab.getAttribute('data-tab');
                     document.getElementById(`${tabId}-tab`).classList.add('active');
@@ -1270,7 +1293,7 @@
             });
         };
 
-        // Admin Actions
+        // إجراءات المسؤول
         window.adminActions = {
             // إضافة رصيد
             addBalance: async (userId, userName) => {
@@ -1735,7 +1758,7 @@
             }
         };
 
-        // Initialize Admin Panel
+        // تهيئة لوحة التحكم
         const initAdminPanel = () => {
             renderDashboard();
             document.querySelectorAll('.nav-menu li').forEach(item => {
