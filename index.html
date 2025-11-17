@@ -1,1 +1,72 @@
-..
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>موقع المكافآت</title>
+</head>
+<body>
+  <h1>حساب المستخدم</h1>
+
+  <button onclick="getUserInfo()">جلب بيانات المستخدم</button>
+  <button onclick="updateBalance()">تحديث الرصيد</button>
+
+  <pre id="output"></pre>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+    const supabaseUrl = 'https://lylrtpkulsmmzphmrmeq.supabase.co'  // URL الخاص بمشروعك على Supabase
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx5bHJ0cGt1bHNtbXpwaG1ybWVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMzODQ2ODMsImV4cCI6MjA3ODk2MDY4M30._pJP2HJM086z1qMjnMEZ5K4n5P8roBvVB8PeyssZHUM'  // المفتاح العام
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    // نقوم بمحاكاة الـ telegram_id هنا، يجب أن يأتي من WebApp في النهاية
+    const telegramId = '12345'  // استخدم البيانات الحقيقية من Telegram في النهاية
+
+    // جلب بيانات المستخدم
+    async function getUserInfo() {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .single()
+
+      document.getElementById('output').textContent =
+        JSON.stringify({ data, error }, null, 2)
+    }
+
+    // تحديث الرصيد
+    async function updateBalance() {
+      const newBalance = prompt('أدخل الرصيد الجديد:', '100')
+      if (!newBalance) return
+
+      // إذا لم يكن هناك مستخدم، نقوم بإنشائه أولاً
+      const { data: existing } = await supabase
+        .from('users')
+        .select('*')
+        .eq('telegram_id', telegramId)
+        .maybeSingle()
+
+      if (!existing) {
+        const { data, error } = await supabase
+          .from('users')
+          .insert([{
+            telegram_id: telegramId,
+            username: 'test_user',
+            balance: newBalance
+          }])
+
+        document.getElementById('output').textContent =
+          JSON.stringify({ data, error }, null, 2)
+      } else {
+        const { data, error } = await supabase
+          .from('users')
+          .update({ balance: newBalance })
+          .eq('telegram_id', telegramId)
+
+        document.getElementById('output').textContent =
+          JSON.stringify({ data, error }, null, 2)
+      }
+    }
+  </script>
+</body>
+</html>
