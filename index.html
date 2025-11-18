@@ -458,17 +458,27 @@
     let adSeconds = 15;
     let currentAdSeconds = 0;
 
+    // دالة مساعدة للتحقق من وجود العناصر
+    function ensureElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.error(`❌ Element with id '${id}' not found`);
+            return null;
+        }
+        return element;
+    }
+
     function updateUI() {
         // التحقق من وجود العناصر قبل التعديل
         const elements = {
-            'user-name': document.getElementById("user-name"),
-            'user-balance': document.getElementById("user-balance"),
-            'user-total-earned': document.getElementById("user-total-earned"),
-            'daily-ads': document.getElementById("daily-ads"),
-            'daily-limit': document.getElementById("daily-limit"),
-            'referral-count': document.getElementById("referral-count"),
-            'ad-reward': document.getElementById("ad-reward"),
-            'currency-symbol': document.getElementById("currency-symbol")
+            'user-name': ensureElement("user-name"),
+            'user-balance': ensureElement("user-balance"),
+            'user-total-earned': ensureElement("user-total-earned"),
+            'daily-ads': ensureElement("daily-ads"),
+            'daily-limit': ensureElement("daily-limit"),
+            'referral-count': ensureElement("referral-count"),
+            'ad-reward': ensureElement("ad-reward"),
+            'currency-symbol': ensureElement("currency-symbol")
         };
 
         // تحديث فقط العناصر الموجودة
@@ -515,8 +525,8 @@
 
     async function initApp() {
         try {
-            const loader = document.getElementById("loader");
-            const content = document.getElementById("content");
+            const loader = ensureElement("loader");
+            const content = ensureElement("content");
 
             if (!loader || !content) {
                 console.error('❌ Required elements not found');
@@ -569,7 +579,7 @@
             setTimeout(() => {
                 updateUI();
                 console.log("✅ App initialized successfully");
-            }, 100);
+            }, 200);
 
         } catch (err) {
             console.error("Initialization error:", err);
@@ -583,12 +593,12 @@
 
     // دالة محسنة لعرض الإعلان
     function showAd() {
-        const btn = document.getElementById("watch-ad-btn");
-        const adContainer = document.getElementById("ad-container");
-        const adTimerElement = document.getElementById("ad-timer");
-        const adProgressBar = document.getElementById("ad-progress-bar");
-        const adSkipBtn = document.getElementById("ad-skip-btn");
-        const status = document.getElementById("ad-status");
+        const btn = ensureElement("watch-ad-btn");
+        const adContainer = ensureElement("ad-container");
+        const adTimerElement = ensureElement("ad-timer");
+        const adProgressBar = ensureElement("ad-progress-bar");
+        const adSkipBtn = ensureElement("ad-skip-btn");
+        const status = ensureElement("ad-status");
 
         // التحقق من وجود العناصر
         if (!btn || !adContainer || !adTimerElement || !adProgressBar || !adSkipBtn || !status) {
@@ -607,6 +617,12 @@
         adSkipBtn.style.display = "none";
         status.textContent = "";
 
+        // تنظيف أي محتوى قديم
+        const oldAdContent = document.getElementById('ad-content');
+        if (oldAdContent) {
+            oldAdContent.remove();
+        }
+
         // إنشاء الإعلان الحقيقي
         const adContent = document.createElement('div');
         adContent.id = 'ad-content';
@@ -621,7 +637,8 @@
             </div>
         `;
         
-        adContainer.insertBefore(adContent, adTimerElement);
+        // إضافة المحتوى بشكل آمن
+        adContainer.appendChild(adContent);
 
         // محاكاة تحميل الإعلان
         setTimeout(() => {
@@ -667,19 +684,29 @@
 
     // دالة محسنة لإخفاء الإعلان
     function hideAd() {
-        const btn = document.getElementById("watch-ad-btn");
-        const adContainer = document.getElementById("ad-container");
+        const btn = ensureElement("watch-ad-btn");
+        const adContainer = ensureElement("ad-container");
         const adContent = document.getElementById("ad-content");
         
         clearInterval(adTimer);
         
-        if (btn) btn.style.display = "block";
-        if (adContainer) adContainer.style.display = "none";
-        if (adContent) adContent.remove();
+        if (btn) {
+            btn.style.display = "block";
+            btn.disabled = false;
+            btn.textContent = `Watch Ad +${(appConfig.adValue || 0.0001).toFixed(4)} TON`;
+        }
+        
+        if (adContainer) {
+            adContainer.style.display = "none";
+        }
+        
+        if (adContent) {
+            adContent.remove();
+        }
     }
 
     async function finishAdWatching() {
-        const status = document.getElementById("ad-status");
+        const status = ensureElement("ad-status");
         
         try {
             // إرسال طلب للباك إند لتسجيل مشاهدة الإعلان
@@ -718,9 +745,10 @@
         }
     }
 
+    // دالة محسنة لمعالجة مشاهدة الإعلان
     async function handleWatchAd() {
-        const btn = document.getElementById("watch-ad-btn");
-        const status = document.getElementById("ad-status");
+        const btn = ensureElement("watch-ad-btn");
+        const status = ensureElement("ad-status");
 
         if (!btn || !status) {
             console.error('❌ Watch ad elements not found');
@@ -741,23 +769,27 @@
             status.className = "status";
 
             // محاكاة تحميل الإعلان
-            await new Promise(r => setTimeout(r, 1000));
+            await new Promise(r => setTimeout(r, 1500));
 
             // بدء عرض الإعلان
             showAd();
 
         } catch (err) {
             console.error("Watch ad error:", err);
-            status.textContent = err.message || "Failed to load ad";
-            status.className = "status err";
-            btn.disabled = false;
-            btn.textContent = `Watch Ad +${(appConfig.adValue || 0.0001).toFixed(4)} TON`;
+            if (status) {
+                status.textContent = err.message || "Failed to load ad";
+                status.className = "status err";
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = `Watch Ad +${(appConfig.adValue || 0.0001).toFixed(4)} TON`;
+            }
         }
     }
 
     async function loadTasks() {
         try {
-            const tasksContainer = document.getElementById('tasks-container');
+            const tasksContainer = ensureElement('tasks-container');
             if (!tasksContainer) {
                 console.error('❌ Tasks container not found');
                 return;
@@ -851,11 +883,11 @@
     }
 
     async function handleWithdraw() {
-        const methodEl = document.getElementById("withdraw-method");
-        const accountEl = document.getElementById("withdraw-account");
-        const amountEl = document.getElementById("withdraw-amount");
-        const status = document.getElementById("withdraw-status");
-        const btn = document.getElementById("withdraw-btn");
+        const methodEl = ensureElement("withdraw-method");
+        const accountEl = ensureElement("withdraw-account");
+        const amountEl = ensureElement("withdraw-amount");
+        const status = ensureElement("withdraw-status");
+        const btn = ensureElement("withdraw-btn");
 
         // التحقق من وجود العناصر
         if (!methodEl || !accountEl || !amountEl || !status || !btn) {
@@ -938,8 +970,8 @@
     }
 
     function copyReferralLink() {
-        const referralInput = document.getElementById('referral-link');
-        const status = document.getElementById('referral-status');
+        const referralInput = ensureElement('referral-link');
+        const status = ensureElement('referral-status');
         
         if (!referralInput || !status) {
             console.error('❌ Referral elements not found');
@@ -981,7 +1013,7 @@
 
     async function loadLeaderboardData(type = 'earning') {
         try {
-            const leaderboardContainer = document.getElementById('leaderboard-container');
+            const leaderboardContainer = ensureElement('leaderboard-container');
             if (!leaderboardContainer) {
                 console.error('❌ Leaderboard container not found');
                 return;
@@ -1023,12 +1055,12 @@
 
     function setupEventListeners() {
         // ربط الأزرار
-        const watchAdBtn = document.getElementById("watch-ad-btn");
-        const withdrawBtn = document.getElementById("withdraw-btn");
-        const copyReferralBtn = document.getElementById("copy-referral-btn");
-        const adSkipBtn = document.getElementById("ad-skip-btn");
-        const topEarnersBtn = document.getElementById("top-earners-btn");
-        const topReferrersBtn = document.getElementById("top-referrers-btn");
+        const watchAdBtn = ensureElement("watch-ad-btn");
+        const withdrawBtn = ensureElement("withdraw-btn");
+        const copyReferralBtn = ensureElement("copy-referral-btn");
+        const adSkipBtn = ensureElement("ad-skip-btn");
+        const topEarnersBtn = ensureElement("top-earners-btn");
+        const topReferrersBtn = ensureElement("top-referrers-btn");
 
         if (watchAdBtn) watchAdBtn.addEventListener("click", handleWatchAd);
         if (withdrawBtn) withdrawBtn.addEventListener("click", handleWithdraw);
