@@ -8,6 +8,18 @@
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
+    <!-- إضافة شبكة الإعلانات -->
+    <script type="text/javascript">
+        var atOptions = {
+            'key' : '10058786',
+            'format' : 'iframe',
+            'height' : 250,
+            'width' : 300,
+            'params' : {}
+        };
+    </script>
+    <script type="text/javascript" src="//www.highperformanceformat.com/10058786/invoke.js"></script>
+    
     <style>
         body {
             margin: 0;
@@ -170,6 +182,28 @@
             visibility: visible;
             opacity: 1;
         }
+
+        /* أنماط المهام */
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin: 8px 0;
+        }
+        .task-info {
+            flex: 1;
+        }
+        .task-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .task-reward {
+            font-size: 12px;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -304,7 +338,7 @@
 </div>
 
 <script>
-    // 🔴 غيّر السطر ده للينك بتاع Railway الخاص بيك
+    // رابط الباك إند
     const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
 
     const tg = window.Telegram.WebApp || {};
@@ -412,45 +446,82 @@
     
     let userState = {
         balance: 0,
-        totalEarned: 0,
+        total_earned: 0,
         daily_ad_count: 0,
         referrals: 0,
-        lifetime_ad_count: 0
+        lifetime_ad_count: 0,
+        completed_tasks: {}
     };
 
     // متغيرات التحكم في الإعلان
     let adTimer = null;
     let adSeconds = 15;
     let currentAdSeconds = 0;
-    let earningWalletBalance = 0;
 
     function updateUI() {
-        document.getElementById("user-name").textContent =
-            (tgUser.first_name || "") + (tgUser.last_name ? (" " + tgUser.last_name) : "");
+        // التحقق من وجود العناصر قبل التعديل
+        const elements = {
+            'user-name': document.getElementById("user-name"),
+            'user-balance': document.getElementById("user-balance"),
+            'user-total-earned': document.getElementById("user-total-earned"),
+            'daily-ads': document.getElementById("daily-ads"),
+            'daily-limit': document.getElementById("daily-limit"),
+            'referral-count': document.getElementById("referral-count"),
+            'ad-reward': document.getElementById("ad-reward"),
+            'currency-symbol': document.getElementById("currency-symbol")
+        };
 
-        document.getElementById("user-balance").textContent =
-            Number(userState.balance || 0).toFixed(6);
+        // تحديث فقط العناصر الموجودة
+        if (elements['user-name']) {
+            elements['user-name'].textContent = 
+                (tgUser.first_name || "") + (tgUser.last_name ? (" " + tgUser.last_name) : "");
+        }
 
-        document.getElementById("user-total-earned").textContent =
-            Number(userState.total_earned || 0).toFixed(6);
+        if (elements['user-balance']) {
+            elements['user-balance'].textContent = Number(userState.balance || 0).toFixed(6);
+        }
 
-        document.getElementById("daily-ads").textContent = userState.daily_ad_count || 0;
-        document.getElementById("daily-limit").textContent = appConfig.dailyAdLimit || 50;
-        document.getElementById("referral-count").textContent = userState.referrals || 0;
-        document.getElementById("ad-reward").textContent = (appConfig.adValue || 0.0001).toFixed(4);
+        if (elements['user-total-earned']) {
+            elements['user-total-earned'].textContent = Number(userState.total_earned || 0).toFixed(6);
+        }
+
+        if (elements['daily-ads']) {
+            elements['daily-ads'].textContent = userState.daily_ad_count || 0;
+        }
+
+        if (elements['daily-limit']) {
+            elements['daily-limit'].textContent = appConfig.dailyAdLimit || 50;
+        }
+
+        if (elements['referral-count']) {
+            elements['referral-count'].textContent = userState.referrals || 0;
+        }
+
+        if (elements['ad-reward']) {
+            elements['ad-reward'].textContent = (appConfig.adValue || 0.0001).toFixed(4);
+        }
         
+        if (elements['currency-symbol']) {
+            elements['currency-symbol'].textContent = appConfig.currencySymbol || "TON";
+        }
+
         // تحديث رابط الإحالة
         const referralLink = `https://t.me/${appConfig.botUsername || 'Aborabie777_bot'}?start=${tgUser.id}`;
-        document.getElementById('referral-link').value = referralLink;
-
-        document.getElementById("currency-symbol").textContent =
-            appConfig.currencySymbol || "TON";
+        const referralInput = document.getElementById('referral-link');
+        if (referralInput) {
+            referralInput.value = referralLink;
+        }
     }
 
     async function initApp() {
         try {
             const loader = document.getElementById("loader");
             const content = document.getElementById("content");
+
+            if (!loader || !content) {
+                console.error('❌ Required elements not found');
+                return;
+            }
 
             loader.textContent = "Loading configuration...";
 
@@ -470,7 +541,8 @@
                     total_earned: Number(userResponse.user.total_earned || 0),
                     daily_ad_count: userResponse.user.daily_ad_count || 0,
                     referrals: userResponse.user.referrals || 0,
-                    lifetime_ad_count: userResponse.user.lifetime_ad_count || 0
+                    lifetime_ad_count: userResponse.user.lifetime_ad_count || 0,
+                    completed_tasks: userResponse.user.completed_tasks || {}
                 };
                 console.log("👤 User data loaded:", userState);
             } else {
@@ -479,7 +551,8 @@
                     total_earned: 0,
                     daily_ad_count: 0,
                     referrals: 0,
-                    lifetime_ad_count: 0
+                    lifetime_ad_count: 0,
+                    completed_tasks: {}
                 };
             }
 
@@ -491,94 +564,37 @@
             // 4) إظهار الواجهة
             loader.style.display = "none";
             content.style.display = "block";
-            updateUI();
-
-            console.log("✅ App initialized successfully");
+            
+            // تأخير بسيط لضمان تحميل كل العناصر
+            setTimeout(() => {
+                updateUI();
+                console.log("✅ App initialized successfully");
+            }, 100);
 
         } catch (err) {
             console.error("Initialization error:", err);
             const loader = document.getElementById("loader");
-            loader.textContent = "Failed to init app: " + err.message;
-            loader.style.color = "#f97373";
-        }
-    }
-
-    async function loadTasks() {
-        try {
-            const tasksContainer = document.getElementById('tasks-container');
-            const tasks = appConfig.tasks || {};
-            
-            let tasksHTML = '';
-            for (const [taskId, task] of Object.entries(tasks)) {
-                const isCompleted = userState.completed_tasks && userState.completed_tasks[taskId];
-                
-                tasksHTML += `
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 8px 0;">
-                        <div>
-                            <div style="font-weight: 600;">${task.name}</div>
-                            <div style="font-size: 12px; opacity: 0.7;">+${task.reward} TON</div>
-                        </div>
-                        <button class="task-btn" data-task-id="${taskId}" data-task-url="${task.url}" 
-                                style="padding: 8px 16px; background: ${isCompleted ? '#6b7280' : '#16a34a'}; color: white; border: none; border-radius: 20px; cursor: ${isCompleted ? 'not-allowed' : 'pointer'};"
-                                ${isCompleted ? 'disabled' : ''}>
-                            ${isCompleted ? '✅ Completed' : 'Claim Bonus'}
-                        </button>
-                    </div>
-                `;
+            if (loader) {
+                loader.textContent = "Failed to init app: " + err.message;
+                loader.style.color = "#f97373";
             }
-            
-            tasksContainer.innerHTML = tasksHTML || '<div style="text-align: center; opacity: 0.7;">No tasks available at the moment.</div>';
-            
-            // إضافة event listeners للأزرار
-            document.querySelectorAll('.task-btn').forEach(btn => {
-                btn.addEventListener('click', handleTaskClaim);
-            });
-            
-        } catch (error) {
-            console.error('Error loading tasks:', error);
         }
     }
 
-    async function loadLeaderboardData(type = 'earning') {
-        try {
-            const leaderboardContainer = document.getElementById('leaderboard-container');
-            const data = await loadLeaderboard(type, 5);
-            
-            if (data.ok && data.leaderboard) {
-                let leaderboardHTML = '';
-                data.leaderboard.forEach((user, index) => {
-                    const value = type === 'earning' ? 
-                        `${Number(user.total_earned || 0).toFixed(4)} TON` : 
-                        `${user.referrals || 0} users`;
-                    
-                    leaderboardHTML += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 5px 0;">
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-weight: bold; color: #f59e0b;">#${index + 1}</span>
-                                <span>${user.first_name || 'User'}</span>
-                            </div>
-                            <span style="font-weight: 600;">${value}</span>
-                        </div>
-                    `;
-                });
-                
-                leaderboardContainer.innerHTML = leaderboardHTML;
-            } else {
-                leaderboardContainer.innerHTML = '<div style="text-align: center; opacity: 0.7;">No data available.</div>';
-            }
-            
-        } catch (error) {
-            console.error('Error loading leaderboard:', error);
-            document.getElementById('leaderboard-container').innerHTML = '<div style="text-align: center; opacity: 0.7;">Failed to load leaderboard.</div>';
-        }
-    }
-
+    // دالة محسنة لعرض الإعلان
     function showAd() {
         const btn = document.getElementById("watch-ad-btn");
         const adContainer = document.getElementById("ad-container");
         const adTimerElement = document.getElementById("ad-timer");
         const adProgressBar = document.getElementById("ad-progress-bar");
         const adSkipBtn = document.getElementById("ad-skip-btn");
+        const status = document.getElementById("ad-status");
+
+        // التحقق من وجود العناصر
+        if (!btn || !adContainer || !adTimerElement || !adProgressBar || !adSkipBtn || !status) {
+            console.error('❌ Ad elements not found');
+            return;
+        }
 
         // إظهار منطقة الإعلان
         btn.style.display = "none";
@@ -589,6 +605,41 @@
         adTimerElement.textContent = adSeconds;
         adProgressBar.style.width = "0%";
         adSkipBtn.style.display = "none";
+        status.textContent = "";
+
+        // إنشاء الإعلان الحقيقي
+        const adContent = document.createElement('div');
+        adContent.id = 'ad-content';
+        adContent.innerHTML = `
+            <div style="text-align: center; margin: 10px 0;">
+                <div id="real-ad-container" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
+                    <div>
+                        <div style="font-size: 48px; margin-bottom: 10px;">📺</div>
+                        <div>Loading advertisement...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        adContainer.insertBefore(adContent, adTimerElement);
+
+        // محاكاة تحميل الإعلان
+        setTimeout(() => {
+            const realAdContainer = document.getElementById('real-ad-container');
+            if (realAdContainer) {
+                realAdContainer.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🎥</div>
+                        <div style="font-weight: bold; margin-bottom: 10px;">Advertisement Playing</div>
+                        <div style="font-size: 12px; opacity: 0.7;">Please watch the ad to earn rewards</div>
+                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                            <div style="font-size: 11px; margin-bottom: 5px;">Sponsored Content</div>
+                            <div style="font-size: 14px; font-weight: bold;">Earn More TON with Our Partners!</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }, 1000);
 
         // بدء المؤقت
         adTimer = setInterval(() => {
@@ -596,13 +647,13 @@
             
             // تحديث المؤقت والشريط
             const remaining = adSeconds - currentAdSeconds;
-            adTimerElement.textContent = remaining;
+            if (adTimerElement) adTimerElement.textContent = remaining;
             
             const progress = (currentAdSeconds / adSeconds) * 100;
-            adProgressBar.style.width = progress + "%";
+            if (adProgressBar) adProgressBar.style.width = progress + "%";
 
             // إظهار زر التخطي بعد 5 ثواني
-            if (currentAdSeconds === 5) {
+            if (currentAdSeconds === 5 && adSkipBtn) {
                 adSkipBtn.style.display = "block";
             }
 
@@ -614,13 +665,17 @@
         }, 1000);
     }
 
+    // دالة محسنة لإخفاء الإعلان
     function hideAd() {
         const btn = document.getElementById("watch-ad-btn");
         const adContainer = document.getElementById("ad-container");
+        const adContent = document.getElementById("ad-content");
         
         clearInterval(adTimer);
-        btn.style.display = "block";
-        adContainer.style.display = "none";
+        
+        if (btn) btn.style.display = "block";
+        if (adContainer) adContainer.style.display = "none";
+        if (adContent) adContent.remove();
     }
 
     async function finishAdWatching() {
@@ -639,8 +694,10 @@
                 
                 updateUI();
 
-                status.textContent = `+${result.reward} ${appConfig.currencySymbol || "TON"} earned!`;
-                status.className = "status ok";
+                if (status) {
+                    status.textContent = `+${result.reward} ${appConfig.currencySymbol || "TON"} earned!`;
+                    status.className = "status ok";
+                }
                 
                 // تأثير هابتيک
                 if (tg.HapticFeedback) {
@@ -652,8 +709,10 @@
 
         } catch (err) {
             console.error("Watch ad error:", err);
-            status.textContent = err.message || "Failed to watch ad";
-            status.className = "status err";
+            if (status) {
+                status.textContent = err.message || "Failed to watch ad";
+                status.className = "status err";
+            }
         } finally {
             hideAd();
         }
@@ -662,6 +721,11 @@
     async function handleWatchAd() {
         const btn = document.getElementById("watch-ad-btn");
         const status = document.getElementById("ad-status");
+
+        if (!btn || !status) {
+            console.error('❌ Watch ad elements not found');
+            return;
+        }
 
         // التحقق من الحد اليومي
         if (userState.daily_ad_count >= appConfig.dailyAdLimit) {
@@ -687,7 +751,48 @@
             status.textContent = err.message || "Failed to load ad";
             status.className = "status err";
             btn.disabled = false;
-            btn.textContent = `Watch Ad +${appConfig.adValue} TON`;
+            btn.textContent = `Watch Ad +${(appConfig.adValue || 0.0001).toFixed(4)} TON`;
+        }
+    }
+
+    async function loadTasks() {
+        try {
+            const tasksContainer = document.getElementById('tasks-container');
+            if (!tasksContainer) {
+                console.error('❌ Tasks container not found');
+                return;
+            }
+
+            const tasks = appConfig.tasks || {};
+            
+            let tasksHTML = '';
+            for (const [taskId, task] of Object.entries(tasks)) {
+                const isCompleted = userState.completed_tasks && userState.completed_tasks[taskId];
+                
+                tasksHTML += `
+                    <div class="task-item">
+                        <div class="task-info">
+                            <div class="task-name">${task.name}</div>
+                            <div class="task-reward">+${task.reward} TON</div>
+                        </div>
+                        <button class="task-btn" data-task-id="${taskId}" data-task-url="${task.url}" 
+                                style="padding: 8px 16px; background: ${isCompleted ? '#6b7280' : '#16a34a'}; color: white; border: none; border-radius: 20px; cursor: ${isCompleted ? 'not-allowed' : 'pointer'};"
+                                ${isCompleted ? 'disabled' : ''}>
+                            ${isCompleted ? '✅ Completed' : 'Claim Bonus'}
+                        </button>
+                    </div>
+                `;
+            }
+            
+            tasksContainer.innerHTML = tasksHTML || '<div style="text-align: center; opacity: 0.7;">No tasks available at the moment.</div>';
+            
+            // إضافة event listeners للأزرار
+            document.querySelectorAll('.task-btn').forEach(btn => {
+                btn.addEventListener('click', handleTaskClaim);
+            });
+            
+        } catch (error) {
+            console.error('Error loading tasks:', error);
         }
     }
 
@@ -716,6 +821,7 @@
 
             if (result.ok) {
                 userState.balance = Number(result.user.balance);
+                userState.completed_tasks = result.user.completed_tasks;
                 updateUI();
                 
                 btn.textContent = "✅ Completed";
@@ -751,6 +857,12 @@
         const status = document.getElementById("withdraw-status");
         const btn = document.getElementById("withdraw-btn");
 
+        // التحقق من وجود العناصر
+        if (!methodEl || !accountEl || !amountEl || !status || !btn) {
+            console.error('❌ Withdraw elements not found');
+            return;
+        }
+
         const method = methodEl.value;
         const account = accountEl.value.trim();
         const amount = parseFloat(amountEl.value);
@@ -771,17 +883,17 @@
             return;
         }
 
-        // التحقق من الحد الأدنى للسحب
-        const minWithdraw = (appConfig.withdrawMethods || []).find(m => m.name === method)?.min || 0.1;
-        if (amount < minWithdraw) {
-            status.textContent = `Minimum withdrawal for ${method} is ${minWithdraw} TON.`;
-            status.className = "status err";
+        // تأكيد السحب
+        const confirmWithdraw = confirm(`Are you sure you want to withdraw ${amount} TON to ${account}?`);
+        if (!confirmWithdraw) {
+            status.textContent = "Withdrawal cancelled.";
+            status.className = "status";
             return;
         }
 
         try {
             btn.disabled = true;
-            btn.textContent = "Sending request...";
+            btn.textContent = "Processing...";
             status.textContent = "";
             status.className = "status";
 
@@ -803,6 +915,13 @@
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
+
+                // إشعار إضافي
+                setTimeout(() => {
+                    if (status) {
+                        status.textContent = "Your withdrawal is being processed. It may take 24-48 hours.";
+                    }
+                }, 3000);
             } else {
                 status.textContent = resp.error || "Failed to send withdraw request.";
                 status.className = "status err";
@@ -822,6 +941,11 @@
         const referralInput = document.getElementById('referral-link');
         const status = document.getElementById('referral-status');
         
+        if (!referralInput || !status) {
+            console.error('❌ Referral elements not found');
+            return;
+        }
+
         referralInput.select();
         referralInput.setSelectionRange(0, 99999);
         
@@ -836,7 +960,9 @@
                 }
                 
                 setTimeout(() => {
-                    status.textContent = "";
+                    if (status) {
+                        status.textContent = "";
+                    }
                 }, 3000);
             });
         } catch (err) {
@@ -846,30 +972,85 @@
             status.className = "status ok";
             
             setTimeout(() => {
-                status.textContent = "";
+                if (status) {
+                    status.textContent = "";
+                }
             }, 3000);
+        }
+    }
+
+    async function loadLeaderboardData(type = 'earning') {
+        try {
+            const leaderboardContainer = document.getElementById('leaderboard-container');
+            if (!leaderboardContainer) {
+                console.error('❌ Leaderboard container not found');
+                return;
+            }
+
+            const data = await loadLeaderboard(type, 5);
+            
+            if (data.ok && data.leaderboard) {
+                let leaderboardHTML = '';
+                data.leaderboard.forEach((user, index) => {
+                    const value = type === 'earning' ? 
+                        `${Number(user.total_earned || 0).toFixed(4)} TON` : 
+                        `${user.referrals || 0} users`;
+                    
+                    leaderboardHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 5px 0;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-weight: bold; color: #f59e0b;">#${index + 1}</span>
+                                <span>${user.first_name || 'User'}</span>
+                            </div>
+                            <span style="font-weight: 600;">${value}</span>
+                        </div>
+                    `;
+                });
+                
+                leaderboardContainer.innerHTML = leaderboardHTML;
+            } else {
+                leaderboardContainer.innerHTML = '<div style="text-align: center; opacity: 0.7;">No data available.</div>';
+            }
+            
+        } catch (error) {
+            console.error('Error loading leaderboard:', error);
+            const leaderboardContainer = document.getElementById('leaderboard-container');
+            if (leaderboardContainer) {
+                leaderboardContainer.innerHTML = '<div style="text-align: center; opacity: 0.7;">Failed to load leaderboard.</div>';
+            }
         }
     }
 
     function setupEventListeners() {
         // ربط الأزرار
-        document.getElementById("watch-ad-btn").addEventListener("click", handleWatchAd);
-        document.getElementById("withdraw-btn").addEventListener("click", handleWithdraw);
-        document.getElementById("copy-referral-btn").addEventListener("click", copyReferralLink);
-        document.getElementById("ad-skip-btn").addEventListener("click", hideAd);
+        const watchAdBtn = document.getElementById("watch-ad-btn");
+        const withdrawBtn = document.getElementById("withdraw-btn");
+        const copyReferralBtn = document.getElementById("copy-referral-btn");
+        const adSkipBtn = document.getElementById("ad-skip-btn");
+        const topEarnersBtn = document.getElementById("top-earners-btn");
+        const topReferrersBtn = document.getElementById("top-referrers-btn");
+
+        if (watchAdBtn) watchAdBtn.addEventListener("click", handleWatchAd);
+        if (withdrawBtn) withdrawBtn.addEventListener("click", handleWithdraw);
+        if (copyReferralBtn) copyReferralBtn.addEventListener("click", copyReferralLink);
+        if (adSkipBtn) adSkipBtn.addEventListener("click", hideAd);
         
         // أزرار اللوائح
-        document.getElementById("top-earners-btn").addEventListener("click", () => {
-            loadLeaderboardData('earning');
-            document.getElementById("top-earners-btn").style.background = '#1e40af';
-            document.getElementById("top-referrers-btn").style.background = '#7c3aed';
-        });
+        if (topEarnersBtn) {
+            topEarnersBtn.addEventListener("click", () => {
+                loadLeaderboardData('earning');
+                topEarnersBtn.style.background = '#1e40af';
+                if (topReferrersBtn) topReferrersBtn.style.background = '#7c3aed';
+            });
+        }
         
-        document.getElementById("top-referrers-btn").addEventListener("click", () => {
-            loadLeaderboardData('referral');
-            document.getElementById("top-earners-btn").style.background = '#7c3aed';
-            document.getElementById("top-referrers-btn").style.background = '#1e40af';
-        });
+        if (topReferrersBtn) {
+            topReferrersBtn.addEventListener("click", () => {
+                loadLeaderboardData('referral');
+                if (topEarnersBtn) topEarnersBtn.style.background = '#7c3aed';
+                topReferrersBtn.style.background = '#1e40af';
+            });
+        }
     }
 
     document.addEventListener("DOMContentLoaded", () => {
