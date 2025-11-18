@@ -166,7 +166,7 @@
 
 <script>
     // 🔴 غيّر السطر ده للينك بتاع Railway الخاص بيك
-const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
+    const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
 
     const tg = window.Telegram.WebApp || {};
     let tgUser = tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : null;
@@ -183,15 +183,26 @@ const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
     }
 
     async function api(path, options = {}) {
-        const res = await fetch(API_BASE + path, {
-            headers: { "Content-Type": "application/json" },
-            ...options
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error("API error: " + text);
+        try {
+            const res = await fetch(API_BASE + path, {
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                ...options
+            });
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error(`API Error ${res.status}:`, errorText);
+                throw new Error(`API error: ${errorText}`);
+            }
+            
+            return await res.json();
+        } catch (error) {
+            console.error('Network error:', error);
+            throw new Error('Network error: ' + error.message);
         }
-        return res.json();
     }
 
     let appConfig = {
@@ -230,31 +241,41 @@ const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
             loader.textContent = "Loading user data...";
 
             // 2) إنشاء / تحميل المستخدم من الباك إند
-            const user = await api("/api/user/init", {
+            const userResponse = await api("/api/user/init", {
                 method: "POST",
                 body: JSON.stringify({
-                    tgUser,
+                    tgUser: tgUser,
                     referralParam: null,
-                    isSubscribedToAllChannels: true   // مؤقتًا اعتبره مشترك
+                    isSubscribedToAllChannels: true
                 })
             });
 
-            userState = {
-                balance: Number(user.balance || 0),
-                totalEarned: Number(user.total_earned || 0)
-            };
+            // استخدام البيانات من الاستجابة
+            if (userResponse.ok && userResponse.user) {
+                userState = {
+                    balance: Number(userResponse.user.balance || 0),
+                    totalEarned: Number(userResponse.user.total_earned || 0)
+                };
+            } else {
+                // إذا لم تكن هناك بيانات مستخدم، نستخدم القيم الافتراضية
+                userState = {
+                    balance: 0,
+                    totalEarned: 0
+                };
+            }
 
             // 3) إظهار الواجهة
             loader.style.display = "none";
             content.style.display = "block";
             updateUI();
 
-            console.log("✅ App initialized", { config: appConfig, user: user });
+            console.log("✅ App initialized", { config: appConfig, user: userState });
 
         } catch (err) {
-            console.error(err);
+            console.error("Initialization error:", err);
             const loader = document.getElementById("loader");
             loader.textContent = "Failed to init app: " + err.message;
+            loader.style.color = "#f97373";
         }
     }
 
@@ -266,31 +287,41 @@ const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
             btn.disabled = true;
             btn.textContent = "Loading ad...";
             status.textContent = "";
+            status.className = "status";
 
-            // هنا في نسختك الكاملة هتشغّل شبكة الإعلانات
-            // دلوقتي هنعتبر إن الإعلان اتشاف فورًا للتجربة
-            await new Promise(r => setTimeout(r, 5000)); // 5 ثواني
+            // محاكاة مشاهدة إعلان
+            await new Promise(r => setTimeout(r, 3000));
 
-            // إرسال طلب للباك إند عشان يزيد الرصيد
+            // إرسال طلب للباك إند لتسجيل مشاهدة الإعلان
             const result = await api("/api/ad/watch", {
                 method: "POST",
-                body: JSON.stringify({ userId: tgUser.id })
+                body: JSON.stringify({ 
+                    userId: tgUser.id.toString(),
+                    tgUser: tgUser,
+                    adId: `ad_${Date.now()}`,
+                    platform: 'telegram'
+                })
             });
 
-            userState.balance = Number(result.user.balance || 0);
-            userState.totalEarned = Number(result.user.total_earned || 0);
-            updateUI();
+            if (result.ok) {
+                // تحديث الرصيد بناءً على المكافأة
+                const earnedAmount = result.reward || 10;
+                userState.balance = Number((userState.balance + earnedAmount).toFixed(6));
+                userState.totalEarned = Number((userState.totalEarned + earnedAmount).toFixed(6));
+                
+                updateUI();
 
-            status.textContent = `+${result.earned} ${appConfig.currencySymbol || "TON"} added!`;
-            status.className = "status ok";
-
-            btn.textContent = "Watch Ad";
-            btn.disabled = false;
+                status.textContent = `+${earnedAmount} ${appConfig.currencySymbol || "TON"} added!`;
+                status.className = "status ok";
+            } else {
+                throw new Error(result.error || "Failed to record ad watch");
+            }
 
         } catch (err) {
-            console.error(err);
+            console.error("Watch ad error:", err);
             status.textContent = err.message || "Failed to watch ad";
             status.className = "status err";
+        } finally {
             btn.textContent = "Watch Ad";
             btn.disabled = false;
         }
@@ -317,19 +348,26 @@ const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
             status.className = "status err";
             return;
         }
+        if (amount > userState.balance) {
+            status.textContent = "Insufficient balance.";
+            status.className = "status err";
+            return;
+        }
 
         try {
             btn.disabled = true;
             btn.textContent = "Sending request...";
             status.textContent = "";
+            status.className = "status";
 
             const resp = await api("/api/withdraw", {
                 method: "POST",
                 body: JSON.stringify({
-                    userId: tgUser.id,
-                    method,
-                    account,
-                    amount
+                    userId: tgUser.id.toString(),
+                    method: method,
+                    account: account,
+                    amount: amount,
+                    tgUser: tgUser
                 })
             });
 
@@ -337,26 +375,20 @@ const API_BASE = "https://ton-backend-production-83d3.up.railway.app";
                 status.textContent = "Withdraw request sent successfully ✅";
                 status.className = "status ok";
 
-                // نحدّث بيانات المستخدم بعد السحب
-                const user = await api("/api/user/init", {
-                    method: "POST",
-                    body: JSON.stringify({
-                        tgUser,
-                        referralParam: null,
-                        isSubscribedToAllChannels: true
-                    })
-                });
-
-                userState.balance = Number(user.balance || 0);
-                userState.totalEarned = Number(user.total_earned || 0);
+                // تحديث الرصيد بعد السحب
+                userState.balance = Number((userState.balance - amount).toFixed(6));
                 updateUI();
+
+                // مسح الحقول
+                accountEl.value = "";
+                amountEl.value = "";
             } else {
                 status.textContent = resp.error || "Failed to send withdraw request.";
                 status.className = "status err";
             }
 
         } catch (err) {
-            console.error(err);
+            console.error("Withdraw error:", err);
             status.textContent = err.message || "Error in withdraw request.";
             status.className = "status err";
         } finally {
