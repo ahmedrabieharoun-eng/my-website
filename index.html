@@ -98,6 +98,78 @@
             font-size: 14px;
             opacity: 0.8;
         }
+        
+        /* إعلان styles */
+        .ad-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .ad-placeholder {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .ad-timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .ad-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .ad-progress-bar {
+            height: 100%;
+            background: #16a34a;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .ad-skip-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        /* تلميحات الأدوات */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #1f2937;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -115,7 +187,10 @@
                 <span id="user-balance">0</span> <span id="currency-symbol">TON</span>
             </div>
             <div class="small">
-                Total earned: <span id="user-total-earned">0</span>
+                Total earned: <span id="user-total-earned">0</span> TON
+            </div>
+            <div class="small">
+                Today's ads: <span id="daily-ads">0</span>/<span id="daily-limit">0</span>
             </div>
         </div>
 
@@ -124,11 +199,58 @@
             <div class="title">Earn by watching ads 📺</div>
             <div class="small">
                 Click the button below to watch an ad and earn rewards.
+                <span class="tooltip">ℹ️
+                    <span class="tooltiptext">Watch the ad for at least 5 seconds to earn rewards. Daily limit applies.</span>
+                </span>
             </div>
             <button id="watch-ad-btn" class="btn btn-primary">
-                Watch Ad
+                Watch Ad +<span id="ad-reward">0.0001</span> TON
             </button>
+            
+            <!-- منطقة الإعلان -->
+            <div id="ad-container" class="ad-container" style="display: none;">
+                <div class="ad-placeholder">
+                    <div class="small">🎥 Ad is playing...</div>
+                    <div class="ad-timer" id="ad-timer">15</div>
+                    <div class="ad-progress">
+                        <div class="ad-progress-bar" id="ad-progress-bar"></div>
+                    </div>
+                    <button class="ad-skip-btn" id="ad-skip-btn" style="display: none;">Skip Ad</button>
+                </div>
+            </div>
+            
             <div id="ad-status" class="status"></div>
+        </div>
+
+        <!-- Referral Section -->
+        <div class="card">
+            <div class="title">Refer & Earn 👥</div>
+            <div class="small">
+                Invite friends and earn bonus TON for each referral!
+            </div>
+            <div class="field">
+                <label for="referral-link">Your Referral Link:</label>
+                <input id="referral-link" type="text" readonly placeholder="Generate your referral link">
+            </div>
+            <button id="copy-referral-btn" class="btn btn-secondary">
+                Copy Referral Link
+            </button>
+            <div class="small" style="margin-top: 8px;">
+                Your referrals: <span id="referral-count">0</span> users
+            </div>
+            <div id="referral-status" class="status"></div>
+        </div>
+
+        <!-- Tasks Section -->
+        <div class="card">
+            <div class="title">Bonus Tasks 🎯</div>
+            <div class="small">
+                Complete these tasks to earn extra TON rewards.
+            </div>
+            
+            <div id="tasks-container">
+                <!-- سيتم إضافة المهام هنا ديناميكياً -->
+            </div>
         </div>
 
         <!-- Withdraw -->
@@ -152,7 +274,7 @@
             </div>
 
             <div class="field">
-                <label for="withdraw-amount">Amount</label>
+                <label for="withdraw-amount">Amount (TON)</label>
                 <input id="withdraw-amount" type="number" min="0" step="0.000001" placeholder="0.1">
             </div>
 
@@ -160,6 +282,23 @@
                 Request Withdraw
             </button>
             <div id="withdraw-status" class="status"></div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="card">
+            <div class="title">Leaderboard 🏆</div>
+            <div class="small">
+                Top earners and referrers in the community.
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button id="top-earners-btn" class="btn" style="flex: 1; background: #1e40af;">Top Earners</button>
+                <button id="top-referrers-btn" class="btn" style="flex: 1; background: #7c3aed;">Top Referrers</button>
+            </div>
+            
+            <div id="leaderboard-container">
+                <!-- سيتم إضافة اللوائح هنا ديناميكياً -->
+            </div>
         </div>
     </div>
 </div>
@@ -177,11 +316,13 @@
             id: 123456789,
             first_name: "Dev",
             last_name: "User",
-            username: "devuser"
+            username: "devuser",
+            photo_url: "https://via.placeholder.com/80"
         };
         console.log("⚠️ Running in DEV mode, fake user:", tgUser);
     }
 
+    // دوال الـ API
     async function api(path, options = {}) {
         try {
             const res = await fetch(API_BASE + path, {
@@ -205,13 +346,83 @@
         }
     }
 
+    async function loadAppConfig() {
+        return await api('/api/config');
+    }
+
+    async function initializeUser(tgUser, referralParam, isSubscribed = true) {
+        return await api('/api/user/init', {
+            method: 'POST',
+            body: JSON.stringify({
+                tgUser,
+                referralParam,
+                isSubscribedToAllChannels: isSubscribed
+            })
+        });
+    }
+
+    async function watchAd(userId, tgUser, adId) {
+        return await api('/api/ad/watch', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId,
+                tgUser,
+                adId,
+                platform: 'telegram'
+            })
+        });
+    }
+
+    async function requestWithdraw(userId, method, account, amount) {
+        return await api('/api/withdraw', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId,
+                method,
+                account,
+                amount
+            })
+        });
+    }
+
+    async function loadUserEarnings(userId, days = 7) {
+        return await api(`/api/user/earnings/${userId}?days=${days}`);
+    }
+
+    async function loadLeaderboard(type = 'earning', limit = 10) {
+        return await api(`/api/leaderboard/${type}?limit=${limit}`);
+    }
+
+    async function completeTask(userId, taskId) {
+        return await api('/api/user/tasks', {
+            method: 'POST',
+            body: JSON.stringify({
+                userId,
+                taskId
+            })
+        });
+    }
+
+    // حالة التطبيق
     let appConfig = {
-        currencySymbol: "TON"
+        currencySymbol: "TON",
+        adValue: 0.0001,
+        dailyAdLimit: 50
     };
+    
     let userState = {
         balance: 0,
-        totalEarned: 0
+        totalEarned: 0,
+        daily_ad_count: 0,
+        referrals: 0,
+        lifetime_ad_count: 0
     };
+
+    // متغيرات التحكم في الإعلان
+    let adTimer = null;
+    let adSeconds = 15;
+    let currentAdSeconds = 0;
+    let earningWalletBalance = 0;
 
     function updateUI() {
         document.getElementById("user-name").textContent =
@@ -221,7 +432,16 @@
             Number(userState.balance || 0).toFixed(6);
 
         document.getElementById("user-total-earned").textContent =
-            Number(userState.totalEarned || 0).toFixed(6);
+            Number(userState.total_earned || 0).toFixed(6);
+
+        document.getElementById("daily-ads").textContent = userState.daily_ad_count || 0;
+        document.getElementById("daily-limit").textContent = appConfig.dailyAdLimit || 50;
+        document.getElementById("referral-count").textContent = userState.referrals || 0;
+        document.getElementById("ad-reward").textContent = (appConfig.adValue || 0.0001).toFixed(4);
+        
+        // تحديث رابط الإحالة
+        const referralLink = `https://t.me/${appConfig.botUsername || 'Aborabie777_bot'}?start=${tgUser.id}`;
+        document.getElementById('referral-link').value = referralLink;
 
         document.getElementById("currency-symbol").textContent =
             appConfig.currencySymbol || "TON";
@@ -235,41 +455,45 @@
             loader.textContent = "Loading configuration...";
 
             // 1) تحميل الإعدادات من الباك إند
-            const config = await api("/api/config");
+            const config = await loadAppConfig();
             appConfig = { ...appConfig, ...config };
+            console.log("📋 App config loaded:", appConfig);
 
             loader.textContent = "Loading user data...";
 
             // 2) إنشاء / تحميل المستخدم من الباك إند
-            const userResponse = await api("/api/user/init", {
-                method: "POST",
-                body: JSON.stringify({
-                    tgUser: tgUser,
-                    referralParam: null,
-                    isSubscribedToAllChannels: true
-                })
-            });
+            const userResponse = await initializeUser(tgUser, null, true);
 
-            // استخدام البيانات من الاستجابة
             if (userResponse.ok && userResponse.user) {
                 userState = {
                     balance: Number(userResponse.user.balance || 0),
-                    totalEarned: Number(userResponse.user.total_earned || 0)
+                    total_earned: Number(userResponse.user.total_earned || 0),
+                    daily_ad_count: userResponse.user.daily_ad_count || 0,
+                    referrals: userResponse.user.referrals || 0,
+                    lifetime_ad_count: userResponse.user.lifetime_ad_count || 0
                 };
+                console.log("👤 User data loaded:", userState);
             } else {
-                // إذا لم تكن هناك بيانات مستخدم، نستخدم القيم الافتراضية
                 userState = {
                     balance: 0,
-                    totalEarned: 0
+                    total_earned: 0,
+                    daily_ad_count: 0,
+                    referrals: 0,
+                    lifetime_ad_count: 0
                 };
             }
 
-            // 3) إظهار الواجهة
+            // 3) تحميل المهام واللوائح
+            loader.textContent = "Loading tasks and leaderboard...";
+            await loadTasks();
+            await loadLeaderboardData();
+
+            // 4) إظهار الواجهة
             loader.style.display = "none";
             content.style.display = "block";
             updateUI();
 
-            console.log("✅ App initialized", { config: appConfig, user: userState });
+            console.log("✅ App initialized successfully");
 
         } catch (err) {
             console.error("Initialization error:", err);
@@ -279,40 +503,149 @@
         }
     }
 
-    async function handleWatchAd() {
-        const btn = document.getElementById("watch-ad-btn");
-        const status = document.getElementById("ad-status");
-
+    async function loadTasks() {
         try {
-            btn.disabled = true;
-            btn.textContent = "Loading ad...";
-            status.textContent = "";
-            status.className = "status";
-
-            // محاكاة مشاهدة إعلان
-            await new Promise(r => setTimeout(r, 3000));
-
-            // إرسال طلب للباك إند لتسجيل مشاهدة الإعلان
-            const result = await api("/api/ad/watch", {
-                method: "POST",
-                body: JSON.stringify({ 
-                    userId: tgUser.id.toString(),
-                    tgUser: tgUser,
-                    adId: `ad_${Date.now()}`,
-                    platform: 'telegram'
-                })
+            const tasksContainer = document.getElementById('tasks-container');
+            const tasks = appConfig.tasks || {};
+            
+            let tasksHTML = '';
+            for (const [taskId, task] of Object.entries(tasks)) {
+                const isCompleted = userState.completed_tasks && userState.completed_tasks[taskId];
+                
+                tasksHTML += `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 8px 0;">
+                        <div>
+                            <div style="font-weight: 600;">${task.name}</div>
+                            <div style="font-size: 12px; opacity: 0.7;">+${task.reward} TON</div>
+                        </div>
+                        <button class="task-btn" data-task-id="${taskId}" data-task-url="${task.url}" 
+                                style="padding: 8px 16px; background: ${isCompleted ? '#6b7280' : '#16a34a'}; color: white; border: none; border-radius: 20px; cursor: ${isCompleted ? 'not-allowed' : 'pointer'};"
+                                ${isCompleted ? 'disabled' : ''}>
+                            ${isCompleted ? '✅ Completed' : 'Claim Bonus'}
+                        </button>
+                    </div>
+                `;
+            }
+            
+            tasksContainer.innerHTML = tasksHTML || '<div style="text-align: center; opacity: 0.7;">No tasks available at the moment.</div>';
+            
+            // إضافة event listeners للأزرار
+            document.querySelectorAll('.task-btn').forEach(btn => {
+                btn.addEventListener('click', handleTaskClaim);
             });
+            
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+        }
+    }
+
+    async function loadLeaderboardData(type = 'earning') {
+        try {
+            const leaderboardContainer = document.getElementById('leaderboard-container');
+            const data = await loadLeaderboard(type, 5);
+            
+            if (data.ok && data.leaderboard) {
+                let leaderboardHTML = '';
+                data.leaderboard.forEach((user, index) => {
+                    const value = type === 'earning' ? 
+                        `${Number(user.total_earned || 0).toFixed(4)} TON` : 
+                        `${user.referrals || 0} users`;
+                    
+                    leaderboardHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 5px 0;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-weight: bold; color: #f59e0b;">#${index + 1}</span>
+                                <span>${user.first_name || 'User'}</span>
+                            </div>
+                            <span style="font-weight: 600;">${value}</span>
+                        </div>
+                    `;
+                });
+                
+                leaderboardContainer.innerHTML = leaderboardHTML;
+            } else {
+                leaderboardContainer.innerHTML = '<div style="text-align: center; opacity: 0.7;">No data available.</div>';
+            }
+            
+        } catch (error) {
+            console.error('Error loading leaderboard:', error);
+            document.getElementById('leaderboard-container').innerHTML = '<div style="text-align: center; opacity: 0.7;">Failed to load leaderboard.</div>';
+        }
+    }
+
+    function showAd() {
+        const btn = document.getElementById("watch-ad-btn");
+        const adContainer = document.getElementById("ad-container");
+        const adTimerElement = document.getElementById("ad-timer");
+        const adProgressBar = document.getElementById("ad-progress-bar");
+        const adSkipBtn = document.getElementById("ad-skip-btn");
+
+        // إظهار منطقة الإعلان
+        btn.style.display = "none";
+        adContainer.style.display = "block";
+        
+        // إعادة تعيين المؤقت
+        currentAdSeconds = 0;
+        adTimerElement.textContent = adSeconds;
+        adProgressBar.style.width = "0%";
+        adSkipBtn.style.display = "none";
+
+        // بدء المؤقت
+        adTimer = setInterval(() => {
+            currentAdSeconds++;
+            
+            // تحديث المؤقت والشريط
+            const remaining = adSeconds - currentAdSeconds;
+            adTimerElement.textContent = remaining;
+            
+            const progress = (currentAdSeconds / adSeconds) * 100;
+            adProgressBar.style.width = progress + "%";
+
+            // إظهار زر التخطي بعد 5 ثواني
+            if (currentAdSeconds === 5) {
+                adSkipBtn.style.display = "block";
+            }
+
+            // انتهاء الإعلان
+            if (currentAdSeconds >= adSeconds) {
+                clearInterval(adTimer);
+                finishAdWatching();
+            }
+        }, 1000);
+    }
+
+    function hideAd() {
+        const btn = document.getElementById("watch-ad-btn");
+        const adContainer = document.getElementById("ad-container");
+        
+        clearInterval(adTimer);
+        btn.style.display = "block";
+        adContainer.style.display = "none";
+    }
+
+    async function finishAdWatching() {
+        const status = document.getElementById("ad-status");
+        
+        try {
+            // إرسال طلب للباك إند لتسجيل مشاهدة الإعلان
+            const result = await watchAd(tgUser.id.toString(), tgUser, `ad_${Date.now()}`);
 
             if (result.ok) {
-                // تحديث الرصيد بناءً على المكافأة
-                const earnedAmount = result.reward || 10;
-                userState.balance = Number((userState.balance + earnedAmount).toFixed(6));
-                userState.totalEarned = Number((userState.totalEarned + earnedAmount).toFixed(6));
+                // تحديث حالة المستخدم المحلية
+                userState.balance = Number(result.user.balance);
+                userState.total_earned = Number(result.user.total_earned);
+                userState.daily_ad_count = result.user.daily_ad_count;
+                userState.lifetime_ad_count = result.user.lifetime_ad_count;
                 
                 updateUI();
 
-                status.textContent = `+${earnedAmount} ${appConfig.currencySymbol || "TON"} added!`;
+                status.textContent = `+${result.reward} ${appConfig.currencySymbol || "TON"} earned!`;
                 status.className = "status ok";
+                
+                // تأثير هابتيک
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
             } else {
                 throw new Error(result.error || "Failed to record ad watch");
             }
@@ -322,8 +655,92 @@
             status.textContent = err.message || "Failed to watch ad";
             status.className = "status err";
         } finally {
-            btn.textContent = "Watch Ad";
+            hideAd();
+        }
+    }
+
+    async function handleWatchAd() {
+        const btn = document.getElementById("watch-ad-btn");
+        const status = document.getElementById("ad-status");
+
+        // التحقق من الحد اليومي
+        if (userState.daily_ad_count >= appConfig.dailyAdLimit) {
+            status.textContent = "Daily ad limit reached! Come back tomorrow.";
+            status.className = "status err";
+            return;
+        }
+
+        try {
+            btn.disabled = true;
+            btn.textContent = "Loading ad...";
+            status.textContent = "";
+            status.className = "status";
+
+            // محاكاة تحميل الإعلان
+            await new Promise(r => setTimeout(r, 1000));
+
+            // بدء عرض الإعلان
+            showAd();
+
+        } catch (err) {
+            console.error("Watch ad error:", err);
+            status.textContent = err.message || "Failed to load ad";
+            status.className = "status err";
             btn.disabled = false;
+            btn.textContent = `Watch Ad +${appConfig.adValue} TON`;
+        }
+    }
+
+    async function handleTaskClaim(event) {
+        const btn = event.target;
+        const taskId = btn.dataset.taskId;
+        const taskUrl = btn.dataset.taskUrl;
+
+        try {
+            btn.disabled = true;
+            btn.textContent = "Processing...";
+
+            // فتح الرابط في حالة وجوده
+            if (taskUrl) {
+                if (tg.openLink) {
+                    tg.openLink(taskUrl);
+                } else {
+                    window.open(taskUrl, '_blank');
+                }
+            }
+
+            // انتظار قليل ثم المطالبة بالمكافأة
+            await new Promise(r => setTimeout(r, 2000));
+
+            const result = await completeTask(tgUser.id.toString(), taskId);
+
+            if (result.ok) {
+                userState.balance = Number(result.user.balance);
+                updateUI();
+                
+                btn.textContent = "✅ Completed";
+                btn.style.background = '#6b7280';
+                
+                // إشعار النجاح
+                if (tg.showPopup) {
+                    tg.showPopup({
+                        title: 'Task Completed!',
+                        message: `You earned ${result.reward} TON!`
+                    });
+                }
+            } else {
+                throw new Error(result.error || "Failed to claim task");
+            }
+
+        } catch (err) {
+            console.error("Task claim error:", err);
+            btn.disabled = false;
+            btn.textContent = "Claim Bonus";
+            btn.style.background = '#16a34a';
+            
+            if (tg.showAlert) {
+                tg.showAlert("Failed to claim task: " + err.message);
+            }
         }
     }
 
@@ -354,34 +771,38 @@
             return;
         }
 
+        // التحقق من الحد الأدنى للسحب
+        const minWithdraw = (appConfig.withdrawMethods || []).find(m => m.name === method)?.min || 0.1;
+        if (amount < minWithdraw) {
+            status.textContent = `Minimum withdrawal for ${method} is ${minWithdraw} TON.`;
+            status.className = "status err";
+            return;
+        }
+
         try {
             btn.disabled = true;
             btn.textContent = "Sending request...";
             status.textContent = "";
             status.className = "status";
 
-            const resp = await api("/api/withdraw", {
-                method: "POST",
-                body: JSON.stringify({
-                    userId: tgUser.id.toString(),
-                    method: method,
-                    account: account,
-                    amount: amount,
-                    tgUser: tgUser
-                })
-            });
+            const resp = await requestWithdraw(tgUser.id.toString(), method, account, amount);
 
             if (resp.ok) {
                 status.textContent = "Withdraw request sent successfully ✅";
                 status.className = "status ok";
 
                 // تحديث الرصيد بعد السحب
-                userState.balance = Number((userState.balance - amount).toFixed(6));
+                userState.balance = Number(resp.new_balance);
                 updateUI();
 
                 // مسح الحقول
                 accountEl.value = "";
                 amountEl.value = "";
+                
+                // تأثير النجاح
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
             } else {
                 status.textContent = resp.error || "Failed to send withdraw request.";
                 status.className = "status err";
@@ -397,12 +818,81 @@
         }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    function copyReferralLink() {
+        const referralInput = document.getElementById('referral-link');
+        const status = document.getElementById('referral-status');
+        
+        referralInput.select();
+        referralInput.setSelectionRange(0, 99999);
+        
+        try {
+            navigator.clipboard.writeText(referralInput.value).then(() => {
+                status.textContent = "Referral link copied to clipboard!";
+                status.className = "status ok";
+                
+                // تأثير النسخ
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+                
+                setTimeout(() => {
+                    status.textContent = "";
+                }, 3000);
+            });
+        } catch (err) {
+            // Fallback for older browsers
+            document.execCommand('copy');
+            status.textContent = "Referral link copied!";
+            status.className = "status ok";
+            
+            setTimeout(() => {
+                status.textContent = "";
+            }, 3000);
+        }
+    }
+
+    function setupEventListeners() {
         // ربط الأزرار
         document.getElementById("watch-ad-btn").addEventListener("click", handleWatchAd);
         document.getElementById("withdraw-btn").addEventListener("click", handleWithdraw);
+        document.getElementById("copy-referral-btn").addEventListener("click", copyReferralLink);
+        document.getElementById("ad-skip-btn").addEventListener("click", hideAd);
+        
+        // أزرار اللوائح
+        document.getElementById("top-earners-btn").addEventListener("click", () => {
+            loadLeaderboardData('earning');
+            document.getElementById("top-earners-btn").style.background = '#1e40af';
+            document.getElementById("top-referrers-btn").style.background = '#7c3aed';
+        });
+        
+        document.getElementById("top-referrers-btn").addEventListener("click", () => {
+            loadLeaderboardData('referral');
+            document.getElementById("top-earners-btn").style.background = '#7c3aed';
+            document.getElementById("top-referrers-btn").style.background = '#1e40af';
+        });
+    }
 
-        // بدء التطبيق
+    document.addEventListener("DOMContentLoaded", () => {
+        // إعداد المستخدم إذا كان في وضع التطوير
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            tgUser = tg.initDataUnsafe.user;
+        }
+        
+        // توسيع الواجهة إذا كانت في تليجرام
+        if (tg.expand) {
+            tg.expand();
+        }
+        
+        // إعداد الألوان حسب سمة تليجرام
+        if (tg.colorScheme === 'dark') {
+            document.body.style.background = '#050816';
+        } else {
+            document.body.style.background = '#f8fafc';
+            document.body.style.color = '#1e293b';
+        }
+        
+        // ربط الأحداث وبدء التطبيق
+        setupEventListeners();
         initApp();
     });
 </script>
