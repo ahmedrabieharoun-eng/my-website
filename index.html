@@ -8,7 +8,7 @@
     <!-- Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <!-- إضافة شبكة الإعلانات -->
+    <!-- Adsterra Ad Network -->
     <script type="text/javascript">
         var atOptions = {
             'key' : '10058786',
@@ -17,6 +17,24 @@
             'width' : 300,
             'params' : {}
         };
+        
+        // دالة لتحميل الإعلان
+        function loadAdsterraAd() {
+            return new Promise((resolve, reject) => {
+                if (typeof show_10058786 === 'function') {
+                    show_10058786().then(() => {
+                        resolve(true);
+                    }).catch(error => {
+                        reject(error);
+                    });
+                } else {
+                    // إذا لم تكن الدالة متوفرة، نستخدم الإعلان الافتراضي
+                    setTimeout(() => {
+                        resolve(false);
+                    }, 1000);
+                }
+            });
+        }
     </script>
     <script type="text/javascript" src="//www.highperformanceformat.com/10058786/invoke.js"></script>
     
@@ -204,6 +222,24 @@
             font-size: 12px;
             opacity: 0.7;
         }
+        
+        /* أنماط الإعلان الحقيقي */
+        .real-ad-container {
+            width: 300px;
+            height: 250px;
+            margin: 10px auto;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fallback-ad {
+            text-align: center;
+            padding: 20px;
+            color: #000;
+        }
     </style>
 </head>
 <body>
@@ -249,6 +285,16 @@
                     <div class="ad-progress">
                         <div class="ad-progress-bar" id="ad-progress-bar"></div>
                     </div>
+                    
+                    <!-- الإعلان الحقيقي -->
+                    <div id="real-ad-container" class="real-ad-container">
+                        <div class="fallback-ad">
+                            <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                            <div style="font-weight: bold; margin-bottom: 5px;">Loading Advertisement</div>
+                            <div style="font-size: 12px;">Please wait...</div>
+                        </div>
+                    </div>
+                    
                     <button class="ad-skip-btn" id="ad-skip-btn" style="display: none;">Skip Ad</button>
                 </div>
             </div>
@@ -457,6 +503,7 @@
     let adTimer = null;
     let adSeconds = 15;
     let currentAdSeconds = 0;
+    let isAdCompleted = false;
 
     // دالة مساعدة للتحقق من وجود العناصر
     function ensureElement(id) {
@@ -591,8 +638,81 @@
         }
     }
 
+    // دالة محسنة لتحميل الإعلان الحقيقي
+    function loadRealAd() {
+        return new Promise((resolve) => {
+            const realAdContainer = ensureElement("real-ad-container");
+            if (!realAdContainer) {
+                resolve(false);
+                return;
+            }
+
+            // محاولة تحميل إعلان Adsterra
+            if (typeof loadAdsterraAd === 'function') {
+                loadAdsterraAd().then((adLoaded) => {
+                    if (adLoaded) {
+                        console.log("✅ Adsterra ad loaded successfully");
+                        resolve(true);
+                    } else {
+                        // إذا فشل إعلان Adsterra، استخدم الإعلان الافتراضي
+                        showFallbackAd();
+                        resolve(true);
+                    }
+                }).catch((error) => {
+                    console.error("❌ Adsterra ad failed:", error);
+                    showFallbackAd();
+                    resolve(true);
+                });
+            } else {
+                // إذا لم تكن دالة Adsterra متوفرة، استخدم الإعلان الافتراضي
+                showFallbackAd();
+                resolve(true);
+            }
+        });
+    }
+
+    // دالة لعرض الإعلان الافتراضي
+    function showFallbackAd() {
+        const realAdContainer = ensureElement("real-ad-container");
+        if (!realAdContainer) return;
+
+        const fallbackAds = [
+            {
+                title: "🚀 Boost Your Earnings",
+                description: "Join our premium membership for 2x rewards!",
+                button: "Learn More",
+                background: "linear-gradient(45deg, #667eea, #764ba2)"
+            },
+            {
+                title: "💰 Exclusive Crypto Offer",
+                description: "Get 10% bonus on your first deposit",
+                button: "Claim Offer",
+                background: "linear-gradient(45deg, #f093fb, #f5576c)"
+            },
+            {
+                title: "📱 Download Our App",
+                description: "Better experience on mobile application",
+                button: "Download Now",
+                background: "linear-gradient(45deg, #4facfe, #00f2fe)"
+            }
+        ];
+
+        const randomAd = fallbackAds[Math.floor(Math.random() * fallbackAds.length)];
+        
+        realAdContainer.innerHTML = `
+            <div class="fallback-ad" style="background: ${randomAd.background}; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 15px; box-sizing: border-box;">
+                <div style="font-size: 28px; margin-bottom: 10px;">${randomAd.title.split(' ')[0]}</div>
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; text-align: center;">${randomAd.title}</div>
+                <div style="font-size: 12px; margin-bottom: 15px; text-align: center;">${randomAd.description}</div>
+                <button style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 8px 16px; border-radius: 20px; cursor: pointer; backdrop-filter: blur(10px);">
+                    ${randomAd.button}
+                </button>
+            </div>
+        `;
+    }
+
     // دالة محسنة لعرض الإعلان
-    function showAd() {
+    async function showAd() {
         const btn = ensureElement("watch-ad-btn");
         const adContainer = ensureElement("ad-container");
         const adTimerElement = ensureElement("ad-timer");
@@ -606,6 +726,9 @@
             return;
         }
 
+        // إعادة تعيين حالة الإعلان
+        isAdCompleted = false;
+
         // إظهار منطقة الإعلان
         btn.style.display = "none";
         adContainer.style.display = "block";
@@ -617,46 +740,8 @@
         adSkipBtn.style.display = "none";
         status.textContent = "";
 
-        // تنظيف أي محتوى قديم
-        const oldAdContent = document.getElementById('ad-content');
-        if (oldAdContent) {
-            oldAdContent.remove();
-        }
-
-        // إنشاء الإعلان الحقيقي
-        const adContent = document.createElement('div');
-        adContent.id = 'ad-content';
-        adContent.innerHTML = `
-            <div style="text-align: center; margin: 10px 0;">
-                <div id="real-ad-container" style="min-height: 250px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.1); border-radius: 10px; padding: 20px;">
-                    <div>
-                        <div style="font-size: 48px; margin-bottom: 10px;">📺</div>
-                        <div>Loading advertisement...</div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // إضافة المحتوى بشكل آمن
-        adContainer.appendChild(adContent);
-
-        // محاكاة تحميل الإعلان
-        setTimeout(() => {
-            const realAdContainer = document.getElementById('real-ad-container');
-            if (realAdContainer) {
-                realAdContainer.innerHTML = `
-                    <div style="text-align: center;">
-                        <div style="font-size: 48px; margin-bottom: 10px;">🎥</div>
-                        <div style="font-weight: bold; margin-bottom: 10px;">Advertisement Playing</div>
-                        <div style="font-size: 12px; opacity: 0.7;">Please watch the ad to earn rewards</div>
-                        <div style="margin-top: 15px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px;">
-                            <div style="font-size: 11px; margin-bottom: 5px;">Sponsored Content</div>
-                            <div style="font-size: 14px; font-weight: bold;">Earn More TON with Our Partners!</div>
-                        </div>
-                    </div>
-                `;
-            }
-        }, 1000);
+        // تحميل الإعلان الحقيقي
+        await loadRealAd();
 
         // بدء المؤقت
         adTimer = setInterval(() => {
@@ -677,6 +762,7 @@
             // انتهاء الإعلان
             if (currentAdSeconds >= adSeconds) {
                 clearInterval(adTimer);
+                isAdCompleted = true;
                 finishAdWatching();
             }
         }, 1000);
@@ -686,7 +772,7 @@
     function hideAd() {
         const btn = ensureElement("watch-ad-btn");
         const adContainer = ensureElement("ad-container");
-        const adContent = document.getElementById("ad-content");
+        const realAdContainer = ensureElement("real-ad-container");
         
         clearInterval(adTimer);
         
@@ -700,12 +786,20 @@
             adContainer.style.display = "none";
         }
         
-        if (adContent) {
-            adContent.remove();
+        // تنظيف محتوى الإعلان
+        if (realAdContainer) {
+            realAdContainer.innerHTML = `
+                <div class="fallback-ad">
+                    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">Loading Advertisement</div>
+                    <div style="font-size: 12px;">Please wait...</div>
+                </div>
+            `;
         }
     }
 
-    async function finishAdWatching() {
+    // دالة مكافأة المستخدم بعد مشاهدة الإعلان
+    async function rewardUserForAdWatch() {
         const status = ensureElement("ad-status");
         
         try {
@@ -730,19 +824,36 @@
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.impactOccurred('light');
                 }
+
+                return true;
             } else {
                 throw new Error(result.error || "Failed to record ad watch");
             }
 
         } catch (err) {
-            console.error("Watch ad error:", err);
+            console.error("Reward user error:", err);
             if (status) {
-                status.textContent = err.message || "Failed to watch ad";
+                status.textContent = err.message || "Failed to process reward";
                 status.className = "status err";
             }
-        } finally {
-            hideAd();
+            return false;
         }
+    }
+
+    async function finishAdWatching() {
+        if (!isAdCompleted) {
+            console.log("Ad was skipped, no reward");
+            hideAd();
+            return;
+        }
+
+        // مكافأة المستخدم بعد مشاهدة الإعلان بالكامل
+        await rewardUserForAdWatch();
+        
+        // إخفاء الإعلان بعد المكافأة
+        setTimeout(() => {
+            hideAd();
+        }, 2000);
     }
 
     // دالة محسنة لمعالجة مشاهدة الإعلان
@@ -772,7 +883,7 @@
             await new Promise(r => setTimeout(r, 1500));
 
             // بدء عرض الإعلان
-            showAd();
+            await showAd();
 
         } catch (err) {
             console.error("Watch ad error:", err);
