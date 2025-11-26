@@ -1,29 +1,180 @@
 <!doctype html>
 <html lang="ar">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Adextra Test</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>اختبار Adextra — Fullscreen (Netlify Ready)</title>
 
+  <!-- 1) ضع هنا سكربت Adextra (تأكد أن هذا هو الـ placement ID الصحيح) -->
   <script async src="https://partner.adextra.io/jt/32c670c3f0c8368d2fc7885022fd7eff69ef1c84.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; direction: rtl; padding:24px; background:#f4f7fb; color:#222; }
+    .card { max-width:900px; margin:0 auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 10px 30px rgba(10,20,40,0.06); }
+    h1 { margin:0 0 8px; font-size:20px }
+    p { color:#444 }
+    #ad-area { margin:18px 0; min-height:340px; display:flex; align-items:center; justify-content:center; border:2px dashed #e6eef8; border-radius:8px; background:linear-gradient(180deg,#fff,#f9fcff); padding:12px; text-align:center; }
+    .controls { margin-top:8px }
+    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer; background:#0b76ef; color:#fff; margin-left:8px }
+    button.clear { background:#e04b4b }
+    small { display:block; margin-top:10px; color:#666 }
+    pre.debug { background:#0b1220; color:#fff; padding:10px; border-radius:6px; overflow:auto; max-height:180px; font-size:12px }
+  </style>
 </head>
 <body>
+  <div class="card">
+    <h1>صفحة اختبار Adextra — Fullscreen</h1>
+    <p>اختبر هنا الـ placement قبل وضعه في المشروع الأساسي. تأكد من تعطيل AdBlock أثناء الاختبار.</p>
 
-  <div id="32c670c3f0c8368d2fc7885022fd7eff69ef1c84"></div>
+    <!-- 2) الـ div للـ placement — لا تغيّر الـ id -->
+    <div id="32c670c3f0c8368d2fc7885022fd7eff69ef1c84" aria-label="Ad placement">
+      <div id="ad-area">مكان الإعلان — إن لم يظهر قد يعيق ذلك AdBlock أو إعدادات شبكة/حملة عند المزود.</div>
+    </div>
+
+    <div class="controls">
+      <button id="showAdBtn">عرض الإعلان الآن</button>
+      <button id="clearBtn" class="clear">مسح محتوى الاختبار</button>
+      <small>افتح DevTools → Console وNetwork لمزيد من التفاصيل.</small>
+    </div>
+
+    <hr style="margin:18px 0">
+
+    <h2>سجل التصحيح (Console-like)</h2>
+    <pre id="log" class="debug">logs will appear here...</pre>
+  </div>
 
   <script>
-    // required function p
+    /*************************************************************************
+     * Configuration
+     *************************************************************************/
+    const placementId = "32c670c3f0c8368d2fc7885022fd7eff69ef1c84";
+    // عدد محاولات إعادة المحاولة عند انتظار تحميل الدالة p_adextra
+    const MAX_ATTEMPTS = 20;
+    const RETRY_INTERVAL_MS = 500;
+
+    /*************************************************************************
+     * Helpers: logging to the small debug box + console
+     *************************************************************************/
+    function dbg(...args) {
+      console.log(...args);
+      try {
+        const el = document.getElementById('log');
+        if (!el) return;
+        const t = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+        el.innerText = (new Date()).toLocaleTimeString() + "  " + t + "\n" + el.innerText;
+      } catch(e) { console.log("dbg error", e); }
+    }
+
+    /*************************************************************************
+     * onSuccess / onError callbacks
+     *************************************************************************/
+    function onSuccess() {
+      dbg("[LOCAL] onSuccess: Ad showed successfully for", placementId);
+      const area = document.getElementById('ad-area');
+      if (area) area.innerText = "تم عرض الإعلان بنجاح — تحقق من DOM وConsole.";
+    }
+
+    function onError(err) {
+      dbg("[LOCAL] onError: Aderror for", placementId, err);
+      const area = document.getElementById('ad-area');
+      if (area) area.innerText = "فشل عرض الإعلان — تحقق من Console وNetwork وتعطيل AdBlock.";
+    }
+
+    /*************************************************************************
+     * تعريف p كما في وثائق Adextra (الوثيقة تطلب وجود p)
+     * يمكنك إضافة بيانات داخل p إن احتجت لاحقًا (مثلاً targeting أو config)
+     *************************************************************************/
     var p = function(){};
+    // مثال لو أردت تمرير إعدادات: p.config = { key: 'value' };
 
-    // display ad after 1 second
-    window.setTimeout(function() {
-      if (typeof p_adextra === "function") {
-        p_adextra(p);
-      } else {
-        console.log("Not ready yet...");
+    /*************************************************************************
+     * عملية استدعاء p_adextra مع retries و fallback إلى صيغة مختلفة
+     *
+     * الإستراتيجية:
+     * - ننتظر توفر الدالة p_adextra
+     * - نحاول نادِي p_adextra(p) أولًا (مطابق للوثيقة)
+     * - لو رمى استثناء أو لم يعمل، نحاول p_adextra(onSuccess,onError)
+     * - نعطي MAX_ATTEMPTS ثم نبطل المحاولة ونظهر رسالة خطأ موجهة للدعم
+     *************************************************************************/
+    let attempts = 0;
+    let called = false;
+
+    function tryShowAd() {
+      if (called) {
+        dbg("[LOCAL] tryShowAd called but already completed/attempting.");
+        return;
       }
-    }, 1000);
-  </script>
 
+      attempts++;
+      if (typeof p_adextra === 'function') {
+        dbg("[LOCAL] p_adextra is defined — attempting to call (attempt " + attempts + ")");
+        try {
+          // أول محاولة: (p)
+          dbg("[LOCAL] Trying p_adextra(p) ...");
+          p_adextra(p);
+          // لا نعلم إذا نجح فعليًا حتى يتم استدعاء onSuccess أو تغيير DOM بواسطة المكتبة،
+          // لكن نضع علامة أن الاستدعاء تم. النسخة الأصلية قد تستدعي onSuccess داخليًا.
+          called = true;
+          dbg("[LOCAL] p_adextra(p) called — awaiting onSuccess/onError callbacks (check Console).");
+        } catch (e1) {
+          dbg("[LOCAL] Exception calling p_adextra(p):", e1);
+          // تجربة بديلة: onSuccess/onError
+          try {
+            dbg("[LOCAL] Trying p_adextra(onSuccess, onError) ...");
+            p_adextra(onSuccess, onError);
+            called = true;
+            dbg("[LOCAL] p_adextra(onSuccess, onError) called — awaiting callbacks.");
+          } catch (e2) {
+            dbg("[LOCAL] Exception calling p_adextra(onSuccess,onError):", e2);
+            // لم ينجح أي شكل من أشكال الاستدعاء — سنحاول مجددًا إذا بقيت محاولات
+            called = false;
+          }
+        }
+      } else {
+        dbg("[LOCAL] p_adextra not defined yet — attempt", attempts, "will retry in", RETRY_INTERVAL_MS, "ms");
+      }
+
+      if (!called && attempts < MAX_ATTEMPTS) {
+        setTimeout(tryShowAd, RETRY_INTERVAL_MS);
+      } else if (!called && attempts >= MAX_ATTEMPTS) {
+        dbg("[LOCAL] Reached max attempts. Plugin still not available or call failed.");
+        const area = document.getElementById('ad-area');
+        if (area) area.innerText = "لم يتم تحميل plugin أو تهيئة الـ placement. الرجاء التواصل مع دعم Adextra (راجع Console وNetwork).";
+      }
+    }
+
+    /*************************************************************************
+     * زر يدوي ونداء تلقائي بعد تحميل الصفحة
+     *************************************************************************/
+    document.addEventListener('DOMContentLoaded', function() {
+      // محاولة تلقائية بعد تحميل الصفحة (تأخير بسيط لإعطاء السكربت وقتاً للتحميل)
+      setTimeout(tryShowAd, 800);
+    });
+
+    document.getElementById('showAdBtn').addEventListener('click', function(){
+      attempts = 0;
+      called = false;
+      dbg("[LOCAL] Manual trigger: showAdBtn pressed.");
+      tryShowAd();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function(){
+      const area = document.getElementById('ad-area');
+      if (area) area.innerText = "مكان الإعلان — تم مسح الاختبار.";
+      dbg("[LOCAL] Cleared test area.");
+    });
+
+    /*************************************************************************
+     * Optional: network debug helper (only if you want to inspect plugin response)
+     * NOTE: cross-origin policy may block fetching partner.adextra.io directly.
+     * Use this only if your server/proxy allows it or Adextra permits CORS.
+     *************************************************************************/
+    // function debugPluginResponse() {
+    //   const pluginUrl = "https://partner.adextra.io/jt/plugin?p=" + placementId;
+    //   fetch(pluginUrl, {mode:'cors'}).then(r => r.text()).then(t => dbg("[PLUGIN RESPONSE]", t)).catch(e => dbg("[PLUGIN FETCH ERROR]", e));
+    // }
+    // debugPluginResponse();
+
+  </script>
 </body>
 </html>
