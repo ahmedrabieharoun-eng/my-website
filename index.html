@@ -1,88 +1,269 @@
-<!doctype html>
-<html lang="ar">
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>مشاهدة إعلان - مثال (id=4102)</title>
-  <style>
-    body{font-family:Arial,system-ui;direction:rtl;text-align:center;padding:40px}
-    button{padding:12px 18px;font-size:16px;border-radius:8px;cursor:pointer}
-    #status{margin-top:14px;font-weight:600}
-  </style>
-
-  <!-- سكربت المزود (المعرف 4102) -->
-  <script src="https://ad.gigapub.tech/script?id=4102"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوت المكافآت</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .user-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .reward-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            background: #0088cc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            background: #006699;
+        }
+        
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            flex: 1;
+            margin: 0 5px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+    
+    <!-- إضافة سكريبت الإعلانات -->
+    <script data-project-id="4102">
+      !function(){
+        var s=document.currentScript,p=s.getAttribute('data-project-id')||'default';
+        var d=['https://ad.gigapub.tech','https://ru-ad.gigapub.tech'],i=0,t,sc;
+        function l(){
+          sc=document.createElement('script');
+          sc.async=true;
+          sc.src=d[i]+'/script?id='+p;
+          clearTimeout(t);
+          t=setTimeout(function(){
+            sc.onload=sc.onerror=null;
+            sc.src='';
+            if(++i<d.length)l();
+          },15000);
+          sc.onload=function(){clearTimeout(t)};
+          sc.onerror=function(){clearTimeout(t);if(++i<d.length)l()};
+          document.head.appendChild(sc);
+        }
+        l();
+      }();
+    </script>
 </head>
 <body>
-  <h2>شاهد إعلان واكسب نقاط</h2>
-  <p>رصيدك: <span id="balance">0</span> نقطة</p>
-  <button id="watchBtn">شاهد إعلان</button>
-  <div id="status"></div>
+    <div class="container">
+        <h1>🚀 بوت المكافآت</h1>
+        
+        <div class="user-info">
+            <h3>معلومات المستخدم</h3>
+            <p id="userInfo">جارٍ التحميل...</p>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <h4>النقاط</h4>
+                <p id="points">0</p>
+            </div>
+            <div class="stat-box">
+                <h4>الإعلانات المشاهدة</h4>
+                <p id="adsWatched">0</p>
+            </div>
+            <div class="stat-box">
+                <h4>المكافآت</h4>
+                <p id="rewardsClaimed">0</p>
+            </div>
+        </div>
+        
+        <div class="reward-section">
+            <h3>🎁 شاهد إعلانًا واحصل على 10 نقاط!</h3>
+            <button class="btn" id="watchAdBtn" onclick="watchAd()">
+                👁️ مشاهدة إعلان
+            </button>
+            <div class="loading" id="loading">
+                ⏳ جارٍ تحميل الإعلان...
+            </div>
+        </div>
+        
+        <div class="reward-section">
+            <h3>💎 استبدال النقاط</h3>
+            <button class="btn" id="claimRewardBtn" onclick="claimReward()" disabled>
+                استبدل 50 نقطة لمكافأة
+            </button>
+            <p>النقاط المطلوبة: 50</p>
+        </div>
+        
+        <div id="message"></div>
+    </div>
 
-  <script>
-    // رصيد محلي بسيط
-    let balance = Number(localStorage.getItem('balance')||0);
-    document.getElementById('balance').textContent = balance;
+    <script>
+        // بيانات المستخدم (بدون قاعدة بيانات - تخزين محلي)
+        let userData = {
+            points: 0,
+            adsWatched: 0,
+            rewardsClaimed: 0,
+            lastAdWatch: 0
+        };
 
-    const statusEl = document.getElementById('status');
-    function setStatus(txt, isErr=false){
-      statusEl.textContent = txt;
-      statusEl.style.color = isErr ? 'crimson' : 'green';
-    }
-
-    // --- fallback للاختبار (لا تستخدمه كمصدر موثوق للمكافآت الحقيقية) ---
-    function fallbackAd(){
-      return new Promise(resolve=>{
-        setStatus('تشغيل إعلان بديل (تجريبي)...');
-        setTimeout(()=> resolve({ rewarded:true, rewardAmount:5, adId:'fb_sim' }), 2200);
-      });
-    }
-
-    // وضع fallback عالمي كما في دليل الدمج
-    window.AdGigaFallback = fallbackAd;
-    if (window.showGiga === undefined) {
-      window.showGiga = () => window.AdGigaFallback();
-    }
-
-    // زر مشاهدة الإعلان
-    document.getElementById('watchBtn').addEventListener('click', async () => {
-      setStatus('جارٍ طلب الإعلان...');
-      try {
-        if (typeof window.showGiga !== 'function') {
-          throw new Error('showGiga غير موجود');
+        // تهيئة البيانات عند تحميل الصفحة
+        function initUserData() {
+            const saved = localStorage.getItem('telegramBotUserData');
+            if (saved) {
+                userData = JSON.parse(saved);
+            }
+            updateUI();
+            
+            // محاكاة بيانات تليجرام
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id') || Math.floor(Math.random() * 1000000);
+            const firstName = urlParams.get('first_name') || 'مستخدم';
+            
+            document.getElementById('userInfo').textContent = `ID: ${userId} - ${firstName}`;
         }
 
-        const res = await window.showGiga();
-        // نتيجة ممكن تختلف حسب مزود الإعلانات؛ هذا تحقق بسيط
-        if (res && res.rewarded) {
-          const reward = Number(res.rewardAmount || 10);
-          balance += reward;
-          localStorage.setItem('balance', balance);
-          document.getElementById('balance').textContent = balance;
-          setStatus(`🎉 تمت إضافة ${reward} نقاط`);
-        } else {
-          setStatus('لا يوجد إعلان متاح الآن.', true);
+        // تحديث واجهة المستخدم
+        function updateUI() {
+            document.getElementById('points').textContent = userData.points;
+            document.getElementById('adsWatched').textContent = userData.adsWatched;
+            document.getElementById('rewardsClaimed').textContent = userData.rewardsClaimed;
+            
+            // تفعيل/تعطيل أزرار حسب النقاط
+            document.getElementById('claimRewardBtn').disabled = userData.points < 50;
+            
+            // حفظ البيانات
+            localStorage.setItem('telegramBotUserData', JSON.stringify(userData));
         }
 
-      } catch (err) {
-        console.error('خطأ عرض الإعلان:', err);
-        setStatus('فشل عرض الإعلان — سيتم تجربة fallback.', true);
-        // محاولة fallback محلي
-        try {
-          const fb = await fallbackAd();
-          if (fb && fb.rewarded) {
-            const r = Number(fb.rewardAmount||5);
-            balance += r;
-            localStorage.setItem('balance', balance);
-            document.getElementById('balance').textContent = balance;
-            setStatus(`تمت إضافة ${r} نقطة (fallback)`);
-          }
-        } catch(e2){
-          console.error('فشل fallback:', e2);
-          setStatus('فشل تشغيل الإعلان التجريبي.', true);
+        // مشاهدة الإعلان
+        function watchAd() {
+            const now = Date.now();
+            const cooldown = 30000; // 30 ثانية بين كل إعلان
+            
+            if (now - userData.lastAdWatch < cooldown) {
+                showMessage('⏳ يرجى الانتظار قبل مشاهدة إعلان آخر', 'error');
+                return;
+            }
+
+            document.getElementById('watchAdBtn').disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            
+            // تشغيل الإعلان
+            if (window.showGiga) {
+                window.showGiga()
+                    .then(() => {
+                        // نجاح مشاهدة الإعلان
+                        userData.points += 10;
+                        userData.adsWatched++;
+                        userData.lastAdWatch = Date.now();
+                        updateUI();
+                        showMessage('🎉 مبروك! حصلت على 10 نقاط', 'success');
+                    })
+                    .catch(error => {
+                        // في حالة خطأ، نستخدم النظام الاحتياطي
+                        handleAdFallback();
+                    })
+                    .finally(() => {
+                        document.getElementById('watchAdBtn').disabled = false;
+                        document.getElementById('loading').style.display = 'none';
+                    });
+            } else {
+                // إذا لم يكن showGiga متاحًا
+                handleAdFallback();
+            }
         }
-      }
-    });
-  </script>
+
+        // النظام الاحتياطي للإعلانات
+        function handleAdFallback() {
+            // هنا يمكنك إضافة نظام إعلانات احتياطي
+            // حالياً سنعطي المستخدم النقاط مباشرة لمحاكاة الإعلان
+            userData.points += 10;
+            userData.adsWatched++;
+            userData.lastAdWatch = Date.now();
+            updateUI();
+            showMessage('🎉 مبروك! حصلت على 10 نقاط (نسخة تجريبية)', 'success');
+            
+            document.getElementById('watchAdBtn').disabled = false;
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // استبدال النقاط
+        function claimReward() {
+            if (userData.points >= 50) {
+                userData.points -= 50;
+                userData.rewardsClaimed++;
+                updateUI();
+                showMessage('🎁 مبروك! لقد حصلت على مكافأة', 'success');
+                
+                // هنا يمكنك إضافة منطق إرسال المكافأة الحقيقية
+            } else {
+                showMessage('❌ ليس لديك نقاط كافية', 'error');
+            }
+        }
+
+        // عرض الرسائل
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.style.color = type === 'success' ? 'green' : 'red';
+            messageDiv.style.padding = '10px';
+            messageDiv.style.margin = '10px 0';
+            messageDiv.style.borderRadius = '5px';
+            messageDiv.style.backgroundColor = type === 'success' ? '#e8f5e8' : '#ffe8e8';
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.style.backgroundColor = 'transparent';
+            }, 5000);
+        }
+
+        // تهيئة الصفحة عند التحميل
+        document.addEventListener('DOMContentLoaded', initUserData);
+    </script>
 </body>
 </html>
