@@ -1,73 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>مشاهدة إعلان وكسب نقاط</title>
-
-  <!-- سكربت الإعلانات -->
-  <script src="https://ad.gigapub.tech/script?id=4102"></script>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>مشاهدة إعلان - مثال (id=4102)</title>
   <style>
-    body { font-family: Arial; direction: rtl; text-align: center; margin-top: 50px; }
-    button { padding: 12px 20px; font-size: 18px; cursor: pointer; border-radius: 8px; }
-    #status { margin-top: 20px; font-weight: bold; }
+    body{font-family:Arial,system-ui;direction:rtl;text-align:center;padding:40px}
+    button{padding:12px 18px;font-size:16px;border-radius:8px;cursor:pointer}
+    #status{margin-top:14px;font-weight:600}
   </style>
+
+  <!-- سكربت المزود (المعرف 4102) -->
+  <script src="https://ad.gigapub.tech/script?id=4102"></script>
 </head>
 <body>
+  <h2>شاهد إعلان واكسب نقاط</h2>
+  <p>رصيدك: <span id="balance">0</span> نقطة</p>
+  <button id="watchBtn">شاهد إعلان</button>
+  <div id="status"></div>
 
-  <h2>اضغط لكسب نقاط من مشاهدة الإعلانات</h2>
+  <script>
+    // رصيد محلي بسيط
+    let balance = Number(localStorage.getItem('balance')||0);
+    document.getElementById('balance').textContent = balance;
 
-  <div>
-    <p>رصيدك: <span id="balance">0</span> نقطة</p>
-    <button id="watchAdBtn">شاهد إعلان</button>
-    <p id="status"></p>
-  </div>
-
-<script>
-  // تحميل الرصيد من التخزين المحلي
-  let balance = Number(localStorage.getItem("balance") || 0);
-  document.getElementById("balance").textContent = balance;
-
-  const statusEl = document.getElementById("status");
-
-  function setStatus(msg, error = false) {
-    statusEl.textContent = msg;
-    statusEl.style.color = error ? "red" : "green";
-  }
-
-  // زر مشاهدة الإعلان
-  document.getElementById("watchAdBtn").onclick = async () => {
-    setStatus("جارٍ فتح الإعلان...");
-
-    try {
-      if (!window.showGiga) {
-        setStatus("الإعلانات غير جاهزة حالياً.", true);
-        return;
-      }
-
-      const result = await window.showGiga();
-
-      // التحقق من استجابة الإعلان
-      if (result && result.rewarded) {
-        // تحديد قيمة المكافأة (افتراضي 10)
-        const reward = result.rewardAmount || 10;
-
-        balance += reward;
-        localStorage.setItem("balance", balance);
-        document.getElementById("balance").textContent = balance;
-
-        setStatus(`تمت إضافة ${reward} نقاط 🎉`);
-      } else {
-        setStatus("لم يتم منح مكافأة.", true);
-      }
-
-    } catch (err) {
-      console.error(err);
-      setStatus("حدث خطأ أثناء عرض الإعلان.", true);
+    const statusEl = document.getElementById('status');
+    function setStatus(txt, isErr=false){
+      statusEl.textContent = txt;
+      statusEl.style.color = isErr ? 'crimson' : 'green';
     }
-  };
-</script>
 
+    // --- fallback للاختبار (لا تستخدمه كمصدر موثوق للمكافآت الحقيقية) ---
+    function fallbackAd(){
+      return new Promise(resolve=>{
+        setStatus('تشغيل إعلان بديل (تجريبي)...');
+        setTimeout(()=> resolve({ rewarded:true, rewardAmount:5, adId:'fb_sim' }), 2200);
+      });
+    }
+
+    // وضع fallback عالمي كما في دليل الدمج
+    window.AdGigaFallback = fallbackAd;
+    if (window.showGiga === undefined) {
+      window.showGiga = () => window.AdGigaFallback();
+    }
+
+    // زر مشاهدة الإعلان
+    document.getElementById('watchBtn').addEventListener('click', async () => {
+      setStatus('جارٍ طلب الإعلان...');
+      try {
+        if (typeof window.showGiga !== 'function') {
+          throw new Error('showGiga غير موجود');
+        }
+
+        const res = await window.showGiga();
+        // نتيجة ممكن تختلف حسب مزود الإعلانات؛ هذا تحقق بسيط
+        if (res && res.rewarded) {
+          const reward = Number(res.rewardAmount || 10);
+          balance += reward;
+          localStorage.setItem('balance', balance);
+          document.getElementById('balance').textContent = balance;
+          setStatus(`🎉 تمت إضافة ${reward} نقاط`);
+        } else {
+          setStatus('لا يوجد إعلان متاح الآن.', true);
+        }
+
+      } catch (err) {
+        console.error('خطأ عرض الإعلان:', err);
+        setStatus('فشل عرض الإعلان — سيتم تجربة fallback.', true);
+        // محاولة fallback محلي
+        try {
+          const fb = await fallbackAd();
+          if (fb && fb.rewarded) {
+            const r = Number(fb.rewardAmount||5);
+            balance += r;
+            localStorage.setItem('balance', balance);
+            document.getElementById('balance').textContent = balance;
+            setStatus(`تمت إضافة ${r} نقطة (fallback)`);
+          }
+        } catch(e2){
+          console.error('فشل fallback:', e2);
+          setStatus('فشل تشغيل الإعلان التجريبي.', true);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
