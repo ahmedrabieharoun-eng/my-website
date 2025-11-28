@@ -1,49 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
-  <title>مشاهدة الإعلانات للربح</title>
-
-  <!-- تفعيل سكربت الإعلانات -->
+  <meta charset="utf-8">
+  <title>Debug TMA Ads</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://js.onclckvd.com/in-stream-ad-admanager/tma.js"></script>
-
   <style>
-    body {
-      font-family: Arial;
-      text-align: center;
-      padding-top: 50px;
-      background: #f4f4f4;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 15px 30px;
-      font-size: 20px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0059c9;
-    }
+    body{font-family:Arial;text-align:center;padding:30px}
+    #log{white-space:pre-wrap;text-align:left;margin:20px auto;width:90%;max-width:900px;background:#f7f7f7;border:1px solid #ddd;padding:12px;border-radius:6px}
+    button{padding:12px 18px;font-size:18px;border-radius:8px;background:#0b78e3;color:#fff;border:none;cursor:pointer}
   </style>
 </head>
-
 <body>
+  <h2>اختبار ظهور إعلان tma.js - Debug</h2>
+  <p>Spot ID المستخدم: <b>396807</b></p>
+  <button id="initBtn">تهيئة الإعلان</button>
+  <button id="playBtn" disabled>تشغيل الإعلان</button>
 
-<h2>اضغط لعرض إعلان والربح</h2>
+  <div id="log">سجل الأحداث سيظهر هنا...</div>
 
-<script>
-  // تهيئة الإعلانات
-  window.initCdTma?.({ id: '396807' })
-    .then(show => window.show = show)
-    .catch(e => console.log("Init Error:", e));
-</script>
+  <script>
+    const LOG = document.getElementById('log');
+    function log(...args){ 
+      console.log(...args);
+      LOG.textContent += '\n' + args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
+    }
 
-<!-- زر تشغيل الإعلان -->
-<button onclick="window.show?.().then(() => console.log('tma ad played')).catch(e => console.log(e))">
-  ▶ تشغيل الإعلان
-</button>
+    let showFn = null;
 
+    document.getElementById('initBtn').onclick = async () => {
+      log('>> استدعاء initCdTma...');
+      try {
+        // تأكد من تغيير id إذا لزم
+        const res = await window.initCdTma?.({ id: '396807' });
+        showFn = res;
+        if (typeof showFn === 'function') {
+          log('>> initCdTma نجح، دالة show متاحة.');
+          document.getElementById('playBtn').disabled = false;
+        } else {
+          log('>> initCdTma رجع:', res);
+        }
+      } catch(err){
+        log('!! خطأ أثناء initCdTma:', err);
+      }
+    };
+
+    document.getElementById('playBtn').onclick = async () => {
+      if (!showFn) { log('الدالة show غير مُهيئة'); return; }
+      log('>> استدعاء show() ...');
+      try {
+        const r = await showFn();
+        log('>> show() انتهت بنجاح:', r);
+      } catch(e) {
+        log('!! show() رمت خطأ:', e);
+      }
+    };
+
+    // عدّة تلميحات تلقائية للمستخدم
+    log('نصائح: تحقق من Network لمشاهدة طلبات إلى onclckvd.com أو دومينات الإعلان.');
+    log('أوقف AdBlock وجرب عبر http://localhost:8000');
+  </script>
 </body>
 </html>
