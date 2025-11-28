@@ -1,110 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>كسب من مشاهدة الإعلانات - مثال</title>
-  <style>
-    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
-    .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; max-width:600px; margin:auto; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-    button { padding: 10px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; }
-    #status { margin-top: 12px; }
-  </style>
-  <!-- سكربت الإعلانات المقدم -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مشاهدة إعلان وكسب نقاط</title>
+
+  <!-- سكربت الإعلانات -->
   <script src="https://ad.gigapub.tech/script?id=4102"></script>
+
+  <style>
+    body { font-family: Arial; direction: rtl; text-align: center; margin-top: 50px; }
+    button { padding: 12px 20px; font-size: 18px; cursor: pointer; border-radius: 8px; }
+    #status { margin-top: 20px; font-weight: bold; }
+  </style>
 </head>
 <body>
-  <div class="card">
-    <h2>كسب نقاط بمشاهدة إعلان</h2>
-    <p>اضغط على الزر لعرض إعلان وكسب مكافأة. (مثال تعليمي)</p>
 
-    <label for="userid">معرّف المستخدم (تجريبي):</label><br/>
-    <input id="userid" value="user_123" style="padding:8px;margin:8px 0;width:100%;" />
+  <h2>اضغط لكسب نقاط من مشاهدة الإعلانات</h2>
 
-    <button id="watchBtn">شاهد إعلان واكسب</button>
-
-    <div id="status"></div>
-    <div id="balance" style="margin-top:10px;font-weight:bold;">الرصيد: <span id="balVal">0</span> نقطة</div>
+  <div>
+    <p>رصيدك: <span id="balance">0</span> نقطة</p>
+    <button id="watchAdBtn">شاهد إعلان</button>
+    <p id="status"></p>
   </div>
 
-  <script>
-    // تهيئة رصيد محلي لتجربة
-    let balance = Number(localStorage.getItem('demo_balance') || 0);
-    document.getElementById('balVal').textContent = balance;
+<script>
+  // تحميل الرصيد من التخزين المحلي
+  let balance = Number(localStorage.getItem("balance") || 0);
+  document.getElementById("balance").textContent = balance;
 
-    const statusEl = document.getElementById('status');
-    const watchBtn = document.getElementById('watchBtn');
+  const statusEl = document.getElementById("status");
 
-    function setStatus(txt, isError=false) {
-      statusEl.textContent = txt;
-      statusEl.style.color = isError ? 'crimson' : 'green';
+  function setStatus(msg, error = false) {
+    statusEl.textContent = msg;
+    statusEl.style.color = error ? "red" : "green";
+  }
+
+  // زر مشاهدة الإعلان
+  document.getElementById("watchAdBtn").onclick = async () => {
+    setStatus("جارٍ فتح الإعلان...");
+
+    try {
+      if (!window.showGiga) {
+        setStatus("الإعلانات غير جاهزة حالياً.", true);
+        return;
+      }
+
+      const result = await window.showGiga();
+
+      // التحقق من استجابة الإعلان
+      if (result && result.rewarded) {
+        // تحديد قيمة المكافأة (افتراضي 10)
+        const reward = result.rewardAmount || 10;
+
+        balance += reward;
+        localStorage.setItem("balance", balance);
+        document.getElementById("balance").textContent = balance;
+
+        setStatus(`تمت إضافة ${reward} نقاط 🎉`);
+      } else {
+        setStatus("لم يتم منح مكافأة.", true);
+      }
+
+    } catch (err) {
+      console.error(err);
+      setStatus("حدث خطأ أثناء عرض الإعلان.", true);
     }
+  };
+</script>
 
-    // الحد من الضغط المتكرر لمنع إساءة الاستخدام على الواجهة الأمامية
-    let lastClickedAt = 0;
-    watchBtn.addEventListener('click', async () => {
-      const now = Date.now();
-      if (now - lastClickedAt < 3000) {
-        setStatus('من فضلك انتظر لحظة قبل محاولة أخرى.', true);
-        return;
-      }
-      lastClickedAt = now;
-
-      // تأكد أن مكتبة الإعلانات جاهزة
-      if (!window.showGiga || typeof window.showGiga !== 'function') {
-        setStatus('مكوّن الإعلانات غير جاهز حالياً.', true);
-        return;
-      }
-
-      setStatus('جارٍ فتح الإعلان...');
-
-      try {
-        // استدعاء showGiga — هذه الدالة مُزوَّدة من السكربت الذي أرسلتَه
-        const result = await window.showGiga();
-        // هنا نَفترض أن result يحتوي على بيانات مثل { rewarded: true, rewardAmount: 10, adId: '...'}
-        // لكن لأن واجهة الموفر قد تختلف، تأكد من الوثائق الفعلية
-        console.log('showGiga result:', result);
-
-        // تحقق أساسي في العميل قبل إرسال المطالبة إلى الخادم
-        if (!result || !result.rewarded) {
-          setStatus('لم تُمنح مكافأة من الإعلان.', true);
-          return;
-        }
-
-        const rewardAmount = result.rewardAmount || 10; // قيمة افتراضية إن لم تُعطَ
-        const adId = result.adId || null;
-        const userId = document.getElementById('userid').value || 'anonymous';
-
-        setStatus('تمت مشاهدة الإعلان — إرسال مطالبة للمصادقة...');
-
-        // أرسل مطالبة للمخدم للتحقق وتسجيل المكافأة (انظر الخادم أدناه)
-        const resp = await fetch('/claim-reward', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId,
-            rewardAmount,
-            adId,
-            providerPayload: result // إرسال الرد الكامل للمزود ليتحقق الخادم
-          })
-        });
-
-        const json = await resp.json();
-        if (!resp.ok) {
-          setStatus('فشل التحقق على الخادم: ' + (json?.message || resp.statusText), true);
-          return;
-        }
-
-        // نجاح: حدّث الواجهة المحلية
-        balance += Number(json.grantedAmount || rewardAmount);
-        localStorage.setItem('demo_balance', balance);
-        document.getElementById('balVal').textContent = balance;
-        setStatus('تمت إضافة المكافأة 🎉 — ' + (json.grantedAmount || rewardAmount) + ' نقطة');
-      } catch (e) {
-        console.error(e);
-        setStatus('حدث خطأ أثناء عرض الإعلان أو المطالبة بالمكافأة.', true);
-      }
-    });
-  </script>
 </body>
 </html>
