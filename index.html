@@ -3,79 +3,108 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>اختبار Adextra — aborabie_fullscreen</title>
-
-  <!-- سكربت الـ Placement الجديد -->
-  <script async src="https://partner.adextra.io/jt/c752c0a7af606bdc1a0bebf6a466fda6a3da0682.js"></script>
-
+  <title>كسب من مشاهدة الإعلانات - مثال</title>
   <style>
-    body { font-family: Arial, sans-serif; direction: rtl; padding:24px; background:#f4f7fb; color:#222; }
-    .card { max-width:900px; margin:0 auto; background:#fff; padding:20px; border-radius:10px; box-shadow:0 10px 30px rgba(10,20,40,0.06); }
-    h1 { margin:0 0 8px; font-size:20px }
-    p { color:#444 }
-    #ad-area { margin:18px 0; min-height:340px; display:flex; align-items:center; justify-content:center; border:2px dashed #e6eef8; border-radius:8px; background:linear-gradient(180deg,#fff,#f9fcff); text-align:center; }
-    button { padding:10px 14px; border-radius:8px; border:none; cursor:pointer; background:#0b76ef; color:#fff; margin-left:8px }
-    button.clear { background:#e04b4b }
+    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
+    .card { border: 1px solid #ddd; padding: 16px; border-radius: 8px; max-width:600px; margin:auto; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+    button { padding: 10px 16px; font-size: 16px; cursor: pointer; border-radius: 6px; }
+    #status { margin-top: 12px; }
   </style>
+  <!-- سكربت الإعلانات المقدم -->
+  <script src="https://ad.gigapub.tech/script?id=4102"></script>
 </head>
 <body>
   <div class="card">
-    <h1>اختبار Adextra — aborabie_fullscreen</h1>
+    <h2>كسب نقاط بمشاهدة إعلان</h2>
+    <p>اضغط على الزر لعرض إعلان وكسب مكافأة. (مثال تعليمي)</p>
 
-    <!-- Block الجديد للـ placement الجديد -->
-    <div id="c752c0a7af606bdc1a0bebf6a466fda6a3da0682">
-      <div id="ad-area">مكان الإعلان — في انتظار تحميل Adextra…</div>
-    </div>
+    <label for="userid">معرّف المستخدم (تجريبي):</label><br/>
+    <input id="userid" value="user_123" style="padding:8px;margin:8px 0;width:100%;" />
 
-    <button id="showAdBtn">عرض الإعلان الآن</button>
-    <button id="clearBtn" class="clear">مسح المحتوى</button>
+    <button id="watchBtn">شاهد إعلان واكسب</button>
+
+    <div id="status"></div>
+    <div id="balance" style="margin-top:10px;font-weight:bold;">الرصيد: <span id="balVal">0</span> نقطة</div>
   </div>
 
   <script>
-    const placementId = "c752c0a7af606bdc1a0bebf6a466fda6a3da0682";
+    // تهيئة رصيد محلي لتجربة
+    let balance = Number(localStorage.getItem('demo_balance') || 0);
+    document.getElementById('balVal').textContent = balance;
 
-    // تابع p المطلوب حسب وثائق Adextra
-    var p = function(){};
+    const statusEl = document.getElementById('status');
+    const watchBtn = document.getElementById('watchBtn');
 
-    function onSuccess() {
-      console.log("Ad shown successfully:", placementId);
-      document.getElementById("ad-area").innerText = "تم عرض الإعلان بنجاح.";
+    function setStatus(txt, isError=false) {
+      statusEl.textContent = txt;
+      statusEl.style.color = isError ? 'crimson' : 'green';
     }
 
-    function onError(err) {
-      console.error("Ad error:", err);
-      document.getElementById("ad-area").innerText = "فشل عرض الإعلان — تحقق من Console.";
-    }
-
-    // محاولة عرض الإعلان بعد تحميل الصفحة
-    function tryShowAd() {
-      if (typeof p_adextra === "function") {
-        console.log("Calling p_adextra…");
-        try {
-          // الصيغة الأساسية حسب الوثيقة
-          p_adextra(p);
-
-          // أو عند الحاجة:
-          // p_adextra(onSuccess, onError);
-
-        } catch (e) {
-          console.error("Error calling p_adextra:", e);
-        }
-      } else {
-        console.log("p_adextra not ready yet — retrying…");
-        setTimeout(tryShowAd, 500);
+    // الحد من الضغط المتكرر لمنع إساءة الاستخدام على الواجهة الأمامية
+    let lastClickedAt = 0;
+    watchBtn.addEventListener('click', async () => {
+      const now = Date.now();
+      if (now - lastClickedAt < 3000) {
+        setStatus('من فضلك انتظر لحظة قبل محاولة أخرى.', true);
+        return;
       }
-    }
+      lastClickedAt = now;
 
-    document.addEventListener("DOMContentLoaded", () => {
-      setTimeout(tryShowAd, 1000);
+      // تأكد أن مكتبة الإعلانات جاهزة
+      if (!window.showGiga || typeof window.showGiga !== 'function') {
+        setStatus('مكوّن الإعلانات غير جاهز حالياً.', true);
+        return;
+      }
+
+      setStatus('جارٍ فتح الإعلان...');
+
+      try {
+        // استدعاء showGiga — هذه الدالة مُزوَّدة من السكربت الذي أرسلتَه
+        const result = await window.showGiga();
+        // هنا نَفترض أن result يحتوي على بيانات مثل { rewarded: true, rewardAmount: 10, adId: '...'}
+        // لكن لأن واجهة الموفر قد تختلف، تأكد من الوثائق الفعلية
+        console.log('showGiga result:', result);
+
+        // تحقق أساسي في العميل قبل إرسال المطالبة إلى الخادم
+        if (!result || !result.rewarded) {
+          setStatus('لم تُمنح مكافأة من الإعلان.', true);
+          return;
+        }
+
+        const rewardAmount = result.rewardAmount || 10; // قيمة افتراضية إن لم تُعطَ
+        const adId = result.adId || null;
+        const userId = document.getElementById('userid').value || 'anonymous';
+
+        setStatus('تمت مشاهدة الإعلان — إرسال مطالبة للمصادقة...');
+
+        // أرسل مطالبة للمخدم للتحقق وتسجيل المكافأة (انظر الخادم أدناه)
+        const resp = await fetch('/claim-reward', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            rewardAmount,
+            adId,
+            providerPayload: result // إرسال الرد الكامل للمزود ليتحقق الخادم
+          })
+        });
+
+        const json = await resp.json();
+        if (!resp.ok) {
+          setStatus('فشل التحقق على الخادم: ' + (json?.message || resp.statusText), true);
+          return;
+        }
+
+        // نجاح: حدّث الواجهة المحلية
+        balance += Number(json.grantedAmount || rewardAmount);
+        localStorage.setItem('demo_balance', balance);
+        document.getElementById('balVal').textContent = balance;
+        setStatus('تمت إضافة المكافأة 🎉 — ' + (json.grantedAmount || rewardAmount) + ' نقطة');
+      } catch (e) {
+        console.error(e);
+        setStatus('حدث خطأ أثناء عرض الإعلان أو المطالبة بالمكافأة.', true);
+      }
     });
-
-    document.getElementById("showAdBtn").onclick = tryShowAd;
-    document.getElementById("clearBtn").onclick = () => {
-      document.getElementById("ad-area").innerText = "مكان الإعلان — تم مسح المحتوى.";
-    };
   </script>
-
 </body>
 </html>
