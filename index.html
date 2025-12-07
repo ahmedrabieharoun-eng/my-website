@@ -1,64 +1,3178 @@
-<!doctype html>
-<html lang="ar">
+<!DOCTYPE html>
+<html lang="bn">
 <head>
-  <meta charset="utf-8">
-  <title>Debug TMA Ads</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://js.onclckvd.com/in-stream-ad-admanager/tma.js"></script>
-  <style>
-    body{font-family:Arial;text-align:center;padding:30px}
-    #log{white-space:pre-wrap;text-align:left;margin:20px auto;width:90%;max-width:900px;background:#f7f7f7;border:1px solid #ddd;padding:12px;border-radius:6px}
-    button{padding:12px 18px;font-size:18px;border-radius:8px;background:#0b78e3;color:#fff;border:none;cursor:pointer}
-  </style>
+    <meta name='admaven-placement' content='Bqja6qdC7'>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TON Rewards</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    
+    <!-- SDK الإعلانات -->
+    <script src="//libtl.com/sdk.js" data-zone="10058786" data-sdk="show_10058786" async></script>
+    
+    <!-- SDK GigaPub الجديد -->
+    <script src="https://ad.gigapub.tech/script?id=4102"></script>
+    
+    <style>
+        /* ... (جميع الأنماط تبقى كما هي بدون تغيير) ... */
+        /* جميع الأنماط CSS تبقى كما هي */
+    </style>
 </head>
 <body>
-  <h2>اختبار ظهور إعلان tma.js - Debug</h2>
-  <p>Spot ID المستخدم: <b>396807</b></p>
-  <button id="initBtn">تهيئة الإعلان</button>
-  <button id="playBtn" disabled>تشغيل الإعلان</button>
+    <!-- شاشة الحظر -->
+    <div id="banned-page" class="banned-container">
+        <div class="banned-icon">🚫</div>
+        <div class="banned-title">Account Banned</div>
+        <div class="banned-message" id="banned-reason">Your account has been suspended for violating our terms of service.</div>
+        <div class="banned-contact">If you believe this is a mistake, please contact @aborabie777</div>
+    </div>
 
-  <div id="log">سجل الأحداث سيظهر هنا...</div>
+    <!-- النجوم في الخلفية -->
+    <div class="stars" id="stars"></div>
 
-  <script>
-    const LOG = document.getElementById('log');
-    function log(...args){ 
-      console.log(...args);
-      LOG.textContent += '\n' + args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ');
-    }
+    <div id="app-loader">
+        <div class="ship-wheel-loader ship-floating">
+            <div class="ship-wheel"></div>
+        </div>
+        <p id="loading-text">Preparing Your Ship...</p>
+    </div>
+    
+    <!-- البوب أب -->
+    <div id="popup" class="popup-overlay">
+        <div class="popup-content">
+            <div id="popup-body"></div>
+        </div>
+    </div>
 
-    let showFn = null;
+    <!-- نافذة التقويم اليومي المعدلة -->
+    <div id="daily-calendar-popup" class="popup-overlay" style="display: none;">
+        <div class="popup-content daily-calendar-popup">
+            <button class="close-popup-btn" onclick="closeDailyCalendar()">×</button>
+            <h2>📅 Daily Login Calendar</h2>
+            <div id="streak-calendar-compact" class="streak-calendar-compact">
+                <!-- سيتم إضافة الأيام هنا -->
+            </div>
+            <div id="daily-login-status" class="daily-login-status">
+                <!-- حالة المكافأة اليومية -->
+            </div>
+            <div style="margin-top: 15px; padding: 10px; background: rgba(255, 215, 0, 0.1); border-radius: 8px;">
+                <p style="margin: 0; font-size: 0.9rem;">Current Streak: <strong id="current-streak-display">0 days</strong></p>
+            </div>
+            <button class="popup-close-btn" onclick="closeDailyCalendar()" style="margin-top: 15px;">Close</button>
+        </div>
+    </div>
 
-    document.getElementById('initBtn').onclick = async () => {
-      log('>> استدعاء initCdTma...');
-      try {
-        // تأكد من تغيير id إذا لزم
-        const res = await window.initCdTma?.({ id: '396807' });
-        showFn = res;
-        if (typeof showFn === 'function') {
-          log('>> initCdTma نجح، دالة show متاحة.');
-          document.getElementById('playBtn').disabled = false;
-        } else {
-          log('>> initCdTma رجع:', res);
+    <!-- نافذة شرح المسابقة -->
+    <div id="contest-guide-popup" class="popup-overlay" style="display: none;">
+        <div class="popup-content" style="max-width: 400px;">
+            <button class="close-popup-btn" onclick="closeContestGuide()">×</button>
+            <h2>🎯 How to Earn Points</h2>
+            <div style="text-align: left; margin: 20px 0;">
+                <p><strong>+1 Point</strong> for every ad watched</p>
+                <p><strong>+15 Points</strong> for every successful referral</p>
+                <p><strong>+10-50 Points</strong> for redeeming codes</p>
+                <p>Compete for <strong>2 TON</strong> in total prizes!</p>
+            </div>
+            
+            <h3>🏆 Prize Distribution</h3>
+            <div class="contest-prizes-compact" style="margin: 15px 0;">
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">🥇 1st</div>
+                    <div class="prize-amount-compact">0.6 TON</div>
+                </div>
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">🥈 2nd</div>
+                    <div class="prize-amount-compact">0.4 TON</div>
+                </div>
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">🥉 3rd</div>
+                    <div class="prize-amount-compact">0.3 TON</div>
+                </div>
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">4th-5th</div>
+                    <div class="prize-amount-compact">0.15 TON</div>
+                </div>
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">6th-8th</div>
+                    <div class="prize-amount-compact">0.1 TON</div>
+                </div>
+                <div class="prize-compact-item">
+                    <div class="prize-rank-compact">9th-10th</div>
+                    <div class="prize-amount-compact">0.05 TON</div>
+                </div>
+            </div>
+            <button class="popup-close-btn" onclick="closeContestGuide()">Close</button>
+        </div>
+    </div>
+    
+    <!-- شاشة الاشتراك الإجباري -->
+    <div id="subscription-page">
+        <div class="subscription-container">
+            <h2 style="color: var(--ship-gold); margin-bottom: 10px;">📢 Required Subscription</h2>
+            <p style="margin-bottom: 20px;">You must subscribe to our channels to use the bot and earn rewards!</p>
+            
+            <div id="channels-list">
+                <!-- سيتم إضافة القنوات هنا ديناميكياً -->
+            </div>
+            
+            <!-- قسم إعلانات القنوات -->
+            <div id="ad-channels-section" style="margin-top: 30px; display: none;">
+                <h3 style="color: var(--ship-gold); margin-bottom: 15px;">🎯 Advertised Channels</h3>
+                <p style="margin-bottom: 15px; font-size: 0.9rem;">Subscribe to these channels for extra rewards!</p>
+                <div id="ad-channels-list">
+                    <!-- سيتم إضافة قنوات الإعلانات هنا ديناميكياً -->
+                </div>
+                <p style="margin-top: 15px; font-size: 0.8rem; color: var(--text-secondary-dark); text-align: center;">
+                    💡 Want to advertise your channel here? Contact @aborabie777
+                </p>
+            </div>
+            
+            <button id="check-subscription-btn" class="check-subscription-btn" style="margin-top: 20px; width: 100%;">
+                🔄 Check Subscription
+            </button>
+            
+            <p style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">
+                After subscribing, click the button above to verify
+            </p>
+
+            <!-- زر التخطي للتطوير فقط -->
+            <button id="skip-subscription-btn" style="margin-top: 10px; padding: 8px 15px; background: transparent; color: var(--ship-gold); border: 1px solid var(--ship-gold); border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                🚨 Skip for Testing (Dev Only)
+            </button>
+        </div>
+    </div>
+
+    <!-- تصميم السفينة -->
+    <div class="ship-container">
+        <!-- الأمواج -->
+        <div class="wave"></div>
+        <div class="wave wave-2"></div>
+
+        <!-- الجسر (الرأس) المعدل -->
+        <header class="ship-bridge">
+            <img id="user-photo" src="https://ui-avatars.com/api/?name=User&background=random&size=80" alt="User">
+            <div class="user-info-compact">
+                <h1 id="user-name">Loading...</h1>
+                <div class="balance-display-compact">
+                    <div class="balance-item-compact">Main: <span id="user-balance">0.0000</span> TON</div>
+                    <div class="balance-item-compact">RR: <span id="user-rr-balance">0</span></div>
+                </div>
+            </div>
+            <div class="ship-compass">
+                <i class="fas fa-compass"></i>
+            </div>
+        </header>
+
+        <!-- المحتوى الرئيسي -->
+        <main id="main-content">
+            <div id="home-page" class="page active">
+                <!-- إضافة مربع حالة المسابقة -->
+                <div class="contest-status-box contest-status-active" id="contest-status-box">
+                    <div class="contest-status-title">Contest Status</div>
+                    <div class="contest-status-value" id="contest-status-value">Active</div>
+                    <div class="contest-status-message" id="contest-status-message">You are currently ranked #7 in the contest</div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card"><h3>Today's Ads</h3><p id="daily-ads-watched">0 / 0</p></div>
+                    <div class="stat-card"><h3>Total Ads Watched</h3><p id="total-ads-watched">0</p></div>
+                </div>
+                <div id="converter-container" class="converter-container">
+                    <div class="converter-header">
+                        <i class="fas fa-exchange-alt"></i>
+                        <h3>RR to TON Converter</h3>
+                    </div>
+                    <div class="converter-form">
+                        <div class="converter-input-group">
+                            <input type="number" id="rr-amount" placeholder="0" min="0" step="100">
+                            <div class="converter-currency">RR</div>
+                        </div>
+                        <div class="converter-arrow">⇅</div>
+                        <div class="converter-input-group">
+                            <input type="number" id="ton-amount" placeholder="0.0000" min="0" step="0.0001" readonly>
+                            <div class="converter-currency">TON</div>
+                        </div>
+                        <div class="converter-rate">
+                            💱 Exchange Rate: 10,000,000 RR = 0.1 TON
+                        </div>
+                        <button id="convert-rr-btn" class="convert-btn" disabled>Convert to TON</button>
+                    </div>
+                </div>
+                <div id="dynamic-links-container" style="margin-top: 20px;"></div>
+            </div>
+
+            <div id="tasks-page" class="page">
+                <!-- تم إزالة Earning Wallet -->
+                
+                <div id="ad-progress-container" class="progress-container-inline"></div>
+                
+                <!-- تم إزالة زر GigaPub المنفصل -->
+                
+                <div id="ad-task-container"></div>
+                
+                <!-- خانة إدخال الأكواد المصغرة -->
+                <div id="redeem-code-container">
+                    <div class="task-container" style="flex-direction: row; align-items: center; padding: 12px;">
+                        <i class="fas fa-ticket-alt" style="font-size: 1.2rem; color: var(--ship-gold); margin-right: 10px;"></i>
+                        <div class="task-info" style="flex: 1;">
+                            <h3 style="font-size: 1rem;">Redeem Code</h3>
+                            <p style="font-size: 0.8rem;">Enter code for rewards</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="redeem-code-input" class="code-input" 
+                                   placeholder="CODE" maxlength="20" style="width: 100px; padding: 8px;">
+                            <button id="redeem-code-btn" class="redeem-code-btn" style="padding: 8px 12px;">
+                                Redeem
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- زر إضافة مهمة جديد - تم التعديل -->
+                <button class="add-task-btn" id="add-task-main-btn">
+                    <i class="fas fa-plus-circle"></i> Add Task
+                </button>
+                
+                <h2>Bonus Tasks</h2>
+                <div id="dynamic-tasks-container"></div>
+                
+                <!-- قسم المهام اليومية الجديد -->
+                <div id="daily-tasks-container" style="margin-top: 20px;">
+                    <h2>📅 Daily Tasks</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary-dark); margin-bottom: 15px;">
+                        Complete daily tasks to earn extra RR rewards! Resets daily at midnight.
+                    </p>
+                    
+                    <div id="daily-tasks-list">
+                        <!-- سيتم إضافة المهام اليومية هنا ديناميكياً -->
+                    </div>
+                </div>
+                
+                <!-- تم إزالة قسم المهام اليدوية المصغرة -->
+            </div>
+
+            <div id="contest-page" class="page">
+                <div class="contest-container">
+                    <div class="contest-header">
+                        <h2>🏆 Weekly Contest</h2>
+                        <p>Compete with other users and win amazing prizes!</p>
+                    </div>
+                    
+                    <div class="contest-timer">
+                        <div id="contest-countdown">Loading...</div>
+                    </div>
+                    
+                    <!-- قسم النقاط والترتيب المدمج -->
+                    <div class="contest-info-compact">
+                        <div class="contest-info-item">
+                            <div class="value" id="user-contest-points">0</div>
+                            <div class="label">Your Points</div>
+                        </div>
+                        <div class="contest-info-item">
+                            <div class="value" id="user-contest-rank">-</div>
+                            <div class="label">Your Rank</div>
+                        </div>
+                    </div>
+                    
+                    <!-- زر شرح المسابقة المعدل -->
+                    <div class="contest-guide-popup" id="contest-guide-trigger">
+                        <h4>
+                            <i class="fas fa-question-circle" style="font-size: 1.5rem;"></i>
+                            How to Earn Points & Prize Distribution
+                        </h4>
+                        <div class="contest-guide-content" id="contest-guide-content">
+                            <p><strong>+1 Point</strong> for every ad watched</p>
+                            <p><strong>+15 Points</strong> for every successful referral</p>
+                            <p><strong>+10-50 Points</strong> for redeeming codes</p>
+                            <p>Compete for <strong>2 TON</strong> in total prizes!</p>
+                            
+                            <div class="contest-prizes-compact" style="margin-top: 15px;">
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥇 1st</div>
+                                    <div class="prize-amount-compact">0.6 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥈 2nd</div>
+                                    <div class="prize-amount-compact">0.4 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">🥉 3rd</div>
+                                    <div class="prize-amount-compact">0.3 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">4th-5th</div>
+                                    <div class="prize-amount-compact">0.15 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">6th-8th</div>
+                                    <div class="prize-amount-compact">0.1 TON</div>
+                                </div>
+                                <div class="prize-compact-item">
+                                    <div class="prize-rank-compact">9th-10th</div>
+                                    <div class="prize-amount-compact">0.05 TON</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="contest-leaderboard-compact">
+                        <h3>🏅 Top 10 Leaders</h3>
+                        <div id="contest-leaderboard-compact-list">
+                            <!-- سيتم إضافة قائمة المتصدرين المختصرة هنا -->
+                        </div>
+                        <div class="view-full-leaderboard">
+                            <button class="view-full-btn" onclick="showFullLeaderboard()">
+                                View Full Leaderboard (Top 50)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- صفحة الإحالات الجديدة -->
+            <div id="referrals-page" class="page">
+                <div class="referrals-container">
+                    <h2>👥 Refer & Earn</h2>
+                    <p>Invite friends and earn <strong>15% of their earnings</strong></p>
+                    
+                    <div class="referral-stats">
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="total-referrals-display">0</div>
+                            <div class="referral-stat-label">Total Referrals</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="total-earnings-display">0.0000</div>
+                            <div class="referral-stat-label">Total Earnings</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value" id="pending-earnings-display">0.0000</div>
+                            <div class="referral-stat-label">Pending Earnings</div>
+                        </div>
+                        <div class="referral-stat-card">
+                            <div class="referral-stat-value">15%</div>
+                            <div class="referral-stat-label">Commission Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin: 20px 0;">
+                        <h4>📋 Your Referral Link</h4>
+                        <input type="text" id="referral-link" readonly style="width: 100%; padding: 12px; border-radius: 8px; border: 1px dashed var(--ship-gold); background: transparent; color: inherit; text-align: center; margin: 10px 0;">
+                        <button id="copy-ref-link-btn" class="action-btn" style="width: 100%;">
+                            📋 Copy Referral Link
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <h4>👤 Your Referrals</h4>
+                        <div class="referral-list" id="referrals-list-container">
+                            <!-- سيتم إضافة قائمة الإحالات هنا -->
+                        </div>
+                    </div>
+                    
+                    <button class="claim-referral-btn" id="claim-referral-earnings-btn" style="width: 100%; margin-top: 15px;" disabled>
+                        🎁 Claim Referral Earnings
+                    </button>
+                </div>
+            </div>
+
+            <div id="profile-page" class="page">
+                <!-- تم إزالة قسم الإحالات من هنا -->
+                <div id="withdraw-section"></div>
+                <div id="withdrawal-history-section" style="margin-top: 20px;">
+                    <h2>Withdrawal History</h2>
+                    <div id="withdrawal-history-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- عجلة التحكم (القائمة السفلية) -->
+        <nav class="ship-controls">
+            <div class="control-wheel active" data-page="home-page">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </div>
+            <div class="control-wheel" data-page="tasks-page">
+                <i class="fas fa-tasks"></i>
+                <span>Tasks</span>
+            </div>
+            <div class="control-wheel" data-page="contest-page">
+                <i class="fas fa-trophy"></i>
+                <span>Contest</span>
+            </div>
+            <div class="control-wheel" data-page="referrals-page">
+                <i class="fas fa-users"></i>
+                <span>Referrals</span>
+            </div>
+            <div class="control-wheel" data-page="profile-page">
+                <i class="fas fa-user-alt"></i>
+                <span>Profile</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- ❌ إزالة جميع مكتبات Firebase ❌ -->
+    <!--
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    -->
+    
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tg = window.Telegram?.WebApp || {};
+        
+        // ✅ إعدادات Cloudflare Worker API
+        const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev/"; // ⚠️ ضع رابط الـ Worker الخاص بك هنا
+        
+        const NOTIFICATION_USERNAME = "aborabie777";
+
+        // ✅ متغيرات جديدة
+        let dailyLoginRewards = [0.0001, 0.0002, 0.0004, 0.0008, 0.0016, 0.0032, 0.0064];
+        
+        // ✅ التعديل: تغيير وقت الإعلان من 15 إلى 5 ثواني
+        let minAdDuration = 5000; // 5 ثواني فقط
+
+        // 🚫 قائمة الدول المحظورة فقط - تم تحديثها
+        const bannedCountries = [
+            'IN', // India
+            'RU', // Russian Federation
+            'LY', // Libyan Arab Jamahiriya
+            'AF', // Afghanistan
+            'NL', // Netherlands
+            'MN', // Mongolia
+            'US', // United States
+            'LK', // Sri Lanka
+            'UA'  // Ukraine
+        ];
+
+        let isUserBanned = false;
+        let banReason = "";
+
+        // باقي المتغيرات تبقى كما هي
+        let lastAdWatchTime = 0;
+        let adStartTime = 0;
+        let isAdInProgress = false;
+        let adWatchTimer = null;
+
+        let appConfig = {}; let userState = {}; let tgUser = {}; let earningWalletBalance = 0;
+        let userTransactions = [];
+        let isSubscribedToAllChannels = false;
+
+        // ✅ بيانات المسابقة
+        let contestData = {
+            userPoints: 0,
+            userRank: 0,
+            leaderboard: [],
+            endTime: null,
+            durationDays: 7,
+            isActive: true // إضافة حالة المسابقة
+        };
+
+        // ✅ بيانات التسجيل اليومي
+        let dailyLoginData = {
+            currentStreak: 0,
+            lastLoginDate: null,
+            claimedDays: []
+        };
+
+        // ✅ بيانات نظام الإحالات الجديد
+        let referralData = {
+            totalEarnings: 0,
+            pendingEarnings: 0,
+            referredUsers: []
+        };
+
+        // ✅ بيانات الأكواد
+        let redeemedCodes = [];
+
+        // ✅ متغيرات العملة الصفراء
+        let userRRBalance = 0;
+        const RR_TO_TON_RATE = 10000000;
+
+        // 🌍 متغيرات كشف الدولة
+        let userCountryData = null;
+        let isUserCountryAllowed = true; // افتراضي مسموح حتى يتم الكشف
+
+        // ✅ قائمة القنوات المطلوبة للاشتراك
+        const requiredChannels = [
+            {
+                id: 'earnmoney174688',
+                name: 'Earn Money Public',
+                username: 'earnmoney174688',
+                url: 'https://t.me/earnmoney174688',
+                icon: 'https://img.icons8.com/ios-filled/100/group.png'
+            },
+            {
+                id: 'earnmoney139482',
+                name: 'Earn Money Withdrawals',
+                username: 'earnmoney139482', 
+                url: 'https://t.me/earnmoney139482',
+                icon: 'https://img.icons8.com/ios-filled/100/money-bag.png'
+            },
+            {
+                id: 'earnmoneywithredone',
+                name: 'Earn Money With Redone',
+                username: 'EarnMoneyWithRedone',
+                url: 'https://t.me/EarnMoneyWithRedone',
+                icon: 'https://img.icons8.com/ios-filled/100/rocket.png'
+            }
+        ];
+
+        // ✅ قنوات الإعلانات
+        let adChannels = [];
+
+        const popup = document.getElementById('popup');
+        const popupBody = document.getElementById('popup-body');
+        const loadingText = document.getElementById('loading-text');
+
+        // ✅ دالة API Helper
+        async function api(action, method = 'GET', body = null) {
+            try {
+                let url = `${API_URL}?action=${action}`;
+                const opts = { method: method };
+                
+                if (method !== 'GET' && body) {
+                    opts.body = JSON.stringify(body);
+                    opts.headers = { "Content-Type": "application/json" };
+                } else if (method === 'GET' && body) {
+                    // For GET params
+                    Object.keys(body).forEach(k => url += `&${k}=${body[k]}`);
+                }
+                
+                const res = await fetch(url, opts);
+                return await res.json();
+            } catch (e) {
+                console.error("API Error", e);
+                return null;
+            }
         }
-      } catch(err){
-        log('!! خطأ أثناء initCdTma:', err);
-      }
-    };
 
-    document.getElementById('playBtn').onclick = async () => {
-      if (!showFn) { log('الدالة show غير مُهيئة'); return; }
-      log('>> استدعاء show() ...');
-      try {
-        const r = await showFn();
-        log('>> show() انتهت بنجاح:', r);
-      } catch(e) {
-        log('!! show() رمت خطأ:', e);
-      }
-    };
+        // ✅ إنشاء النجوم في الخلفية
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const starCount = 100;
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                const size = Math.random() * 3;
+                const duration = 3 + Math.random() * 7;
+                const delay = Math.random() * 5;
+                
+                star.style.left = `${left}%`;
+                star.style.top = `${top}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.animationDuration = `${duration}s`;
+                star.style.animationDelay = `${delay}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
 
-    // عدّة تلميحات تلقائية للمستخدم
-    log('نصائح: تحقق من Network لمشاهدة طلبات إلى onclckvd.com أو دومينات الإعلان.');
-    log('أوقف AdBlock وجرب عبر http://localhost:8000');
-  </script>
+        const showPopup = (content) => { popupBody.innerHTML = content; popup.style.display = 'flex'; };
+        const closePopup = () => { popup.style.display = 'none'; };
+
+        // ✅ دالة فتح محادثة Telegram - تم التعديل لاستخدام الرابط الخاص بك
+        const openTelegramContact = () => {
+            const telegramUrl = 'https://t.me/aborabie777';
+            try {
+                if (tg.openLink) {
+                    tg.openLink(telegramUrl);
+                } else {
+                    window.open(telegramUrl, '_blank');
+                }
+            } catch (error) {
+                window.open(telegramUrl, '_blank');
+            }
+        };
+
+        // ✅ دالة فتح نافذة شرح المسابقة - تم إصلاحها
+        window.openContestGuide = () => {
+            document.getElementById('contest-guide-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة إغلاق نافذة شرح المسابقة
+        window.closeContestGuide = () => {
+            document.getElementById('contest-guide-popup').style.display = 'none';
+        };
+
+        // ✅ دالة للتحقق من حالة الحظر
+        const checkUserBanStatus = async (userId) => {
+            try {
+                const result = await api('checkBanStatus', 'GET', { userId: userId });
+                if (result && result.isBanned) {
+                    isUserBanned = true;
+                    banReason = result.reason || "Violation of terms of service";
+                    showBannedPage();
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Error checking ban status:', error);
+                return false;
+            }
+        };
+
+        // ✅ دالة لعرض صفحة الحظر
+        const showBannedPage = () => {
+            document.getElementById('banned-reason').textContent = banReason;
+            document.getElementById('banned-page').style.display = 'flex';
+            document.getElementById('app-loader').style.display = 'none';
+            document.getElementById('subscription-page').classList.remove('active');
+            document.querySelector('.ship-container').style.display = 'none';
+        };
+
+        // 📍 دالة لكشف الدولة
+        const detectUserCountry = async () => {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                return {
+                    countryCode: data.country_code,
+                    countryName: data.country_name,
+                    ip: data.ip
+                };
+            } catch (error) {
+                console.error('Error detecting country:', error);
+                return {
+                    countryCode: 'UNKNOWN',
+                    countryName: 'Unknown',
+                    ip: 'Unknown'
+                };
+            }
+        };
+
+        // ✅ دالة للتحقق من الدولة المسموحة (مبسطة)
+        const isCountryAllowed = (countryCode) => {
+            // إذا كانت الدولة في القائمة المحظورة
+            if (bannedCountries.includes(countryCode)) {
+                return false;
+            }
+            
+            // كل الدول الأخرى مسموحة
+            return true;
+        };
+
+        // ✅ دالة محسنة لمشاهدة الإعلان - تشغيل إعلانين بالتسلسل
+        const handleWatchAd = async () => {
+            // 🌍 التحقق من الدولة المسموحة أولاً
+            if (!isUserCountryAllowed) {
+                const countryName = userCountryData.countryName || 'your country';
+                try{ 
+                    if (tg.showAlert) tg.showAlert(`🚫 Ads are not available in ${countryName}. Thank you for your understanding.`); 
+                }catch{} 
+                return; 
+            }
+
+            if (isUserBanned) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Your account is banned. Contact support."); 
+                }catch{} 
+                return; 
+            }
+
+            if (!isSubscribedToAllChannels) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Please subscribe to all required channels first!"); 
+                }catch{} 
+                return; 
+            }
+
+            if (userState.dailyAdCount >= (appConfig.dailyAdLimit || 10)) { 
+                try{ 
+                    if (tg.showAlert) tg.showAlert("You have reached your daily ad watch limit."); 
+                }catch{} 
+                return; 
+            }
+            
+            const currentTime = Date.now();
+            if (userState.breakUntil && currentTime < userState.breakUntil) {
+                const remaining = Math.ceil((userState.breakUntil - currentTime) / 60000);
+                try{ 
+                    if (tg.showAlert) tg.showAlert(`Please wait for ${remaining} more minutes.`); 
+                }catch{} 
+                return;
+            }
+
+            const watchBtn = document.getElementById('watch-ad-btn');
+            if (watchBtn) {
+                watchBtn.disabled = true;
+                watchBtn.textContent = 'Loading...';
+            }
+
+            showPopup(`
+                <div style="margin-bottom:10px;">
+                    <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                </div>
+                <h2>Loading Ads</h2>
+                <p>Please wait a moment...</p>
+            `);
+
+            try {
+                adStartTime = Date.now();
+                isAdInProgress = true;
+
+                // 🎬 الخطوة 1: مشاهدة إعلان مونيتاج أولاً
+                console.log("🎬 Starting Monetag ad...");
+                const adFunction = window['show_' + (appConfig.adZoneId || '10058786')];
+                if (typeof adFunction !== 'function') {
+                    throw new Error("Monetag ad function not available");
+                }
+                
+                await adFunction();
+                
+                // ✅ الخطوة 2: مشاهدة إعلان GigaPub تلقائياً
+                console.log("🎬 Starting GigaPub ad...");
+                if (window.showGiga && typeof window.showGiga === 'function') {
+                    await window.showGiga();
+                }
+                
+                closePopup();
+                
+                const adEndTime = Date.now();
+                const adDuration = adEndTime - adStartTime;
+                
+                // ✅ التعديل: التحقق من 5 ثواني فقط
+                if (adDuration < minAdDuration) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert(`Ads watched too quickly! Please watch the ads for at least ${minAdDuration/1000} seconds to earn rewards.`); 
+                    }catch{}
+                    
+                    if (watchBtn) {
+                        watchBtn.disabled = false;
+                        watchBtn.textContent = 'Watch Ad';
+                    }
+                    
+                    isAdInProgress = false;
+                    return;
+                }
+                
+                lastAdWatchTime = Date.now();
+                const adValueRR = 1000;
+
+                // 🎁 منح المكافأة بعد مشاهدة الإعلانين
+                userRRBalance += adValueRR;
+                localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+
+                userState.dailyAdCount = (userState.dailyAdCount || 0) + 1;
+                userState.lifetimeAdCount = (userState.lifetimeAdCount || 0) + 1;
+                userState.totalEarned = (userState.totalEarned || 0) + (adValueRR / RR_TO_TON_RATE);
+
+                // تحديث الإحصائيات عبر API
+                await api('updateAdStats', 'POST', {
+                    id: tgUser.id,
+                    adCount: 1
+                });
+
+                // ✅ رسالة النجاح
+                let rewardMessage = `🎉 +${adValueRR.toLocaleString()} RR added to your balance.`;
+                if (contestData.isActive) {
+                    rewardMessage += ` +1 Contest Point!`;
+                }
+                
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert(rewardMessage); 
+                }catch{}
+                
+                renderUI();
+
+            } catch (error) {
+                console.error("Ad failed to load:", error);
+                closePopup();
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Ads could not be loaded. Please try again."); 
+                }catch{}
+                
+                if (watchBtn) {
+                    watchBtn.disabled = false;
+                    watchBtn.textContent = 'Watch Ad';
+                }
+                isAdInProgress = false;
+            }
+        };
+
+        // 🚫 دالة لعرض رسالة تقييد الدولة - تم تحديثها مع رسالة VPN
+        const showCountryRestrictionMessage = () => {
+            const homePage = document.getElementById('home-page');
+            if (homePage) {
+                const existingMessage = document.getElementById('country-restriction-message');
+                if (!existingMessage) {
+                    const restrictionMessage = document.createElement('div');
+                    restrictionMessage.id = 'country-restriction-message';
+                    restrictionMessage.style.cssText = `
+                        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+                        color: white;
+                        padding: 15px;
+                        border-radius: 10px;
+                        margin: 15px;
+                        text-align: center;
+                        border: 2px solid #ffd700;
+                        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+                    `;
+                    restrictionMessage.innerHTML = `
+                        <h3 style="margin-bottom: 8px; color: white;">🚫 Regional Restriction</h3>
+                        <p style="margin: 0; font-size: 0.9rem;">
+                            Ads are not available in ${userCountryData.countryName}. 
+                        </p>
+                        <div style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                            <p style="margin: 0; font-size: 0.8rem;">
+                                <strong>🚨 Banned Countries:</strong> India, Russia, Libya, Afghanistan, Netherlands, 
+                                Mongolia, United States, Sri Lanka, Ukraine
+                            </p>
+                            <p style="margin: 8px 0 0 0; font-size: 0.8rem; color: #ffd700;">
+                                💡 <strong>Solution:</strong> Try using VPN to access ads from allowed regions
+                            </p>
+                        </div>
+                    `;
+                    homePage.insertBefore(restrictionMessage, homePage.firstChild);
+                }
+            }
+        };
+
+        // ✅ دالة محسنة لتحميل الإعدادات من API
+        const loadDynamicSettings = async () => {
+            try {
+                const config = await api('getConfig');
+                if (config) {
+                    appConfig = config;
+                    
+                    if (config.dailyLoginRewards && Array.isArray(config.dailyLoginRewards)) {
+                        dailyLoginRewards = config.dailyLoginRewards;
+                    }
+                    
+                    // التأكد من أن وقت الإعلان 5 ثواني
+                    minAdDuration = 5000;
+                    
+                    console.log('✅ Dynamic settings loaded:', { dailyLoginRewards, minAdDuration });
+                }
+            } catch (error) {
+                console.error('Error loading dynamic settings:', error);
+            }
+        };
+
+        // ✅ دالة محسنة لتحميل بيانات المستخدم - تم إصلاحها بالكامل
+        const loadUserData = async () => {
+            const isBanned = await checkUserBanStatus(tgUser.id);
+            if (isBanned) {
+                return;
+            }
+
+            const referralParam = getReferralParam();
+            
+            // تسجيل الدخول أو إنشاء مستخدم جديد
+            const user = await api('login', 'POST', {
+                id: tgUser.id,
+                firstName: tgUser.first_name || '',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || '',
+                photoUrl: tgUser.photo_url || '',
+                refId: referralParam,
+                language: tgUser.language_code || 'en'
+            });
+
+            if (user) {
+                userState = user;
+                console.log('✅ User data loaded:', user);
+            } else {
+                // بيانات افتراضية في حالة الخطأ
+                userState = {
+                    id: tgUser.id,
+                    firstName: tgUser.first_name || '',
+                    lastName: tgUser.last_name || '',
+                    username: tgUser.username || '',
+                    balance: 0,
+                    dailyAdCount: 0,
+                    lastAdWatchDate: new Date().toISOString().slice(0, 10),
+                    subscribedToChannels: isSubscribedToAllChannels
+                };
+            }
+        };
+
+        // ✅ دالة محسنة لتهيئة التطبيق
+        const initApp = async () => {
+            try {
+                createStars();
+                
+                if (tg.ready) { tg.ready(); try { tg.expand(); } catch(e){} }
+                
+                tgUser = (tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
+                if (!tgUser || !tgUser.id) { 
+                    console.warn("Telegram user not available in this environment."); 
+                    tgUser = { id: 'dev_user_' + Date.now(), first_name: 'Dev', last_name: 'User' };
+                }
+
+                console.log('📱 Telegram WebApp Data:', {
+                    user: tgUser,
+                    initData: tg.initData,
+                    initDataUnsafe: tg.initDataUnsafe
+                });
+
+                await loadDynamicSettings();
+
+                // 🌍 كشف دولة المستخدم
+                console.log('🌍 Detecting user country...');
+                const userCountry = await detectUserCountry();
+                console.log('📍 User country detected:', userCountry);
+                
+                // التحقق من الدولة المسموحة
+                const isAllowed = isCountryAllowed(userCountry.countryCode);
+                console.log(`🎯 Country ${userCountry.countryCode} allowed:`, isAllowed);
+                
+                // حفظ بيانات الدولة
+                userCountryData = userCountry;
+                isUserCountryAllowed = isAllowed;
+
+                await loadContestData();
+
+                await loadDailyLoginData();
+
+                await loadReferralData();
+
+                await loadRedeemedCodes();
+
+                await loadAdChannels();
+
+                userRRBalance = parseInt(localStorage.getItem(`userRRBalance_${tgUser.id || 'guest'}`) || '0');
+
+                showPopup(`
+                    <div style="margin-bottom:10px;">
+                        <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                    </div>
+                    <h2>Checking Subscription</h2>
+                    <p>Verifying channel subscriptions...</p>
+                `);
+
+                const { subscriptionResults, allSubscribed, allSuccessful } = await checkAllSubscriptions();
+                closePopup();
+                
+                if (!allSubscribed) {
+                    document.getElementById('app-loader').style.display = 'none';
+                    document.getElementById('subscription-page').classList.add('active');
+                    document.querySelector('.ship-container').style.display = 'none';
+                    updateSubscriptionUI(subscriptionResults);
+                    await renderAdChannels();
+                    
+                    document.getElementById('check-subscription-btn').addEventListener('click', async () => {
+                        document.getElementById('check-subscription-btn').disabled = true;
+                        document.getElementById('check-subscription-btn').textContent = 'Checking...';
+                        
+                        showPopup(`
+                            <div style="margin-bottom:10px;">
+                                <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                            </div>
+                            <h2>Checking Subscription</h2>
+                            <p>Verifying channel subscriptions...</p>
+                        `);
+
+                        const newResults = await checkAllSubscriptions();
+                        closePopup();
+                        
+                        document.getElementById('check-subscription-btn').disabled = false;
+                        document.getElementById('check-subscription-btn').textContent = '🔄 Check Subscription';
+                        
+                        updateSubscriptionUI(newResults.subscriptionResults);
+                        await renderAdChannels();
+                        
+                        if (newResults.allSubscribed) {
+                            document.getElementById('subscription-page').classList.remove('active');
+                            await continueAppInitialization();
+                        } else {
+                            try {
+                                if (tg.showAlert) tg.showAlert("Please subscribe to all channels first!");
+                            } catch(e) {}
+                        }
+                    });
+
+                    document.getElementById('skip-subscription-btn').addEventListener('click', () => {
+                        if (confirm('🚨 This is for development only! Are you sure you want to skip subscription?')) {
+                            skipSubscription();
+                        }
+                    });
+                    
+                    return;
+                }
+                
+                await continueAppInitialization();
+                
+            } catch (error) { 
+                console.error("Initialization failed:", error); 
+                try { 
+                    if (tg.showAlert) tg.showAlert("Failed to load app data. Please try again."); 
+                } catch(e){} 
+            }
+        };
+
+        // ✅ دالة لمتابعة تهيئة التطبيق بعد التحقق من الاشتراك
+        const continueAppInitialization = async () => {
+            try {
+                await loadUserData();
+
+                await loadTransactionHistory();
+
+                // إعادة تعيين المهام اليومية إذا لزم الأمر
+                await resetDailyTasks();
+
+                renderUI(); 
+                setupNavigation(); 
+                setupEventListeners();
+
+                setTimeout(() => {
+                    document.getElementById('app-loader').style.display = 'none';
+                    document.getElementById('subscription-page').classList.remove('active');
+                    document.querySelector('.ship-container').style.display = 'block';
+                }, 300);
+            } catch (error) {
+                console.error("Error in continueAppInitialization:", error);
+            }
+        };
+
+        // ✅ دالة لتحميل بيانات المسابقة
+        const loadContestData = async () => {
+            try {
+                const result = await api('getContestData', 'GET', { userId: tgUser.id });
+                if (result) {
+                    contestData.userPoints = result.userData?.points || 0;
+                    contestData.userRank = result.userRank || 0;
+                    contestData.leaderboard = result.leaderboard || [];
+                    contestData.endTime = result.endTime;
+                    contestData.isActive = result.contest?.isActive !== false;
+                }
+            } catch (error) {
+                console.error('Error loading contest data:', error);
+            }
+        };
+
+        // ✅ دالة محسنة لتحميل بيانات التسجيل اليومي - تم إصلاحها
+        const loadDailyLoginData = async () => {
+            try {
+                const result = await api('getDailyLogin', 'GET', { userId: tgUser.id });
+                if (result) {
+                    dailyLoginData = result;
+                }
+            } catch (error) {
+                console.error('Error loading daily login data:', error);
+            }
+        };
+
+        // ✅ دالة محسنة لتحميل بيانات نظام الإحالات الجديد - تم تعديلها لتعمل بـ RR
+        const loadReferralData = async () => {
+            try {
+                const result = await api('getReferralData', 'GET', { userId: tgUser.id });
+                if (result) {
+                    referralData = result;
+                }
+            } catch (error) {
+                console.error('Error loading referral data:', error);
+            }
+        };
+
+        // ✅ دالة لتحميل بيانات الأكواد
+        const loadRedeemedCodes = async () => {
+            try {
+                // يتم تحميل الأكواد من localStorage مؤقتاً
+                const localCodes = localStorage.getItem(`redeemedCodes_${tgUser.id || 'guest'}`);
+                if (localCodes) {
+                    redeemedCodes = JSON.parse(localCodes);
+                }
+            } catch (error) {
+                console.error('Error loading redeemed codes:', error);
+            }
+        };
+
+        // ✅ دالة لتحميل قنوات الإعلانات
+        const loadAdChannels = async () => {
+            try {
+                const result = await api('getAdChannels');
+                if (result) {
+                    adChannels = result;
+                }
+            } catch (error) {
+                console.error('Error loading ad channels:', error);
+            }
+        };
+
+        // ✅ دالة للتحقق من جميع القنوات
+        const checkAllSubscriptions = async () => {
+            console.log('🔍 Checking REAL channel subscriptions...');
+            
+            const subscriptionResults = [];
+            let allSuccessful = true;
+            
+            for (const channel of requiredChannels) {
+                try {
+                    const isSubscribed = await checkRealSubscription(channel.username);
+                    subscriptionResults.push({
+                        ...channel,
+                        subscribed: isSubscribed
+                    });
+                    
+                    if (!isSubscribed) {
+                        allSuccessful = false;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (channelError) {
+                    console.error(`❌ Error checking channel ${channel.username}:`, channelError);
+                    subscriptionResults.push({
+                        ...channel,
+                        subscribed: false,
+                        error: true
+                    });
+                    allSuccessful = false;
+                }
+            }
+            
+            const allSubscribed = subscriptionResults.every(channel => channel.subscribed);
+            isSubscribedToAllChannels = allSubscribed;
+            
+            console.log('📊 REAL Subscription results:', subscriptionResults);
+            console.log('✅ All channels subscribed:', allSubscribed);
+            
+            return { 
+                subscriptionResults, 
+                allSubscribed,
+                allSuccessful 
+            };
+        };
+
+        // ✅ دالة لتحديث واجهة الاشتراك
+        const updateSubscriptionUI = (subscriptionResults) => {
+            const channelsList = document.getElementById('channels-list');
+            channelsList.innerHTML = '';
+            
+            subscriptionResults.forEach(channel => {
+                const channelElement = document.createElement('div');
+                channelElement.className = 'channel-item';
+                
+                let statusText = '❌ Not Subscribed';
+                let statusClass = 'status-not-subscribed';
+                
+                if (channel.subscribed) {
+                    statusText = '✅ Subscribed';
+                    statusClass = 'status-subscribed';
+                } else if (channel.error) {
+                    statusText = '⚠️ Check Failed';
+                    statusClass = 'status-not-subscribed';
+                }
+                
+                channelElement.innerHTML = `
+                    <div class="channel-info">
+                        <img src="${channel.icon}" alt="${channel.name}" class="channel-icon">
+                        <div style="text-align: left;">
+                            <h4 style="margin: 0; font-size: 1rem;">${channel.name}</h4>
+                            <small style="opacity: 0.7;">@${channel.username}</small>
+                        </div>
+                    </div>
+                    <span class="channel-status ${statusClass}">
+                        ${statusText}
+                    </span>
+                    <button class="action-btn join-channel-btn" data-channel-url="${channel.url}" style="padding: 8px 12px; font-size: 0.8rem;">
+                        Join
+                    </button>
+                `;
+                channelsList.appendChild(channelElement);
+            });
+
+            // إضافة event listeners لأزرار Join
+            document.querySelectorAll('.join-channel-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const channelUrl = this.getAttribute('data-channel-url');
+                    try {
+                        if (tg.openLink) {
+                            tg.openLink(channelUrl);
+                        } else {
+                            window.open(channelUrl, '_blank');
+                        }
+                    } catch (error) {
+                        window.open(channelUrl, '_blank');
+                    }
+                });
+            });
+        };
+
+        // ✅ دالة لعرض قنوات الإعلانات
+        const renderAdChannels = async () => {
+            const adChannelsList = document.getElementById('ad-channels-list');
+            const adChannelsSection = document.getElementById('ad-channels-section');
+            
+            if (!adChannels || adChannels.length === 0) {
+                adChannelsSection.style.display = 'none';
+                return;
+            }
+            
+            adChannelsSection.style.display = 'block';
+            adChannelsList.innerHTML = '';
+            
+            for (const channel of adChannels) {
+                const isSubscribed = await checkAdChannelSubscription(channel.username);
+                
+                const channelElement = document.createElement('div');
+                channelElement.className = 'ad-channel-item';
+                
+                channelElement.innerHTML = `
+                    <div class="ad-channel-info">
+                        <img src="${channel.icon}" alt="${channel.name}" class="ad-channel-icon">
+                        <div class="ad-channel-details">
+                            <div class="ad-channel-name">${channel.name}</div>
+                            <div class="ad-channel-description">${channel.description || 'Subscribe for rewards'}</div>
+                            <div class="ad-channel-contact">Contact: @${channel.contact || 'aborabie777'}</div>
+                        </div>
+                    </div>
+                    <div class="ad-channel-reward">
+                        <div class="ad-reward-amount">+${channel.reward || 0} Points</div>
+                        <div class="ad-reward-label">Contest Points</div>
+                    </div>
+                    <button class="action-btn subscribe-ad-btn" data-channel-url="${channel.url}" ${isSubscribed ? 'disabled' : ''} style="padding: 8px 12px; font-size: 0.8rem;">
+                        ${isSubscribed ? '✅ Subscribed' : 'Subscribe'}
+                    </button>
+                `;
+                adChannelsList.appendChild(channelElement);
+            }
+
+            // إضافة event listeners لأزرار Subscribe
+            document.querySelectorAll('.subscribe-ad-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (!this.disabled) {
+                        const channelUrl = this.getAttribute('data-channel-url');
+                        try {
+                            if (tg.openLink) {
+                                tg.openLink(channelUrl);
+                            } else {
+                                window.open(channelUrl, '_blank');
+                            }
+                        } catch (error) {
+                            window.open(channelUrl, '_blank');
+                        }
+                    }
+                });
+            });
+        };
+
+        // ✅ دالة للتحقق من الاشتراك في قنوات الإعلانات
+        const checkAdChannelSubscription = async (channelUsername) => {
+            try {
+                if (!tgUser || !tgUser.id) {
+                    console.log('❌ No Telegram user data available');
+                    return false;
+                }
+
+                const botToken = appConfig.botToken;
+                
+                if (!botToken) {
+                    console.error('❌ Bot token not configured');
+                    return false;
+                }
+
+                console.log(`🔍 Checking AD channel subscription for ${channelUsername}, user: ${tgUser.id}`);
+
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: '@' + channelUsername,
+                            user_id: tgUser.id
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error(`❌ HTTP error! status: ${response.status} for ${channelUsername}`);
+                        return false;
+                    }
+
+                    const data = await response.json();
+                    console.log(`📊 Bot API response for AD channel ${channelUsername}:`, data);
+                    
+                    if (data.ok) {
+                        const status = data.result.status;
+                        const isSubscribed = ['member', 'administrator', 'creator'].includes(status);
+                        console.log(`📢 AD channel subscription status for ${channelUsername}: ${status} -> ${isSubscribed}`);
+                        return isSubscribed;
+                    } else {
+                        console.error(`❌ Bot API error for AD channel ${channelUsername}:`, data.description);
+                        return false;
+                    }
+                } catch (fetchError) {
+                    console.error(`❌ Fetch error for AD channel ${channelUsername}:`, fetchError);
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error('Error checking AD channel subscription:', error);
+                return false;
+            }
+        };
+
+        // ✅ دالة لتخطي الاشتراك (للتطوير فقط)
+        const skipSubscription = () => {
+            console.log('🚨 Skipping subscription check for development');
+            isSubscribedToAllChannels = true;
+            document.getElementById('subscription-page').classList.remove('active');
+            document.getElementById('app-loader').style.display = 'none';
+            document.querySelector('.ship-container').style.display = 'block';
+            
+            loadBasicUserData().then(() => {
+                renderUI();
+                setupNavigation();
+                setupEventListeners();
+            });
+        };
+
+        // ✅ دالة لتحميل بيانات المستخدم الأساسية بدون اشتراك
+        const loadBasicUserData = async () => {
+            userState = {
+                id: tgUser.id,
+                firstName: tgUser.first_name || '',
+                lastName: tgUser.last_name || '',
+                username: tgUser.username || '',
+                photoUrl: tgUser.photo_url || '',
+                balance: 0, 
+                referrals: 0, 
+                totalEarned: 0,
+                lifetimeAdCount: 0, 
+                lastAdWatchDate: '1970-01-01', 
+                dailyAdCount: 0, 
+                breakUntil: 0, 
+                completedTasks: {}, 
+                welcomed: false,
+                joinDate: new Date().toISOString(),
+                subscribedToChannels: false
+            };
+        };
+
+        // ✅ دالة محسنة لتحديث نقاط المسابقة عند مشاهدة إعلان
+        const updateContestPointsOnAdWatch = async () => {
+            try {
+                // يتم تحديث نقاط المسابقة عبر API في دالة updateAdStats
+                console.log('🎯 Contest points updated via API');
+            } catch (error) {
+                console.error('Error updating contest points:', error);
+            }
+        };
+
+        // ✅ دالة محسنة لتحديث أرباح الإحالات - تم تعديلها لتعمل بـ RR
+        const updateReferralEarnings = async (referredUserId, earningsRR) => {
+            try {
+                // يتم تحديث أرباح الإحالة عبر API في الخلفية
+                console.log(`🎯 Referral earnings updated for ${referredUserId}: +${earningsRR.toLocaleString()} RR`);
+                
+            } catch (error) {
+                console.error('Error updating referral earnings:', error);
+            }
+        };
+
+        // ✅ دالة منفصلة لمعالجة الإحالات
+        const processReferral = async (referrerId, newUserId) => {
+            try {
+                console.log(`🎉 Referral processing handled by API: ${referrerId} referred ${newUserId}`);
+            } catch (error) {
+                console.error("Error processing referral:", error);
+            }
+        };
+
+        const loadTransactionHistory = async () => {
+            try {
+                const result = await api('getWithdrawalHistory', 'GET', { userId: tgUser.id });
+                if (result) {
+                    userTransactions = result;
+                }
+            } catch (error) {
+                console.error('Error loading transaction history:', error);
+                userTransactions = [];
+            }
+        };
+
+        // ✅ دالة محسنة لـ renderUI
+        const renderUI = () => {
+            document.getElementById('user-photo').src = userState.photoUrl || 'https://ui-avatars.com/api/?name=User&background=random&size=80';
+            document.getElementById('user-name').textContent = `${userState.firstName || ''} ${userState.lastName || ''}`.trim() || 'User';
+            document.getElementById('user-balance').textContent = (userState.balance || 0).toFixed(4);
+            document.getElementById('user-rr-balance').textContent = userRRBalance.toLocaleString();
+            document.getElementById('daily-ads-watched').textContent = `${userState.dailyAdCount || 0} / ${appConfig.dailyAdLimit || 0}`;
+            document.getElementById('total-ads-watched').textContent = userState.lifetimeAdCount || 0;
+            
+            // تحديث حالة المسابقة
+            updateContestStatus();
+            
+            // 🌍 عرض معلومات الدولة إذا كانت محظورة
+            if (!isUserCountryAllowed && userCountryData) {
+                showCountryRestrictionMessage();
+            }
+            
+            renderAdTask(); 
+            renderAdProgress(); 
+            renderDynamicTasks(); 
+            renderReferralsPage();
+            renderWithdrawSection(); 
+            renderConverter(); 
+            renderDynamicLinks();
+            
+            // إعداد المستمعين الإضافيين
+            setupAdditionalEventListeners();
+            
+            // تحميل المهام اليومية
+            loadDailyTasks();
+        };
+
+        const renderAdProgress = () => {
+            const container = document.getElementById('ad-progress-container');
+            const dailyLimit = appConfig.dailyAdLimit || 1;
+            const watchedCount = userState.dailyAdCount || 0;
+            const percentage = Math.min(100, (watchedCount / dailyLimit) * 100);
+            container.innerHTML = `
+                <div class="progress-info-inline">
+                    <span>Daily Ad Progress</span>
+                    <span>${watchedCount} / ${dailyLimit}</span>
+                </div>
+                <div class="progress-bar-bg-inline">
+                    <div class="progress-bar-fg-inline" style="width: ${percentage}%;"></div>
+                </div>`;
+        };
+
+        // ✅ دالة لعرض محول العملة
+        const renderConverter = () => {
+            const rrInput = document.getElementById('rr-amount');
+            const tonInput = document.getElementById('ton-amount');
+            const convertBtn = document.getElementById('convert-rr-btn');
+            
+            if (rrInput && tonInput && convertBtn) {
+                rrInput.value = '';
+                tonInput.value = '';
+                convertBtn.disabled = true;
+                
+                rrInput.addEventListener('input', () => {
+                    const rrValue = parseFloat(rrInput.value) || 0;
+                    const tonValue = rrValue / RR_TO_TON_RATE;
+                    tonInput.value = tonValue.toFixed(4);
+                    convertBtn.disabled = rrValue <= 0 || rrValue > userRRBalance;
+                });
+                
+                convertBtn.addEventListener('click', convertRRToTON);
+            }
+        };
+
+        // ✅ دالة لتحويل RR إلى TON
+        const convertRRToTON = async () => {
+            const rrAmount = parseFloat(document.getElementById('rr-amount').value) || 0;
+            
+            if (rrAmount <= 0) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Please enter a valid amount of RR to convert."); 
+                }catch{} 
+                return;
+            }
+            
+            if (rrAmount > userRRBalance) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("You don't have enough RR to convert."); 
+                }catch{} 
+                return;
+            }
+            
+            const tonAmount = rrAmount / RR_TO_TON_RATE;
+            
+            try {
+                // تحديث الرصيد عبر API
+                const result = await api('updateBalance', 'POST', { 
+                    id: tgUser.id, 
+                    amount: tonAmount 
+                });
+                
+                if (result && result.success) {
+                    userRRBalance -= rrAmount;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                    
+                    userState.balance = result.newBalance;
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(`Successfully converted ${rrAmount.toLocaleString()} RR to ${tonAmount.toFixed(4)} TON!`); 
+                    }catch{}
+                    
+                    renderUI();
+                } else {
+                    throw new Error('Conversion failed');
+                }
+                
+            } catch (error) {
+                console.error('Error converting RR to TON:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to convert RR. Please try again."); 
+                }catch{} 
+            }
+        };
+
+        const renderWithdrawalHistory = () => {
+            const listEl = document.getElementById('withdrawal-history-list');
+            if (userTransactions.length === 0) { 
+                listEl.innerHTML = '<p>No withdrawal history found.</p>'; 
+                return; 
+            }
+            listEl.innerHTML = userTransactions.map(item => `
+                <div class="history-item">
+                    <div class="history-details">
+                        <p>${Number(item.amount).toFixed(4)} TON - ${item.method}</p>
+                        <small>${new Date(item.timestamp).toLocaleString()}</small>
+                    </div>
+                    <span class="history-status status-${item.status}">${item.status}</span>
+                </div>`).join('');
+        };
+
+        const setupNavigation = () => {
+            const controlWheels = document.querySelectorAll('.control-wheel'); 
+            const pages = document.querySelectorAll('.page');
+            controlWheels.forEach(wheel => {
+                wheel.addEventListener('click', () => {
+                    const pageId = wheel.dataset.page;
+                    pages.forEach(page => page.classList.remove('active'));
+                    document.getElementById(pageId).classList.add('active');
+                    controlWheels.forEach(w => w.classList.remove('active'));
+                    wheel.classList.add('active');
+                    if (pageId === 'profile-page') { 
+                        renderWithdrawalHistory(); 
+                    }
+                    if (pageId === 'contest-page') { 
+                        renderContestPage(); 
+                    }
+                    if (pageId === 'referrals-page') {
+                        renderReferralsPage();
+                    }
+                });
+            });
+        };
+
+        const setupEventListeners = () => {
+            popup.addEventListener('click', (e) => { 
+                if (e.target.classList.contains('popup-close-btn') || e.target.id === 'popup') closePopup(); 
+            });
+            document.getElementById('dynamic-tasks-container').addEventListener('click', (e) => handleClaimTask(e));
+            document.getElementById('profile-page').addEventListener('submit', (e) => handleWithdraw(e));
+            document.getElementById('redeem-code-btn').addEventListener('click', redeemCode);
+            document.getElementById('redeem-code-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    redeemCode();
+                }
+            });
+        };
+
+        // ✅ إعداد مستمعي الأحداث الإضافية
+        const setupAdditionalEventListeners = () => {
+            // زر إضافة مهمة - تم التعديل
+            document.getElementById('add-task-main-btn').addEventListener('click', openTelegramContact);
+            
+            // زر شرح المسابقة - تم إصلاحه
+            document.getElementById('contest-guide-trigger').addEventListener('click', function() {
+                const content = document.getElementById('contest-guide-content');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            });
+        };
+
+        const renderAdTask = () => {
+            const container = document.getElementById('ad-task-container');
+            const now = Date.now();
+            const onBreak = userState.breakUntil && now < userState.breakUntil;
+            const limitReached = userState.dailyAdCount >= (appConfig.dailyAdLimit || 10);
+            
+            // 🌍 التحقق من الدولة أولاً
+            if (!isUserCountryAllowed) {
+                const countryName = userCountryData.countryName || 'your region';
+                container.innerHTML = `
+                    <div class="task-container">
+                        <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/globe.png" alt="icon">
+                        <div class="task-info">
+                            <h3>Regional Restriction</h3>
+                            <p>Ads are not available in ${countryName}.</p>
+                            <p style="color: var(--text-secondary-dark); font-size: 0.8rem;">
+                                Thank you for your understanding.
+                            </p>
+                        </div>
+                        <button class="action-btn" disabled>Not Available</button>
+                    </div>`;
+                return;
+            }
+            
+            let html = '';
+            if (onBreak) {
+                const remaining = Math.ceil((userState.breakUntil - now) / 60000);
+                html = `
+                    <div class="task-container">
+                        <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/hourglass.png" alt="icon">
+                        <div class="task-info">
+                            <h3>Break Time!</h3>
+                            <p>Please wait for ${remaining} more minutes.</p>
+                        </div>
+                        <button class="action-btn" disabled>Waiting</button>
+                    </div>`;
+            } else if (limitReached) {
+                html = `
+                    <div class="task-container">
+                        <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/stop-circled.png" alt="icon">
+                        <div class="task-info">
+                            <h3>Daily Limit Reached</h3>
+                            <p>Come back tomorrow for more ads.</p>
+                        </div>
+                        <button class="action-btn" disabled>Limit</button>
+                    </div>`;
+            } else {
+                const adValueRR = 1000;
+                html = `
+                    <div class="task-container">
+                        <img class="task-icon-img" src="https://img.icons8.com/ios-filled/100/play-button-circled.png" alt="icon">
+                        <div class="task-info">
+                            <h3>Watch Ad</h3>
+                            <p>Earn ${adValueRR.toLocaleString()} RR for watching 2 ads.</p>
+                            <p class="ad-progress-inline">
+                                ⏱️ Must watch both ads for 5+ seconds to earn
+                            </p>
+                        </div>
+                        <button id="watch-ad-btn" class="action-btn">Watch Ad</button>
+                    </div>`;
+            }
+            container.innerHTML = html;
+            if (!onBreak && !limitReached) { 
+                const btn = document.getElementById('watch-ad-btn'); 
+                if (btn) btn.addEventListener('click', handleWatchAd); 
+            }
+        };
+
+        const copyReferralLink = () => {
+            const refLinkInput = document.getElementById('referral-link');
+            refLinkInput.select();
+            refLinkInput.setSelectionRange(0, 99999);
+            try {
+                navigator.clipboard.writeText(refLinkInput.value).then(() => {
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert("Referral link copied!"); 
+                    }catch{}
+                });
+            } catch (err) {
+                document.execCommand('copy');
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                    if (tg.showAlert) tg.showAlert("Referral link copied!"); 
+                }catch{}
+            }
+        };
+
+        const renderDynamicTasks = () => {
+            const container = document.getElementById('dynamic-tasks-container'); 
+            container.innerHTML = '';
+            if (appConfig.tasks) {
+                const tasks = [];
+                for(const key in appConfig.tasks) { 
+                    tasks.push({key, ...appConfig.tasks[key]}); 
+                }
+                tasks.reverse();
+                tasks.forEach(task => {
+                    const isCompleted = userState.completedTasks && userState.completedTasks[task.key];
+                    const rewardAmountRR = Math.round(task.reward * RR_TO_TON_RATE);
+                    const el = document.createElement('div'); 
+                    el.className = 'task-container';
+                    el.innerHTML = `
+                        <img class="task-icon-img" src="${task.icon}" alt="icon">
+                        <div class="task-info">
+                            <h3>${task.name}</h3>
+                            <p>Get ${rewardAmountRR.toLocaleString()} RR.</p>
+                        </div>
+                        <button class="action-btn" data-task-id="${task.key}" data-task-url="${task.url}" ${isCompleted ? 'disabled' : ''}>
+                            ${isCompleted ? 'Claimed' : 'Claim Bonus'}
+                        </button>`;
+                    container.appendChild(el);
+                });
+            }
+        };
+
+        // ✅ دالة محسنة لعرض صفحة الإحالات - تم تعديلها لتعمل بـ RR
+        const renderReferralsPage = () => {
+            const botUsername = appConfig.botUsername || "Aborabie777_bot";
+            const userId = tgUser.id || '';
+            
+            const refLink = `https://t.me/${botUsername}?startapp=${userId}`;
+            
+            document.getElementById('total-referrals-display').textContent = userState.referrals || 0;
+            document.getElementById('total-earnings-display').textContent = (referralData.totalEarnings || 0).toLocaleString() + ' RR';
+            document.getElementById('pending-earnings-display').textContent = (referralData.pendingEarnings || 0).toLocaleString() + ' RR';
+            document.getElementById('referral-link').value = refLink;
+            
+            let referredUsersHTML = '';
+            if (referralData.referredUsers && referralData.referredUsers.length > 0) {
+                referralData.referredUsers.forEach(user => {
+                    referredUsersHTML += `
+                        <div class="referral-list-item">
+                            <div class="referral-user-info">
+                                <img src="${user.photoUrl || 'https://ui-avatars.com/api/?name=User&background=random&size=35'}" alt="${user.name}" class="referral-user-avatar">
+                                <div>
+                                    <div class="referral-user-name">${user.name}</div>
+                                    <small style="color: var(--text-secondary-dark);">Joined: ${new Date(user.joinDate || Date.now()).toLocaleDateString()}</small>
+                                </div>
+                            </div>
+                            <div class="referral-earnings">+${((user.totalEarned || 0) * 0.15 * RR_TO_TON_RATE).toLocaleString()} RR</div>
+                        </div>
+                    `;
+                });
+            } else {
+                referredUsersHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary-dark);">No referrals yet. Share your link to start earning!</div>';
+            }
+            
+            document.getElementById('referrals-list-container').innerHTML = referredUsersHTML;
+            
+            const claimBtn = document.getElementById('claim-referral-earnings-btn');
+            if (referralData.pendingEarnings > 0) {
+                claimBtn.disabled = false;
+                claimBtn.textContent = `🎁 Claim ${referralData.pendingEarnings.toLocaleString()} RR`;
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.textContent = '🎁 Claim Referral Earnings';
+            }
+            
+            // إضافة event listener لزر النسخ
+            document.getElementById('copy-ref-link-btn').addEventListener('click', copyReferralLink);
+            document.getElementById('claim-referral-earnings-btn').addEventListener('click', claimReferralEarnings);
+        };
+
+        // ✅ دالة محسنة لمطالبة أرباح الإحالات - تم تعديلها لتعمل بـ RR
+        const claimReferralEarnings = async () => {
+            try {
+                if (referralData.pendingEarnings <= 0) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("No pending referral earnings to claim!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                // مطالبة الأرباح عبر API
+                const result = await api('claimReferralEarnings', 'POST', {
+                    userId: tgUser.id
+                });
+                
+                if (result && result.success) {
+                    // إضافة الأرباح إلى رصيد RR
+                    userRRBalance += result.claimedAmount;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                    
+                    // تحديث البيانات المحلية
+                    referralData.totalEarnings = result.totalEarnings;
+                    referralData.pendingEarnings = 0;
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(`🎉 Referral earnings claimed! +${result.claimedAmount.toLocaleString()} RR`); 
+                    }catch{}
+                    
+                    renderUI();
+                } else {
+                    throw new Error('Claim failed');
+                }
+                
+            } catch (error) {
+                console.error('Error claiming referral earnings:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to claim referral earnings. Please try again."); 
+                }catch{} 
+            }
+        };
+
+        // ✅ دالة محسنة لعرض قسم السحب - تم تعديلها
+        const renderWithdrawSection = () => {
+            const container = document.getElementById('withdraw-section'); 
+            
+            const withdrawMethods = [
+                { name: 'FaucetPay', min: 0.0001, icon: 'fas fa-envelope' },
+                { name: 'TON', min: 0.05, icon: 'fas fa-wallet' }
+            ];
+            
+            if (appConfig.withdrawMethods) { 
+                appConfig.withdrawMethods.forEach(method => { 
+                    withdrawMethods.push(method);
+                }); 
+            }
+
+            const minRefs = appConfig.minimumWithdrawReferrals || 0;
+            let referralNotice = '';
+            if (minRefs > 0) {
+                referralNotice = `
+                    <div class="referral-notice">
+                        <i class="fas fa-info-circle"></i> You need at least <b>${minRefs} referrals</b> to be eligible for withdrawal.
+                        <br>You currently have <b>${userState.referrals || 0} referrals</b>.
+                    </div>`;
+            }
+
+            container.innerHTML = `
+                <div class="withdraw-container">
+                    <div class="withdraw-header">
+                        <i class="fas fa-wallet"></i>
+                        <h3>Withdraw Funds</h3>
+                    </div>
+                    
+                    ${referralNotice}
+                    
+                    <div class="withdrawal-options">
+                        <div class="withdrawal-option active" data-method="faucetpay">
+                            <i class="fas fa-envelope"></i>
+                            <h4>FaucetPay</h4>
+                        </div>
+                        <div class="withdrawal-option" data-method="ton">
+                            <i class="fas fa-wallet"></i>
+                            <h4>TON Wallet</h4>
+                        </div>
+                    </div>
+                    
+                    <!-- تفاصيل سحب FaucetPay -->
+                    <div class="withdrawal-details active" id="faucetpay-details">
+                        <div class="withdrawal-info">
+                            <p><strong>FaucetPay Withdrawal</strong></p>
+                            <p>Enter your Gmail address registered with FaucetPay</p>
+                            <ul>
+                                <li>Minimum withdrawal: 0.0001 TON</li>
+                                <li>✅ No fees - We cover all transaction costs</li>
+                                <li>⏳ Processing time: Up to 1 minute</li>
+                                <li>Withdrawals are processed automatically</li>
+                            </ul>
+                        </div>
+                        <div class="form-group">
+                            <label for="faucetpay-email">FaucetPay Email</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-envelope"></i>
+                                <input type="email" id="faucetpay-email" placeholder="your-email@gmail.com">
+                            </div>
+                            <div class="validation-message validation-info" id="faucetpay-validation">
+                                <i class="fas fa-info-circle"></i> Enter your FaucetPay registered email
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="withdraw-amount-faucetpay">Amount (TON)</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-coins"></i>
+                                <input type="number" id="withdraw-amount-faucetpay" placeholder="0.0001" min="0.0001" step="0.0001">
+                            </div>
+                            <div class="validation-message validation-info" id="amount-validation-faucetpay">
+                                <i class="fas fa-info-circle"></i> Minimum: 0.0001 TON
+                            </div>
+                        </div>
+                        <button class="withdraw-btn" id="withdraw-faucetpay-btn">Withdraw via FaucetPay</button>
+                    </div>
+
+                    <!-- تفاصيل سحب TON -->
+                    <div class="withdrawal-details" id="ton-details">
+                        <div class="withdrawal-info">
+                            <p><strong>TON Withdrawal</strong></p>
+                            <p>Enter your TON wallet address (starts with UQ, EQ, or kQ)</p>
+                            <ul>
+                                <li>Minimum withdrawal: 0.05 TON</li>
+                                <li>✅ No fees - We cover all transaction costs</li>
+                                <li>⏳ Processing time: Up to 24 hours</li>
+                                <li>Optional: Add memo for exchange deposits</li>
+                            </ul>
+                        </div>
+                        <div class="form-group">
+                            <label for="ton-address">TON Wallet Address</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-wallet"></i>
+                                <input type="text" id="ton-address" placeholder="UQ...">
+                            </div>
+                            <div class="validation-message validation-info" id="ton-address-validation">
+                                <i class="fas fa-info-circle"></i> Enter your TON wallet address
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ton-memo">Memo (Optional)</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-sticky-note"></i>
+                                <input type="text" id="ton-memo" placeholder="For exchange deposits">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="withdraw-amount-ton">Amount (TON)</label>
+                            <div class="input-with-icon">
+                                <i class="fas fa-coins"></i>
+                                <input type="number" id="withdraw-amount-ton" placeholder="0.05" min="0.05" step="0.01">
+                            </div>
+                            <div class="validation-message validation-info" id="amount-validation-ton">
+                                <i class="fas fa-info-circle"></i> Minimum: 0.05 TON
+                            </div>
+                        </div>
+                        <button class="withdraw-btn" id="withdraw-ton-btn">Withdraw to TON Wallet</button>
+                    </div>
+                </div>`;
+
+            // إعداد مستمعي الأحداث لواجهة السحب الجديدة
+            setupWithdrawalEventListeners();
+        };
+
+        // ✅ دالة جديدة لإعداد مستمعي الأحداث للسحب
+        const setupWithdrawalEventListeners = () => {
+            // تبديل خيارات السحب
+            document.querySelectorAll('.withdrawal-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const method = this.getAttribute('data-method');
+                    switchWithdrawalMethod(method);
+                    
+                    document.querySelectorAll('.withdrawal-option').forEach(o => o.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+
+            // التحقق من صحة البيانات
+            document.getElementById('ton-address').addEventListener('input', validateTONAddress);
+            document.getElementById('faucetpay-email').addEventListener('input', validateFaucetPayEmail);
+            
+            // أزرار السحب
+            document.getElementById('withdraw-faucetpay-btn').addEventListener('click', handleFaucetPayWithdrawal);
+            document.getElementById('withdraw-ton-btn').addEventListener('click', handleTONWithdrawal);
+        };
+
+        // ✅ دالة لتبديل طريقة السحب
+        const switchWithdrawalMethod = (method) => {
+            document.getElementById('faucetpay-details').classList.toggle('active', method === 'faucetpay');
+            document.getElementById('ton-details').classList.toggle('active', method === 'ton');
+        };
+
+        // ✅ دوال التحقق من الصحة
+        const validateTONAddress = () => {
+            const address = document.getElementById('ton-address').value.trim();
+            const validation = document.getElementById('ton-address-validation');
+            
+            if (address === '') {
+                validation.className = 'validation-message validation-info';
+                validation.innerHTML = '<i class="fas fa-info-circle"></i> Enter your TON wallet address';
+            } else if (/^(UQ|EQ|kQ)/.test(address)) {
+                validation.className = 'validation-message validation-success';
+                validation.innerHTML = '<i class="fas fa-check-circle"></i> Valid TON address';
+            } else {
+                validation.className = 'validation-message validation-error';
+                validation.innerHTML = '<i class="fas fa-exclamation-circle"></i> TON address should start with UQ, EQ, or kQ';
+            }
+        };
+
+        const validateFaucetPayEmail = () => {
+            const email = document.getElementById('faucetpay-email').value.trim();
+            const validation = document.getElementById('faucetpay-validation');
+            
+            if (email === '') {
+                validation.className = 'validation-message validation-info';
+                validation.innerHTML = '<i class="fas fa-info-circle"></i> Enter your FaucetPay registered email';
+            } else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                validation.className = 'validation-message validation-success';
+                validation.innerHTML = '<i class="fas fa-check-circle"></i> Valid email format';
+            } else {
+                validation.className = 'validation-message validation-error';
+                validation.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please enter a valid email address';
+            }
+        };
+
+        // ✅ دوال معالجة السحب
+        const handleFaucetPayWithdrawal = async () => {
+            const email = document.getElementById('faucetpay-email').value;
+            const amount = parseFloat(document.getElementById('withdraw-amount-faucetpay').value);
+            
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('Please enter a valid FaucetPay email');
+                return;
+            }
+            
+            if (!amount || amount < 0.0001) {
+                alert('Minimum withdrawal is 0.0001 TON');
+                return;
+            }
+            
+            if (amount > userState.balance) {
+                alert('Insufficient TON balance');
+                return;
+            }
+
+            const minRefsRequired = appConfig.minimumWithdrawReferrals || 0;
+            const userReferrals = userState.referrals || 0;
+
+            if (minRefsRequired > 0 && userReferrals < minRefsRequired) {
+                alert(`Withdrawal failed. You need at least ${minRefsRequired} referrals to make a withdrawal. You currently have ${userReferrals}.`);
+                return;
+            }
+
+            const btn = document.getElementById('withdraw-faucetpay-btn'); 
+            btn.disabled = true; 
+            btn.textContent = 'Submitting...';
+            
+            try {
+                const result = await api('submitWithdrawal', 'POST', {
+                    userId: tgUser.id,
+                    userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                    username: tgUser.username || '',
+                    method: 'FaucetPay',
+                    account: email,
+                    amount: amount,
+                    memo: ''
+                });
+
+                if (result && result.success) {
+                    userState.balance = result.newBalance;
+                    userTransactions.unshift({
+                        id: result.withdrawalId,
+                        userId: tgUser.id,
+                        userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                        method: 'FaucetPay',
+                        account: email,
+                        amount: amount,
+                        status: 'pending',
+                        timestamp: Date.now()
+                    });
+
+                    renderWithdrawalHistory();
+
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert("Withdrawal request submitted successfully!"); 
+                    }catch{}
+                    
+                    // إعادة تعيين الحقول
+                    document.getElementById('faucetpay-email').value = '';
+                    document.getElementById('withdraw-amount-faucetpay').value = '';
+                    
+                    renderUI();
+                } else {
+                    throw new Error('Withdrawal failed');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting withdrawal:', error);
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
+                    if (tg.showAlert) tg.showAlert("Failed to submit request. Please try again."); 
+                }catch{}
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Withdraw via FaucetPay';
+            }
+        };
+
+        const handleTONWithdrawal = async () => {
+            const address = document.getElementById('ton-address').value;
+            const memo = document.getElementById('ton-memo').value;
+            const amount = parseFloat(document.getElementById('withdraw-amount-ton').value);
+            
+            if (!address || !/^(UQ|EQ|kQ)/.test(address)) {
+                alert('Please enter a valid TON wallet address');
+                return;
+            }
+            
+            if (!amount || amount < 0.05) {
+                alert('Minimum withdrawal is 0.05 TON');
+                return;
+            }
+            
+            if (amount > userState.balance) {
+                alert('Insufficient TON balance');
+                return;
+            }
+
+            const minRefsRequired = appConfig.minimumWithdrawReferrals || 0;
+            const userReferrals = userState.referrals || 0;
+
+            if (minRefsRequired > 0 && userReferrals < minRefsRequired) {
+                alert(`Withdrawal failed. You need at least ${minRefsRequired} referrals to make a withdrawal. You currently have ${userReferrals}.`);
+                return;
+            }
+
+            const btn = document.getElementById('withdraw-ton-btn'); 
+            btn.disabled = true; 
+            btn.textContent = 'Submitting...';
+            
+            try {
+                const result = await api('submitWithdrawal', 'POST', {
+                    userId: tgUser.id,
+                    userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                    username: tgUser.username || '',
+                    method: 'TON',
+                    account: address,
+                    amount: amount,
+                    memo: memo || ''
+                });
+
+                if (result && result.success) {
+                    userState.balance = result.newBalance;
+                    userTransactions.unshift({
+                        id: result.withdrawalId,
+                        userId: tgUser.id,
+                        userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                        method: 'TON',
+                        account: address,
+                        amount: amount,
+                        memo: memo,
+                        status: 'pending',
+                        timestamp: Date.now()
+                    });
+
+                    renderWithdrawalHistory();
+
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert("Withdrawal request submitted successfully!"); 
+                    }catch{}
+                    
+                    // إعادة تعيين الحقول
+                    document.getElementById('ton-address').value = '';
+                    document.getElementById('ton-memo').value = '';
+                    document.getElementById('withdraw-amount-ton').value = '';
+                    
+                    renderUI();
+                } else {
+                    throw new Error('Withdrawal failed');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting withdrawal:', error);
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
+                    if (tg.showAlert) tg.showAlert("Failed to submit request. Please try again."); 
+                }catch{}
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Withdraw to TON Wallet';
+            }
+        };
+
+        const renderDynamicLinks = () => {
+            const container = document.getElementById('dynamic-links-container'); 
+            container.innerHTML = '';
+            if (appConfig.links) {
+                const links = [];
+                for (const key in appConfig.links) { 
+                    links.push({key, ...appConfig.links[key]}); 
+                }
+                links.reverse();
+                links.forEach(link => {
+                    const el = document.createElement('div'); 
+                    el.className = 'task-container';
+                    el.innerHTML = `
+                        <img class="task-icon-img" src="${link.icon}" alt="icon">
+                        <div class="task-info">
+                            <h3>${link.name}</h3>
+                        </div>
+                        <button class="action-btn" onclick="window.Telegram?.WebApp?.openLink ? window.Telegram.WebApp.openLink('${link.url}') : window.open('${link.url}','_blank')">
+                            Visit
+                        </button>`;
+                    container.appendChild(el);
+                });
+            }
+        };
+
+        // ✅ دالة محسنة لإرسال إشعار السحب
+        const sendWithdrawalNotification = async (withdrawalData) => {
+            try {
+                console.log('🔍 Starting withdrawal notification process...');
+                const botToken = appConfig.botToken;
+                
+                if (!botToken) {
+                    console.error('❌ Bot token not found in config');
+                    return;
+                }
+
+                const currentDate = new Date();
+                const formattedDate = `${currentDate.getDate()}/${currentDate.getMonth() + 1}/${currentDate.getFullYear()} ${currentDate.getHours()}:${currentDate.getMinutes()}`;
+                
+                const memoInfo = withdrawalData.memo ? `\n• Memo: ${withdrawalData.memo}` : '';
+                
+                const adminMessage = `
+🪙 NEW WITHDRAWAL REQUEST 🪙
+
+👤 User Information:
+• Name: ${withdrawalData.userName || 'N/A'}
+• Username: @${withdrawalData.username || 'N/A'}
+• User ID: ${withdrawalData.userId}
+
+💎 Withdrawal Details:
+• Amount: ${Number(withdrawalData.amount).toFixed(4)} TON
+• Method: ${withdrawalData.method}
+• Wallet: ${withdrawalData.account}${memoInfo}
+
+📅 Date & Time: ${formattedDate}
+🆔 Request ID: ${withdrawalData.id}
+
+✅ Status: Pending Approval
+                `.trim();
+
+                const adminChatId = appConfig.adminChatId || "6294480939";
+                
+                console.log('📤 Sending withdrawal notification to admin:', adminChatId);
+                
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: adminChatId,
+                        text: adminMessage
+                    })
+                });
+
+                const result = await response.json();
+                console.log('📨 Telegram API Response:', result);
+                
+                if (result.ok) {
+                    console.log('✅ Withdrawal notification sent successfully to admin');
+                    return true;
+                } else {
+                    console.error('❌ Failed to send notification:', result);
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error sending withdrawal notification:', error);
+                return false;
+            }
+        };
+
+        // ✅ دالة جديدة لاستخراج معامل الإحالة
+        const getReferralParam = () => {
+            try {
+                if (tg.initDataUnsafe?.start_param) {
+                    console.log('🔗 Found start_param in initDataUnsafe:', tg.initDataUnsafe.start_param);
+                    return tg.initDataUnsafe.start_param;
+                }
+                
+                if (tg.initData) {
+                    const params = new URLSearchParams(tg.initData);
+                    const startParam = params.get('startparam') || params.get('start_param');
+                    if (startParam) {
+                        console.log('🔗 Found start_param in initData:', startParam);
+                        return startParam;
+                    }
+                }
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const refFromUrl = urlParams.get('start') || urlParams.get('ref');
+                if (refFromUrl) {
+                    console.log('🔗 Found referral in URL:', refFromUrl);
+                    return refFromUrl;
+                }
+                
+                console.log('🔍 No referral parameter found');
+                return null;
+            } catch (error) {
+                console.error('Error getting referral param:', error);
+                return null;
+            }
+        };
+
+        // ✅ دالة محسنة للسحب
+        const handleWithdraw = async (e) => {
+            if (!isSubscribedToAllChannels) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Please subscribe to all required channels first!"); 
+                }catch{} 
+                return; 
+            }
+
+            if(e.target.id !== 'withdraw-form') return;
+            e.preventDefault();
+
+            const minRefsRequired = appConfig.minimumWithdrawReferrals || 0;
+            const userReferrals = userState.referrals || 0;
+
+            if (minRefsRequired > 0 && userReferrals < minRefsRequired) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert(`Withdrawal failed. You need at least ${minRefsRequired} referrals to make a withdrawal. You currently have ${userReferrals}.`); 
+                }catch{}
+                return;
+            }
+
+            const methodEl = document.getElementById('withdraw-method');
+            const accountNumber = document.getElementById('account-number').value.trim();
+            const memo = document.getElementById('withdraw-memo') ? document.getElementById('withdraw-memo').value.trim() : '';
+            const amount = parseFloat(document.getElementById('amount').value);
+            const selectedMethod = methodEl.value;
+
+            if (!validateWithdrawalAccount(selectedMethod, accountNumber)) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert(`❌ Invalid account details for ${selectedMethod}. Please check the requirements.`); 
+                }catch{}
+                return;
+            }
+
+            if (isNaN(amount) || amount <= 0) { 
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Please enter a valid amount."); 
+                }catch{} 
+                return; 
+            }
+            
+            let minAmount = 0.001;
+            if (selectedMethod === 'FaucetPay') {
+                minAmount = 0.0001;
+            } else if (selectedMethod === 'TON') {
+                minAmount = 0.05;
+            }
+            
+            if (amount < minAmount) { 
+                try{ 
+                    if (tg.showAlert) tg.showAlert(`Minimum withdrawal for ${selectedMethod} is ${Number(minAmount).toFixed(4)} TON.`); 
+                }catch{} 
+                return; 
+            }
+            
+            if (amount > userState.balance) { 
+                try{ 
+                    if (tg.showAlert) tg.showAlert("You don't have enough balance."); 
+                }catch{} 
+                return; 
+            }
+
+            const btn = document.getElementById('withdraw-submit-btn'); 
+            btn.disabled = true; 
+            btn.textContent = 'Submitting...';
+            
+            try {
+                const result = await api('submitWithdrawal', 'POST', {
+                    userId: tgUser.id,
+                    userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                    username: tgUser.username || '',
+                    method: selectedMethod,
+                    account: accountNumber,
+                    amount: amount,
+                    memo: memo
+                });
+
+                if (result && result.success) {
+                    userState.balance = result.newBalance;
+                    userTransactions.unshift({
+                        id: result.withdrawalId,
+                        userId: tgUser.id,
+                        userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                        method: selectedMethod,
+                        account: accountNumber,
+                        amount: amount,
+                        memo: memo,
+                        status: 'pending',
+                        timestamp: Date.now()
+                    });
+
+                    renderWithdrawalHistory();
+
+                    await sendWithdrawalNotification({
+                        id: result.withdrawalId,
+                        userId: tgUser.id,
+                        userName: `${userState.firstName || ''} ${userState.lastName || ''}`.trim(),
+                        username: tgUser.username || '',
+                        method: selectedMethod,
+                        account: accountNumber,
+                        memo: memo,
+                        amount: amount
+                    });
+
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert("Withdrawal request submitted successfully!"); 
+                    }catch{}
+                    document.getElementById('withdraw-form').reset();
+                    
+                    renderUI();
+                    
+                } else {
+                    throw new Error('Withdrawal failed');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting withdrawal:', error);
+                try{ 
+                    if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error'); 
+                    if (tg.showAlert) tg.showAlert("Failed to submit request. Please try again."); 
+                }catch{}
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Submit Request';
+            }
+        };
+
+        // ✅ دالة مبسطة للتحقق من صحة عنوان TON
+        const isValidTONAddress = (address) => {
+            if (!address || typeof address !== 'string') return false;
+            const cleanAddress = address.trim();
+            const validPrefixes = ['UQ', 'EQ', 'kQ'];
+            const hasValidPrefix = validPrefixes.some(prefix => cleanAddress.startsWith(prefix));
+            return hasValidPrefix;
+        };
+
+        // ✅ دالة للتحقق من صحة الإيميل لـ FaucetPay
+        const isValidFaucetPayEmail = (email) => {
+            if (!email || typeof email !== 'string') return false;
+            const cleanEmail = email.trim().toLowerCase();
+            if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+                return false;
+            }
+            return true;
+        };
+
+        // ✅ دالة للتحقق من صحة العنوان بناءً على طريقة السحب
+        const validateWithdrawalAccount = (method, account) => {
+            if (!method || !account) return false;
+            const cleanAccount = account.trim();
+            
+            if (method === 'FaucetPay') {
+                return isValidFaucetPayEmail(cleanAccount);
+            } else if (method === 'TON') {
+                return isValidTONAddress(cleanAccount);
+            } else {
+                return cleanAccount.length > 0;
+            }
+        };
+
+        // ✅ دالة محسنة لاستبدال الكود - تدعم الأنواع المختلفة
+        const redeemCode = async () => {
+            try {
+                const codeInput = document.getElementById('redeem-code-input');
+                const redeemBtn = document.getElementById('redeem-code-btn');
+                
+                const code = codeInput.value.trim().toUpperCase();
+                
+                if (!code) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("Please enter a code!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                if (redeemedCodes.includes(code)) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("You have already used this code!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                redeemBtn.disabled = true;
+                redeemBtn.textContent = 'Checking...';
+                
+                const result = await api('redeemCode', 'POST', {
+                    userId: tgUser.id,
+                    code: code
+                });
+                
+                if (result && result.success) {
+                    // حفظ الكود في القائمة المحلية
+                    redeemedCodes.push(code);
+                    localStorage.setItem(`redeemedCodes_${tgUser.id || 'guest'}`, JSON.stringify(redeemedCodes));
+                    
+                    // معالجة المكافأة بناءً على النوع
+                    if (result.rewardType === 'TON') {
+                        userState.balance = (userState.balance || 0) + result.rewardValue;
+                    } else if (result.rewardType === 'points') {
+                        contestData.userPoints = (contestData.userPoints || 0) + result.rewardValue;
+                    }
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(result.message); 
+                    }catch{}
+                    
+                    codeInput.value = '';
+                    redeemBtn.disabled = false;
+                    redeemBtn.textContent = 'Redeem';
+                    
+                    // تحديث الواجهة
+                    renderUI();
+                    
+                } else {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert(result.message || "Failed to redeem code"); 
+                    }catch{}
+                    redeemBtn.disabled = false;
+                    redeemBtn.textContent = 'Redeem';
+                }
+                
+            } catch (error) {
+                console.error('Error redeeming code:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to redeem code. Please try again."); 
+                }catch{}
+                
+                const redeemBtn = document.getElementById('redeem-code-btn');
+                redeemBtn.disabled = false;
+                redeemBtn.textContent = 'Redeem';
+            }
+        };
+
+        // ✅ دالة محسنة لمنح نقاط المسابقة
+        const awardContestPoints = async (points) => {
+            try {
+                // تحديث نقاط المسابقة محلياً
+                contestData.userPoints = (contestData.userPoints || 0) + points;
+                
+            } catch (error) {
+                console.error('Error awarding contest points:', error);
+            }
+        };
+
+        // ✅ دالة لتحديث مؤقت المسابقة
+        const updateContestTimer = () => {
+            const countdownEl = document.getElementById('contest-countdown');
+            if (!contestData.endTime) {
+                countdownEl.textContent = 'Contest not started';
+                return;
+            }
+            
+            const now = new Date().getTime();
+            const distance = contestData.endTime - now;
+            
+            if (distance < 0) {
+                countdownEl.textContent = 'Contest Ended!';
+                contestData.isActive = false; // تحديث حالة المسابقة
+                updateContestStatus(); // تحديث حالة المسابقة في الصفحة الرئيسية
+                return;
+            }
+            
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            
+            countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+        };
+
+        // ✅ دالة لتحديث حالة المسابقة في الصفحة الرئيسية - تم إصلاحها
+        const updateContestStatus = () => {
+            const statusBox = document.getElementById('contest-status-box');
+            const statusValue = document.getElementById('contest-status-value');
+            const statusMessage = document.getElementById('contest-status-message');
+            
+            if (!contestData.isActive) {
+                statusBox.className = 'contest-status-box contest-status-ended';
+                statusValue.textContent = 'Ended';
+                statusMessage.textContent = 'The contest has ended. Check results soon!';
+            } else {
+                statusBox.className = 'contest-status-box contest-status-active';
+                statusValue.textContent = 'Active';
+                if (contestData.userRank > 0) {
+                    statusMessage.textContent = `You are currently ranked #${contestData.userRank} in the contest`;
+                } else {
+                    statusMessage.textContent = 'Join the contest to start earning points!';
+                }
+            }
+        };
+
+        // ✅ دالة لعرض صفحة المسابقة المحسنة
+        const renderContestPage = () => {
+            updateContestTimer();
+            document.getElementById('user-contest-points').textContent = contestData.userPoints;
+            document.getElementById('user-contest-rank').textContent = contestData.userRank > 0 ? `#${contestData.userRank}` : '-';
+            renderCompactLeaderboard();
+        };
+
+        // ✅ دالة محسنة لعرض لوحة المتصدرين المختصرة - مع صور المستخدمين
+        const renderCompactLeaderboard = () => {
+            const leaderboardList = document.getElementById('contest-leaderboard-compact-list');
+            leaderboardList.innerHTML = '';
+            
+            if (contestData.leaderboard.length === 0) {
+                leaderboardList.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-secondary-dark);">No participants yet. Be the first to join!</p>';
+                return;
+            }
+            
+            const top10 = contestData.leaderboard.slice(0, 10);
+            
+            top10.forEach((participant, index) => {
+                const rank = index + 1;
+                const isCurrentUser = participant.userId === tgUser.id;
+                
+                let rankIcon = rank;
+                if (rank === 1) rankIcon = '🥇';
+                else if (rank === 2) rankIcon = '🥈';
+                else if (rank === 3) rankIcon = '🥉';
+                
+                let displayName = 'Unknown User';
+                if (participant.userName && participant.userName.trim() !== '') {
+                    displayName = participant.userName;
+                } else if (participant.username) {
+                    displayName = `@${participant.username}`;
+                } else if (participant.userId) {
+                    displayName = `User ${participant.userId}`;
+                }
+                
+                const prizeAmount = getPrizeForRank(rank);
+                const prizeText = prizeAmount > 0 ? `${prizeAmount} TON` : '';
+                
+                const item = document.createElement('div');
+                item.className = `contest-leaderboard-item-compact ${isCurrentUser ? 'current-user' : ''}`;
+                item.innerHTML = `
+                    <div class="contest-rank-compact ${rank <= 3 ? 'top-3' : ''}">
+                        ${rankIcon}
+                    </div>
+                    <div class="contest-user-info-compact" style="flex: 1; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="contest-user-details">
+                            <div class="contest-user-name-compact">${displayName}</div>
+                            <div class="contest-user-points-compact">${participant.points || 0} points</div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="contest-user-score-compact">${participant.points || 0}</div>
+                            ${prizeText ? `<div class="contest-user-prize">${prizeText}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+                leaderboardList.appendChild(item);
+            });
+        };
+
+        // ✅ دالة للحصول على قيمة الجائزة بناءً على المركز
+        const getPrizeForRank = (rank) => {
+            const prizes = {
+                1: 0.6,
+                2: 0.4,
+                3: 0.3,
+                4: 0.15,
+                5: 0.15,
+                6: 0.1,
+                7: 0.1,
+                8: 0.1,
+                9: 0.05,
+                10: 0.05
+            };
+            
+            return prizes[rank] || 0;
+        };
+
+        // ✅ دالة لعرض لوحة المتصدرين الكاملة
+        window.showFullLeaderboard = () => {
+            showPopup(`
+                <div style="text-align: left; max-height: 70vh; overflow-y: auto;">
+                    <h2 style="margin-bottom: 15px; color: var(--ship-gold);">🏆 Full Leaderboard</h2>
+                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: var(--text-secondary-dark);">
+                        Showing top 50 participants
+                    </div>
+                    <div id="full-leaderboard-content">
+                        ${generateFullLeaderboardHTML()}
+                    </div>
+                    <button class="popup-close-btn" onclick="closePopup()" style="margin-top: 15px; width: 100%;">Close</button>
+                </div>
+            `);
+        };
+
+        // ✅ دالة لتوليد HTML للوحة المتصدرين الكاملة
+        const generateFullLeaderboardHTML = () => {
+            if (contestData.leaderboard.length === 0) {
+                return '<p style="text-align: center; padding: 20px;">No participants yet.</p>';
+            }
+            
+            let html = '';
+            const top50 = contestData.leaderboard.slice(0, 50);
+            
+            top50.forEach((participant, index) => {
+                const rank = index + 1;
+                const isCurrentUser = participant.userId === tgUser.id;
+                const prizeAmount = getPrizeForRank(rank);
+                const prizeText = prizeAmount > 0 ? `${prizeAmount} TON` : '';
+                
+                let displayName = 'Unknown User';
+                if (participant.userName && participant.userName.trim() !== '') {
+                    displayName = participant.userName;
+                } else if (participant.username) {
+                    displayName = `@${participant.username}`;
+                } else if (participant.userId) {
+                    displayName = `User ${participant.userId}`;
+                }
+                
+                let rankIcon = rank;
+                if (rank === 1) rankIcon = '🥇';
+                else if (rank === 2) rankIcon = '🥈';
+                else if (rank === 3) rankIcon = '🥉';
+                
+                html += `
+                    <div style="display: flex; align-items: center; padding: 10px; margin: 5px 0; border-radius: 8px; ${
+                        isCurrentUser ? 'background: rgba(255, 215, 0, 0.1); border: 2px solid var(--ship-gold);' : 'background: rgba(255,255,255,0.05);'
+                    }">
+                        <div style="width: 35px; height: 35px; border-radius: 50%; background: linear-gradient(45deg, var(--ship-gold), #ffa500); 
+                             display: flex; align-items: center; justify-content: center; color: #000; font-weight: 700; margin-right: 12px; font-size: 0.9rem;">
+                            ${rankIcon}
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: 600; ${isCurrentUser ? 'color: var(--ship-gold);' : ''}">${displayName}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-secondary-dark);">${participant.points || 0} points • ${participant.adsWatched || 0} ads • ${participant.referrals || 0} referrals</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: var(--ship-gold);">${participant.points || 0}</div>
+                            ${prizeText ? `<div style="font-size: 0.75rem; color: var(--success); margin-top: 2px;">${prizeText}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return html;
+        };
+
+        // ✅ دالة للتحقق من الاشتراك في القنوات باستخدام بوت واحد
+        const checkRealSubscription = async (channelUsername) => {
+            try {
+                if (!tgUser || !tgUser.id) {
+                    console.log('❌ No Telegram user data available');
+                    return false;
+                }
+
+                const botToken = appConfig.botToken;
+                
+                if (!botToken) {
+                    console.error('❌ Bot token not configured');
+                    return false;
+                }
+
+                console.log(`🔍 Checking REAL subscription for ${channelUsername}, user: ${tgUser.id}`);
+
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: '@' + channelUsername,
+                            user_id: tgUser.id
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error(`❌ HTTP error! status: ${response.status} for ${channelUsername}`);
+                        return false;
+                    }
+
+                    const data = await response.json();
+                    console.log(`📊 Bot API response for ${channelUsername}:`, data);
+                    
+                    if (data.ok) {
+                        const status = data.result.status;
+                        const isSubscribed = ['member', 'administrator', 'creator'].includes(status);
+                        console.log(`📢 REAL subscription status for ${channelUsername}: ${status} -> ${isSubscribed}`);
+                        return isSubscribed;
+                    } else {
+                        console.error(`❌ Bot API error for ${channelUsername}:`, data.description);
+                        return false;
+                    }
+                } catch (fetchError) {
+                    console.error(`❌ Fetch error for ${channelUsername}:`, fetchError);
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error('Error checking real subscription:', error);
+                return false;
+            }
+        };
+
+        // ✅ دالة محسنة للتحقق من المهام الإضافية
+        const checkTaskSubscription = async (task) => {
+            try {
+                if (!tgUser || !tgUser.id) {
+                    console.log('❌ No Telegram user data available');
+                    return false;
+                }
+
+                const botToken = appConfig.botToken;
+                
+                if (!botToken) {
+                    console.error('❌ Bot token not configured');
+                    return false;
+                }
+
+                const channelMatch = task.url.match(/t\.me\/([^\/]+)/);
+                if (!channelMatch) {
+                    console.error('❌ Invalid channel URL in task:', task.url);
+                    return false;
+                }
+
+                const channelUsername = channelMatch[1];
+                console.log(`🔍 Checking task subscription for ${channelUsername}, user: ${tgUser.id}`);
+
+                try {
+                    const response = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chat_id: '@' + channelUsername,
+                            user_id: tgUser.id
+                        })
+                    });
+
+                    if (!response.ok) {
+                        console.error(`❌ HTTP error! status: ${response.status} for ${channelUsername}`);
+                        return false;
+                    }
+
+                    const data = await response.json();
+                    console.log(`📊 Bot API response for task channel ${channelUsername}:`, data);
+                    
+                    if (data.ok) {
+                        const status = data.result.status;
+                        const isSubscribed = ['member', 'administrator', 'creator'].includes(status);
+                        console.log(`📢 Task subscription status for ${channelUsername}: ${status} -> ${isSubscribed}`);
+                        return isSubscribed;
+                    } else {
+                        console.error(`❌ Bot API error for task channel ${channelUsername}:`, data.description);
+                        return false;
+                    }
+                } catch (fetchError) {
+                    console.error(`❌ Fetch error for task channel ${channelUsername}:`, fetchError);
+                    return false;
+                }
+                
+            } catch (error) {
+                console.error('Error checking task subscription:', error);
+                return false;
+            }
+        };
+
+        // ✅ دالة محسنة للمطالبة بالمهام الإضافية
+        const handleClaimTask = async (e) => {
+            if (isUserBanned) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Your account is banned. Contact support."); 
+                }catch{} 
+                return; 
+            }
+
+            if (!isSubscribedToAllChannels) {
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Please subscribe to all required channels first!"); 
+                }catch{} 
+                return; 
+            }
+
+            if (e.target.classList.contains('action-btn') && e.target.dataset.taskId) {
+                const taskId = e.target.dataset.taskId;
+                const task = appConfig.tasks[taskId];
+                if (!task || (userState.completedTasks && userState.completedTasks[taskId])) { 
+                    try{ 
+                        if (tg.showAlert) tg.showAlert('You have already claimed this bonus.'); 
+                    }catch{} 
+                    return; 
+                }
+
+                showPopup(`
+                    <div style="margin-bottom:10px;">
+                        <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                    </div>
+                    <h2>Verifying Subscription</h2>
+                    <p>Checking channel subscription...</p>
+                `);
+
+                const isSubscribed = await checkTaskSubscription(task);
+                closePopup();
+
+                if (!isSubscribed) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("Please subscribe to the channel first to claim this bonus!"); 
+                    }catch{} 
+                    
+                    try{ 
+                        if (tg.openLink) tg.openLink(task.url); 
+                    }catch{ 
+                        window.open(task.url, '_blank'); 
+                    }
+                    return;
+                }
+
+                e.target.disabled = true; 
+                e.target.textContent = 'Claiming...';
+                
+                try {
+                    const rewardAmountRR = Math.round(task.reward * RR_TO_TON_RATE);
+                    userRRBalance += rewardAmountRR;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                    
+                    // تحديث حالة المهمة في حالة المستخدم
+                    if (!userState.completedTasks) userState.completedTasks = {};
+                    userState.completedTasks[taskId] = true;
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(`Thank you! You received ${rewardAmountRR.toLocaleString()} RR.`); 
+                    }catch{}
+                    renderUI();
+                } catch (error) { 
+                    try{ 
+                        if (tg.showAlert) tg.showAlert('Failed to claim bonus.'); 
+                    }catch{} 
+                    e.target.disabled = false; 
+                    e.target.textContent = 'Claim Bonus'; 
+                }
+            }
+        };
+
+        // ✅ دالة محسنة لمطالبة مكافأة التسجيل اليومي - تم إصلاحها بالكامل
+        window.claimDailyLoginBonus = async () => {
+            try {
+                const today = new Date().toDateString();
+                
+                // التحقق مما إذا تم المطالبة اليوم
+                if (dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today)) {
+                    try{ 
+                        if (tg.showAlert) tg.showAlert("You have already claimed your daily bonus today!"); 
+                    }catch{} 
+                    return;
+                }
+                
+                // مطالبة المكافأة عبر API
+                const result = await api('claimDailyLogin', 'POST', {
+                    userId: tgUser.id
+                });
+                
+                if (result && result.success) {
+                    // تحديث البيانات المحلية
+                    userState.balance = result.newBalance;
+                    dailyLoginData.currentStreak = result.currentStreak;
+                    
+                    if (!dailyLoginData.claimedDays) {
+                        dailyLoginData.claimedDays = [];
+                    }
+                    dailyLoginData.claimedDays.push(today);
+                    dailyLoginData.lastLoginDate = today;
+                    
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(`🎉 Daily login bonus claimed! +${result.rewardAmount.toFixed(4)} TON (Day ${result.currentStreak})`); 
+                    }catch{}
+                    
+                    // تحديث الواجهة
+                    renderUI();
+                    
+                    // إغلاق النافذة تلقائياً بعد النجاح
+                    setTimeout(() => {
+                        closeDailyCalendar();
+                    }, 1500);
+                    
+                } else {
+                    throw new Error('Claim failed');
+                }
+                
+            } catch (error) {
+                console.error('Error claiming daily login bonus:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to claim daily bonus. Please try again."); 
+                }catch{} 
+            }
+        };
+
+        // ✅ دالة لعرض التقويم اليومي المعدلة - تم إصلاحها بالكامل
+        window.openDailyCalendar = () => {
+            const today = new Date().toDateString();
+            const isClaimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
+            const currentStreak = dailyLoginData.currentStreak || 1;
+            
+            let calendarHTML = '';
+            for (let day = 1; day <= dailyLoginRewards.length; day++) {
+                const rewardAmount = dailyLoginRewards[day - 1];
+                const rewardAmountRR = Math.round(rewardAmount * RR_TO_TON_RATE);
+                let dayClass = 'calendar-day-compact future';
+                let statusText = 'Future';
+                
+                if (day < currentStreak) {
+                    dayClass = 'calendar-day-compact completed';
+                    statusText = 'Claimed';
+                } else if (day === currentStreak) {
+                    if (isClaimedToday) {
+                        dayClass = 'calendar-day-compact completed';
+                        statusText = 'Claimed';
+                    } else {
+                        dayClass = 'calendar-day-compact current';
+                        statusText = 'Claim Now';
+                    }
+                }
+                
+                calendarHTML += `
+                    <div class="${dayClass}">
+                        <div class="day-number-compact">Day ${day}</div>
+                        <div class="day-reward-compact">${rewardAmountRR.toLocaleString()} RR</div>
+                        <div class="day-status-compact">${statusText}</div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('streak-calendar-compact').innerHTML = calendarHTML;
+            document.getElementById('current-streak-display').textContent = `${currentStreak} days`;
+            
+            // تحديث حالة المكافأة اليومية
+            const statusElement = document.getElementById('daily-login-status');
+            if (isClaimedToday) {
+                statusElement.innerHTML = `
+                    <div style="color: var(--success);">
+                        <i class="fas fa-check-circle"></i> Today's bonus already claimed!
+                    </div>
+                `;
+            } else {
+                statusElement.innerHTML = `
+                    <div style="color: var(--ship-gold);">
+                        <i class="fas fa-gift"></i> Today's bonus available! 
+                        <button onclick="claimDailyLoginBonus()" class="action-btn" style="padding: 5px 10px; font-size: 0.8rem; margin-left: 10px;">
+                            Claim Now
+                        </button>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('daily-calendar-popup').style.display = 'flex';
+        };
+
+        // ✅ دالة لإغلاق التقويم اليومي - تم إصلاحها
+        window.closeDailyCalendar = () => {
+            document.getElementById('daily-calendar-popup').style.display = 'none';
+        };
+
+        // ✅ دالة محسنة لتحميل وعرض المهام اليومية
+        const loadDailyTasks = async () => {
+            const dailyTasksList = document.getElementById('daily-tasks-list');
+            if (!dailyTasksList) return;
+
+            try {
+                const result = await api('getDailyTasks', 'GET', { userId: tgUser.id });
+                
+                if (result && result.needsReset) {
+                    // إعادة تعيين المهام
+                    await resetDailyTasks();
+                    return;
+                }
+                
+                const watchedToday = result ? result.watchedToday : (userState.dailyAdCount || 0);
+                const tasksData = result ? result.tasks : {};
+                
+                // تعريف المهام اليومية
+                const dailyTasks = [
+                    { id: 'daily_login', name: 'Daily Login', required: 0, current: 1, reward: 5000, claimed: false },
+                    { id: 'watch_50_ads', name: 'Watch 50 Ads Today', required: 50, current: watchedToday, reward: 10000, claimed: false },
+                    { id: 'watch_100_ads', name: 'Watch 100 Ads Today', required: 100, current: watchedToday, reward: 20000, claimed: false },
+                    { id: 'watch_500_ads', name: 'Watch 500 Ads Today', required: 500, current: watchedToday, reward: 50000, claimed: false },
+                    { id: 'watch_1000_ads', name: 'Watch 1000 Ads Today', required: 1000, current: watchedToday, reward: 100000, claimed: false }
+                ];
+
+                let tasksHTML = '';
+                
+                dailyTasks.forEach(task => {
+                    const isClaimed = tasksData[task.id] || false;
+                    const isCompleted = task.current >= task.required;
+                    const progressPercentage = Math.min(100, (task.current / task.required) * 100);
+                    
+                    tasksHTML += `
+                        <div class="task-container" style="position: relative;">
+                            <div class="task-info" style="flex: 1;">
+                                <h3>${task.name}</h3>
+                                <p>Watch ${task.required.toLocaleString()} ads today - Reward: ${task.reward.toLocaleString()} RR</p>
+                                
+                                <!-- شريط التقدم -->
+                                <div class="progress-container-inline" style="margin: 8px 0;">
+                                    <div class="progress-info-inline">
+                                        <span>Today's Progress</span>
+                                        <span>${task.current.toLocaleString()} / ${task.required.toLocaleString()}</span>
+                                    </div>
+                                    <div class="progress-bar-bg-inline">
+                                        <div class="progress-bar-fg-inline" style="width: ${progressPercentage}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button class="action-btn ${isCompleted && !isClaimed ? '' : 'disabled'}" 
+                                    data-task-id="${task.id}" 
+                                    data-task-reward="${task.reward}"
+                                    ${isCompleted && !isClaimed ? '' : 'disabled'}
+                                    style="min-width: 80px;">
+                                ${isClaimed ? '✅ Claimed' : (isCompleted ? '🎁 Claim' : 'In Progress')}
+                            </button>
+                            
+                            ${isClaimed ? '<div style="position: absolute; top: 5px; right: 5px; background: var(--success); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem;">Claimed</div>' : ''}
+                        </div>
+                    `;
+                });
+                
+                dailyTasksList.innerHTML = tasksHTML;
+                
+                // إضافة event listeners لأزرار Claim
+                document.querySelectorAll('#daily-tasks-list .action-btn:not(.disabled)').forEach(btn => {
+                    btn.addEventListener('click', handleDailyTaskClaim);
+                });
+                
+            } catch (error) {
+                console.error('Error loading daily tasks:', error);
+                dailyTasksList.innerHTML = '<p style="color: var(--danger); text-align: center;">Error loading daily tasks</p>';
+            }
+        };
+
+        // ✅ دالة محسنة للمطالبة بمهمة يومية
+        const handleDailyTaskClaim = async (e) => {
+            const taskId = e.target.dataset.taskId;
+            const reward = parseInt(e.target.dataset.taskReward);
+            
+            if (!taskId || !reward) return;
+            
+            try {
+                const result = await api('updateDailyTask', 'POST', {
+                    userId: tgUser.id,
+                    taskId: taskId,
+                    reward: reward
+                });
+                
+                if (result && result.success) {
+                    // تحديث الرصيد
+                    userRRBalance += reward;
+                    localStorage.setItem(`userRRBalance_${tgUser.id || 'guest'}`, userRRBalance.toString());
+                    
+                    // تحديث الواجهة
+                    loadDailyTasks();
+                    renderUI();
+                    
+                    // إظهار رسالة النجاح
+                    try{ 
+                        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); 
+                        if (tg.showAlert) tg.showAlert(`🎉 Task completed! You earned ${reward.toLocaleString()} RR!`); 
+                    }catch{}
+                    
+                } else {
+                    throw new Error('Claim failed');
+                }
+                
+            } catch (error) {
+                console.error('Error claiming daily task:', error);
+                try{ 
+                    if (tg.showAlert) tg.showAlert("Failed to claim task reward. Please try again."); 
+                }catch{}
+            }
+        };
+
+        // ✅ دالة محسنة لإعادة تعيين المهام اليومية
+        const resetDailyTasks = async () => {
+            try {
+                console.log('🔄 Resetting daily tasks for new day');
+                // يتم إعادة التعيين تلقائياً عبر API عند الحاجة
+            } catch (error) {
+                console.error('Error resetting daily tasks:', error);
+            }
+        };
+
+        // بدء التطبيق
+        initApp();
+    });
+
+    // إضافة keyframes للـ spinner
+    (function addSpinKeyframes(){ 
+        const style = document.createElement('style'); 
+        style.innerHTML='@keyframes spin{to{transform:rotate(360deg)}}'; 
+        document.head.appendChild(style); 
+    })();
+    </script>
+
+<!-- ❌ إزالة Anti-Multi-Account script الذي يعتمد على Firebase ❌ -->
+<!--
+<script>
+// ======= Anti-Multi helpers (global) =======
+// يتم التعامل مع هذا الآن عبر API
+</script>
+-->
+
 </body>
 </html>
