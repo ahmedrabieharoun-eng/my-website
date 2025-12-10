@@ -2190,6 +2190,74 @@
             }
         };
 
+        // ✅ دالة للتحقق من الاشتراك الإجباري
+        const checkRequiredSubscription = async () => {
+            try {
+                console.log('🔍 Starting required subscription check...');
+                
+                const checkBtn = document.getElementById('check-subscription-btn');
+                if (checkBtn) {
+                    checkBtn.disabled = true;
+                    checkBtn.textContent = 'Checking...';
+                }
+                
+                showPopup(`
+                    <div style="margin-bottom:10px;">
+                        <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
+                    </div>
+                    <h2>Checking Subscriptions</h2>
+                    <p>Verifying channel subscriptions...</p>
+                `);
+                
+                const { subscriptionResults, allSubscribed } = await checkAllSubscriptions();
+                
+                closePopup();
+                
+                // تحديث واجهة القنوات
+                updateSubscriptionUI(subscriptionResults);
+                
+                if (allSubscribed) {
+                    isSubscribedToAllChannels = true;
+                    
+                    // تحديث حالة المستخدم في قاعدة البيانات
+                    await updateUser(tgUser.id, { subscribedToChannels: true });
+                    
+                    // إخفاء صفحة الاشتراك
+                    document.getElementById('subscription-page').classList.remove('active');
+                    document.querySelector('.ship-container').style.display = 'block';
+                    
+                    console.log('✅ All channels subscribed - User verified');
+                } else {
+                    isSubscribedToAllChannels = false;
+                    
+                    // إظهار صفحة الاشتراك
+                    document.getElementById('subscription-page').classList.add('active');
+                    document.querySelector('.ship-container').style.display = 'none';
+                    
+                    console.log('❌ User not subscribed to all channels');
+                }
+                
+                if (checkBtn) {
+                    checkBtn.disabled = false;
+                    checkBtn.textContent = '🔄 Check Subscription';
+                }
+                
+                return allSubscribed;
+                
+            } catch (error) {
+                console.error('Error checking subscription:', error);
+                closePopup();
+                
+                const checkBtn = document.getElementById('check-subscription-btn');
+                if (checkBtn) {
+                    checkBtn.disabled = false;
+                    checkBtn.textContent = '🔄 Check Subscription';
+                }
+                
+                return false;
+            }
+        };
+
         // ✅ دالة محسنة لتهيئة التطبيق
         const initApp = async () => {
             try {
@@ -2241,6 +2309,15 @@
                     return;
                 }
 
+                // التحقق من الاشتراك الإجباري
+                console.log('🔒 Checking mandatory subscription...');
+                const isSubscribed = await checkRequiredSubscription();
+                
+                if (!isSubscribed) {
+                    // لا تتابع التحميل إذا لم يكن مشتركاً
+                    return;
+                }
+
                 // 📋 جلب الإعدادات
                 const config = await getConfig();
                 if (config && !config.error) {
@@ -2252,7 +2329,6 @@
                     }
                 }
 
-                // التحقق من اشتراكات القنوات
                 showPopup(`
                     <div style="margin-bottom:10px;">
                         <div class="spinner" style="width:40px;height:40px;border-radius:50%;border:4px solid var(--ship-gold);border-top-color:transparent;animation:spin 1s linear infinite;margin:0 auto;"></div>
@@ -2311,8 +2387,6 @@
                 
                 setTimeout(() => {
                     document.getElementById('app-loader').style.display = 'none';
-                    document.getElementById('subscription-page').classList.remove('active');
-                    document.querySelector('.ship-container').style.display = 'block';
                 }, 300);
                 
             } catch (error) { 
@@ -2492,20 +2566,34 @@
             }
         };
 
-        const renderWithdrawalHistory = () => {
+        // ✅ دالة محسنة لعرض سجل السحب
+        const renderWithdrawalHistory = async () => {
             const listEl = document.getElementById('withdrawal-history-list');
-            if (userTransactions.length === 0) { 
-                listEl.innerHTML = '<p>No withdrawal history found.</p>'; 
-                return; 
+            
+            try {
+                // جلب سجل السحب من API
+                const history = await getWithdrawalHistory(tgUser.id);
+                
+                if (history && !history.error && history.length > 0) {
+                    userTransactions = history;
+                    
+                    listEl.innerHTML = history.map(item => `
+                        <div class="history-item">
+                            <div class="history-details">
+                                <p>${Number(item.amount).toFixed(4)} TON - ${item.method}</p>
+                                <small>${new Date(item.timestamp).toLocaleString()}</small>
+                                <small style="display: block; margin-top: 5px;">To: ${item.account}</small>
+                                ${item.memo ? `<small style="display: block; color: var(--text-secondary-dark);">Memo: ${item.memo}</small>` : ''}
+                            </div>
+                            <span class="history-status status-${item.status}">${item.status}</span>
+                        </div>`).join('');
+                } else {
+                    listEl.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-secondary-dark);">No withdrawal history found.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading withdrawal history:', error);
+                listEl.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--danger);">Error loading history.</p>';
             }
-            listEl.innerHTML = userTransactions.map(item => `
-                <div class="history-item">
-                    <div class="history-details">
-                        <p>${Number(item.amount).toFixed(4)} TON - ${item.method}</p>
-                        <small>${new Date(item.timestamp).toLocaleString()}</small>
-                    </div>
-                    <span class="history-status status-${item.status}">${item.status}</span>
-                </div>`).join('');
         };
 
         const setupNavigation = () => {
@@ -2553,6 +2641,20 @@
             document.getElementById('contest-guide-trigger').addEventListener('click', function() {
                 const content = document.getElementById('contest-guide-content');
                 content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            });
+            
+            // زر التحقق من الاشتراك
+            document.getElementById('check-subscription-btn').addEventListener('click', checkRequiredSubscription);
+            
+            // زر التخطي (للتطوير فقط)
+            document.getElementById('skip-subscription-btn').addEventListener('click', function() {
+                isSubscribedToAllChannels = true;
+                document.getElementById('subscription-page').classList.remove('active');
+                document.querySelector('.ship-container').style.display = 'block';
+                console.log('🚨 Skipped subscription (Dev mode)');
+                
+                // تحديث حالة المستخدم في قاعدة البيانات
+                updateUser(tgUser.id, { subscribedToChannels: true });
             });
         };
 
@@ -3731,21 +3833,38 @@
             if (!dailyTasksList) return;
 
             try {
+                // أولاً: التحقق من إعادة التعيين اليومي
+                await resetDailyTasks();
+                
+                // ثانياً: جلب المهام المحدثة
                 const result = await getDailyTasksAPI(tgUser.id);
                 
                 if (result && !result.error) {
                     let tasksHTML = '';
                     
                     result.forEach(task => {
-                        const progressPercentage = Math.min(100, (task.current / task.required) * 100);
+                        // التحقق من المهمة اليومية الخاصة بالدخول
+                        if (task.id === 'daily_login') {
+                            // التحقق مما إذا تم المطالبة اليوم
+                            const today = new Date().toDateString();
+                            const dailyLoginData = JSON.parse(localStorage.getItem(`dailyLoginData_${tgUser.id}`) || '{}');
+                            const claimedToday = dailyLoginData.claimedDays && dailyLoginData.claimedDays.includes(today);
+                            
+                            task.claimed = claimedToday;
+                            task.completed = true; // الدخول اليومي مكتمل تلقائياً
+                            task.current = 1;
+                        }
+                        
+                        const progressPercentage = Math.min(100, (task.current / (task.required || 1)) * 100);
                         
                         tasksHTML += `
                             <div class="task-container" style="position: relative;">
                                 <div class="task-info" style="flex: 1;">
                                     <h3>${task.name}</h3>
-                                    <p>Watch ${task.required.toLocaleString()} ads today - Reward: ${task.reward.toLocaleString()} RR</p>
+                                    <p>${task.required > 0 ? `Watch ${task.required.toLocaleString()} ads today - ` : ''}Reward: ${task.reward.toLocaleString()} RR</p>
                                     
                                     <!-- شريط التقدم -->
+                                    ${task.required > 0 ? `
                                     <div class="progress-container-inline" style="margin: 8px 0;">
                                         <div class="progress-info-inline">
                                             <span>Today's Progress</span>
@@ -3755,6 +3874,7 @@
                                             <div class="progress-bar-fg-inline" style="width: ${progressPercentage}%;"></div>
                                         </div>
                                     </div>
+                                    ` : ''}
                                 </div>
                                 
                                 <button class="action-btn ${task.completed && !task.claimed ? '' : 'disabled'}" 
@@ -3825,17 +3945,31 @@
         // ✅ دالة محسنة لإعادة تعيين المهام اليومية
         const resetDailyTasks = async () => {
             try {
-                const today = new Date().toDateString();
+                const today = new Date().toISOString().slice(0, 10);
                 const lastReset = localStorage.getItem(`lastDailyReset_${tgUser.id}`);
                 
                 if (lastReset !== today) {
                     console.log('🔄 Resetting daily tasks for new day:', today);
                     
-                    // هنا يمكنك إضافة منطق لإعادة تعيين المهام في قاعدة البيانات
-                    // إذا كان لديك نقطة نهاية API لذلك
+                    // إعادة تعيين المهام اليومية عبر API
+                    await updateUser(tgUser.id, {
+                        dailyAdCount: 0,
+                        lastAdWatchDate: today
+                    });
+                    
+                    // إعادة تعيين المهام المطالَب بها
+                    localStorage.setItem(`claimedTasks_${tgUser.id}`, JSON.stringify({}));
+                    
+                    // تحديث حالة المهام اليومية في قاعدة البيانات
+                    try {
+                        await api('resetDailyTasks', 'POST', { userId: tgUser.id });
+                    } catch (error) {
+                        console.log('Note: resetDailyTasks endpoint not available');
+                    }
                     
                     localStorage.setItem(`lastDailyReset_${tgUser.id}`, today);
                     console.log('✅ Daily tasks reset successfully for user:', tgUser.id);
+                    
                 } else {
                     console.log('ℹ️ Daily tasks already reset for today:', today);
                 }
