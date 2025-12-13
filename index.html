@@ -342,6 +342,68 @@
             background: var(--primary-green);
             color: #000;
         }
+
+        /* Withdrawal Type Selector */
+        .withdrawal-type-selector {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            border-radius: 50px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .withdrawal-type-btn {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+        
+        .withdrawal-type-btn.active {
+            background: var(--primary-green);
+            color: #000;
+            border-color: var(--primary-green);
+        }
+        
+        /* Info Box */
+        .info-box {
+            background: rgba(255, 179, 0, 0.1);
+            border: 1px solid var(--gold);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        
+        .info-box.success {
+            background: rgba(39, 174, 96, 0.1);
+            border-color: #27ae60;
+        }
+        
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            margin-right: 5px;
+            border-radius: 50%;
+            background: var(--gold);
+            color: #000;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        
+        .info-box.success .info-icon {
+            background: #27ae60;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -636,14 +698,86 @@
         <!-- ================= WITHDRAW PAGE ================= -->
         <main id="withdraw" class="content-section">
             <div class="page-header"><h1>Withdraw</h1><p>GLX out to TON Wallet</p></div>
+            
+            <div class="withdrawal-type-selector">
+                <div class="withdrawal-type-btn active" data-type="faucetpay" onclick="selectWithdrawalType('faucetpay')">
+                    <i class="fa-solid fa-envelope"></i> FaucetPay
+                </div>
+                <div class="withdrawal-type-btn" data-type="tonwallet" onclick="selectWithdrawalType('tonwallet')">
+                    <i class="fa-solid fa-wallet"></i> TON Wallet
+                </div>
+            </div>
+
             <div class="card">
+                <!-- Balance Display -->
                 <div style="text-align:center; padding:10px; margin-bottom:15px;">
-                    <div style="font-size:12px; color:var(--text-muted);">Balance</div>
+                    <div style="font-size:12px; color:var(--text-muted);">Available Balance</div>
                     <div style="font-size:32px; font-weight:800; color:#a855f7;"><span class="user-ton-balance">0.0000</span> TON</div>
                 </div>
-                <div class="input-wrap"><span class="input-label">Amount (Min 0.05)</span><input id="ton-withdraw-amount" type="number" class="custom-input" placeholder="0.05"></div>
-                <div class="input-wrap"><span class="input-label">TON Wallet Address</span><input id="ton-wallet-address" type="text" class="custom-input" style="font-size:14px;" placeholder="UQ..."></div>
-                <button class="btn btn-primary" id="withdraw-ton-now-btn">Submit</button>
+
+                <!-- FaucetPay Withdrawal Form -->
+                <div id="faucetpay-form">
+                    <div class="info-box">
+                        <span class="info-icon">✓</span>
+                        <strong>FaucetPay Withdrawal</strong><br>
+                        Enter your Gmail address registered with FaucetPay<br>
+                        <strong>Minimum withdrawal:</strong> 0.0001 TON<br>
+                        <strong>✅ No fees</strong> - We cover all transaction costs<br>
+                        <strong>⏳ Processing time:</strong> Up to 1 minute<br>
+                        <strong>💡 Note:</strong> Withdrawals are processed automatically
+                    </div>
+
+                    <div class="input-wrap">
+                        <span class="input-label">FaucetPay Email</span>
+                        <input type="email" id="faucetpay-email" class="custom-input" placeholder="your-email@gmail.com">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Enter your FaucetPay registered email</div>
+                    </div>
+
+                    <div class="input-wrap">
+                        <span class="input-label">Amount (TON)</span>
+                        <input type="number" id="faucetpay-amount" class="custom-input" placeholder="0.0001" step="0.0001" min="0.0001">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Minimum: 0.0001 TON</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="withdraw-faucetpay-btn">
+                        <i class="fa-solid fa-paper-plane"></i> Withdraw via FaucetPay
+                    </button>
+                </div>
+
+                <!-- TON Wallet Withdrawal Form -->
+                <div id="tonwallet-form" style="display: none;">
+                    <div class="info-box success">
+                        <span class="info-icon">✓</span>
+                        <strong>TON Wallet Withdrawal</strong><br>
+                        Enter your TON wallet address (starts with UQ, EQ, or kQ)<br>
+                        <strong>Minimum withdrawal:</strong> 0.05 TON<br>
+                        <strong>✅ No fees</strong> - We cover all transaction costs<br>
+                        <strong>⏳ Processing time:</strong> Up to 24 hours<br>
+                        <strong>💡 Optional:</strong> Add memo for exchange deposits
+                    </div>
+
+                    <div class="input-wrap">
+                        <span class="input-label">TON Wallet Address</span>
+                        <input type="text" id="ton-wallet-address" class="custom-input" placeholder="UQ...">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Enter your TON wallet address</div>
+                    </div>
+
+                    <div class="input-wrap">
+                        <span class="input-label">Memo (Optional)</span>
+                        <input type="text" id="ton-memo" class="custom-input" placeholder="For exchange deposits">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Optional memo for exchange deposits</div>
+                    </div>
+
+                    <div class="input-wrap">
+                        <span class="input-label">Amount (TON)</span>
+                        <input type="number" id="ton-withdraw-amount" class="custom-input" placeholder="0.05" step="0.01" min="0.05">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Minimum: 0.05 TON</div>
+                    </div>
+
+                    <button class="btn btn-primary" id="withdraw-ton-now-btn">
+                        <i class="fa-solid fa-wallet"></i> Withdraw to TON Wallet
+                    </button>
+                </div>
             </div>
         </main>
 
@@ -704,7 +838,19 @@
             const BOT_USERNAME = 'CashJungleBot'; 
             const ADMIN_WALLET = 'UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX';
             const GLX_TO_TON_RATE = 0.0000001; 
-            const firebaseConfig = { apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg", authDomain: "cash-jungle-bot.firebaseapp.com", databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "cash-jungle-bot", storageBucket: "cash-jungle-bot.firebasestorage.app", messagingSenderId: "361914347430", appId: "1:361914347430:web:3d13817f7c0b8411552967", measurementId: "G-C0JYFKC0P8" };
+            
+            // Firebase Configuration (Updated)
+            const firebaseConfig = {
+                apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+                authDomain: "earnmoney124553.firebaseapp.com",
+                databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+                projectId: "earnmoney124553",
+                storageBucket: "earnmoney124553.firebasestorage.app",
+                messagingSenderId: "325528918523",
+                appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+                measurementId: "G-G1H96Q5XCJ"
+            };
+            
             const TG_BOT_TOKEN = '8340000265:AAErFZF0d-khnKM8LxU0pU8T140-DdZLncQ'; // PASTE YOUR TOKEN HERE
 
             // Initialize App
@@ -739,6 +885,9 @@
                 'default': 50
             };
 
+            // Withdrawal Type
+            let withdrawalType = 'faucetpay';
+
             // User Identity
             function getUser() {
                 const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
@@ -764,6 +913,9 @@
                 renderCreateTaskUI(); 
                 initSlotsGame();
                 setTimeout(() => { isAdScriptLoaded = typeof show_10286382 === "function"; }, 2500);
+                
+                // Set default withdrawal type
+                selectWithdrawalType('faucetpay');
             }
 
             function initializeUser() {
@@ -832,6 +984,7 @@
                         limitMonetag: 50,
                         limitGiga: 50,
                         minTonWithdrawal: 0.05, 
+                        minFaucetPayWithdrawal: 0.0001,
                         referralReward: 500, 
                         pricePerClick: 0.0015 
                     };
@@ -1358,8 +1511,138 @@
                     e.target.classList.add('active');
                     document.getElementById(e.target.dataset.target).classList.remove('hidden');
                 }));
-                document.getElementById('withdraw-ton-now-btn').addEventListener('click', handleWithdraw);
+                document.getElementById('withdraw-faucetpay-btn').addEventListener('click', handleFaucetPayWithdraw);
+                document.getElementById('withdraw-ton-now-btn').addEventListener('click', handleTonWalletWithdraw);
                 document.getElementById('claim-daily-btn').addEventListener('click', handleDailyClaim);
+            }
+
+            // --- WITHDRAWAL TYPE SELECTION ---
+            window.selectWithdrawalType = function(type) {
+                withdrawalType = type;
+                
+                // Update UI buttons
+                document.querySelectorAll('.withdrawal-type-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`.withdrawal-type-btn[data-type="${type}"]`).classList.add('active');
+                
+                // Show/hide forms
+                if (type === 'faucetpay') {
+                    document.getElementById('faucetpay-form').style.display = 'block';
+                    document.getElementById('tonwallet-form').style.display = 'none';
+                } else {
+                    document.getElementById('faucetpay-form').style.display = 'none';
+                    document.getElementById('tonwallet-form').style.display = 'block';
+                }
+            }
+
+            // --- FAUCETPAY WITHDRAWAL ---
+            function handleFaucetPayWithdraw() {
+                const email = document.getElementById('faucetpay-email').value.trim();
+                const amount = parseFloat(document.getElementById('faucetpay-amount').value);
+                const minAmount = appSettings.minFaucetPayWithdrawal || 0.0001;
+                const currentBalance = appData.tonBalance || 0;
+
+                if (!email || !email.includes('@')) {
+                    alert("Please enter a valid email address.");
+                    return;
+                }
+
+                if (amount < minAmount) {
+                    alert(`Minimum withdrawal is ${minAmount} TON for FaucetPay.`);
+                    return;
+                }
+
+                if (amount > currentBalance) {
+                    alert("Insufficient TON balance.");
+                    return;
+                }
+
+                if (!confirm(`Withdraw ${amount} TON to ${email} via FaucetPay?`)) {
+                    return;
+                }
+
+                // Create withdrawal record
+                const withdrawalData = {
+                    userId: user.id,
+                    email: email,
+                    amount: amount,
+                    currency: 'TON',
+                    type: 'faucetpay',
+                    status: 'pending',
+                    date: Date.now(),
+                    processed: false
+                };
+
+                // Update user balance
+                db.ref(`users/${user.id}/tonBalance`).transaction(v => v - amount);
+                
+                // Save withdrawal request
+                db.ref('withdrawals').push(withdrawalData).then(() => {
+                    addHistory('withdraw', `FaucetPay Withdrawal to ${email}`, amount, 'TON');
+                    alert(`✅ Withdrawal request submitted! ${amount} TON will be sent to ${email} within 1 minute.`);
+                    
+                    // Clear form
+                    document.getElementById('faucetpay-email').value = '';
+                    document.getElementById('faucetpay-amount').value = minAmount;
+                    
+                    switchTab('home');
+                });
+            }
+
+            // --- TON WALLET WITHDRAWAL ---
+            function handleTonWalletWithdraw() {
+                const address = document.getElementById('ton-wallet-address').value.trim();
+                const amount = parseFloat(document.getElementById('ton-withdraw-amount').value);
+                const memo = document.getElementById('ton-memo').value.trim();
+                const minAmount = appSettings.minTonWithdrawal || 0.05;
+                const currentBalance = appData.tonBalance || 0;
+
+                if (!address || address.length < 5) {
+                    alert("Please enter a valid TON wallet address.");
+                    return;
+                }
+
+                if (amount < minAmount) {
+                    alert(`Minimum withdrawal is ${minAmount} TON for TON Wallet.`);
+                    return;
+                }
+
+                if (amount > currentBalance) {
+                    alert("Insufficient TON balance.");
+                    return;
+                }
+
+                if (!confirm(`Withdraw ${amount} TON to ${address}?`)) {
+                    return;
+                }
+
+                // Create withdrawal record
+                const withdrawalData = {
+                    userId: user.id,
+                    address: address,
+                    amount: amount,
+                    memo: memo || '',
+                    currency: 'TON',
+                    type: 'tonwallet',
+                    status: 'pending',
+                    date: Date.now(),
+                    processed: false
+                };
+
+                // Update user balance
+                db.ref(`users/${user.id}/tonBalance`).transaction(v => v - amount);
+                
+                // Save withdrawal request
+                db.ref('withdrawals').push(withdrawalData).then(() => {
+                    addHistory('withdraw', `TON Wallet Withdrawal to ${address.substring(0, 8)}...`, amount, 'TON');
+                    alert(`✅ Withdrawal request submitted! ${amount} TON will be sent to your wallet within 24 hours.`);
+                    
+                    // Clear form
+                    document.getElementById('ton-wallet-address').value = '';
+                    document.getElementById('ton-memo').value = '';
+                    document.getElementById('ton-withdraw-amount').value = minAmount;
+                    
+                    switchTab('home');
+                });
             }
 
             // --- UPDATED VERIFICATION LOGIC ---
@@ -1535,20 +1818,6 @@
                     </div>`;
                     container.insertAdjacentHTML('beforeend', html);
                 });
-            }
-
-            function handleWithdraw() {
-                const amt = parseFloat(document.getElementById('ton-withdraw-amount').value);
-                const addr = document.getElementById('ton-wallet-address').value.trim();
-                if(!amt || amt < (appSettings.minTonWithdrawal || 0.05)) { alert("Min 0.05 TON"); return; }
-                if(amt > (appData.tonBalance || 0)) { alert("Insufficient TON"); return; }
-                if(addr.length < 5) { alert("Invalid Address"); return; }
-                db.ref(`users/${user.id}/tonBalance`).transaction(v => v - amt);
-                db.ref('withdrawals').push({ userId: user.id, amount: amt, currency: 'TON', address: addr, status: 'pending', date: Date.now() });
-                addHistory('withdraw', `TON Withdrawal`, amt, 'TON');
-                alert("Withdrawal Sent!");
-                document.getElementById('ton-withdraw-amount').value = '';
-                switchTab('home');
             }
 
             initializeApp();
