@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Galaxy Withdraw</title>
+    <title>GLX Galaxy</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -19,1137 +19,1524 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         
         :root {
-            /* الألوان البنفسجية المجرية */
-            --primary-purple: #9d4edd; /* بنفسجي رئيسي */
-            --deep-purple: #5a189a; /* بنفسجي داكن */
-            --galaxy-purple: #7b2cbf; /* بنفسجي مجري */
-            --light-purple: #c77dff; /* بنفسجي فاتح */
-            --neon-purple: #e0aaff; /* بنفسجي نيون */
-            
-            /* ألوان مكملة */
-            --galaxy-blue: #240046;
-            --cosmic-pink: #ff4d8d;
-            --star-yellow: #ffd700;
-            --nebula-teal: #4cc9f0;
-            
-            /* ألوان التصميم */
-            --background-dark: #0a0a1a;
-            --surface-dark: #1a1a2e;
-            --text-primary: #e2e2ff;
-            --text-secondary: #b8b8d1;
-            --border-dark: #2d2d4d;
-            --success: #4cc9f0;
-            --danger: #ff4d8d;
-            --warning: #ffd700;
+            --primary-green: #a855f7; /* Neon Green */
+            --deep-Galaxy: #051a05;
+            --gold: #ffb300;
+            --gold-glow: rgba(255, 179, 0, 0.4);
+            --glass-bg: rgba(16, 40, 16, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-color: #ffffff;
+            --text-muted: #8aa88a;
+            --nav-bg: rgba(8, 24, 8, 0.98);
         }
 
-        * { 
-            margin: 0; 
-            padding: 0; 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent; 
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         
         body { 
             font-family: 'Outfit', sans-serif; 
-            color: var(--text-primary); 
+            color: var(--text-color); 
             overflow-x: hidden; 
-            background: linear-gradient(135deg, var(--background-dark) 0%, var(--galaxy-blue) 100%);
+            background-image: url('https://i.ibb.co/RGFp67kJ/121.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             min-height: 100vh;
-            padding: 15px;
-            position: relative;
         }
 
-        /* النجوم في الخلفية */
-        .stars {
+        /* Dark Vignette Overlay */
+        body::before {
+            content: '';
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);
             z-index: -1;
         }
+        
+        .app-container { padding: 20px; padding-bottom: 110px; max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Animation */
+        .content-section { display: none; animation: fadeIn 0.4s ease; }
+        .content-section.active { display: flex; flex-direction: column; flex: 1; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .star {
-            position: absolute;
-            background-color: var(--light-purple);
-            border-radius: 50%;
-            animation: twinkle 5s infinite ease-in-out;
+        /* Typography */
+        h1 { font-size: 26px; font-weight: 800; color: #fff; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        h2 { font-size: 18px; font-weight: 700; margin: 20px 0 10px; color: var(--gold); display: flex; align-items: center; gap: 8px; }
+        p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+        .page-header { text-align: center; margin-bottom: 20px; padding-top: 10px; }
+
+        /* Modern Glass Cards */
+        .card { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border-radius: 24px; 
+            padding: 20px; 
+            margin-bottom: 12px; 
+            border: 1px solid var(--glass-border); 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
         }
-
-        @keyframes twinkle {
-            0%, 100% { opacity: 0.2; }
-            50% { opacity: 1; }
-        }
-
-        .app-container { 
-            max-width: 500px; 
-            margin: 0 auto; 
-            position: relative;
-            z-index: 2;
-        }
-
-        /* Header */
-        .page-header {
-            text-align: center;
-            margin-bottom: 25px;
-            padding: 15px;
-            background: rgba(154, 77, 221, 0.1);
-            border-radius: 20px;
-            border: 1px solid var(--light-purple);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 0 30px rgba(157, 78, 221, 0.3);
-        }
-
-        .page-header h1 {
-            font-size: 28px;
-            font-weight: 800;
-            background: linear-gradient(90deg, var(--primary-purple), var(--light-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-        }
-
-        .page-header p {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin: 0;
-        }
-
-        /* Cards */
-        .card {
-            background: rgba(26, 26, 46, 0.85);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(157, 78, 221, 0.3);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(157, 78, 221, 0.4);
-        }
-
-        /* Balance Display */
-        .balance-display {
-            text-align: center;
-            margin: 20px 0 30px;
-        }
-
-        .balance-amount {
-            font-size: 56px;
-            font-weight: 800;
-            background: linear-gradient(90deg, var(--primary-purple), var(--light-purple));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            line-height: 1;
-            margin-bottom: 10px;
-            text-shadow: 0 0 20px rgba(157, 78, 221, 0.5);
-        }
-
-        .balance-unit {
-            font-size: 18px;
-            color: var(--light-purple);
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-        }
-
-        /* Input Groups */
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        .input-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .input-with-icon {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-with-icon i {
-            position: absolute;
-            left: 15px;
-            color: var(--primary-purple);
-            z-index: 1;
-            font-size: 18px;
-        }
-
-        .custom-input {
-            width: 100%;
-            padding: 16px 16px 16px 50px;
-            border-radius: 15px;
-            border: 1px solid var(--border-dark);
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-primary);
-            font-size: 16px;
-            font-weight: 600;
-            outline: none;
-            transition: all 0.3s;
-        }
-
-        .custom-input:focus {
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 0 3px rgba(157, 78, 221, 0.2);
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        /* Withdrawal Options */
-        .withdrawal-options {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 25px;
-        }
-
-        .withdrawal-option {
-            flex: 1;
-            padding: 15px 10px;
-            border-radius: 15px;
-            text-align: center;
-            cursor: pointer;
-            border: 1px solid var(--border-dark);
-            background: rgba(255, 255, 255, 0.05);
-            transition: all 0.3s;
-        }
-
-        .withdrawal-option.active {
-            background: rgba(157, 78, 221, 0.2);
-            border-color: var(--primary-purple);
-            box-shadow: 0 0 15px rgba(157, 78, 221, 0.3);
-        }
-
-        .withdrawal-option i {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: var(--primary-purple);
-        }
-
-        .withdrawal-option h4 {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        /* Method Details */
-        .method-details {
-            display: none;
-            padding: 20px;
-            border-radius: 15px;
-            background: rgba(157, 78, 221, 0.1);
-            border: 1px solid rgba(157, 78, 221, 0.2);
-            margin-bottom: 20px;
-        }
-
-        .method-details.active {
-            display: block;
-            animation: fadeIn 0.4s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .method-info {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-
-        .method-info ul {
-            margin: 10px 0;
-            padding-left: 20px;
-        }
-
-        .method-info li {
-            margin-bottom: 8px;
-        }
-
+        
         /* Buttons */
-        .btn {
+        .btn { 
+            display: flex; align-items: center; justify-content: center; width: 100%; padding: 16px; 
+            border-radius: 18px; font-size: 16px; font-weight: 800; cursor: pointer; 
+            border: none; outline: none; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+            transition: transform 0.1s;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+        
+        .btn-primary { 
+            background: linear-gradient(90deg, #FFD700, #FFA000); 
+            color: #000; 
+            box-shadow: 0 0 15px var(--gold-glow);
+        }
+        .btn-ton {
+            background: linear-gradient(90deg, #0088cc, #0099ff);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(0, 136, 204, 0.4);
+        }
+        .btn-check {
+            background: linear-gradient(90deg, #a855f7, #27ae60);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+        }
+        .btn-action {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            flex-direction: column;
+            padding: 12px;
+            font-size: 12px;
+            gap: 5px;
+        }
+        .btn-action svg { width: 24px; height: 24px; stroke: var(--primary-green); }
+
+        /* Top HUD (Profile & Stats) */
+        .hud-container {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0,0,0,0.5); border-radius: 50px;
+            padding: 6px 6px 6px 20px; margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .user-name { font-weight: 700; font-size: 14px; }
+        .user-rank { font-size: 10px; color: var(--primary-green); text-transform: uppercase; }
+        .hud-avatar { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary-green); margin-left: 10px; }
+        .hud-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        /* Settings Button */
+        .settings-btn {
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: background 0.2s;
+        }
+        .settings-btn:active { background: rgba(255,255,255,0.2); }
+        .settings-btn svg { width: 20px; height: 20px; stroke: #fff; }
+
+        /* HOME: Main Coin Display */
+        .main-coin-section {
+            text-align: center; margin: 10px 0 30px; position: relative;
+        }
+        .main-coin-img {
+            width: 160px; height: 160px; 
+            border-radius: 50%; 
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.3);
+            animation: float 4s ease-in-out infinite;
+            object-fit: cover;
+            border: 4px solid var(--primary-green);
+        }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        
+        .balance-display { margin-top: 15px; }
+        .balance-amount { font-size: 48px; font-weight: 800; background: linear-gradient(to bottom, #fff, #b3b3b3); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; }
+        .balance-unit { font-size: 16px; color: var(--primary-green); font-weight: 700; letter-spacing: 2px; }
+
+        /* Mini Stats Pill */
+        .stats-pill {
+            display: inline-flex; align-items: center; gap: 15px;
+            background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 20px;
+            margin-top: 10px; font-size: 12px; font-weight: 600;
+        }
+        .ton-val { color: #a855f7; display: flex; align-items: center; gap: 4px; }
+
+        /* Action Grid */
+        .action-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px; }
+
+        /* Lists & Items */
+        .list-card {
+            display: flex; align-items: center; 
+            background: rgba(0,0,0,0.3); border-radius: 16px; 
+            padding: 12px; margin-bottom: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+            cursor: pointer;
+        }
+        .lc-icon { width: 42px; height: 42px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; }
+        .lc-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+        .lc-content { flex: 1; }
+        .lc-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+        .lc-sub { font-size: 11px; color: var(--text-muted); }
+        .lc-end { text-align: right; }
+        .lc-val { font-weight: 700; color: var(--primary-green); font-size: 14px; }
+        
+        /* Spin & Daily */
+        .daily-row { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
+        .daily-box { 
+            min-width: 70px; background: rgba(255,255,255,0.05); border-radius: 12px; 
+            padding: 10px 5px; text-align: center; border: 1px solid transparent; 
+            opacity: 0.5;
+        }
+        .daily-box.active { opacity: 1; border-color: var(--gold); background: rgba(255, 215, 0, 0.1); }
+        .daily-box.claimed { opacity: 1; background: var(--primary-green); color: #000; }
+        
+        .wheel-wrap { position: relative; width: 240px; height: 240px; margin: 0 auto 20px; }
+        .wheel-arrow { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); width: 20px; height: 30px; background: #fff; clip-path: polygon(50% 100%, 0 0, 100% 0); z-index: 5; }
+        .the-wheel { 
+            width: 100%; height: 100%; border-radius: 50%; 
+            background: conic-gradient(#4CAF50 0deg 45deg, #FFC107 45deg 90deg, #2196F3 90deg 135deg, #E91E63 135deg 180deg, #9C27B0 180deg 225deg, #FF5722 225deg 270deg, #00BCD4 270deg 315deg, #607D8B 315deg 360deg);
+            border: 6px solid rgba(255,255,255,0.1);
+            transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1);
+        }
+
+        /* Leaderboard Podium & Level Badge */
+        .podium-list .list-card:nth-child(1) { border-color: #FFD700; background: rgba(255, 215, 0, 0.1); }
+        .podium-list .list-card:nth-child(2) { border-color: #C0C0C0; background: rgba(192, 192, 192, 0.1); }
+        .podium-list .list-card:nth-child(3) { border-color: #CD7F32; background: rgba(205, 127, 50, 0.1); }
+        .podium-list .list-card:nth-child(1) .lc-val { color: #FFD700; }
+        .podium-list .list-card:nth-child(2) .lc-val { color: #C0C0C0; }
+        .podium-list .list-card:nth-child(3) .lc-val { color: #CD7F32; }
+        
+        /* Inputs & Forms */
+        .input-wrap { background: rgba(0,0,0,0.4); border-radius: 16px; padding: 15px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .input-label { font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 5px; text-transform: uppercase; }
+        .custom-input { width: 100%; background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 600; outline: none; font-family: inherit; }
+        
+        /* Task Creation Styles */
+        .cat-select { display: flex; gap: 10px; margin-bottom: 20px; }
+        .cat-opt { flex: 1; padding: 12px; text-align: center; background: rgba(255,255,255,0.05); border-radius: 12px; font-size: 12px; cursor: pointer; border: 1px solid transparent; }
+        .cat-opt.active { background: var(--primary-green); color: #000; border-color: var(--primary-green); font-weight: 700; }
+        
+        .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .price-opt { padding: 10px; background: rgba(255,255,255,0.05); border-radius: 10px; text-align: center; cursor: pointer; border: 1px solid transparent; }
+        .price-opt.active { border-color: var(--gold); background: rgba(255, 215, 0, 0.1); }
+        .price-count { font-size: 14px; font-weight: 700; color: #fff; }
+        .price-cost { font-size: 10px; color: var(--primary-green); margin-top: 2px; }
+
+        /* Terms Scroll Box */
+        .terms-box {
+            background: rgba(0,0,0,0.3); border-radius: 16px; padding: 15px;
+            height: 300px; overflow-y: auto; font-size: 12px; color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.05); line-height: 1.6;
+        }
+        .terms-box h3 { color: #fff; font-size: 14px; margin-top: 15px; margin-bottom: 5px; }
+        .terms-box h3:first-child { margin-top: 0; }
+
+        /* Navigation */
+        .bottom-nav { 
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 400px; height: 65px; 
+            background: var(--nav-bg); 
+            border-radius: 32px; 
+            display: flex; justify-content: space-around; align-items: center; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            z-index: 100; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #666; transition: 0.3s; cursor: pointer; }
+        .nav-item svg { width: 22px; height: 22px; margin-bottom: 4px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+        .nav-item.active { color: var(--primary-green); transform: translateY(-2px); }
+        .nav-item.active svg { stroke: var(--primary-green); filter: drop-shadow(0 0 8px rgba(0,230,118,0.6)); }
+        .nav-text { font-size: 9px; font-weight: 700; text-transform: uppercase; }
+
+        /* Withdrawal Method Tabs */
+        .method-tab {
+            flex: 1;
+            padding: 12px 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            padding: 18px;
-            border-radius: 15px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            border: none;
-            outline: none;
-            gap: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s;
-            background: linear-gradient(90deg, var(--primary-purple), var(--light-purple));
-            color: white;
-            box-shadow: 0 0 20px rgba(157, 78, 221, 0.4);
-        }
-
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 0 30px rgba(157, 78, 221, 0.6);
-        }
-
-        .btn:active:not(:disabled) {
-            transform: scale(0.98);
-        }
-
-        .btn:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        /* Validation Messages */
-        .validation-message {
-            font-size: 12px;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
             gap: 8px;
-            padding: 8px 12px;
-            border-radius: 8px;
-        }
-
-        .validation-success {
-            background: rgba(76, 201, 240, 0.1);
-            color: var(--success);
-            border: 1px solid var(--success);
-        }
-
-        .validation-error {
-            background: rgba(255, 77, 141, 0.1);
-            color: var(--danger);
-            border: 1px solid var(--danger);
-        }
-
-        .validation-info {
-            background: rgba(157, 78, 221, 0.1);
-            color: var(--primary-purple);
-            border: 1px solid var(--primary-purple);
-        }
-
-        /* Navigation */
-        .bottom-nav {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 500px;
-            height: 70px;
-            background: rgba(26, 26, 46, 0.95);
-            backdrop-filter: blur(15px);
-            border-radius: 25px;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            border: 1px solid rgba(157, 78, 221, 0.2);
-        }
-
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-secondary);
-            transition: all 0.3s;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 12px;
-        }
-
-        .nav-item.active {
-            color: var(--primary-purple);
-            background: rgba(157, 78, 221, 0.1);
-            transform: translateY(-5px);
-        }
-
-        .nav-item i {
-            font-size: 22px;
-            margin-bottom: 4px;
-        }
-
-        .nav-text {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        /* History Items */
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            border: 1px solid var(--border-dark);
             transition: all 0.3s;
         }
-
-        .history-item:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateX(5px);
+        .method-tab.active {
+            background: var(--primary-green);
+            color: #000;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
         }
-
-        .history-details p {
-            margin: 0;
-            font-weight: 600;
+        .method-tab i {
             font-size: 14px;
         }
 
-        .history-details small {
-            font-size: 12px;
-            color: var(--text-secondary);
+        /* Info Boxes */
+        .info-box {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid var(--primary-green);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        .info-box ul {
+            margin: 5px 0 5px 15px;
+        }
+        .info-box li {
+            margin-bottom: 3px;
+        }
+        .info-icon {
+            color: var(--gold);
+            margin-right: 5px;
         }
 
-        .history-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .status-completed {
-            background: rgba(76, 201, 240, 0.2);
-            color: var(--success);
-            border: 1px solid var(--success);
-        }
-
-        .status-pending {
-            background: rgba(255, 215, 0, 0.2);
-            color: var(--warning);
-            border: 1px solid var(--warning);
-        }
-
-        .status-rejected {
-            background: rgba(255, 77, 141, 0.2);
-            color: var(--danger);
-            border: 1px solid var(--danger);
-        }
-
-        /* Amount Info */
-        .amount-info {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 5px;
-            padding: 0 5px;
-        }
-
-        /* Responsive */
-        @media (max-width: 480px) {
-            .balance-amount {
-                font-size: 42px;
-            }
-            
-            .withdrawal-options {
-                flex-direction: column;
-            }
-            
-            .bottom-nav {
-                height: 65px;
-                border-radius: 20px;
-            }
-            
-            .nav-item i {
-                font-size: 20px;
-            }
-            
-            .nav-text {
-                font-size: 9px;
-            }
-        }
+        /* Helpers */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <!-- النجوم في الخلفية -->
-    <div class="stars" id="stars"></div>
-
     <div class="app-container">
-        <!-- Header -->
-        <div class="page-header">
-            <h1>🪐 Galaxy Withdraw</h1>
-            <p>سحب الأموال من المجرة إلى محفظتك</p>
-        </div>
-
-        <!-- Balance Display -->
-        <div class="card">
-            <div class="balance-display">
-                <div class="balance-amount" id="total-ton-balance">0.0000</div>
-                <div class="balance-unit">TON</div>
+        
+        <!-- HEADER (Visible on all pages) -->
+        <div class="hud-container">
+            <div>
+                <div class="user-name" id="home-username">Explorer</div>
+                <div class="user-rank" id="home-user-level">Level 1</div>
+            </div>
+            <div style="display:flex; align-items:center;">
+                <!-- SETTINGS BUTTON -->
+                <div class="settings-btn nav-link" data-target="settings-page">
+                    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </div>
+                <div class="hud-avatar">
+                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
+                </div>
             </div>
         </div>
 
-        <!-- Withdrawal Options -->
-        <div class="card">
-            <div class="withdrawal-options">
-                <div class="withdrawal-option active" data-method="ton">
-                    <i class="fas fa-wallet"></i>
-                    <h4>محفظة TON</h4>
+        <!-- ================= HOME SECTION ================= -->
+        <main id="home" class="content-section active">
+            <div class="main-coin-section">
+                <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="main-coin-img" alt="GLX">
+                <div class="balance-display">
+                    <div class="balance-amount" id="total-GLX-balance">0</div>
+                    <div class="balance-unit">GLX</div>
                 </div>
-                <div class="withdrawal-option" data-method="faucetpay">
-                    <i class="fas fa-envelope"></i>
-                    <h4>FaucetPay</h4>
+                <div class="stats-pill">
+                    <span class="ton-val"><img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:16px; border-radius:50%;"> <span id="home-ton-balance">0.0000</span> TON</span>
+                    <span style="opacity:0.3">|</span>
+                    <span style="font-size:10px; opacity:0.8;">100K = 0.01 TON</span>
                 </div>
             </div>
 
-            <!-- TON Wallet Details -->
-            <div class="method-details active" id="ton-details">
-                <div class="method-info">
-                    <p><strong>السحب إلى محفظة TON</strong></p>
-                    <p>أدخل عنوان محفظة TON الخاص بك (يبدأ بـ UQ، EQ، أو kQ)</p>
-                    <ul>
-                        <li>الحد الأدنى للسحب: <strong>0.05 TON</strong></li>
-                        <li>✅ بدون رسوم - نتكفل بجميع تكاليف المعاملة</li>
-                        <li>⏳ وقت المعالجة: حتى 24 ساعة</li>
-                        <li>إختياري: إضافة Memo لإيداعات البورصة</li>
-                    </ul>
+            <div class="action-bar">
+                <div class="btn btn-action nav-link" data-target="swap-page">
+                    <svg viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4 4 4m6 0v12m0 0 4-4m-4 4-4-4"/></svg><span>Swap</span>
                 </div>
-                
-                <div class="input-group">
-                    <label class="input-label">عنوان محفظة TON</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-wallet"></i>
-                        <input type="text" id="ton-address" class="custom-input" placeholder="UQ..." maxlength="64">
-                    </div>
-                    <div class="validation-message validation-info" id="ton-address-validation">
-                        <i class="fas fa-info-circle"></i> أدخل عنوان محفظة TON الخاص بك
-                    </div>
+                <div class="btn btn-action nav-link" data-target="withdraw">
+                    <svg viewBox="0 0 24 24"><path d="M12 5v14m0 0-6-6m6 6 6-6"/></svg><span>Withdraw</span>
                 </div>
+            </div>
 
-                <div class="input-group">
-                    <label class="input-label">Memo (إختياري)</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-sticky-note"></i>
-                        <input type="text" id="ton-memo" class="custom-input" placeholder="لإيداعات البورصة">
-                    </div>
-                </div>
+            <h2>🌴 Galaxy Log</h2>
+            <div id="home-history-list"></div>
+        </main>
 
-                <div class="input-group">
-                    <label class="input-label">المبلغ (TON)</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-coins"></i>
-                        <input type="number" id="ton-amount" class="custom-input" placeholder="0.05" min="0.05" step="0.01">
-                    </div>
-                    <div class="amount-info">
-                        <span>الحد الأدنى: 0.05 TON</span>
-                        <span>الرصيد المتاح: <span id="available-balance">0.0000</span> TON</span>
-                    </div>
-                    <div class="validation-message validation-info" id="amount-validation-ton">
-                        <i class="fas fa-info-circle"></i> أدخل المبلغ المطلوب للسحب
-                    </div>
+        <!-- ================= SETTINGS PAGE ================= -->
+        <main id="settings-page" class="content-section">
+            <div class="page-header">
+                <h1>Settings</h1>
+                <p>App Configuration</p>
+            </div>
+            <div class="card">
+                <div class="list-card">
+                    <div class="lc-content"><div class="lc-title">Language</div></div>
+                    <div class="lc-end"><div class="lc-val" style="color:var(--text-muted)">English</div></div>
                 </div>
+                <div class="list-card" onclick="window.open('https://t.me/GLXGalaxySupport', '_blank')">
+                    <div class="lc-content"><div class="lc-title">Support Channel</div></div>
+                    <div class="lc-end"></div>
+                </div>
+                <div class="list-card nav-link" data-target="terms-page">
+                    <div class="lc-content"><div class="lc-title">📜 Terms & Conditions</div></div>
+                    <div class="lc-end">→</div>
+                </div>
+                <div class="list-card">
+                    <div class="lc-content"><div class="lc-title">Version</div></div>
+                    <div class="lc-end"><div class="lc-val" style="color:var(--text-muted)">v2.0</div></div>
+                </div>
+            </div>
+            <button class="btn btn-action nav-link" data-target="home" style="margin-top:20px;">Back to Camp</button>
+        </main>
 
-                <button class="btn" id="withdraw-ton-btn">
-                    <i class="fas fa-paper-plane"></i> سحب إلى محفظة TON
+        <!-- ================= TERMS PAGE ================= -->
+        <main id="terms-page" class="content-section">
+            <div class="page-header">
+                <h1>Galaxy Law</h1>
+                <p>Terms of Service</p>
+            </div>
+            <div class="card">
+                <div class="terms-box">
+                    <h3>1. General Rules</h3>
+                    <p>Welcome to GLX Galaxy. By using this app, you agree to play fairly. This is a game for entertainment purposes. Virtual currency (GLX) has no real-world value until swapped and withdrawn based on availability.</p>
+                    
+                    <h3>2. Virtual Currency</h3>
+                    <p>"GLX" and "TON" balances within this app are virtual points. The developer reserves the right to adjust exchange rates or balances in case of errors or exploits.</p>
+                    
+                    <h3>3. Cheating Policy</h3>
+                    <p>Use of bots, scripts, or multiple accounts on the same device is strictly prohibited. Users found cheating will be banned permanently without notice.</p>
+                    
+                    <h3>4. Withdrawals</h3>
+                    <p>Withdrawal requests are processed manually or automatically depending on system status. We are not responsible for funds sent to incorrect wallet addresses.</p>
+                    
+                    <h3>5. Changes</h3>
+                    <p>We reserve the right to update these terms at any time.</p>
+                </div>
+            </div>
+            <button class="btn btn-action nav-link" data-target="settings-page" style="margin-top:20px;">Back to Settings</button>
+        </main>
+
+        <!-- ================= BONUS PAGE ================= -->
+        <main id="bonus" class="content-section">
+            <div class="page-header">
+                <h1>Daily Luck</h1>
+                <p>Login streaks & Lucky Spins</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom:15px; font-size:14px;">📅 Daily Streak</h3>
+                <div class="daily-row" id="daily-checkin-grid"></div>
+                <button class="btn btn-primary" id="claim-daily-btn">Claim Bonus</button>
+                <p id="next-claim-timer" style="text-align:center; font-size:11px; margin-top:8px; opacity:0.7;"></p>
+            </div>
+            <div class="card" style="text-align:center;">
+                <h3 style="margin-bottom:20px; font-size:14px;">🎡 Spin & Win</h3>
+                <div class="wheel-wrap">
+                    <div class="wheel-arrow"></div>
+                    <div class="the-wheel" id="spin-wheel"></div>
+                </div>
+                <button class="btn btn-primary" id="spin-btn">Spin Free</button>
+                <p id="spin-timer" style="font-size:11px; margin-top:8px; opacity:0.7;"></p>
+            </div>
+        </main>
+
+        <!-- ================= TASKS PAGE ================= -->
+        <main id="tasks" class="content-section">
+            <div class="page-header"><h1>Missions</h1><p>Complete tasks to earn GLX</p></div>
+            
+            <div class="card">
+                <!-- Create Mission Button -->
+                <button class="btn btn-primary nav-link" data-target="create-task-page" style="margin-bottom: 15px;">
+                    + Create Mission (Paid)
                 </button>
-            </div>
 
-            <!-- FaucetPay Details -->
-            <div class="method-details" id="faucetpay-details">
-                <div class="method-info">
-                    <p><strong>السحب عبر FaucetPay</strong></p>
-                    <p>أدخل بريدك الإلكتروني المسجل في FaucetPay</p>
-                    <ul>
-                        <li>الحد الأدنى للسحب: <strong>0.0001 TON</strong></li>
-                        <li>✅ بدون رسوم - نتكفل بجميع تكاليف المعاملة</li>
-                        <li>⏳ وقت المعالجة: حتى 10 دقائق</li>
-                        <li>يتم المعالجة تلقائياً</li>
-                    </ul>
+                <!-- DUAL AD SYSTEM (Updated) -->
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px; font-weight:700;">
+                    <span>Daily Ad Limit</span>
+                    <span style="color:var(--gold);">100 Total</span>
                 </div>
                 
-                <div class="input-group">
-                    <label class="input-label">بريد FaucetPay الإلكتروني</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-envelope"></i>
+                <!-- Monetag Ad -->
+                <div id="monetag-ad-task" class="list-card" style="background: rgba(255,255,255,0.08); border-color: var(--primary-green); margin-bottom:10px;">
+                    <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
+                    <div class="lc-content"><div class="lc-title">Watch Galaxy Ad A</div><div class="lc-sub"><span id="monetag-count">0</span> / <span id="monetag-limit">50</span></div></div>
+                    <div class="lc-end"><div class="lc-val">+2000</div></div>
+                </div>
+
+                <!-- GigaPub Ad -->
+                <div id="gigapub-ad-task" class="list-card" style="background: rgba(255,255,255,0.08); border-color: var(--primary-green);">
+                    <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
+                    <div class="lc-content"><div class="lc-title">Watch Galaxy Ad B</div><div class="lc-sub"><span id="giga-count">0</span> / <span id="giga-limit">50</span></div></div>
+                    <div class="lc-end"><div class="lc-val">+2000</div></div>
+                </div>
+
+            </div>
+            <h2>Partners</h2><div id="partner-tasks-card"><div id="partner-tasks-list"></div></div>
+            <h2>Community</h2><div id="community-tasks-card"><div id="community-tasks-list"></div></div>
+        </main>
+
+        <!-- ================= CREATE TASK PAGE (SECURE PAYMENT) ================= -->
+        <main id="create-task-page" class="content-section">
+            <div class="page-header">
+                <h1>Add Mission</h1>
+                <p>Promote your channel or bot</p>
+            </div>
+
+            <div class="card">
+                <div class="input-wrap">
+                    <span class="input-label">Task Name</span>
+                    <input type="text" id="new-task-name" class="custom-input" placeholder="e.g. Join Galaxy Channel">
+                </div>
+                <div class="input-wrap">
+                    <span class="input-label">Link</span>
+                    <input type="text" id="new-task-link" class="custom-input" placeholder="https://t.me/...">
+                </div>
+
+                <div class="input-label" style="margin-bottom:10px;">Category</div>
+                <div class="cat-select">
+                    <div class="cat-opt active" onclick="selectCat(this, 'channel')">Channel / Group</div>
+                    <div class="cat-opt" onclick="selectCat(this, 'bot')">Website / Bot</div>
+                </div>
+                
+                <div id="admin-required-msg" style="background: rgba(255, 179, 0, 0.15); border: 1px solid #ffb300; border-radius: 12px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: #ffb300; display: block; line-height: 1.5;">
+                    <i class="fa-solid fa-triangle-exclamation" style="margin-right: 5px;"></i>
+                    <strong>Action Required:</strong> You must add <u>@GLXGalaxyBot</u> as an <strong>Admin</strong> in your Channel/Group for tracking to work.
+                </div>
+
+                <div class="input-label" style="margin-bottom:10px;">Number of Completions</div>
+                <div class="price-grid" id="price-options">
+                    <!-- Configurable prices via JS -->
+                </div>
+
+                <!-- Payment Steps (Dynamic) -->
+                <div id="payment-step-1">
+                    <button class="btn btn-ton" id="pay-task-btn" onclick="initiatePayment()">
+                        <img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:20px; border-radius:50%;">
+                        Pay <span id="pay-amount-display">0</span> TON
+                    </button>
+                </div>
+
+                <div id="payment-step-2" style="display:none; text-align:center;">
+                    <p style="font-size:12px; margin-bottom:10px; color:#fff;">Payment sent? Verify below:</p>
+                    <button class="btn btn-check" id="check-payment-btn" onclick="verifyPayment()">
+                        Check Payment
+                    </button>
+                    <p id="payment-status-msg" style="font-size:11px; margin-top:8px; color:var(--text-muted);">Waiting for transaction...</p>
+                </div>
+
+                <p style="text-align:center; font-size:10px; margin-top:10px; opacity:0.6;">Automated verification via Blockchain.</p>
+            </div>
+
+            <button class="btn btn-action nav-link" data-target="tasks" style="margin-top:10px;">Cancel</button>
+        </main>
+
+        <!-- ================= HISTORY PAGE ================= -->
+        <main id="history" class="content-section">
+            <div class="page-header"><h1>Ledger</h1><p>Transaction History</p></div>
+            <div id="full-history-list" style="padding-bottom: 20px;"></div>
+        </main>
+
+        <!-- ================= SWAP PAGE ================= -->
+        <main id="swap-page" class="content-section">
+            <div class="page-header"><h1>Swap Market</h1><p>100K GLX = 0.01 TON</p></div>
+            <div class="card">
+                <div class="input-wrap">
+                    <span class="input-label">You Give (GLX)</span>
+                    <input type="number" id="swap-input-amount" class="custom-input" placeholder="Min 100,000" oninput="calculateSwap()">
+                    <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Max: <span id="swap-max-GLX">0</span></div>
+                </div>
+                <div class="input-wrap">
+                    <span class="input-label">You Get (TON)</span>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:24px;">
+                        <span id="swap-output-amount" class="custom-input">0.0000000</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="execute-swap-btn">Confirm Swap</button>
+            </div>
+        </main>
+
+        <!-- ================= WITHDRAW PAGE (UPDATED WITH TWO METHODS) ================= -->
+        <main id="withdraw" class="content-section">
+            <div class="page-header">
+                <h1>Withdraw</h1>
+                <p>Choose withdrawal method</p>
+            </div>
+            
+            <!-- Method Selection Tabs -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button id="faucetpay-tab" class="method-tab active" data-method="faucetpay">
+                        <i class="fas fa-envelope"></i> FaucetPay
+                    </button>
+                    <button id="tonwallet-tab" class="method-tab" data-method="tonwallet">
+                        <i class="fas fa-wallet"></i> TON Wallet
+                    </button>
+                </div>
+                
+                <!-- Balance Display -->
+                <div style="text-align: center; padding: 15px; margin-bottom: 20px; background: rgba(168, 85, 247, 0.1); border-radius: 16px;">
+                    <div style="font-size: 12px; color: var(--text-muted);">Available Balance</div>
+                    <div style="font-size: 32px; font-weight: 800; color: #a855f7;">
+                        <span class="user-ton-balance">0.0000</span> TON
+                    </div>
+                </div>
+                
+                <!-- FaucetPay Form (Default - Visible) -->
+                <div id="faucetpay-form" class="withdraw-form">
+                    <div class="info-box">
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <i class="fas fa-info-circle info-icon"></i>
+                            <strong>FaucetPay Withdrawal</strong>
+                        </div>
+                        <ul>
+                            <li>Enter your Gmail address registered with FaucetPay</li>
+                            <li>Minimum withdrawal: <strong>0.0001 TON</strong></li>
+                            <li><i class="fas fa-check-circle info-icon"></i> No fees - We cover all transaction costs</li>
+                            <li><i class="fas fa-clock info-icon"></i> Processing time: Up to 1 minute</li>
+                            <li>Withdrawals are processed automatically</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="input-wrap">
+                        <span class="input-label">FaucetPay Email</span>
                         <input type="email" id="faucetpay-email" class="custom-input" placeholder="your-email@gmail.com">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Enter your FaucetPay registered email</div>
                     </div>
-                    <div class="validation-message validation-info" id="faucetpay-validation">
-                        <i class="fas fa-info-circle"></i> أدخل بريدك الإلكتروني المسجل في FaucetPay
-                    </div>
-                </div>
-
-                <div class="input-group">
-                    <label class="input-label">المبلغ (TON)</label>
-                    <div class="input-with-icon">
-                        <i class="fas fa-coins"></i>
+                    
+                    <div class="input-wrap">
+                        <span class="input-label">Amount (TON)</span>
                         <input type="number" id="faucetpay-amount" class="custom-input" placeholder="0.0001" min="0.0001" step="0.0001">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Minimum: 0.0001 TON</div>
                     </div>
-                    <div class="amount-info">
-                        <span>الحد الأدنى: 0.0001 TON</span>
-                        <span>الرصيد المتاح: <span id="available-balance-faucet">0.0000</span> TON</span>
-                    </div>
-                    <div class="validation-message validation-info" id="amount-validation-faucetpay">
-                        <i class="fas fa-info-circle"></i> أدخل المبلغ المطلوب للسحب
-                    </div>
+                    
+                    <button class="btn btn-primary" id="withdraw-faucetpay-btn">
+                        <i class="fas fa-paper-plane"></i> Withdraw via FaucetPay
+                    </button>
                 </div>
-
-                <button class="btn" id="withdraw-faucetpay-btn">
-                    <i class="fas fa-paper-plane"></i> سحب عبر FaucetPay
-                </button>
+                
+                <!-- TON Wallet Form (Hidden by Default) -->
+                <div id="tonwallet-form" class="withdraw-form hidden">
+                    <div class="info-box">
+                        <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                            <i class="fas fa-info-circle info-icon"></i>
+                            <strong>TON Wallet Withdrawal</strong>
+                        </div>
+                        <ul>
+                            <li>Enter your TON wallet address (starts with UQ, EQ, or kQ)</li>
+                            <li>Minimum withdrawal: <strong>0.05 TON</strong></li>
+                            <li><i class="fas fa-check-circle info-icon"></i> No fees - We cover all transaction costs</li>
+                            <li><i class="fas fa-clock info-icon"></i> Processing time: Up to 24 hours</li>
+                            <li>Optional: Add memo for exchange deposits</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="input-wrap">
+                        <span class="input-label">TON Wallet Address</span>
+                        <input type="text" id="ton-wallet-address" class="custom-input" placeholder="UQ...">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Enter your TON wallet address</div>
+                    </div>
+                    
+                    <div class="input-wrap">
+                        <span class="input-label">Memo (Optional)</span>
+                        <input type="text" id="ton-memo" class="custom-input" placeholder="For exchange deposits">
+                    </div>
+                    
+                    <div class="input-wrap">
+                        <span class="input-label">Amount (TON)</span>
+                        <input type="number" id="ton-withdraw-amount" class="custom-input" placeholder="0.05" min="0.05" step="0.01">
+                        <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Minimum: 0.05 TON</div>
+                    </div>
+                    
+                    <button class="btn btn-primary" id="withdraw-ton-now-btn">
+                        <i class="fas fa-wallet"></i> Withdraw to TON Wallet
+                    </button>
+                </div>
             </div>
-        </div>
+        </main>
 
-        <!-- History Section -->
-        <div class="card">
-            <h3 style="color: var(--primary-purple); margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-history"></i> سجل السحب
-            </h3>
-            <div id="withdrawal-history-list">
-                <!-- سيتم إضافة سجل السحب هنا ديناميكياً -->
+        <!-- ================= LEADERBOARD PAGE ================= -->
+        <main id="leaderboard" class="content-section">
+            <div class="page-header"><h1>Top Kings</h1><p>The richest in the Galaxy</p></div>
+            <div class="leader-tabs">
+                <div class="tab-btn active" data-target="invites-leaderboard-list">Invites</div>
+                <div class="tab-btn" data-target="earnings-leaderboard-list">Holders</div>
             </div>
-        </div>
+            <!-- Two distinct lists as requested -->
+            <div class="podium-list" id="invites-leaderboard-list"></div>
+            <div class="podium-list hidden" id="earnings-leaderboard-list"></div>
+        </main>
+
+        <!-- ================= INVITE PAGE ================= -->
+        <main id="invite" class="content-section">
+            <div class="page-header"><h1>Tribe</h1><p>Invite friends, earn together</p></div>
+            <div class="card" style="text-align:center;">
+                <img src="https://i.ibb.co/tTkJX1Qy/logo.png" style="width:80px; margin-bottom:15px;">
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:12px; margin-bottom:20px;">
+                    <div style="font-size:12px; color:var(--text-muted);">Total Tribe Members</div>
+                    <div style="font-size:24px; font-weight:800; color:#fff;" id="referral-count-display">0</div>
+                </div>
+                <p>Earn <strong>+2000 GLX</strong> for every friend.</p>
+                <div id="referral-link-display" style="background:#000; padding:10px; border-radius:8px; font-family:monospace; font-size:10px; color:#aaa; margin:15px 0; word-break:break-all;">...</div>
+                <button class="btn btn-primary" id="share-referral-btn">Invite Friends</button>
+                <button class="btn btn-outline" id="copy-referral-btn" style="margin-top:10px;">Copy Link</button>
+            </div>
+        </main>
     </div>
 
-    <!-- Navigation -->
+    <!-- NAVIGATION BAR -->
     <nav class="bottom-nav">
-        <div class="nav-item" onclick="window.location.href='index.html'">
-            <i class="fas fa-home"></i>
-            <span class="nav-text">الرئيسية</span>
+        <div class="nav-item active" data-target="home">
+            <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="nav-text">Camp</span>
         </div>
-        <div class="nav-item" onclick="window.location.href='tasks.html'">
-            <i class="fas fa-tasks"></i>
-            <span class="nav-text">المهام</span>
+        <div class="nav-item" data-target="bonus">
+            <svg viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path></svg><span class="nav-text">Bonus</span>
         </div>
-        <div class="nav-item" onclick="window.location.href='bonus.html'">
-            <i class="fas fa-gift"></i>
-            <span class="nav-text">المكافآت</span>
+        <div class="nav-item" data-target="tasks">
+            <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-text">Tasks</span>
         </div>
-        <div class="nav-item active">
-            <i class="fas fa-wallet"></i>
-            <span class="nav-text">السحب</span>
+        <div class="nav-item" data-target="history">
+            <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path></svg><span class="nav-text">Log</span>
         </div>
-        <div class="nav-item" onclick="window.location.href='profile.html'">
-            <i class="fas fa-user"></i>
-            <span class="nav-text">الملف</span>
+        <div class="nav-item" data-target="leaderboard">
+            <svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg><span class="nav-text">Top</span>
+        </div>
+        <div class="nav-item" data-target="invite">
+            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-text">Tribe</span>
         </div>
     </nav>
-
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // إنشاء النجوم
-            function createStars() {
-                const starsContainer = document.getElementById('stars');
-                const starCount = 150;
-                
-                for (let i = 0; i < starCount; i++) {
-                    const star = document.createElement('div');
-                    star.classList.add('star');
-                    
-                    const left = Math.random() * 100;
-                    const top = Math.random() * 100;
-                    const size = Math.random() * 4;
-                    const duration = 3 + Math.random() * 7;
-                    const delay = Math.random() * 5;
-                    
-                    star.style.left = `${left}%`;
-                    star.style.top = `${top}%`;
-                    star.style.width = `${size}px`;
-                    star.style.height = `${size}px`;
-                    star.style.animationDuration = `${duration}s`;
-                    star.style.animationDelay = `${delay}s`;
-                    
-                    starsContainer.appendChild(star);
-                }
+        document.addEventListener('DOMContentLoaded', function () {
+            // Configuration
+            const BOT_USERNAME = 'CashJungleBot'; 
+            const ADMIN_WALLET = 'UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX';
+            const GLX_TO_TON_RATE = 0.0000001; 
+            const firebaseConfig = { apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg", authDomain: "cash-jungle-bot.firebaseapp.com", databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "cash-jungle-bot", storageBucket: "cash-jungle-bot.firebasestorage.app", messagingSenderId: "361914347430", appId: "1:361914347430:web:3d13817f7c0b8411552967", measurementId: "G-C0JYFKC0P8" };
+            const TG_BOT_TOKEN = '8340000265:AAErFZF0d-khnKM8LxU0pU8T140-DdZLncQ'; // PASTE YOUR TOKEN HERE
+
+            // Initialize App
+            if (window.Telegram?.WebApp) {
+                window.Telegram.WebApp.ready();
+                window.Telegram.WebApp.expand();
+                window.Telegram.WebApp.headerColor = '#051a05';
+                window.Telegram.WebApp.backgroundColor = '#051a05';
             }
-            
-            // تهيئة Firebase
-            const firebaseConfig = {
-                apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg",
-                authDomain: "cash-jungle-bot.firebaseapp.com",
-                databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app",
-                projectId: "cash-jungle-bot",
-                storageBucket: "cash-jungle-bot.firebasestorage.app",
-                messagingSenderId: "361914347430",
-                appId: "1:361914347430:web:3d13817f7c0b8411552967",
-                measurementId: "G-C0JYFKC0P8"
-            };
-            
             firebase.initializeApp(firebaseConfig);
             const db = firebase.database();
+
+            let appData = {}, appSettings = {};
+            let isAdScriptLoaded = false;
+            let isLeaderboardLoaded = false;
+            let currentRotation = 0; 
             
-            // بيانات المستخدم
-            let userData = {
-                id: '',
-                tonBalance: 0,
-                withdrawals: []
-            };
-            
-            // الحصول على بيانات المستخدم
+            // Create Task Variables
+            let selectedCategory = 'channel';
+            let selectedCount = 100;
+            let selectedCost = 0.15;
+            let currentTaskId = ''; // Stores the ID for verification
+
+            // User Identity
             function getUser() {
                 const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-                if (tgUser) {
-                    return {
-                        id: tgUser.id.toString(),
-                        first_name: tgUser.first_name,
-                        last_name: tgUser.last_name || '',
-                        username: tgUser.username || ''
-                    };
+                if (tgUser) { 
+                    return { id: tgUser.id.toString(), first_name: tgUser.first_name, last_name: tgUser.last_name || '', username: tgUser.username || '' }; 
                 }
-                
-                let browserId = localStorage.getItem('galaxyUserId');
+                let browserId = localStorage.getItem('GLXGalaxyId');
                 if (!browserId) {
-                    browserId = 'guest_' + Date.now();
-                    localStorage.setItem('galaxyUserId', browserId);
+                    browserId = 'explorer_' + Date.now();
+                    localStorage.setItem('GLXGalaxyId', browserId);
                 }
-                return {
-                    id: browserId,
-                    first_name: 'Guest',
-                    last_name: 'User',
-                    username: 'guest'
-                };
+                return { id: browserId, first_name: 'Galaxy', last_name: 'Guest', username: 'guest' };
             }
-            
             const user = getUser();
             
-            // تحميل بيانات المستخدم
-            function loadUserData() {
-                db.ref('users/' + user.id).on('value', (snapshot) => {
-                    if (snapshot.exists()) {
-                        userData = snapshot.val();
-                        updateBalanceUI();
-                        loadWithdrawalHistory();
-                    } else {
-                        // إنشاء مستخدم جديد
-                        userData = {
-                            id: user.id,
-                            name: `${user.first_name} ${user.last_name}`.trim(),
-                            tonBalance: 0,
-                            withdrawals: []
-                        };
-                        db.ref('users/' + user.id).set(userData);
-                    }
-                });
-            }
-            
-            // تحديث واجهة الرصيد
-            function updateBalanceUI() {
-                const balance = userData.tonBalance || 0;
-                document.getElementById('total-ton-balance').textContent = balance.toFixed(4);
-                document.getElementById('available-balance').textContent = balance.toFixed(4);
-                document.getElementById('available-balance-faucet').textContent = balance.toFixed(4);
-            }
-            
-            // تبديل طريقة السحب
-            function setupWithdrawalMethods() {
-                const options = document.querySelectorAll('.withdrawal-option');
-                options.forEach(option => {
-                    option.addEventListener('click', function() {
-                        const method = this.dataset.method;
-                        
-                        // إزالة النشط من جميع الخيارات
-                        options.forEach(opt => opt.classList.remove('active'));
-                        // إضافة النشط للخيار المحدد
-                        this.classList.add('active');
-                        
-                        // إخفاء جميع تفاصيل الطرق
-                        document.querySelectorAll('.method-details').forEach(detail => {
-                            detail.classList.remove('active');
-                        });
-                        
-                        // إظهار تفاصيل الطريقة المحددة
-                        document.getElementById(`${method}-details`).classList.add('active');
-                    });
-                });
-            }
-            
-            // التحقق من عنوان TON
-            function setupTONValidation() {
-                const addressInput = document.getElementById('ton-address');
-                const validationMsg = document.getElementById('ton-address-validation');
-                
-                addressInput.addEventListener('input', function() {
-                    const address = this.value.trim();
-                    
-                    if (address === '') {
-                        validationMsg.className = 'validation-message validation-info';
-                        validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> أدخل عنوان محفظة TON الخاص بك';
-                    } else if (/^(UQ|EQ|kQ)[A-Za-z0-9_-]{48}$/.test(address)) {
-                        validationMsg.className = 'validation-message validation-success';
-                        validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> عنوان TON صالح';
-                    } else {
-                        validationMsg.className = 'validation-message validation-error';
-                        validationMsg.innerHTML = '<i class="fas fa-exclamation-circle"></i> عنوان TON غير صالح';
-                    }
-                });
-            }
-            
-            // التحقق من البريد الإلكتروني
-            function setupEmailValidation() {
-                const emailInput = document.getElementById('faucetpay-email');
-                const validationMsg = document.getElementById('faucetpay-validation');
-                
-                emailInput.addEventListener('input', function() {
-                    const email = this.value.trim();
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    
-                    if (email === '') {
-                        validationMsg.className = 'validation-message validation-info';
-                        validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> أدخل بريدك الإلكتروني المسجل في FaucetPay';
-                    } else if (emailRegex.test(email)) {
-                        validationMsg.className = 'validation-message validation-success';
-                        validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> بريد إلكتروني صالح';
-                    } else {
-                        validationMsg.className = 'validation-message validation-error';
-                        validationMsg.innerHTML = '<i class="fas fa-exclamation-circle"></i> بريد إلكتروني غير صالح';
-                    }
-                });
-            }
-            
-            // معالجة سحب TON
-            function setupTONWithdrawal() {
-                const withdrawBtn = document.getElementById('withdraw-ton-btn');
-                
-                withdrawBtn.addEventListener('click', function() {
-                    const address = document.getElementById('ton-address').value.trim();
-                    const amount = parseFloat(document.getElementById('ton-amount').value);
-                    const memo = document.getElementById('ton-memo').value.trim();
-                    
-                    // التحقق من المدخلات
-                    if (!address || !/^(UQ|EQ|kQ)[A-Za-z0-9_-]{48}$/.test(address)) {
-                        alert('عنوان محفظة TON غير صالح');
-                        return;
-                    }
-                    
-                    if (!amount || amount < 0.05) {
-                        alert('الحد الأدنى للسحب هو 0.05 TON');
-                        return;
-                    }
-                    
-                    if (amount > (userData.tonBalance || 0)) {
-                        alert('رصيد غير كافي');
-                        return;
-                    }
-                    
-                    // تأكيد السحب
-                    if (!confirm(`هل تريد سحب ${amount.toFixed(4)} TON إلى العنوان:\n${address}\n\nالمبلغ بعد الخصم: ${amount.toFixed(4)} TON`)) {
-                        return;
-                    }
-                    
-                    // تعطيل الزر أثناء المعالجة
-                    const originalText = withdrawBtn.innerHTML;
-                    withdrawBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
-                    withdrawBtn.disabled = true;
-                    
-                    // إنشاء طلب السحب
-                    const withdrawalId = 'withdraw_' + Date.now();
-                    const withdrawalData = {
-                        id: withdrawalId,
-                        userId: user.id,
-                        method: 'TON',
-                        address: address,
-                        amount: amount,
-                        memo: memo,
-                        status: 'pending',
-                        timestamp: Date.now(),
-                        date: new Date().toISOString()
-                    };
-                    
-                    // حفظ طلب السحب
-                    db.ref(`withdrawals/${withdrawalId}`).set(withdrawalData)
-                        .then(() => {
-                            // خصم المبلغ من رصيد المستخدم
-                            const newBalance = (userData.tonBalance || 0) - amount;
-                            return db.ref(`users/${user.id}`).update({
-                                tonBalance: newBalance,
-                                withdrawals: firebase.database.ServerValue.increment(1)
-                            });
-                        })
-                        .then(() => {
-                            // إضافة إلى سجل المعاملات
-                            return db.ref(`users/${user.id}/transactions`).push({
-                                type: 'withdrawal',
-                                method: 'TON',
-                                amount: amount,
-                                status: 'pending',
-                                address: address,
-                                timestamp: Date.now(),
-                                date: new Date().toISOString()
-                            });
-                        })
-                        .then(() => {
-                            // إظهار رسالة النجاح
-                            alert('✅ تم إرسال طلب السحب بنجاح!\nسيتم معالجته خلال 24 ساعة.');
-                            
-                            // إعادة تعيين الحقول
-                            document.getElementById('ton-address').value = '';
-                            document.getElementById('ton-amount').value = '';
-                            document.getElementById('ton-memo').value = '';
-                            
-                            // إعادة تحميل البيانات
-                            loadUserData();
-                        })
-                        .catch(error => {
-                            console.error('Error processing withdrawal:', error);
-                            alert('❌ حدث خطأ أثناء معالجة طلب السحب. يرجى المحاولة مرة أخرى.');
-                        })
-                        .finally(() => {
-                            // إعادة تمكين الزر
-                            withdrawBtn.innerHTML = originalText;
-                            withdrawBtn.disabled = false;
-                        });
-                });
-            }
-            
-            // معالجة سحب FaucetPay
-            function setupFaucetPayWithdrawal() {
-                const withdrawBtn = document.getElementById('withdraw-faucetpay-btn');
-                
-                withdrawBtn.addEventListener('click', function() {
-                    const email = document.getElementById('faucetpay-email').value.trim();
-                    const amount = parseFloat(document.getElementById('faucetpay-amount').value);
-                    
-                    // التحقق من المدخلات
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!email || !emailRegex.test(email)) {
-                        alert('بريد إلكتروني غير صالح');
-                        return;
-                    }
-                    
-                    if (!amount || amount < 0.0001) {
-                        alert('الحد الأدنى للسحب هو 0.0001 TON');
-                        return;
-                    }
-                    
-                    if (amount > (userData.tonBalance || 0)) {
-                        alert('رصيد غير كافي');
-                        return;
-                    }
-                    
-                    // تأكيد السحب
-                    if (!confirm(`هل تريد سحب ${amount.toFixed(4)} TON إلى البريد:\n${email}\n\nالمبلغ بعد الخصم: ${amount.toFixed(4)} TON`)) {
-                        return;
-                    }
-                    
-                    // تعطيل الزر أثناء المعالجة
-                    const originalText = withdrawBtn.innerHTML;
-                    withdrawBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
-                    withdrawBtn.disabled = true;
-                    
-                    // إنشاء طلب السحب
-                    const withdrawalId = 'withdraw_' + Date.now();
-                    const withdrawalData = {
-                        id: withdrawalId,
-                        userId: user.id,
-                        method: 'FaucetPay',
-                        email: email,
-                        amount: amount,
-                        status: 'pending',
-                        timestamp: Date.now(),
-                        date: new Date().toISOString()
-                    };
-                    
-                    // حفظ طلب السحب
-                    db.ref(`withdrawals/${withdrawalId}`).set(withdrawalData)
-                        .then(() => {
-                            // خصم المبلغ من رصيد المستخدم
-                            const newBalance = (userData.tonBalance || 0) - amount;
-                            return db.ref(`users/${user.id}`).update({
-                                tonBalance: newBalance,
-                                withdrawals: firebase.database.ServerValue.increment(1)
-                            });
-                        })
-                        .then(() => {
-                            // إضافة إلى سجل المعاملات
-                            return db.ref(`users/${user.id}/transactions`).push({
-                                type: 'withdrawal',
-                                method: 'FaucetPay',
-                                amount: amount,
-                                status: 'pending',
-                                email: email,
-                                timestamp: Date.now(),
-                                date: new Date().toISOString()
-                            });
-                        })
-                        .then(() => {
-                            // إظهار رسالة النجاح
-                            alert('✅ تم إرسال طلب السحب بنجاح!\nسيتم معالجته خلال 10 دقائق.');
-                            
-                            // إعادة تعيين الحقول
-                            document.getElementById('faucetpay-email').value = '';
-                            document.getElementById('faucetpay-amount').value = '';
-                            
-                            // إعادة تحميل البيانات
-                            loadUserData();
-                        })
-                        .catch(error => {
-                            console.error('Error processing withdrawal:', error);
-                            alert('❌ حدث خطأ أثناء معالجة طلب السحب. يرجى المحاولة مرة أخرى.');
-                        })
-                        .finally(() => {
-                            // إعادة تمكين الزر
-                            withdrawBtn.innerHTML = originalText;
-                            withdrawBtn.disabled = false;
-                        });
-                });
-            }
-            
-            // تحميل سجل السحب
-            function loadWithdrawalHistory() {
-                const historyList = document.getElementById('withdrawal-history-list');
-                
-                // مسح المحتوى الحالي
-                historyList.innerHTML = '';
-                
-                // جلب سجل السحب للمستخدم
-                db.ref('withdrawals').orderByChild('userId').equalTo(user.id).limitToLast(10).once('value')
-                    .then(snapshot => {
-                        if (!snapshot.exists()) {
-                            historyList.innerHTML = `
-                                <div style="text-align: center; padding: 30px; color: var(--text-secondary);">
-                                    <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 15px;"></i>
-                                    <p>لا توجد معاملات سحب سابقة</p>
-                                </div>
-                            `;
-                            return;
-                        }
-                        
-                        const withdrawals = [];
-                        snapshot.forEach(child => {
-                            withdrawals.push(child.val());
-                        });
-                        
-                        // ترتيب حسب التاريخ (الأحدث أولاً)
-                        withdrawals.sort((a, b) => b.timestamp - a.timestamp);
-                        
-                        // عرض السحب
-                        withdrawals.forEach(withdrawal => {
-                            const date = new Date(withdrawal.timestamp);
-                            const formattedDate = date.toLocaleDateString('ar-SA', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                            });
-                            
-                            let statusText = '';
-                            let statusClass = '';
-                            
-                            switch(withdrawal.status) {
-                                case 'completed':
-                                    statusText = 'مكتمل';
-                                    statusClass = 'status-completed';
-                                    break;
-                                case 'pending':
-                                    statusText = 'قيد الانتظار';
-                                    statusClass = 'status-pending';
-                                    break;
-                                case 'rejected':
-                                    statusText = 'مرفوض';
-                                    statusClass = 'status-rejected';
-                                    break;
-                                default:
-                                    statusText = 'قيد المعالجة';
-                                    statusClass = 'status-pending';
-                            }
-                            
-                            const methodIcon = withdrawal.method === 'TON' ? 'fa-wallet' : 'fa-envelope';
-                            const methodInfo = withdrawal.method === 'TON' 
-                                ? withdrawal.address?.substring(0, 8) + '...' 
-                                : withdrawal.email;
-                            
-                            const historyItem = document.createElement('div');
-                            historyItem.className = 'history-item';
-                            historyItem.innerHTML = `
-                                <div class="history-details">
-                                    <p>${withdrawal.amount.toFixed(4)} TON</p>
-                                    <small>${formattedDate}</small>
-                                    <small style="display: block; margin-top: 5px;">
-                                        <i class="fas ${methodIcon}"></i> ${methodInfo}
-                                    </small>
-                                </div>
-                                <span class="history-status ${statusClass}">${statusText}</span>
-                            `;
-                            
-                            historyList.appendChild(historyItem);
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Error loading withdrawal history:', error);
-                        historyList.innerHTML = `
-                            <div style="text-align: center; padding: 20px; color: var(--danger);">
-                                <i class="fas fa-exclamation-circle"></i> خطأ في تحميل السجل
-                            </div>
-                        `;
-                    });
-            }
-            
-            // إعداد التنبيهات التلقائية للمدخلات
-            function setupInputAlerts() {
-                const amountInputs = document.querySelectorAll('input[type="number"]');
-                
-                amountInputs.forEach(input => {
-                    input.addEventListener('input', function() {
-                        const amount = parseFloat(this.value) || 0;
-                        const balance = userData.tonBalance || 0;
-                        
-                        if (amount > balance) {
-                            this.style.borderColor = 'var(--danger)';
-                            this.style.boxShadow = '0 0 0 3px rgba(255, 77, 141, 0.2)';
-                        } else {
-                            this.style.borderColor = '';
-                            this.style.boxShadow = '';
-                        }
-                    });
-                });
-            }
-            
-            // تهيئة التطبيق
             function initializeApp() {
-                createStars();
+                const fullName = `${user.first_name} ${user.last_name}`.trim();
+                document.getElementById('home-username').textContent = fullName;
+                document.getElementById('referral-link-display').textContent = `https://t.me/${BOT_USERNAME}?startapp=ref${user.id}`;
+
+                fetchAppSettings();
+                setupEventListeners();
+                renderCreateTaskUI(); 
+                setTimeout(() => { isAdScriptLoaded = typeof show_10286382 === "function"; }, 2500);
+            }
+
+            function initializeUser() {
+                db.ref('users/' + user.id).on('value', (snapshot) => {
+                    
+                    // --- BLOCK SYSTEM CHECK ---
+                    const data = snapshot.val();
+                    if (data && data.banned === true) {
+                        document.body.innerHTML = `
+                            <div style="background:#000; color:#ff4444; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; font-family:sans-serif;">
+                                <div style="font-size:50px;">🚫</div>
+                                <h2>ACCESS BLOCKED</h2>
+                                <p>Reason: ${data.banReason || 'Violation of rules'}</p>
+                            </div>`;
+                        return; // Stop app loading
+                    }
+                    // --- END BLOCK CHECK ---
+
+                    const fullName = `${user.first_name} ${user.last_name}`.trim();
+                    if (snapshot.exists()) {
+                        appData = snapshot.val();
+
+                         // --- NEW: DAILY AD RESET LOGIC ---
+                        const today = new Date().toDateString(); 
+                        if (appData.lastAdDate !== today) {
+                            // Different day? Reset counts!
+                            db.ref('users/' + user.id).update({
+                                adsWatched: 0,
+                                adsMonetag: 0,
+                                adsGiga: 0,
+                                lastAdDate: today
+                            });
+                            // Update local data to show 0 immediately
+                            appData.adsWatched = 0;
+                            appData.adsMonetag = 0;
+                            appData.adsGiga = 0;
+                        }
+                        // ---------------------------------
+
+                        if(appData.name !== fullName) db.ref('users/' + user.id).update({ name: fullName });
+                    } else {
+                        appData = { 
+                            id: user.id, name: fullName, dogsBalance: 500, tonBalance: 0.00, 
+                            adsWatched: 0, 
+                            adsMonetag: 0,
+                            adsGiga: 0,
+                            completedTasks: {}, history: {}, referrals: 0,
+                            dailyStreak: 0, lastDailyClaim: 0, lastSpin: 0
+                        };
+                        db.ref('users/' + user.id).set(appData).then(() => {
+                            addHistory('earn', 'Welcome Bonus', 500, 'GLX');
+                        });
+                    }
+                    handleReferral(); 
+                    renderUI();
+                    renderDailyBonusUI();
+                });
+            }
+
+            function fetchAppSettings() {
+                db.ref('settings').on('value', (snapshot) => {
+                    appSettings = snapshot.val() || { 
+                        adReward: 250, 
+                        limitMonetag: 50,
+                        limitGiga: 50,
+                        minTonWithdrawal: 0.05, 
+                        minFaucetpayWithdrawal: 0.0001,
+                        referralReward: 500, 
+                        pricePerClick: 0.0015 
+                    };
+                    initializeUser();
+                    calculateCost(); 
+                });
+            }
+
+            // LEVEL CALCULATION
+            function getLevel(balance) {
+                if (balance >= 5000000) return 10;
+                if (balance >= 2500000) return 9;
+                if (balance >= 1000000) return 8;
+                if (balance >= 500000) return 7;
+                if (balance >= 250000) return 6;
+                if (balance >= 100000) return 5;
+                if (balance >= 50000) return 4;
+                if (balance >= 25000) return 3;
+                if (balance >= 5000) return 2;
+                return 1;
+            }
+
+            // UI Render Logic
+            function renderUI() {
+                if (!appData) return;
+                const GLX = Math.floor(appData.dogsBalance || 0);
+                const ton = (appData.tonBalance || 0).toFixed(7);
+                const userLevel = getLevel(GLX);
                 
-                if (window.Telegram?.WebApp) {
-                    window.Telegram.WebApp.ready();
-                    window.Telegram.WebApp.expand();
-                    window.Telegram.WebApp.headerColor = '#0a0a1a';
-                    window.Telegram.WebApp.backgroundColor = '#0a0a1a';
+                document.getElementById('home-user-level').textContent = `Level ${userLevel}`;
+                document.getElementById('total-GLX-balance').textContent = GLX.toLocaleString();
+                document.getElementById('home-ton-balance').textContent = parseFloat(ton).toFixed(4);
+                document.getElementById('swap-max-GLX').textContent = GLX.toLocaleString();
+                document.querySelectorAll('.user-ton-balance').forEach(el => el.textContent = parseFloat(ton).toFixed(4));
+                document.getElementById('referral-count-display').textContent = (appData.referrals || 0);
+
+                // Update Ads UI
+                const monetagCount = appData.adsMonetag || 0;
+                const gigaCount = appData.adsGiga || 0;
+                const limitM = appSettings.limitMonetag || 50;
+                const limitG = appSettings.limitGiga || 50;
+
+                document.getElementById('monetag-count').textContent = monetagCount;
+                document.getElementById('monetag-limit').textContent = limitM;
+                document.getElementById('giga-count').textContent = gigaCount;
+                document.getElementById('giga-limit').textContent = limitG;
+                
+                // Grey out if limit reached
+                if(monetagCount >= limitM) {
+                    const el = document.getElementById('monetag-ad-task');
+                    el.style.opacity = '0.5'; el.style.pointerEvents = 'none';
+                }
+                if(gigaCount >= limitG) {
+                    const el = document.getElementById('gigapub-ad-task');
+                    el.style.opacity = '0.5'; el.style.pointerEvents = 'none';
+                }
+
+                fetchAndRenderTasks();
+                renderHistory(document.getElementById('home-history-list'), 5);
+                renderHistory(document.getElementById('full-history-list'), 50);
+            }
+            
+            // --- NEW FEATURE: SECURE CREATE TASK ---
+            
+            window.selectCat = function(el, cat) {
+                document.querySelectorAll('.cat-opt').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                selectedCategory = cat;
+                
+                // Toggle Warning based on category
+                const warningEl = document.getElementById('admin-required-msg');
+                if(cat === 'channel') {
+                    warningEl.style.display = 'block';
+                } else {
+                    warningEl.style.display = 'none';
+                }
+            }
+
+            function renderCreateTaskUI() {
+                const container = document.getElementById('price-options');
+                container.innerHTML = '';
+                const options = [100, 500, 1000, 2000, 5000, 10000];
+                options.forEach((opt, idx) => {
+                    const html = `<div class="price-opt ${idx === 0 ? 'active' : ''}" data-count="${opt}" onclick="selectPrice(this)">
+                        <div class="price-count">${opt.toLocaleString()}</div>
+                        <div class="price-cost" id="cost-${opt}">Loading...</div>
+                    </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+                calculateCost();
+            }
+
+            window.selectPrice = function(el) {
+                document.querySelectorAll('.price-opt').forEach(e => e.classList.remove('active'));
+                el.classList.add('active');
+                selectedCount = parseInt(el.dataset.count);
+                calculateCost(); 
+            }
+
+            function calculateCost() {
+                const rate = appSettings.pricePerClick || 0.0015; 
+                document.querySelectorAll('.price-opt').forEach(el => {
+                    const cnt = parseInt(el.dataset.count);
+                    const cst = (cnt * rate).toFixed(4);
+                    const costDiv = el.querySelector('.price-cost');
+                    if(costDiv) costDiv.textContent = `${cst} TON`;
+                });
+                selectedCost = (selectedCount * rate).toFixed(4);
+                document.getElementById('pay-amount-display').textContent = selectedCost;
+            }
+
+            window.initiatePayment = function() {
+                const name = document.getElementById('new-task-name').value.trim();
+                const link = document.getElementById('new-task-link').value.trim();
+
+                if(!name || !link) { alert("Please fill all fields."); return; }
+                if(!link.startsWith('http')) { alert("Invalid link."); return; }
+
+                // Create a unique Task ID (Memo/Comment)
+                currentTaskId = 'task_' + Math.floor(Date.now() / 1000); 
+                
+                // Store task draft in DB (status: pending)
+                const newTask = {
+                    id: currentTaskId,
+                    title: name,
+                    description: `Reward: ${selectedCategory.toUpperCase()}`,
+                    link: link,
+                    reward: 2000,
+                    category: 'community',
+                    total: selectedCount,
+                    remaining: selectedCount,
+                    status: 'pending', // Pending Payment
+                    creator: user.id,
+                    cost: selectedCost
+                };
+                
+                // Save pending task
+                db.ref('tasks/' + currentTaskId).set(newTask);
+
+                const nanoTon = Math.floor(selectedCost * 1000000000);
+                const paymentUrl = `https://app.tonkeeper.com/transfer/${ADMIN_WALLET}?amount=${nanoTon}&text=${currentTaskId}`;
+                
+                if(window.Telegram?.WebApp) window.Telegram.WebApp.openLink(paymentUrl);
+                else window.open(paymentUrl, '_blank');
+
+                // Switch UI to Check Step
+                document.getElementById('payment-step-1').style.display = 'none';
+                document.getElementById('payment-step-2').style.display = 'block';
+            }
+
+            window.verifyPayment = async function() {
+                const btn = document.getElementById('check-payment-btn');
+                const msg = document.getElementById('payment-status-msg');
+                
+                btn.disabled = true;
+                btn.textContent = "Checking Blockchain...";
+                msg.textContent = "Connecting to TON API...";
+                msg.style.color = "#ffb300";
+
+                try {
+                    // Using TONAPI.IO (Much more reliable and fast)
+                    const response = await fetch(`https://tonapi.io/v2/blockchain/accounts/${ADMIN_WALLET}/transactions?limit=20`);
+                    const data = await response.json();
+
+                    if (!data.transactions) throw new Error("API Error");
+
+                    let paymentFound = false;
+
+                    // Loop through transactions to find matching comment (task id)
+                    for (const tx of data.transactions) {
+                        if (tx.in_msg && tx.in_msg.decoded_body && tx.in_msg.decoded_body.text) {
+                            if (tx.in_msg.decoded_body.text === currentTaskId) {
+                                // Payment Found!
+                                paymentFound = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (paymentFound) {
+                        msg.textContent = "Payment Verified! Activating Mission...";
+                        msg.style.color = "#a855f7";
+                        
+                        // Update Task Status to Active
+                        db.ref('tasks/' + currentTaskId).update({ status: 'active' }).then(() => {
+                            alert("Success! Your mission is now live.");
+                            // Reset UI
+                            document.getElementById('payment-step-1').style.display = 'block';
+                            document.getElementById('payment-step-2').style.display = 'none';
+                            document.getElementById('new-task-name').value = '';
+                            document.getElementById('new-task-link').value = '';
+                            btn.disabled = false;
+                            btn.textContent = "Check Payment";
+                            switchTab('tasks');
+                        });
+                    } else {
+                        msg.textContent = "Payment not found yet. Please wait 10s and try again.";
+                        msg.style.color = "#e74c3c";
+                        btn.disabled = false;
+                        btn.textContent = "Check Again";
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    msg.textContent = "Error checking payment. Try again.";
+                    btn.disabled = false;
+                    btn.textContent = "Check Again";
+                }
+            }
+
+            // --- END NEW FEATURE ---
+
+            // --- DAILY & SPIN ---
+            function renderDailyBonusUI() {
+                const container = document.getElementById('daily-checkin-grid');
+                container.innerHTML = '';
+                const streak = appData.dailyStreak || 0;
+                const lastClaim = appData.lastDailyClaim || 0;
+                const now = Date.now();
+                const msInDay = 86400000;
+                const canClaim = (now - lastClaim) >= msInDay;
+                const rewards = [100, 200, 300, 400, 500, 1000, 2500];
+
+                for(let i=0; i<7; i++) {
+                    let statusClass = '';
+                    if (i < streak) statusClass = 'claimed';
+                    else if (i === streak && canClaim) statusClass = 'active'; 
+                    const html = `<div class="daily-box ${statusClass}"> <div style="font-size:9px;">DAY ${i+1}</div> <div style="font-weight:700;">+${rewards[i]}</div> </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                }
+
+                const btn = document.getElementById('claim-daily-btn');
+                const timer = document.getElementById('next-claim-timer');
+                
+                if (canClaim) {
+                    btn.disabled = false; btn.classList.remove('btn-disabled'); btn.textContent = `Claim +${rewards[streak] || 100}`;
+                    timer.textContent = "Ready to claim!";
+                } else {
+                    btn.disabled = true; btn.classList.add('btn-disabled'); btn.textContent = "Claimed";
+                    const timeLeft = msInDay - (now - lastClaim);
+                    const hours = Math.floor(timeLeft / (1000 * 60 * 60));
+                    const mins = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    timer.textContent = `Next reward in: ${hours}h ${mins}m`;
+                }
+
+                const lastSpin = appData.lastSpin || 0;
+                const spinBtn = document.getElementById('spin-btn');
+                const spinTimer = document.getElementById('spin-timer');
+                
+                if ((now - lastSpin) >= msInDay) {
+                    spinBtn.disabled = false; spinBtn.classList.remove('btn-disabled'); spinTimer.textContent = "Ready!";
+                } else {
+                    spinBtn.disabled = true; spinBtn.classList.add('btn-disabled');
+                    const tl = msInDay - (now - lastSpin);
+                    const h = Math.floor(tl / (1000 * 60 * 60));
+                    const m = Math.floor((tl % (1000 * 60 * 60)) / (1000 * 60));
+                    spinTimer.textContent = `Next spin in: ${h}h ${m}m`;
+                }
+            }
+
+            function handleDailyClaim() {
+                const now = Date.now();
+                const lastClaim = appData.lastDailyClaim || 0;
+                let streak = appData.dailyStreak || 0;
+                if (now - lastClaim > 172800000) streak = 0; 
+                if (streak >= 7) streak = 0; 
+                const rewards = [100, 200, 300, 400, 500, 1000, 2500];
+                const reward = rewards[streak];
+                db.ref(`users/${user.id}`).update({ lastDailyClaim: now, dailyStreak: streak + 1, dogsBalance: (appData.dogsBalance || 0) + reward });
+                addHistory('earn', `Daily Login Day ${streak+1}`, reward, 'GLX');
+            }
+
+            function handleSpin() {
+                const btn = document.getElementById('spin-btn'); btn.disabled = true;
+                const prizes = [100, 500, 1000, 200, 5000, 150, 300, 50]; 
+                const segAngle = 360 / 8;
+                const randIndex = Math.floor(Math.random() * prizes.length);
+                const prize = prizes[randIndex];
+                const targetRotation = 360 * 5 + (360 - (randIndex * segAngle) - (segAngle/2)); 
+                currentRotation += targetRotation; 
+                document.getElementById('spin-wheel').style.transform = `rotate(${currentRotation}deg)`;
+                setTimeout(() => {
+                    db.ref(`users/${user.id}`).update({ lastSpin: Date.now(), dogsBalance: (appData.dogsBalance || 0) + prize });
+                    addHistory('earn', 'Lucky Spin Win', prize, 'GLX');
+                    alert(`+${prize} GLX!`);
+                    renderDailyBonusUI(); 
+                }, 4000); 
+            }
+
+            function addHistory(type, description, amount, currency) {
+                db.ref(`users/${user.id}/history`).push({ type, description, amount, currency, date: new Date().toISOString() });
+            }
+
+            function renderHistory(container, limit) {
+                container.innerHTML = '';
+                const historyData = appData.history ? Object.values(appData.history).sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, limit) : [];
+                if (historyData.length === 0) { container.innerHTML = '<p style="text-align:center; padding: 20px 0; font-size:12px; color:var(--text-muted);">No logs yet.</p>'; return; }
+                historyData.forEach(item => {
+                    const isMinus = item.type.includes('withdraw') || item.type.includes('swap_out');
+                    const sign = isMinus ? '-' : '+';
+                    const color = isMinus ? '#fff' : 'var(--primary-green)';
+                    let iconImg = 'https://i.ibb.co/tTkJX1Qy/logo.png'; 
+                    const desc = item.description.toLowerCase();
+                    if(item.currency === 'TON') iconImg = 'https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png';
+                    else if(desc.includes('ad')) iconImg = 'https://i.ibb.co/tTkJX1Qy/logo.png';
+                    else if (desc.includes('telegram') || desc.includes('channel') || desc.includes('group')) iconImg = 'https://i.ibb.co/s9YygTBd/20251203-195134.png';
+                    else if (desc.includes('youtube') || desc.includes('subscribe')) iconImg = 'https://i.ibb.co/CSz6kg9/20251203-200546.png';
+                    else if (desc.includes('twitter') || desc.includes('follow')) iconImg = 'https://i.ibb.co/60jp6MsF/20251203-200516.png';
+                    else if (desc.includes('instagram')) iconImg = 'https://img.icons8.com/fluency/96/instagram-new.png';
+
+                    const html = `
+                    <div class="list-card">
+                        <div class="lc-icon"><img src="${iconImg}"></div>
+                        <div class="lc-content">
+                            <div class="lc-title">${item.description}</div>
+                            <div class="lc-sub">${new Date(item.date).toLocaleDateString()}</div>
+                        </div>
+                        <div class="lc-end">
+                            <div class="lc-val" style="color:${color}">${sign}${Number(item.amount).toLocaleString()} ${item.currency}</div>
+                        </div>
+                    </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            }
+
+            window.calculateSwap = function() {
+                const GLXInput = parseFloat(document.getElementById('swap-input-amount').value) || 0;
+                const tonOutput = GLXInput * GLX_TO_TON_RATE;
+                document.getElementById('swap-output-amount').textContent = tonOutput.toFixed(7);
+            }
+
+            function handleSwap() {
+                const GLXInput = parseFloat(document.getElementById('swap-input-amount').value) || 0;
+                const currentGLX = appData.dogsBalance || 0;
+                if(GLXInput < 100000) { alert("Min swap: 100,000 GLX"); return; }
+                if(GLXInput > currentGLX) { alert("Insufficient Balance"); return; }
+                if(!confirm(`Swap ${GLXInput} GLX for ${(GLXInput * GLX_TO_TON_RATE).toFixed(7)} TON?`)) return;
+                const tonValue = GLXInput * GLX_TO_TON_RATE;
+                const updates = {};
+                updates[`users/${user.id}/dogsBalance`] = currentGLX - GLXInput;
+                updates[`users/${user.id}/tonBalance`] = (appData.tonBalance || 0) + tonValue;
+                db.ref().update(updates).then(() => {
+                    addHistory('swap_out', 'Swap to TON', GLXInput, 'GLX');
+                    addHistory('swap_in', 'Received TON', tonValue.toFixed(7), 'TON');
+                    alert("Swap Complete!");
+                    document.getElementById('swap-input-amount').value = '';
+                    switchTab('home');
+                });
+            }
+
+            function handleReferral() {
+                const tg = window.Telegram?.WebApp;
+                const startParam = tg?.initDataUnsafe?.start_param;
+                if (startParam && startParam.startsWith('ref')) {
+                    const referrerId = startParam.replace('ref', '');
+                    if (referrerId && referrerId !== user.id) {
+                        const userRef = db.ref('users/' + user.id);
+                        userRef.once('value', snapshot => {
+                            if (!snapshot.exists() || !snapshot.hasChild('referrer')) {
+                                userRef.child('referrer').set(referrerId);
+                                db.ref(`users/${referrerId}/referrals`).transaction(count => (count || 0) + 1);
+                                const rReward = appSettings.referralReward || 500;
+                                db.ref(`users/${referrerId}/dogsBalance`).transaction(b => (b || 0) + rReward);
+                                db.ref(`users/${referrerId}/history`).push({ type: 'referral', description: 'Friend Invited', amount: rReward, currency: 'GLX', date: new Date().toISOString() });
+                            }
+                        });
+                    }
+                }
+            }
+
+            function fetchAndRenderTasks() {
+                db.ref('tasks').on('value', (snapshot) => {
+                    const pCont = document.getElementById('partner-tasks-list');
+                    const cCont = document.getElementById('community-tasks-list');
+                    pCont.innerHTML = ''; cCont.innerHTML = '';
+                    const tasks = snapshot.val();
+                    if (!tasks) { cCont.innerHTML = '<p style="text-align:center; font-size:12px; padding:10px;">No missions.</p>'; return; }
+                    Object.values(tasks).forEach(task => {
+                        // NEW LOGIC: Hide task if expired (remaining <= 0)
+                        if (task.status !== 'active' || (task.remaining !== undefined && task.remaining <= 0)) return;
+                        
+                        const isDone = appData.completedTasks && appData.completedTasks[task.id];
+                        
+                        // --- SMART ICON LOGIC FOR TASKS (Updated) ---
+                        let iconImg = 'https://img.icons8.com/fluency/96/task.png';
+                        const lt = task.title.toLowerCase();
+                        const ll = (task.link || '').toLowerCase(); // Added link check
+                        
+                        if (lt.includes('bot') || ll.includes('bot') || ll.includes('start=')) {
+                             iconImg = 'https://i.ibb.co/Myz4Gkmy/Picsart-25-12-10-04-34-59-799.png'; // BOT LOGO
+                        }
+                        else if (lt.includes('telegram') || lt.includes('channel') || lt.includes('group') || lt.includes('join') || ll.includes('t.me')) {
+                             iconImg = 'https://i.ibb.co/5WZRG8fw/tele.png'; // TELEGRAM LOGO
+                        }
+                        else if (lt.includes('youtube') || lt.includes('subscribe')) iconImg = 'https://i.ibb.co/CSz6kg9/20251203-200546.png';
+                        else if (lt.includes('twitter') || lt.includes('retweet') || lt.includes('follow') || lt.includes('x ')) iconImg = 'https://i.ibb.co/60jp6MsF/20251203-200516.png';
+                        else if (lt.includes('instagram')) iconImg = 'https://img.icons8.com/fluency/96/instagram-new.png';
+
+                        const html = `
+                        <div class="list-card dynamic-task ${isDone ? 'disabled' : ''}" style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}" 
+                             data-id="${task.id}" data-reward="${task.reward}" data-title="${task.title}" data-link="${task.link}" onclick="handleDynamicTask(this)">
+                            <div class="lc-icon"><img src="${iconImg}"></div>
+                            <div class="lc-content">
+                                <div class="lc-title">${task.title}</div>
+                                <div class="lc-sub" id="status-${task.id}">${task.description}</div>
+                            </div>
+                            <div class="lc-end">
+                                <div class="lc-val" id="reward-${task.id}">+${task.reward}</div>
+                            </div>
+                        </div>`;
+                        if (task.category === 'partner') pCont.insertAdjacentHTML('beforeend', html); else cCont.insertAdjacentHTML('beforeend', html);
+                    });
+                    if(pCont.innerHTML === '') document.getElementById('partner-tasks-card').style.display = 'none';
+                });
+            }
+
+            function setupEventListeners() {
+                document.querySelectorAll('.nav-item').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.target)));
+                document.querySelectorAll('.nav-link').forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); switchTab(link.dataset.target); }));
+                document.getElementById('monetag-ad-task').addEventListener('click', handleMonetagAd);
+                document.getElementById('gigapub-ad-task').addEventListener('click', handleGigaAd);
+                document.getElementById('execute-swap-btn').addEventListener('click', handleSwap);
+                document.getElementById('share-referral-btn').addEventListener('click', () => window.Telegram?.WebApp.openTelegramLink(`https://t.me/share/url?url=${document.getElementById('referral-link-display').textContent}&text=Join GLX Galaxy!`));
+                document.getElementById('copy-referral-btn').addEventListener('click', () => navigator.clipboard.writeText(document.getElementById('referral-link-display').textContent).then(()=>alert("Copied!")));
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.podium-list').forEach(l => l.classList.add('hidden'));
+                    e.target.classList.add('active');
+                    document.getElementById(e.target.dataset.target).classList.remove('hidden');
+                }));
+                document.getElementById('withdraw-faucetpay-btn').addEventListener('click', handleFaucetpayWithdraw);
+                document.getElementById('withdraw-ton-now-btn').addEventListener('click', handleTonWalletWithdraw);
+                document.getElementById('claim-daily-btn').addEventListener('click', handleDailyClaim);
+                document.getElementById('spin-btn').addEventListener('click', handleSpin);
+                
+                // Method tab switching
+                document.getElementById('faucetpay-tab').addEventListener('click', function() {
+                    switchWithdrawMethod('faucetpay');
+                });
+                document.getElementById('tonwallet-tab').addEventListener('click', function() {
+                    switchWithdrawMethod('tonwallet');
+                });
+            }
+
+            // Switch between withdrawal methods
+            function switchWithdrawMethod(method) {
+                document.querySelectorAll('.method-tab').forEach(tab => tab.classList.remove('active'));
+                document.querySelectorAll('.withdraw-form').forEach(form => form.classList.add('hidden'));
+                
+                if (method === 'faucetpay') {
+                    document.getElementById('faucetpay-tab').classList.add('active');
+                    document.getElementById('faucetpay-form').classList.remove('hidden');
+                } else {
+                    document.getElementById('tonwallet-tab').classList.add('active');
+                    document.getElementById('tonwallet-form').classList.remove('hidden');
+                }
+            }
+
+            // --- UPDATED VERIFICATION LOGIC ---
+            window.handleDynamicTask = function(element) {
+                const { id, reward, title, link } = element.dataset;
+                const statusEl = document.getElementById(`status-${id}`);
+                const rewardEl = document.getElementById(`reward-${id}`);
+                
+                // If already completed or waiting
+                if(element.classList.contains('waiting-verify')) {
+                    verifyMembership(element, link, id, reward, title);
+                    return;
+                }
+
+                // First Click: Open Link
+                if(window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.openLink(link);
+                } else {
+                    window.open(link, '_blank');
+                }
+
+                // Change State to "Waiting for Verification"
+                element.classList.add('waiting-verify');
+                statusEl.textContent = "Tap again to Verify";
+                statusEl.style.color = "#ffb300"; // Gold color
+                rewardEl.textContent = "Check";
+                rewardEl.style.fontSize = "12px";
+            }
+
+            function verifyMembership(element, link, taskId, reward, title) {
+                // If it's a telegram link, try to verify
+                if (link.includes('t.me') && !link.includes('startapp')) {
+                    let channelUsername = link.split('t.me/')[1].split('/')[0];
+                    if (!channelUsername.startsWith('@') && !channelUsername.startsWith('+')) {
+                        channelUsername = '@' + channelUsername;
+                    }
+
+                    if(channelUsername.startsWith('@')) {
+                        const apiUrl = `https://api.telegram.org/bot${TG_BOT_TOKEN}/getChatMember?chat_id=${channelUsername}&user_id=${user.id}`;
+                        const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(apiUrl);
+
+                        const statusEl = document.getElementById(`status-${taskId}`);
+                        statusEl.textContent = "Verifying...";
+                        
+                        fetch(proxyUrl)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.ok && (data.result.status === 'member' || data.result.status === 'administrator' || data.result.status === 'creator')) {
+                                    completeTask(element, taskId, reward, title);
+                                } else {
+                                    alert("❌ You have not joined the channel yet! Please join and try again.");
+                                    statusEl.textContent = "Join First!";
+                                    statusEl.style.color = "#ff4444";
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Verification Error:', error);
+                                alert("⚠️ Verification slow. Please ensure you joined.");
+                                completeTask(element, taskId, reward, title);
+                            });
+                    } else {
+                        if(confirm("Did you join the channel?")) {
+                            completeTask(element, taskId, reward, title);
+                        }
+                    }
+                } else {
+                     completeTask(element, taskId, reward, title);
+                }
+            }
+
+            function completeTask(element, taskId, reward, title) {
+                // NEW: Decrement remaining count first
+                db.ref(`tasks/${taskId}/remaining`).transaction(count => {
+                    if (count === null) return count; // Task doesn't exist
+                    if (count <= 0) return 0; // Already finished
+                    return count - 1;
+                }, (error, committed, snapshot) => {
+                    if (error) {
+                        alert("System Error. Try again.");
+                    } else if (!committed) {
+                        // Transaction aborted (likely count was 0)
+                        alert("⚠️ This task has ended! No rewards left.");
+                        element.style.display = 'none'; // Hide it locally
+                    } else {
+                        // Success: Count decremented, now give reward
+                        db.ref(`users/${user.id}/completedTasks/${taskId}`).set(true);
+                        db.ref(`users/${user.id}/dogsBalance`).transaction(v => (v || 0) + parseFloat(reward));
+                        addHistory('earn', `Mission: ${title}`, reward, 'GLX');
+                        
+                        element.style.opacity = '0.5';
+                        element.style.pointerEvents = 'none';
+                        document.getElementById(`status-${taskId}`).textContent = "Completed";
+                        document.getElementById(`status-${taskId}`).style.color = "#a855f7";
+                        document.getElementById(`reward-${taskId}`).textContent = "Done";
+                        alert(`✅ Task Completed! +${reward} GLX`);
+                    }
+                });
+            }
+            // --- END VERIFICATION LOGIC ---
+
+            function switchTab(targetId) {
+                document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
+                document.querySelector(`.nav-item[data-target="${targetId}"]`)?.classList.add('active');
+                if (targetId === 'leaderboard' && !isLeaderboardLoaded) { renderLeaderboard(); isLeaderboardLoaded = true; }
+                if (targetId === 'bonus') { renderDailyBonusUI(); }
+                if (targetId === 'withdraw') { switchWithdrawMethod('faucetpay'); } // Default to FaucetPay
+                window.scrollTo(0,0);
+            }
+
+            // --- AD HANDLERS ---
+            function handleMonetagAd() {
+                const limit = appSettings.limitMonetag || 50;
+                if ((appData.adsMonetag || 0) >= limit) return;
+                
+                if (!isAdScriptLoaded) { alert("Loading ad..."); return; }
+                
+                try {
+                    show_10286382({ ymid: user.id }).then(() => {
+                        const reward = appSettings.adReward || 250;
+                        db.ref(`users/${user.id}/adsMonetag`).transaction(c => (c || 0) + 1);
+                        db.ref(`users/${user.id}/adsWatched`).transaction(c => (c || 0) + 1); // Legacy total track
+                        db.ref(`users/${user.id}/dogsBalance`).transaction(b => (b || 0) + reward);
+                        addHistory('earn', 'Galaxy Ad Reward (A)', reward, 'GLX');
+                    }).catch(e => alert("Ad not ready"));
+                } catch(e) { alert("Error"); }
+            }
+
+            function handleGigaAd() {
+                const limit = appSettings.limitGiga || 50;
+                if ((appData.adsGiga || 0) >= limit) return;
+
+                if (typeof window.showGiga !== 'function') { alert("Giga Ads loading..."); return; }
+
+                window.showGiga().then(() => {
+                    const reward = appSettings.adReward || 250;
+                    db.ref(`users/${user.id}/adsGiga`).transaction(c => (c || 0) + 1);
+                    db.ref(`users/${user.id}/adsWatched`).transaction(c => (c || 0) + 1); // Legacy total track
+                    db.ref(`users/${user.id}/dogsBalance`).transaction(b => (b || 0) + reward);
+                    addHistory('earn', 'Galaxy Ad Reward (B)', reward, 'GLX');
+                    alert("Reward Added!");
+                }).catch(e => {
+                    console.error(e);
+                    alert("Ad failed or closed.");
+                });
+            }
+
+            // --- LEADERBOARD LOGIC FIXED ---
+            function renderLeaderboard() {
+                db.ref('users').orderByChild('dogsBalance').limitToLast(50).once('value', snapshot => {
+                    const users = []; snapshot.forEach(c => users.push(c.val()));
+                    const byInv = [...users].sort((a,b) => (b.referrals||0) - (a.referrals||0));
+                    fillList(byInv, 'invites-leaderboard-list', 'referrals', 'Frens');
+                    const byGLX = [...users].sort((a,b) => (b.dogsBalance||0) - (a.dogsBalance||0));
+                    fillList(byGLX, 'earnings-leaderboard-list', 'dogsBalance', 'GLX');
+                });
+            }
+
+            function fillList(data, containerId, key, suffix) {
+                const container = document.getElementById(containerId);
+                container.innerHTML = '';
+                if(data.length === 0) { container.innerHTML = '<p style="text-align:center;padding:20px;">No Data</p>'; return; }
+                data.slice(0, 50).forEach((u, idx) => {
+                    const val = key === 'dogsBalance' ? Math.floor(u[key]||0).toLocaleString() : (u[key]||0);
+                    const html = `
+                    <div class="list-card">
+                        <div style="width:30px; font-weight:800; color:#fff;">#${idx+1}</div>
+                        <div class="lc-content"><div class="lc-title">${u.name || 'Anonymous'}</div></div>
+                        <div class="lc-end"><div class="lc-val" style="color:#fff;">${val} ${suffix}</div></div>
+                    </div>`;
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            }
+
+            // FaucetPay Withdrawal Handler
+            function handleFaucetpayWithdraw() {
+                const email = document.getElementById('faucetpay-email').value.trim();
+                const amt = parseFloat(document.getElementById('faucetpay-amount').value);
+                const minAmt = appSettings.minFaucetpayWithdrawal || 0.0001;
+                
+                if(!email || !email.includes('@')) { 
+                    alert("Please enter a valid FaucetPay email address"); 
+                    return; 
+                }
+                if(!amt || amt < minAmt) { 
+                    alert(`Minimum FaucetPay withdrawal is ${minAmt} TON`); 
+                    return; 
+                }
+                if(amt > (appData.tonBalance || 0)) { 
+                    alert("Insufficient TON balance"); 
+                    return; 
                 }
                 
-                loadUserData();
-                setupWithdrawalMethods();
-                setupTONValidation();
-                setupEmailValidation();
-                setupTONWithdrawal();
-                setupFaucetPayWithdrawal();
-                setupInputAlerts();
+                if(!confirm(`Withdraw ${amt} TON to ${email} via FaucetPay?\n\n✅ No fees\n⏳ Processing time: Up to 1 minute`)) return;
                 
-                // تحديث الرصيد كل 10 ثواني
-                setInterval(loadUserData, 10000);
+                // Deduct balance and create withdrawal request
+                db.ref(`users/${user.id}/tonBalance`).transaction(v => v - amt);
+                db.ref('withdrawals').push({ 
+                    userId: user.id, 
+                    amount: amt, 
+                    currency: 'TON', 
+                    method: 'faucetpay',
+                    email: email,
+                    status: 'pending', 
+                    date: Date.now(),
+                    note: 'FaucetPay withdrawal'
+                });
                 
-                // تحديث سجل السحب كل 30 ثانية
-                setInterval(loadWithdrawalHistory, 30000);
+                addHistory('withdraw', `FaucetPay Withdrawal to ${email}`, amt, 'TON');
+                alert("✅ Withdrawal request submitted!\nProcessing time: Up to 1 minute\nCheck your FaucetPay account shortly.");
+                
+                // Clear form
+                document.getElementById('faucetpay-email').value = '';
+                document.getElementById('faucetpay-amount').value = minAmt;
+                switchTab('home');
             }
-            
-            // بدء التطبيق
+
+            // TON Wallet Withdrawal Handler
+            function handleTonWalletWithdraw() {
+                const addr = document.getElementById('ton-wallet-address').value.trim();
+                const memo = document.getElementById('ton-memo').value.trim();
+                const amt = parseFloat(document.getElementById('ton-withdraw-amount').value);
+                const minAmt = appSettings.minTonWithdrawal || 0.05;
+                
+                if(!addr || addr.length < 5) { 
+                    alert("Please enter a valid TON wallet address (starts with UQ, EQ, or kQ)"); 
+                    return; 
+                }
+                if(!amt || amt < minAmt) { 
+                    alert(`Minimum TON wallet withdrawal is ${minAmt} TON`); 
+                    return; 
+                }
+                if(amt > (appData.tonBalance || 0)) { 
+                    alert("Insufficient TON balance"); 
+                    return; 
+                }
+                
+                const confirmMsg = `Withdraw ${amt} TON to:\n${addr}` + (memo ? `\nMemo: ${memo}` : '') + `\n\n✅ No fees\n⏳ Processing time: Up to 24 hours`;
+                if(!confirm(confirmMsg)) return;
+                
+                // Deduct balance and create withdrawal request
+                db.ref(`users/${user.id}/tonBalance`).transaction(v => v - amt);
+                db.ref('withdrawals').push({ 
+                    userId: user.id, 
+                    amount: amt, 
+                    currency: 'TON', 
+                    method: 'tonwallet',
+                    address: addr,
+                    memo: memo || '',
+                    status: 'pending', 
+                    date: Date.now(),
+                    note: 'TON Wallet withdrawal'
+                });
+                
+                addHistory('withdraw', `TON Wallet Withdrawal`, amt, 'TON');
+                alert("✅ Withdrawal request submitted!\nProcessing time: Up to 24 hours\nYou will receive funds directly to your wallet.");
+                
+                // Clear form
+                document.getElementById('ton-wallet-address').value = '';
+                document.getElementById('ton-memo').value = '';
+                document.getElementById('ton-withdraw-amount').value = minAmt;
+                switchTab('home');
+            }
+
             initializeApp();
         });
     </script>
