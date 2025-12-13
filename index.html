@@ -1,160 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>GalaxyBot</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Galaxy Core</title>
 
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
-
-:root{
---primary:#7c6cff;
---secondary:#38b6ff;
---bg:#050816;
---glass:rgba(18,22,55,.85);
---border:rgba(255,255,255,.12);
---text:#ffffff;
---muted:#9aa4ff;
---nav-bg:rgba(5,8,22,.95);
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{
-font-family:'Outfit',sans-serif;
-color:var(--text);
-background:url('https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3') center/cover fixed;
-min-height:100vh;
-overflow-x:hidden
-}
-body::before{
-content:'';position:fixed;inset:0;
-background:radial-gradient(circle at top,rgba(124,108,255,.18),rgba(5,8,22,.95));z-index:-1
+body {
+  font-family: 'Outfit', sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  background: url('https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3')
+    center / cover no-repeat fixed;
+  display: flex;
+  justify-content: center;
 }
 
-.app-container{max-width:500px;margin:auto;padding:20px;padding-bottom:110px;min-height:100vh}
-
-.content-section{display:none;animation:fade .4s ease}
-.content-section.active{display:flex;flex-direction:column;flex:1}
-@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-
-.hud-container{
-display:flex;justify-content:space-between;align-items:center;
-background:rgba(0,0,0,.45);border-radius:50px;
-padding:8px 12px;margin-bottom:20px;border:1px solid var(--border)
-}
-.user-name{font-weight:700;font-size:14px}
-.user-rank{font-size:10px;color:var(--secondary);text-transform:uppercase}
-.hud-avatar{width:38px;height:38px;border-radius:50%;overflow:hidden;border:2px solid var(--primary)}
-.hud-avatar img{width:100%;height:100%;object-fit:cover}
-
-.settings-btn{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);margin-right:8px}
-.settings-btn svg{width:20px;height:20px;stroke:#fff}
-
-.main-coin-section{text-align:center;margin:20px 0 30px}
-.main-coin-img{
-width:160px;height:160px;border-radius:50%;
-border:4px solid var(--primary);
-box-shadow:0 0 45px rgba(124,108,255,.6);
-animation:float 4s ease-in-out infinite;object-fit:cover
-}
-@keyframes float{50%{transform:translateY(-10px)}}
-
-.balance-amount{font-size:48px;font-weight:800}
-.balance-unit{font-size:16px;color:var(--secondary);letter-spacing:3px}
-
-.stats-pill{
-display:inline-flex;gap:12px;align-items:center;
-background:rgba(255,255,255,.08);
-padding:8px 16px;border-radius:20px;font-size:12px;margin-top:10px
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(124,108,255,0.25), rgba(5,8,22,0.95));
+  z-index: -1;
 }
 
-.action-bar{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:25px}
-.btn-action{
-background:rgba(255,255,255,.08);
-border:1px solid var(--border);
-border-radius:18px;padding:14px;
-display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px
+.app {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px 20px 40px;
+  text-align: center;
 }
 
-h2{font-size:16px;color:var(--secondary);margin-bottom:10px}
-
-.list-card{
-display:flex;align-items:center;background:rgba(0,0,0,.35);
-border:1px solid var(--border);border-radius:16px;padding:12px;margin-bottom:8px
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
 }
-.lc-icon{width:42px;height:42px;border-radius:12px;overflow:hidden;margin-right:12px}
-.lc-icon img{width:100%;height:100%;object-fit:cover}
-.lc-title{font-size:14px;font-weight:600}
-.lc-sub{font-size:11px;color:var(--muted)}
-.lc-val{font-weight:700;color:var(--secondary)}
 
-.bottom-nav{
-position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-width:90%;max-width:400px;height:65px;
-background:var(--nav-bg);border-radius:32px;
-display:flex;justify-content:space-around;align-items:center;
-border:1px solid var(--border)
+.logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #7c6cff, #3a2fa6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(124,108,255,0.8);
 }
-.nav-item{display:flex;flex-direction:column;align-items:center;font-size:9px;color:#888}
-.nav-item.active{color:var(--secondary)}
-.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2.5}
 
-.hidden{display:none!important}
+.logo::after {
+  content: "🌀";
+  font-size: 22px;
+}
+
+.title {
+  text-align: left;
+}
+
+.title h1 {
+  font-size: 20px;
+  font-weight: 800;
+  color: #9fb4ff;
+}
+
+.title span {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* ===== COIN ===== */
+.coin-box {
+  margin: 20px 0 10px;
+}
+
+.coin {
+  width: 180px;
+  height: 180px;
+  margin: auto;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #8f8cff, #3b2fa8);
+  border: 4px solid #7c6cff;
+  box-shadow: 0 0 50px rgba(124,108,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+}
+
+.coin span {
+  filter: drop-shadow(0 0 10px rgba(255,255,255,0.6));
+}
+
+/* ===== BALANCE ===== */
+.balance {
+  margin-top: 18px;
+}
+
+.balance h2 {
+  font-size: 48px;
+  font-weight: 800;
+}
+
+.balance p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #9aa4ff;
+}
+
+.rate {
+  margin-top: 14px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+/* ===== BUTTONS ===== */
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 30px;
+}
+
+.btn {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(124,108,255,0.5);
+  background: rgba(124,108,255,0.12);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn:hover {
+  background: rgba(124,108,255,0.25);
+  box-shadow: 0 0 15px rgba(124,108,255,0.6);
+}
+
+.btn span {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
 </style>
 </head>
+
 <body>
-<div class="app-container">
+  <div class="app">
 
-<div class="hud-container">
-<div>
-<div class="user-name" id="home-username">Explorer</div>
-<div class="user-rank" id="home-user-level">Level 1</div>
-</div>
-<div style="display:flex;align-items:center">
-<div class="settings-btn nav-link" data-target="settings-page">
-<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-</div>
-<div class="hud-avatar"><img src="https://i.ibb.co/9sLq6RX/galaxy-coin.png"></div>
-</div>
-</div>
+    <!-- HEADER -->
+    <div class="header">
+      <div class="logo"></div>
+      <div class="title">
+        <h1>Galaxy Core</h1>
+        <span>LEVEL 1</span>
+      </div>
+    </div>
 
-<main id="home" class="content-section active">
-<div class="main-coin-section">
-<img src="https://i.ibb.co/9sLq6RX/galaxy-coin.png" class="main-coin-img">
-<div class="balance-amount" id="total-cash-balance">0</div>
-<div class="balance-unit">CASH</div>
-<div class="stats-pill">Galaxy Mode Active</div>
-</div>
+    <!-- COIN -->
+    <div class="coin-box">
+      <div class="coin">
+        <span>🌀</span>
+      </div>
+    </div>
 
-<div class="action-bar">
-<div class="btn-action nav-link" data-target="swap-page">WARP</div>
-<div class="btn-action nav-link" data-target="withdraw">EXTRACT</div>
-</div>
+    <!-- BALANCE -->
+    <div class="balance">
+      <h2>0 GLX</h2>
+      <p>= 0.0000 TON</p>
+      <div class="rate">100K GLX = 0.01 TON</div>
+    </div>
 
-<h2>🌌 Galaxy Log</h2>
-<div id="home-history-list"></div>
-</main>
+    <!-- ACTIONS -->
+    <div class="actions">
+      <button class="btn">
+        <span>⇅</span>
+        WARP
+      </button>
+      <button class="btn">
+        <span>⇩</span>
+        EXTRACT
+      </button>
+    </div>
 
-</div>
-
-<nav class="bottom-nav">
-<div class="nav-item active" data-target="home">CORE</div>
-<div class="nav-item" data-target="bonus">BOOST</div>
-<div class="nav-item" data-target="tasks">MISSIONS</div>
-<div class="nav-item" data-target="history">LOG</div>
-<div class="nav-item" data-target="leaderboard">RANK</div>
-<div class="nav-item" data-target="invite">ALLIANCE</div>
-</nav>
-
-<script>
-if(window.Telegram?.WebApp){Telegram.WebApp.ready();Telegram.WebApp.expand();}
-</script>
+  </div>
 </body>
 </html>
