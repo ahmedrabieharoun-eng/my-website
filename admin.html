@@ -4,10 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>لوحة تحكم Firebase</title>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js"></script>
+
+  <!-- Tailwind -->
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
 </head>
+
 <body class="bg-gray-900 text-white min-h-screen">
   <div class="p-6 max-w-6xl mx-auto">
     <h1 class="text-3xl font-bold mb-4 text-center">⚙️ لوحة تحكم Firebase</h1>
@@ -15,47 +20,107 @@
     <!-- قسم الإضافة -->
     <div class="bg-gray-800 p-4 rounded-lg mb-6">
       <h2 class="text-xl mb-2 font-semibold">➕ إضافة بيانات جديدة</h2>
-      <input id="newKey" placeholder="المفتاح (key)" class="p-2 rounded bg-gray-700 text-white w-full mb-2" />
-      <textarea id="newValue" placeholder="القيمة (JSON أو نص)" class="p-2 rounded bg-gray-700 text-white w-full mb-2"></textarea>
-      <button id="addBtn" class="bg-green-600 px-4 py-2 rounded hover:bg-green-500">إضافة</button>
+
+      <input
+        id="newKey"
+        placeholder="المفتاح (key)"
+        class="p-2 rounded bg-gray-700 text-white w-full mb-2"
+      />
+
+      <textarea
+        id="newValue"
+        placeholder="القيمة (JSON أو نص)"
+        class="p-2 rounded bg-gray-700 text-white w-full mb-2"
+      ></textarea>
+
+      <button
+        id="addBtn"
+        class="bg-green-600 px-4 py-2 rounded hover:bg-green-500"
+      >
+        إضافة
+      </button>
     </div>
 
     <!-- عرض البيانات -->
-    <div class="bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[70vh]" id="dataContainer">
+    <div
+      class="bg-gray-800 p-4 rounded-lg shadow-md overflow-auto max-h-[70vh]"
+      id="dataContainer"
+    >
       <p class="text-gray-400 text-center">جارٍ تحميل البيانات...</p>
     </div>
   </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-    import { getDatabase, ref, onValue, set, remove, update } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
+    import {
+      getDatabase,
+      ref,
+      onValue,
+      set,
+      remove,
+      update
+    } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
 
+    /* ===============================
+       Firebase Config (الجديد)
+    ================================ */
     const firebaseConfig = {
-apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg", authDomain: "cash-jungle-bot.firebaseapp.com", databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "cash-jungle-bot", storageBucket: "cash-jungle-bot.firebasestorage.app", messagingSenderId: "361914347430", appId: "1:361914347430:web:3d13817f7c0b8411552967", measurementId: "G-C0JYFKC0P8"
+      apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg",
+      authDomain: "cash-jungle-bot.firebaseapp.com",
+      databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "cash-jungle-bot",
+      storageBucket: "cash-jungle-bot.firebasestorage.app",
+      messagingSenderId: "361914347430",
+      appId: "1:361914347430:web:3d13817f7c0b8411552967",
+      measurementId: "G-C0JYFKC0P8"
     };
 
+    /* ===============================
+       Initialize Firebase
+    ================================ */
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const dbRef = ref(db, '/');
+    const dbRef = ref(db, "/");
     const dataContainer = document.getElementById("dataContainer");
 
-    // عرض البيانات
+    /* ===============================
+       عرض البيانات
+    ================================ */
     onValue(dbRef, (snapshot) => {
       const data = snapshot.val();
+
       if (!data) {
-        dataContainer.innerHTML = "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
+        dataContainer.innerHTML =
+          "<p class='text-center text-gray-400'>🚫 لا توجد بيانات في قاعدة البيانات.</p>";
         return;
       }
 
       let html = "";
+
       for (const key in data) {
         html += `
           <div class="bg-gray-700 p-3 rounded mb-3">
             <h3 class="font-bold">${key}</h3>
-            <textarea id="val-${key}" class="w-full bg-gray-800 text-white p-2 rounded mt-1">${JSON.stringify(data[key], null, 2)}</textarea>
+
+            <textarea
+              id="val-${key}"
+              class="w-full bg-gray-800 text-white p-2 rounded mt-1"
+            >${JSON.stringify(data[key], null, 2)}</textarea>
+
             <div class="mt-2 flex gap-2">
-              <button onclick="updateData('${key}')" class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500">تعديل</button>
-              <button onclick="deleteData('${key}')" class="bg-red-600 px-3 py-1 rounded hover:bg-red-500">حذف</button>
+              <button
+                onclick="updateData('${key}')"
+                class="bg-blue-600 px-3 py-1 rounded hover:bg-blue-500"
+              >
+                تعديل
+              </button>
+
+              <button
+                onclick="deleteData('${key}')"
+                class="bg-red-600 px-3 py-1 rounded hover:bg-red-500"
+              >
+                حذف
+              </button>
             </div>
           </div>
         `;
@@ -64,9 +129,12 @@ apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg", authDomain: "cash-jungle-bot.
       dataContainer.innerHTML = html;
     });
 
-    // دوال التحكم
+    /* ===============================
+       تعديل البيانات
+    ================================ */
     window.updateData = (key) => {
       const newVal = document.getElementById(`val-${key}`).value;
+
       try {
         const parsedVal = JSON.parse(newVal);
         update(ref(db, key), parsedVal);
@@ -76,16 +144,26 @@ apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg", authDomain: "cash-jungle-bot.
       }
     };
 
+    /* ===============================
+       حذف البيانات
+    ================================ */
     window.deleteData = (key) => {
       if (confirm(`هل أنت متأكد من حذف ${key}؟`)) {
         remove(ref(db, key));
       }
     };
 
+    /* ===============================
+       إضافة بيانات جديدة
+    ================================ */
     document.getElementById("addBtn").addEventListener("click", () => {
       const key = document.getElementById("newKey").value.trim();
       const val = document.getElementById("newValue").value.trim();
-      if (!key || !val) return alert("⚠️ أدخل المفتاح والقيمة أولاً!");
+
+      if (!key || !val) {
+        alert("⚠️ أدخل المفتاح والقيمة أولاً!");
+        return;
+      }
 
       try {
         const parsed = JSON.parse(val);
