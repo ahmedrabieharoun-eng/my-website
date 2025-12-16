@@ -25,14 +25,14 @@
         
         :root {
             --primary-green: #a855f7;
-            --deep-Galaxy: #051a05;
+            --deep-Galaxy: #202020;
             --gold: #d6bcfa;
             --gold-glow: rgba(168, 85, 247, 0.4);
-            --glass-bg: rgba(16, 40, 16, 0.7); /* أكثر شفافية */
+            --glass-bg: rgba(32, 32, 32, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-color: #ffffff;
-            --text-muted: #8aa88a;
-            --nav-bg: rgba(8, 24, 8, 0.98);
+            --text-muted: #b0b0b0;
+            --nav-bg: rgba(40, 40, 40, 0.98);
             --success-color: #a855f7;
         }
 
@@ -53,7 +53,7 @@
             content: '';
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 100%);
+            background: radial-gradient(circle at center, rgba(50,50,50,0.3) 0%, rgba(30,30,30,0.85) 100%);
             z-index: -1;
         }
         
@@ -1319,7 +1319,7 @@
         }
         
         .rank-1 .competition-rank {
-            color: #27ae60; /* لون أخضر للمركز الأول */
+            color: #27ae60;
             font-weight: 900;
         }
         
@@ -1466,26 +1466,6 @@
                 <p>Win Big with Tickets</p>
             </div>
             
-            <!-- Competition Rules -->
-            <div class="competition-rules-card">
-                <div class="rules-header">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <span>Competition Rules</span>
-                </div>
-                <ul class="rules-list">
-                    <li><span class="winner-highlight">🏆 ONLY THE FIRST PLACE WINS!</span> - The user with the most tickets wins the entire prize pool.</li>
-                    <li><span class="loser-note">❌ ALL OTHER PARTICIPANTS LOSE</span> - Only #1 gets the prize, others get nothing.</li>
-                    <li>🎫 Each ticket costs <strong>10,000 GLX (0.001 TON)</strong></li>
-                    <li>💰 Prize Pool = Total Tickets × 0.001 TON</li>
-                    <li>⏰ Competition runs for 24 hours, followed by 1 hour break</li>
-                    <li>📊 Winner is automatically selected after competition ends</li>
-                </ul>
-                <div class="important-note">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                    <strong>Important:</strong> Buy more tickets to increase your chance of winning! Only #1 position matters.
-                </div>
-            </div>
-            
             <!-- Countdown Timer -->
             <div class="competition-timer-card">
                 <div class="countdown-display" id="countdown-timer">24:00:00</div>
@@ -1517,6 +1497,26 @@
             <div class="ticket-price-note">
                 <p>🎫 <strong>Each ticket = 10,000 GLX = 0.001 TON</strong></p>
                 <p style="font-size:11px; margin-top:5px;">Prize Pool = Total Tickets × 0.001 TON</p>
+            </div>
+            
+            <!-- Competition Rules -->
+            <div class="competition-rules-card">
+                <div class="rules-header">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Competition Rules</span>
+                </div>
+                <ul class="rules-list">
+                    <li><span class="winner-highlight">🏆 ONLY THE FIRST PLACE WINS!</span> - The user with the most tickets wins the entire prize pool.</li>
+                    <li><span class="loser-note">❌ ALL OTHER PARTICIPANTS LOSE</span> - Only #1 gets the prize, others get nothing.</li>
+                    <li>🎫 Each ticket costs <strong>10,000 GLX (0.001 TON)</strong></li>
+                    <li>💰 Prize Pool = Total Tickets × 0.001 TON</li>
+                    <li>⏰ Competition runs for 24 hours, followed by 1 hour break</li>
+                    <li>📊 Winner is automatically selected after competition ends</li>
+                </ul>
+                <div class="important-note">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <strong>Important:</strong> Buy more tickets to increase your chance of winning! Only #1 position matters.
+                </div>
             </div>
             
             <!-- Buy Tickets Section -->
@@ -1968,7 +1968,7 @@
             <!-- User Withdrawal History -->
             <div class="card">
                 <h3 style="color: var(--gold); margin-bottom: 15px;">👤 Your Withdrawals</h3>
-                <div id="user-withdrawal-history-list" style="max-height: 300px; overflow-y: auto; padding-bottom: 10px;">
+                <div id="user-withdrawal-history-list" style="max-height: 400px; overflow-y: auto; padding-bottom: 10px;">
                     <p style="text-align:center; padding: 20px; color:var(--text-muted);">No withdrawal history yet</p>
                 </div>
             </div>
@@ -2243,8 +2243,8 @@
             if (window.Telegram?.WebApp) {
                 window.Telegram.WebApp.ready();
                 window.Telegram.WebApp.expand();
-                window.Telegram.WebApp.headerColor = '#051a05';
-                window.Telegram.WebApp.backgroundColor = '#051a05';
+                window.Telegram.WebApp.headerColor = '#202020';
+                window.Telegram.WebApp.backgroundColor = '#202020';
             }
             firebase.initializeApp(firebaseConfig);
             const db = firebase.database();
@@ -2392,7 +2392,20 @@
             function initializeCompetition() {
                 db.ref('competition/current').on('value', (snapshot) => {
                     if (snapshot.exists()) {
-                        competitionData = snapshot.val();
+                        const compData = snapshot.val();
+                        competitionData = compData;
+                        
+                        // إصلاح مشكلة userTickets إذا كانت object
+                        if (compData.userTickets && typeof compData.userTickets === 'object') {
+                            if (compData.userTickets[user.id]) {
+                                competitionData.userTickets = parseInt(compData.userTickets[user.id]) || 0;
+                            } else {
+                                competitionData.userTickets = 0;
+                            }
+                        } else {
+                            competitionData.userTickets = compData.userTickets || 0;
+                        }
+                        
                         updateCompetitionUI();
                         startCountdown();
                     } else {
@@ -2413,11 +2426,11 @@
                     }
                 });
                 
-                // Listen for user's tickets
+                // Listen for user's tickets - إصلاح الاستماع
                 db.ref(`competition/current/userTickets/${user.id}`).on('value', (snapshot) => {
                     const tickets = snapshot.val() || 0;
-                    competitionData.userTickets = tickets;
-                    document.getElementById('user-tickets').textContent = tickets.toString();
+                    competitionData.userTickets = parseInt(tickets) || 0;
+                    document.getElementById('user-tickets').textContent = competitionData.userTickets.toString();
                 });
                 
                 // Load previous winners
@@ -2438,7 +2451,15 @@
                 
                 document.getElementById('prize-pool').textContent = competitionData.prizePool ? competitionData.prizePool.toFixed(3) + ' TON' : '0.000 TON';
                 document.getElementById('total-tickets').textContent = competitionData.totalTickets || 0;
-                document.getElementById('user-tickets').textContent = competitionData.userTickets || 0;
+                
+                // إصلاح عرض YOUR TICKETS
+                let userTicketsValue = 0;
+                if (typeof competitionData.userTickets === 'object') {
+                    userTicketsValue = competitionData.userTickets[user.id] || 0;
+                } else {
+                    userTicketsValue = parseInt(competitionData.userTickets) || 0;
+                }
+                document.getElementById('user-tickets').textContent = userTicketsValue;
                 
                 // Update ticket input display
                 const ticketInput = document.getElementById('ticket-amount');
@@ -2563,29 +2584,45 @@
                 }).then(() => {
                     // Update competition data
                     const updates = {};
-                    updates[`competition/current/userTickets/${user.id}`] = (competitionData.userTickets || 0) + tickets;
-                    updates[`competition/current/totalTickets`] = (competitionData.totalTickets || 0) + tickets;
-                    updates[`competition/current/prizePool`] = ((competitionData.totalTickets || 0) + tickets) * TICKET_TON_VALUE;
                     
-                    return db.ref().update(updates);
-                }).then(() => {
-                    // Add history
-                    addHistory('spend', `Bought ${tickets} Competition Ticket${tickets > 1 ? 's' : ''}`, totalCost, 'GLX');
-                    
-                    // Update UI
-                    buyBtn.disabled = false;
-                    buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
-                    statusMsg.textContent = `✅ Successfully purchased ${tickets} ticket${tickets > 1 ? 's' : ''}!`;
-                    statusMsg.style.color = "#27ae60";
-                    
-                    ticketInput.value = 1;
-                    updateTicketCostDisplay();
-                    
-                    setTimeout(() => {
-                        statusMsg.textContent = "";
-                    }, 3000);
-                    
-                    renderUI();
+                    // الحصول على التذاكر الحالية للمستخدم
+                    db.ref(`competition/current/userTickets/${user.id}`).once('value').then(snapshot => {
+                        const currentUserTickets = parseInt(snapshot.val()) || 0;
+                        const newUserTickets = currentUserTickets + tickets;
+                        
+                        updates[`competition/current/userTickets/${user.id}`] = newUserTickets;
+                        updates[`competition/current/totalTickets`] = (competitionData.totalTickets || 0) + tickets;
+                        updates[`competition/current/prizePool`] = ((competitionData.totalTickets || 0) + tickets) * TICKET_TON_VALUE;
+                        
+                        return db.ref().update(updates);
+                    }).then(() => {
+                        // Add history
+                        addHistory('spend', `Bought ${tickets} Competition Ticket${tickets > 1 ? 's' : ''}`, totalCost, 'GLX');
+                        
+                        // Update UI
+                        buyBtn.disabled = false;
+                        buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
+                        statusMsg.textContent = `✅ Successfully purchased ${tickets} ticket${tickets > 1 ? 's' : ''}!`;
+                        statusMsg.style.color = "#27ae60";
+                        
+                        ticketInput.value = 1;
+                        updateTicketCostDisplay();
+                        
+                        setTimeout(() => {
+                            statusMsg.textContent = "";
+                        }, 3000);
+                        
+                        renderUI();
+                        
+                    }).catch(error => {
+                        console.error("Error updating competition data:", error);
+                        alert("Error processing purchase. Please try again.");
+                        
+                        buyBtn.disabled = false;
+                        buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
+                        statusMsg.textContent = "❌ Error processing purchase";
+                        statusMsg.style.color = "#e74c3c";
+                    });
                     
                 }).catch(error => {
                     console.error("Error buying tickets:", error);
@@ -2603,27 +2640,43 @@
                     const ticketsData = snapshot.val() || {};
                     const leaderboardContainer = document.getElementById('competition-leaderboard-list');
                     
-                    if (Object.keys(ticketsData).length === 0) {
+                    if (!ticketsData || Object.keys(ticketsData).length === 0) {
                         leaderboardContainer.innerHTML = '<p style="text-align:center; padding: 20px; color:var(--text-muted);">No tickets purchased yet</p>';
                         return;
                     }
                     
-                    // Convert to array and sort
-                    const leaderboardArray = Object.entries(ticketsData)
-                        .map(([userId, tickets]) => ({ userId, tickets: tickets || 0 }))
-                        .sort((a, b) => b.tickets - a.tickets)
-                        .slice(0, 10);
+                    // تحويل البيانات إلى مصفوفة مع تصحيح الأخطاء
+                    const leaderboardArray = [];
+                    Object.entries(ticketsData).forEach(([userId, tickets]) => {
+                        // التأكد من أن tickets رقم وليس object
+                        const ticketCount = typeof tickets === 'number' ? tickets : 
+                                           (tickets && typeof tickets === 'object' ? 0 : 
+                                           parseInt(tickets) || 0);
+                        leaderboardArray.push({ userId, tickets: ticketCount });
+                    });
+                    
+                    // الترتيب التنازلي حسب عدد التذاكر
+                    leaderboardArray.sort((a, b) => b.tickets - a.tickets);
+                    
+                    // أخذ أول 10 فقط
+                    const top10 = leaderboardArray.slice(0, 10);
                     
                     leaderboardContainer.innerHTML = '';
                     
-                    // Fetch user details for each entry
-                    let usersFetched = 0;
-                    leaderboardArray.forEach((entry, index) => {
+                    if (top10.length === 0) {
+                        leaderboardContainer.innerHTML = '<p style="text-align:center; padding: 20px; color:var(--text-muted);">No tickets purchased yet</p>';
+                        return;
+                    }
+                    
+                    // تحميل تفاصيل المستخدمين
+                    let loadedCount = 0;
+                    top10.forEach((entry, index) => {
                         db.ref(`users/${entry.userId}`).once('value').then(userSnap => {
                             const userData = userSnap.val();
                             const userName = userData?.name || 'Anonymous';
                             const userPhoto = userData?.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png';
                             
+                            // إضافة ترتيب صحيح
                             const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
                             
                             const html = `
@@ -2638,10 +2691,7 @@
                             
                             leaderboardContainer.insertAdjacentHTML('beforeend', html);
                             
-                            usersFetched++;
-                            if (usersFetched === leaderboardArray.length && usersFetched === 0) {
-                                leaderboardContainer.innerHTML = '<p style="text-align:center; padding: 20px; color:var(--text-muted);">No tickets purchased yet</p>';
-                            }
+                            loadedCount++;
                         }).catch(() => {
                             const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
                             
@@ -2661,6 +2711,8 @@
                     
                 }).catch(error => {
                     console.error("Error loading leaderboard:", error);
+                    const leaderboardContainer = document.getElementById('competition-leaderboard-list');
+                    leaderboardContainer.innerHTML = '<p style="text-align:center; padding: 20px; color:var(--text-muted);">Error loading leaderboard</p>';
                 });
             }
             
@@ -2740,8 +2792,9 @@
                     let maxTickets = 0;
                     
                     Object.entries(ticketsData).forEach(([userId, tickets]) => {
-                        if (tickets > maxTickets) {
-                            maxTickets = tickets;
+                        const ticketCount = parseInt(tickets) || 0;
+                        if (ticketCount > maxTickets) {
+                            maxTickets = ticketCount;
                             winnerId = userId;
                         }
                     });
@@ -3822,6 +3875,7 @@
                         });
                     });
                     
+                    // ترتيب من الأحدث إلى الأقدم
                     withdrawals.sort((a, b) => b.timestamp - a.timestamp);
                     
                     if (withdrawals.length === 0) {
@@ -3911,21 +3965,31 @@
             }
             
             function renderUserWithdrawalHistory() {
-                db.ref('withdrawals/completed').orderByChild('timestamp').once('value', snapshot => {
+                db.ref('withdrawals').once('value', snapshot => {
                     const container = document.getElementById('user-withdrawal-history-list');
                     container.innerHTML = '';
                     
                     const userWithdrawals = [];
-                    snapshot.forEach(child => {
-                        const withdrawal = child.val();
-                        if (withdrawal.userId === user.id) {
-                            userWithdrawals.push({
-                                ...withdrawal,
-                                key: child.key
+                    
+                    // البحث في كل الفروع
+                    const branches = ['completed', 'pending', 'rejected'];
+                    branches.forEach(branch => {
+                        const branchData = snapshot.child(branch).val();
+                        if (branchData) {
+                            Object.keys(branchData).forEach(key => {
+                                const withdrawal = branchData[key];
+                                if (withdrawal.userId === user.id) {
+                                    userWithdrawals.push({
+                                        ...withdrawal,
+                                        key: key,
+                                        branch: branch
+                                    });
+                                }
                             });
                         }
                     });
                     
+                    // ترتيب من الأحدث إلى الأقدم
                     userWithdrawals.sort((a, b) => b.timestamp - a.timestamp);
                     
                     if (userWithdrawals.length === 0) {
@@ -3936,8 +4000,37 @@
                     userWithdrawals.forEach(withdrawal => {
                         const timeAgo = getTimeAgo(withdrawal.timestamp);
                         const amount = parseFloat(withdrawal.amount || 0).toFixed(7);
-                        const status = withdrawal.processed === true ? 'completed' : 
-                                     withdrawal.status === 'rejected' ? 'rejected' : 'pending';
+                        
+                        // تحديد حالة السحب بناءً على الفرع والحالة
+                        let status = '';
+                        let statusText = '';
+                        let statusClass = '';
+                        
+                        if (withdrawal.branch === 'completed') {
+                            status = 'completed';
+                            statusText = '✅ Completed';
+                            statusClass = 'status-completed';
+                        } else if (withdrawal.branch === 'pending') {
+                            status = 'pending';
+                            statusText = '⏳ Pending';
+                            statusClass = 'status-pending';
+                        } else if (withdrawal.branch === 'rejected') {
+                            status = 'rejected';
+                            statusText = '❌ Rejected';
+                            statusClass = 'status-rejected';
+                        } else if (withdrawal.status === 'rejected') {
+                            status = 'rejected';
+                            statusText = '❌ Rejected';
+                            statusClass = 'status-rejected';
+                        } else if (withdrawal.status === 'completed' || withdrawal.processed === true) {
+                            status = 'completed';
+                            statusText = '✅ Completed';
+                            statusClass = 'status-completed';
+                        } else {
+                            status = 'pending';
+                            statusText = '⏳ Pending';
+                            statusClass = 'status-pending';
+                        }
                         
                         let maskedAccount = withdrawal.account || '';
                         if (withdrawal.method === 'faucetpay' && maskedAccount.includes('@')) {
@@ -3956,10 +4049,6 @@
                                                maskedAccount.substring(maskedAccount.length - 4);
                             }
                         }
-                        
-                        const statusClass = `status-${status}`;
-                        const statusText = status === 'completed' ? '✅ Completed' : 
-                                         status === 'pending' ? '⏳ Pending' : '❌ Rejected';
                         
                         const html = `
                         <div class="user-withdrawal-item">
