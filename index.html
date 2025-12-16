@@ -28,7 +28,7 @@
             --deep-Galaxy: #051a05;
             --gold: #d6bcfa;
             --gold-glow: rgba(168, 85, 247, 0.4);
-            --glass-bg: rgba(16, 40, 16, 0.85);
+            --glass-bg: rgba(16, 40, 16, 0.7); /* أكثر شفافية */
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-color: #ffffff;
             --text-muted: #8aa88a;
@@ -103,8 +103,8 @@
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
         }
         .btn-action {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
             color: white;
             flex-direction: column;
             padding: 12px;
@@ -116,13 +116,31 @@
         .hud-container {
             display: flex; justify-content: space-between; align-items: center;
             background: rgba(0,0,0,0.5); border-radius: 50px;
-            padding: 6px 6px 6px 20px; margin-bottom: 20px;
+            padding: 10px 15px; margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.05);
         }
         .user-name { font-weight: 700; font-size: 14px; }
         .user-rank { font-size: 10px; color: var(--primary-green); text-transform: uppercase; }
-        .hud-avatar { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary-green); margin-left: 10px; }
+        .hud-avatar { width: 50px; height: 50px; border-radius: 50%; overflow: hidden; border: 2px solid var(--primary-green); }
         .hud-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .hud-balance {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+        
+        .hud-balance-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .hud-glx { color: var(--gold); }
+        .hud-ton { color: #0088cc; }
         
         .main-coin-section {
             text-align: center; margin: 10px 0 30px; position: relative;
@@ -143,7 +161,7 @@
 
         .stats-pill {
             display: inline-flex; align-items: center; gap: 15px;
-            background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 20px;
+            background: rgba(255,255,255,0.05); padding: 8px 16px; border-radius: 20px;
             margin-top: 10px; font-size: 12px; font-weight: 600;
         }
         .ton-val { color: var(--primary-green); display: flex; align-items: center; gap: 4px; }
@@ -1301,7 +1319,8 @@
         }
         
         .rank-1 .competition-rank {
-            color: #FFD700;
+            color: #27ae60; /* لون أخضر للمركز الأول */
+            font-weight: 900;
         }
         
         .rank-2 .competition-rank {
@@ -1335,6 +1354,55 @@
             font-weight: 700;
             color: var(--primary-green);
         }
+        
+        /* Competition Rules Card */
+        .competition-rules-card {
+            background: rgba(0,0,0,0.4);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .rules-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            color: var(--gold);
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        .rules-list {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            padding-left: 20px;
+        }
+        
+        .rules-list li {
+            margin-bottom: 8px;
+        }
+        
+        .winner-highlight {
+            color: #27ae60;
+            font-weight: 700;
+        }
+        
+        .loser-note {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+        
+        .important-note {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 3px solid #FFC107;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -1345,6 +1413,16 @@
             <div>
                 <div class="user-name" id="home-username">Explorer</div>
                 <div class="user-rank" id="home-user-level">Level 1</div>
+                <div style="display: flex; align-items: center; gap: 15px; margin-top: 5px;">
+                    <div class="stats-pill" style="margin: 0; padding: 6px 12px;">
+                        <span style="color: var(--gold);">GLX:</span>
+                        <span id="hud-glx-balance" style="color: #fff; font-weight: 700;">0</span>
+                    </div>
+                    <div class="stats-pill" style="margin: 0; padding: 6px 12px;">
+                        <span style="color: var(--gold);">TON:</span>
+                        <span id="hud-ton-balance" style="color: #fff; font-weight: 700;">0.0000</span>
+                    </div>
+                </div>
             </div>
             <div style="display:flex; align-items:center;">
                 <div class="hud-avatar">
@@ -1386,6 +1464,26 @@
             <div class="page-header">
                 <h1>Daily Competition</h1>
                 <p>Win Big with Tickets</p>
+            </div>
+            
+            <!-- Competition Rules -->
+            <div class="competition-rules-card">
+                <div class="rules-header">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Competition Rules</span>
+                </div>
+                <ul class="rules-list">
+                    <li><span class="winner-highlight">🏆 ONLY THE FIRST PLACE WINS!</span> - The user with the most tickets wins the entire prize pool.</li>
+                    <li><span class="loser-note">❌ ALL OTHER PARTICIPANTS LOSE</span> - Only #1 gets the prize, others get nothing.</li>
+                    <li>🎫 Each ticket costs <strong>10,000 GLX (0.001 TON)</strong></li>
+                    <li>💰 Prize Pool = Total Tickets × 0.001 TON</li>
+                    <li>⏰ Competition runs for 24 hours, followed by 1 hour break</li>
+                    <li>📊 Winner is automatically selected after competition ends</li>
+                </ul>
+                <div class="important-note">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <strong>Important:</strong> Buy more tickets to increase your chance of winning! Only #1 position matters.
+                </div>
             </div>
             
             <!-- Countdown Timer -->
@@ -1893,7 +1991,10 @@
                 <div class="input-wrap">
                     <span class="input-label">You Give (GLX)</span>
                     <input type="number" id="swap-input-amount" class="custom-input" placeholder="Min 1,000" oninput="calculateSwap()">
-                    <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">Max: <span id="swap-max-GLX">0</span></div>
+                    <div style="text-align:right; font-size:10px; color:var(--text-muted); margin-top:5px;">
+                        Max: <span id="swap-max-GLX">0</span>
+                        <button onclick="setMaxSwap()" style="margin-left:10px; background:var(--primary-green); color:#000; border:none; padding:4px 8px; border-radius:6px; font-size:10px; cursor:pointer;">MAX</button>
+                    </div>
                 </div>
                 <div class="input-wrap">
                     <span class="input-label">You Get (TON)</span>
@@ -2316,7 +2417,7 @@
                 db.ref(`competition/current/userTickets/${user.id}`).on('value', (snapshot) => {
                     const tickets = snapshot.val() || 0;
                     competitionData.userTickets = tickets;
-                    document.getElementById('user-tickets').textContent = tickets;
+                    document.getElementById('user-tickets').textContent = tickets.toString();
                 });
                 
                 // Load previous winners
@@ -2444,7 +2545,7 @@
                     return;
                 }
                 
-                if (!confirm(`Buy ${tickets} ticket${tickets > 1 ? 's' : ''} for ${totalCost.toLocaleString()} GLX?\n\nEach ticket = 10,000 GLX = 0.001 TON`)) {
+                if (!confirm(`Buy ${tickets} ticket${tickets > 1 ? 's' : ''} for ${totalCost.toLocaleString()} GLX?\n\nEach ticket = 10,000 GLX = 0.001 TON\n\n🏆 Remember: Only #1 wins, all others lose!`)) {
                     return;
                 }
                 
@@ -2509,7 +2610,7 @@
                     
                     // Convert to array and sort
                     const leaderboardArray = Object.entries(ticketsData)
-                        .map(([userId, tickets]) => ({ userId, tickets }))
+                        .map(([userId, tickets]) => ({ userId, tickets: tickets || 0 }))
                         .sort((a, b) => b.tickets - a.tickets)
                         .slice(0, 10);
                     
@@ -2681,7 +2782,7 @@
                         // Send notification to winner
                         if (winnerId === user.id) {
                             setTimeout(() => {
-                                alert(`🎉 CONGRATULATIONS! You won the competition!\n\n🏆 Prize: ${prizeAmount.toFixed(3)} TON\n🎫 Your tickets: ${maxTickets}`);
+                                alert(`🎉 CONGRATULATIONS! You won the competition!\n\n🏆 Prize: ${prizeAmount.toFixed(3)} TON\n🎫 Your tickets: ${maxTickets}\n\n💰 You are the ONLY winner - all other participants lost!`);
                             }, 1000);
                         }
                         
@@ -2765,6 +2866,18 @@
                 }
                 
                 document.getElementById('ton-withdraw-amount').value = currentBalance.toFixed(2);
+            }
+            
+            // Swap MAX Function
+            window.setMaxSwap = function() {
+                const currentBalance = appData.dogsBalance || 0;
+                if (currentBalance < 1000) {
+                    alert("Minimum swap is 1,000 GLX");
+                    return;
+                }
+                
+                document.getElementById('swap-input-amount').value = currentBalance;
+                calculateSwap();
             }
             
             function initializeApp() {
@@ -2903,6 +3016,10 @@
                 document.getElementById('swap-max-GLX').textContent = GLX.toLocaleString();
                 document.querySelectorAll('.user-ton-balance').forEach(el => el.textContent = parseFloat(ton).toFixed(4));
                 document.getElementById('referral-count-display').textContent = (appData.referrals || 0);
+                
+                // تحديث الشريط العلوي
+                document.getElementById('hud-glx-balance').textContent = GLX.toLocaleString();
+                document.getElementById('hud-ton-balance').textContent = parseFloat(ton).toFixed(4);
 
                 const monetagCount = appData.adsMonetag || 0;
                 const gigaCount = appData.adsGiga || 0;
@@ -3731,7 +3848,12 @@
                                                   '@' + domain;
                                 }
                             } else if (withdrawal.method === 'ton') {
-                                maskedAccount = maskedAccount.substring(0, 8) + '...' + maskedAccount.substring(maskedAccount.length - 4);
+                                // إخفاء محفظة TON بشكل متسق
+                                if (maskedAccount.length > 16) {
+                                    maskedAccount = maskedAccount.substring(0, 8) + 
+                                                   '...' + 
+                                                   maskedAccount.substring(maskedAccount.length - 4);
+                                }
                             }
                             
                             const html = `
@@ -3760,7 +3882,12 @@
                                                   '@' + domain;
                                 }
                             } else if (withdrawal.method === 'ton') {
-                                maskedAccount = maskedAccount.substring(0, 8) + '...' + maskedAccount.substring(maskedAccount.length - 4);
+                                // إخفاء محفظة TON بشكل متسق
+                                if (maskedAccount.length > 16) {
+                                    maskedAccount = maskedAccount.substring(0, 8) + 
+                                                   '...' + 
+                                                   maskedAccount.substring(maskedAccount.length - 4);
+                                }
                             }
                             
                             const html = `
@@ -3822,7 +3949,12 @@
                                               '@' + domain;
                             }
                         } else if (withdrawal.method === 'ton') {
-                            maskedAccount = maskedAccount.substring(0, 8) + '...' + maskedAccount.substring(maskedAccount.length - 4);
+                            // إخفاء محفظة TON بشكل متسق
+                            if (maskedAccount.length > 16) {
+                                maskedAccount = maskedAccount.substring(0, 8) + 
+                                               '...' + 
+                                               maskedAccount.substring(maskedAccount.length - 4);
+                            }
                         }
                         
                         const statusClass = `status-${status}`;
@@ -4266,9 +4398,13 @@
                     return;
                 }
 
-                const shortAddress = address.substring(0, 8) + '...' + address.substring(address.length - 4);
+                // إخفاء العنوان بشكل متسق
+                let shortAddress = address;
+                if (address.length > 16) {
+                    shortAddress = address.substring(0, 8) + '...' + address.substring(address.length - 4);
+                }
                 
-                if (!confirm(`Withdraw ${amount} TON to ${shortAddress}?\n\nAddress: ${address}\n${memo ? 'Memo: ' + memo + '\n' : ''}`)) {
+                if (!confirm(`Withdraw ${amount} TON to ${shortAddress}?\n\nAddress: ${shortAddress}\n${memo ? 'Memo: ' + memo + '\n' : ''}`)) {
                     return;
                 }
 
