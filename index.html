@@ -635,7 +635,8 @@
             height: 100%;
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 2.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: rotateY(0deg);
+            transition: none;
         }
         
         .coin-face {
@@ -672,15 +673,20 @@
         }
         
         @keyframes coinSpin {
-            0% { transform: rotateY(0) translateY(0); }
+            0% { transform: rotateY(0); }
             25% { transform: rotateY(180deg) translateY(-20px); }
             50% { transform: rotateY(360deg) translateY(0); }
             75% { transform: rotateY(540deg) translateY(-10px); }
             100% { transform: rotateY(var(--final-rotation, 720deg)) translateY(0); }
         }
         
-        .coin-flipping {
-            animation: coinSpin 2.5s ease-in-out;
+        .coin-spinning {
+            animation: coinSpin 2.5s cubic-bezier(0.4, 2.4, 0.8, 0.9) forwards;
+        }
+        
+        .coin-final {
+            animation: none !important;
+            transform: rotateY(var(--final-rotation, 0deg)) !important;
         }
         
         .game-result {
@@ -1032,148 +1038,322 @@
         .coin-game-rules li {
             margin-bottom: 8px;
         }
-        
-        /* Competition Styles */
-        .competition-timer {
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
-            border: 2px solid rgba(255, 193, 7, 0.4);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
+
+        /* نظام المسابقة الجديد */
+        .competition-status-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
         }
         
-        .timer-display {
+        .status-card {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 120px;
+        }
+        
+        .status-card.active {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(123, 97, 255, 0.2));
+            border-color: #a855f7;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+        }
+        
+        .status-card.inactive {
+            background: rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .status-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        .status-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 5px;
+        }
+        
+        .status-value.highlight {
+            color: var(--primary-green);
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+        
+        .status-subtext {
+            font-size: 9px;
+            color: var(--text-muted);
+            opacity: 0.8;
+        }
+        
+        .competition-countdown {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(39, 174, 96, 0.15));
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .countdown-timer {
+            font-family: 'Courier New', monospace;
             font-size: 28px;
             font-weight: 800;
-            color: #FFC107;
-            text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
-            margin-bottom: 10px;
+            color: var(--primary-green);
+            text-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            margin: 10px 0;
+            letter-spacing: 2px;
         }
         
-        .timer-label {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            text-transform: uppercase;
-        }
-        
-        .prize-pool-card {
-            background: linear-gradient(135deg, rgba(39, 174, 96, 0.2), rgba(46, 204, 113, 0.2));
-            border: 2px solid rgba(39, 174, 96, 0.4);
+        .buy-tickets-section {
+            background: rgba(0, 0, 0, 0.4);
             border-radius: 20px;
             padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
+            margin: 20px 0;
+            border: 2px solid rgba(168, 85, 247, 0.5);
         }
         
-        .prize-pool-label {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 10px;
-        }
-        
-        .prize-pool-amount {
-            font-size: 32px;
-            font-weight: 800;
-            color: #27ae60;
-            text-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
-        }
-        
-        .ticket-controls {
+        .ticket-quantity-selector {
             display: flex;
-            align-items: center;
             gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .ticket-input {
-            flex: 1;
-            padding: 12px 15px;
-            border-radius: 12px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid rgba(168, 85, 247, 0.6);
-            color: white;
-            font-family: inherit;
-            font-size: 16px;
-            font-weight: 700;
-            text-align: center;
-            outline: none;
-        }
-        
-        .ticket-buttons {
-            display: flex;
-            gap: 8px;
             margin-bottom: 15px;
         }
         
-        .ticket-btn {
-            padding: 12px 15px;
-            background: rgba(168, 85, 247, 0.2);
-            border: 2px solid rgba(168, 85, 247, 0.5);
-            border-radius: 10px;
+        .ticket-quantity-btn {
+            flex: 1;
+            padding: 12px;
+            background: rgba(168, 85, 247, 0.1);
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            border-radius: 12px;
             color: white;
-            cursor: pointer;
             font-size: 14px;
             font-weight: 700;
-            min-width: 65px;
+            cursor: pointer;
             text-align: center;
+            transition: all 0.3s;
         }
         
-        .ticket-btn.active {
+        .ticket-quantity-btn.active {
             background: linear-gradient(135deg, #a855f7, #7c3aed);
             border-color: #a855f7;
             box-shadow: 0 5px 15px rgba(168, 85, 247, 0.4);
         }
         
-        .user-tickets-display {
-            background: rgba(168, 85, 247, 0.1);
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            text-align: center;
+        .ticket-quantity-btn:hover {
+            background: rgba(168, 85, 247, 0.2);
         }
         
-        .user-tickets-label {
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 5px;
+        .competition-leaderboard {
+            margin-top: 25px;
         }
         
-        .user-tickets-count {
-            font-size: 24px;
+        .leaderboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .leaderboard-title {
+            font-size: 16px;
             font-weight: 800;
-            color: var(--primary-green);
-        }
-        
-        .previous-winners-card {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 20px;
-            margin-top: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .winner-item {
+            color: white;
             display: flex;
             align-items: center;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            margin-bottom: 8px;
+            gap: 8px;
         }
         
-        .winner-rank {
+        .leaderboard-refresh {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 10px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .leaderboard-refresh:hover {
+            background: rgba(168, 85, 247, 0.3);
+        }
+        
+        .leaderboard-list {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s;
+        }
+        
+        .leaderboard-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .leaderboard-item.rank-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.2));
+            border-color: rgba(255, 215, 0, 0.5);
+        }
+        
+        .leaderboard-item.rank-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.2), rgba(189, 195, 199, 0.2));
+            border-color: rgba(192, 192, 192, 0.5);
+        }
+        
+        .leaderboard-item.rank-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.2), rgba(176, 141, 87, 0.2));
+            border-color: rgba(205, 127, 50, 0.5);
+        }
+        
+        .leaderboard-rank {
             width: 30px;
             height: 30px;
-            background: linear-gradient(135deg, #a855f7, #7b61ff);
             border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            color: white;
+            font-size: 12px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .rank-1 .leaderboard-rank {
+            background: linear-gradient(135deg, #FFD700, #FFC107);
+            color: #000;
+        }
+        
+        .rank-2 .leaderboard-rank {
+            background: linear-gradient(135deg, #C0C0C0, #BDC3C7);
+            color: #000;
+        }
+        
+        .rank-3 .leaderboard-rank {
+            background: linear-gradient(135deg, #CD7F32, #B08D57);
+            color: #000;
+        }
+        
+        .leaderboard-user {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        
+        .leaderboard-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             margin-right: 10px;
+            border: 2px solid var(--primary-green);
+            overflow: hidden;
+        }
+        
+        .leaderboard-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .leaderboard-user-info {
+            flex: 1;
+        }
+        
+        .leaderboard-username {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .leaderboard-tickets {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--primary-green);
+            text-align: right;
+        }
+        
+        .winner-history {
+            margin-top: 30px;
+        }
+        
+        .winner-history-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .winner-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .winner-date {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        
+        .winner-prize {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--primary-green);
+        }
+        
+        .winner-details {
+            display: flex;
+            align-items: center;
+        }
+        
+        .winner-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 2px solid var(--primary-green);
+            overflow: hidden;
+        }
+        
+        .winner-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         
         .winner-info {
@@ -1182,54 +1362,74 @@
         
         .winner-name {
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 3px;
         }
         
-        .winner-details {
+        .winner-tickets {
             font-size: 11px;
             color: var(--text-muted);
-            display: flex;
-            justify-content: space-between;
         }
         
-        .competition-status {
-            padding: 10px;
-            border-radius: 10px;
-            text-align: center;
+        .competition-rules {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+        
+        .competition-rules h4 {
+            font-size: 14px;
+            color: var(--gold);
             margin-bottom: 15px;
-            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .competition-status.active {
-            background: rgba(39, 174, 96, 0.2);
-            border: 1px solid rgba(39, 174, 96, 0.5);
-            color: #27ae60;
+        .competition-rules ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
         }
         
-        .competition-status.break {
-            background: rgba(255, 193, 7, 0.2);
-            border: 1px solid rgba(255, 193, 7, 0.5);
-            color: #FFC107;
+        .competition-rules li {
+            margin-bottom: 8px;
+            color: var(--text-muted);
         }
         
-        .competition-status.ended {
-            background: rgba(231, 76, 60, 0.2);
-            border: 1px solid rgba(231, 76, 60, 0.5);
-            color: #e74c3c;
-        }
-        
-        .competition-section {
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .pulse-animation {
-            animation: pulse 2s infinite;
+        @media (max-width: 480px) {
+            .competition-status-cards {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            
+            .status-card {
+                padding: 15px;
+                min-height: 110px;
+            }
+            
+            .status-value {
+                font-size: 20px;
+            }
+            
+            .countdown-timer {
+                font-size: 24px;
+            }
+            
+            .ticket-quantity-selector {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .leaderboard-rank {
+                width: 28px;
+                height: 28px;
+                font-size: 11px;
+            }
         }
     </style>
 </head>
@@ -1271,10 +1471,139 @@
                 <div class="btn btn-action nav-link" data-target="withdraw">
                     <svg viewBox="0 0 24 24"><path d="M12 5v14m0 0-6-6m6 6 6-6"/></svg><span>Withdraw</span>
                 </div>
+                <div class="btn btn-action nav-link" data-target="competition">
+                    <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg><span>Competition</span>
+                </div>
             </div>
 
             <h2> Galaxy Log</h2>
             <div id="home-history-list"></div>
+        </main>
+
+        <!-- COMPETITION PAGE -->
+        <main id="competition" class="content-section">
+            <div class="page-header">
+                <h1>Galaxy Competition</h1>
+                <p>Buy tickets, win big prizes!</p>
+            </div>
+
+            <!-- Competition Status Cards -->
+            <div class="competition-countdown">
+                <div class="status-label">TIME UNTIL NEXT COMPETITION</div>
+                <div class="countdown-timer" id="countdown-timer">23:24:41</div>
+            </div>
+            
+            <div class="competition-status-cards">
+                <div class="status-card active" id="competition-status-card">
+                    <div class="status-label">COMPETITION STATUS</div>
+                    <div class="status-value" id="competition-status">ACTIVE</div>
+                    <div class="status-subtext" id="competition-mode">Buy tickets now!</div>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-label">TOTAL PRIZE POOL</div>
+                    <div class="status-value highlight" id="total-prize-pool">0.000 TON</div>
+                    <div class="status-subtext">Updated in real-time</div>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-label">YOUR TICKETS</div>
+                    <div class="status-value" id="user-tickets-count">0</div>
+                    <div class="status-subtext">This competition</div>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-label">TICKET PRICE</div>
+                    <div class="status-value">10,000 GLX</div>
+                    <div class="status-subtext">= 0.001 TON</div>
+                </div>
+            </div>
+
+            <!-- Buy Tickets Section -->
+            <div class="buy-tickets-section">
+                <h3 style="font-size:14px; color:var(--gold); margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-ticket" style="color:#a855f7;"></i> Buy Competition Tickets
+                </h3>
+                
+                <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px; text-align:center;">
+                    Each ticket = 10,000 GLX = 0.001 TON<br>
+                    Ticket price goes to prize pool
+                </p>
+                
+                <div class="ticket-quantity-selector">
+                    <div class="ticket-quantity-btn active" onclick="selectTicketQuantity(1)">1 Ticket</div>
+                    <div class="ticket-quantity-btn" onclick="selectTicketQuantity(5)">5 Tickets</div>
+                    <div class="ticket-quantity-btn" onclick="selectTicketQuantity(10)">10 Tickets</div>
+                    <div class="ticket-quantity-btn" onclick="selectTicketQuantity(20)">20 Tickets</div>
+                </div>
+                
+                <div style="text-align:center; margin:15px 0;">
+                    <div style="font-size:11px; color:var(--text-muted); margin-bottom:5px;">Total Cost</div>
+                    <div style="font-size:18px; font-weight:800; color:white;" id="ticket-total-cost">10,000 GLX</div>
+                    <div style="font-size:10px; color:var(--primary-green); margin-top:3px;">= <span id="ticket-total-ton">0.001</span> TON</div>
+                </div>
+                
+                <button class="btn btn-primary" id="buy-tickets-btn" onclick="buyTickets()">
+                    <i class="fa-solid fa-cart-shopping"></i> BUY TICKETS
+                </button>
+                
+                <div style="text-align:center; margin-top:10px;">
+                    <div style="font-size:10px; color:var(--text-muted);">
+                        <i class="fa-solid fa-circle-info"></i> Unlimited tickets per user
+                    </div>
+                </div>
+            </div>
+
+            <!-- Competition Leaderboard -->
+            <div class="competition-leaderboard">
+                <div class="leaderboard-header">
+                    <div class="leaderboard-title">
+                        <i class="fa-solid fa-trophy" style="color:#FFD700;"></i> TOP 10 LEADERBOARD
+                    </div>
+                    <button class="leaderboard-refresh" onclick="refreshLeaderboard()">
+                        <i class="fa-solid fa-rotate"></i> Refresh
+                    </button>
+                </div>
+                
+                <div class="leaderboard-list" id="competition-leaderboard-list">
+                    <!-- Leaderboard items will be loaded here -->
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Loading leaderboard...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Winner History -->
+            <div class="winner-history">
+                <h3 style="font-size:14px; color:var(--gold); margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-history" style="color:#a855f7;"></i> Previous Winners
+                </h3>
+                
+                <div id="winner-history-list">
+                    <!-- Winner history items will be loaded here -->
+                    <div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;">
+                        <i class="fa-solid fa-trophy"></i> No previous winners yet
+                    </div>
+                </div>
+            </div>
+
+            <!-- Competition Rules -->
+            <div class="competition-rules">
+                <h4><i class="fa-solid fa-circle-info"></i> Competition Rules</h4>
+                <ul>
+                    <li><strong>Duration:</strong> Each competition lasts 24 hours</li>
+                    <li><strong>Ticket Price:</strong> 10,000 GLX = 0.001 TON per ticket</li>
+                    <li><strong>Prize Pool:</strong> 100% of ticket sales (Total tickets × 0.001 TON)</li>
+                    <li><strong>Winner:</strong> User with most tickets wins entire prize pool</li>
+                    <li><strong>Breaks:</strong> 1-hour break between competitions</li>
+                    <li><strong>Auto-distribution:</strong> Prize automatically added to winner's balance</li>
+                    <li><strong>No limits:</strong> Buy unlimited tickets</li>
+                    <li><strong>Real-time updates:</strong> Leaderboard updates instantly</li>
+                </ul>
+                <div style="font-size:10px; color:var(--primary-green); text-align:center; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <i class="fa-solid fa-shield-alt"></i> Secure & automatic system
+                </div>
+            </div>
         </main>
 
         <!-- BONUS PAGE -->
@@ -1319,116 +1648,6 @@
                         <div class="game-title">Galaxy Slots</div>
                         <div class="game-description">Spin the reels & win big jackpots</div>
                     </div>
-                </div>
-                
-                <!-- Competition Game Card -->
-                <div class="bonus-game-card" onclick="openGame('competition')">
-                    <img src="https://i.ibb.co/7JHQBTWR/compitition.png" alt="Daily Competition" class="game-banner">
-                    <div class="game-content">
-                        <div class="game-icon">🏆</div>
-                        <div class="game-title">Daily Competition</div>
-                        <div class="game-description">Buy tickets & win TON prizes!</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Competition Section -->
-            <div id="competition-section" class="card competition-section" style="display: none;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
-                    <h3 style="font-size:14px; color:var(--gold); display:flex; align-items:center; gap:8px;">
-                        <i class="fa-solid fa-trophy" style="color:#FFC107;"></i> Daily Competition
-                    </h3>
-                    <button class="btn btn-action" onclick="closeGame()" style="width:auto; padding: 8px 12px; font-size: 11px;">
-                        <i class="fa-solid fa-arrow-left"></i> Back
-                    </button>
-                </div>
-                
-                <div class="competition-status active" id="competition-status">
-                    🏁 COMPETITION ACTIVE
-                </div>
-                
-                <div class="competition-timer pulse-animation">
-                    <div class="timer-display" id="competition-timer">24:00:00</div>
-                    <div class="timer-label">TIME UNTIL NEXT COMPETITION</div>
-                </div>
-                
-                <div class="prize-pool-card">
-                    <div class="prize-pool-label">TOTAL PRIZE POOL</div>
-                    <div class="prize-pool-amount" id="prize-pool-amount">0.000 TON</div>
-                </div>
-                
-                <div class="user-tickets-display">
-                    <div class="user-tickets-label">YOUR TICKETS</div>
-                    <div class="user-tickets-count" id="user-tickets-count">0</div>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 5px;">
-                        Each ticket = 10,000 GLX = 0.001 TON
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <h4 style="font-size:14px; color:var(--gold); margin-bottom:15px;">
-                        <i class="fa-solid fa-ticket"></i> Buy Tickets
-                    </h4>
-                    
-                    <div class="ticket-controls">
-                        <input type="number" id="ticket-amount" class="ticket-input" placeholder="Number of tickets" min="1" value="1">
-                    </div>
-                    
-                    <div class="ticket-buttons">
-                        <button class="ticket-btn active" onclick="setTicketAmount(1)">1</button>
-                        <button class="ticket-btn" onclick="setTicketAmount(5)">5</button>
-                        <button class="ticket-btn" onclick="setTicketAmount(10)">10</button>
-                        <button class="ticket-btn" onclick="setTicketAmount(20)">20</button>
-                    </div>
-                    
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        <div style="font-size: 12px; color: var(--text-muted);">
-                            Cost: <span id="ticket-cost-glx">10,000</span> GLX
-                        </div>
-                        <div style="font-size: 11px; color: rgba(255,255,255,0.7);">
-                            (≈ <span id="ticket-cost-ton">0.001</span> TON per ticket)
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-primary" id="buy-tickets-btn" onclick="buyTickets()">
-                        <i class="fa-solid fa-cart-shopping"></i> BUY TICKETS
-                    </button>
-                </div>
-                
-                <div class="card">
-                    <h4 style="font-size:14px; color:var(--gold); margin-bottom:15px;">
-                        <i class="fa-solid fa-ranking-star"></i> Current Leaderboard
-                    </h4>
-                    
-                    <div id="competition-leaderboard-list"></div>
-                    
-                    <div style="text-align: center; margin-top: 10px; font-size: 11px; color: var(--text-muted);">
-                        Updated in real-time
-                    </div>
-                </div>
-                
-                <div class="previous-winners-card">
-                    <h4 style="font-size:14px; color:var(--gold); margin-bottom:15px;">
-                        <i class="fa-solid fa-history"></i> Previous Winners
-                    </h4>
-                    
-                    <div id="previous-winners-list"></div>
-                    
-                    <button class="btn btn-action" onclick="viewAllWinners()" style="margin-top: 15px; width: 100%;">
-                        <i class="fa-solid fa-list"></i> View All Winners
-                    </button>
-                </div>
-                
-                <div class="coin-game-rules">
-                    <h4><i class="fa-solid fa-circle-info"></i> Competition Rules</h4>
-                    <ul>
-                        <li><strong>Ticket Price:</strong> 10,000 GLX (0.001 TON value)</li>
-                        <li><strong>Prize Pool:</strong> Total tickets × 0.001 TON</li>
-                        <li><strong>Duration:</strong> 24 hours per competition</li>
-                        <li><strong>Winner:</strong> User with most tickets wins entire prize pool</li>
-                        <li><strong>Break:</strong> 1-hour break between competitions</li>
-                        <li><strong>Auto-distribution:</strong> Prize sent automatically to winner's balance</li>
-                    </ul>
                 </div>
             </div>
             
@@ -2004,9 +2223,9 @@
             <svg viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path></svg>
             <span class="nav-text">Bonus</span>
         </div>
-        <div class="nav-item" data-target="referrals">
-            <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <span class="nav-text">Referrals</span>
+        <div class="nav-item" data-target="competition">
+            <svg viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+            <span class="nav-text">Competition</span>
         </div>
         <div class="nav-item" data-target="withdrawal-history">
             <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
@@ -2022,12 +2241,6 @@
             const GLX_TO_TON_RATE = 0.0000001;
             const ADSGRAM_BLOCK_ID = 'int-18879';
             
-            // Competition Configuration
-            const TICKET_PRICE_GLX = 10000; // 10,000 GLX per ticket
-            const TICKET_VALUE_TON = 0.001; // 0.001 TON per ticket value
-            const COMPETITION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-            const BREAK_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
-            
             // Firebase Configuration
             const firebaseConfig = {
                 apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
@@ -2041,6 +2254,12 @@
             };
             
             const TG_BOT_TOKEN = '8340000265:AAErFZF0d-khnKM8LxU0pU8T140-DdZLncQ';
+
+            // Competition Configuration
+            const COMPETITION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+            const BREAK_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
+            const TICKET_PRICE_GLX = 10000;
+            const TICKET_PRICE_TON = 0.001;
 
             // Initialize App
             if (window.Telegram?.WebApp) {
@@ -2082,16 +2301,22 @@
                 betAmount: 1000,
                 lastFlipResult: null,
                 winChance: 45,
-                lossChance: 55
+                lossChance: 55,
+                currentRotation: 0,
+                animationId: null
             };
 
             // Competition Variables
             let competitionData = {
-                currentCompetition: null,
+                isActive: true,
+                startTime: 0,
                 endTime: 0,
-                status: 'active', // active, break, ended
-                timerInterval: null,
-                userTickets: 0
+                totalTickets: 0,
+                prizePool: 0,
+                userTickets: 0,
+                selectedQuantity: 1,
+                leaderboard: [],
+                winnerHistory: []
             };
 
             // Withdrawal Type
@@ -2132,7 +2357,6 @@
                 document.getElementById('promo-codes-section').style.display = 'none';
                 document.getElementById('daily-streak-section').style.display = 'none';
                 document.getElementById('galaxy-slots-section').style.display = 'none';
-                document.getElementById('competition-section').style.display = 'none';
                 
                 const grid = document.querySelector('.bonus-grid');
                 grid.style.display = 'none';
@@ -2140,14 +2364,12 @@
                 document.getElementById(gameType + '-section').style.display = 'block';
                 
                 if (gameType === 'coin-flip') {
-                    initCoinFlipGame();
+                    resetCoinFlipGame();
                 } else if (gameType === 'galaxy-slots') {
                     initSlotsGame();
                     updateAvailableSpins();
                 } else if (gameType === 'daily-streak') {
                     renderDailyBonusUI();
-                } else if (gameType === 'competition') {
-                    initCompetition();
                 }
             }
             
@@ -2156,484 +2378,459 @@
                 document.getElementById('promo-codes-section').style.display = 'none';
                 document.getElementById('daily-streak-section').style.display = 'none';
                 document.getElementById('galaxy-slots-section').style.display = 'none';
-                document.getElementById('competition-section').style.display = 'none';
                 
                 const grid = document.querySelector('.bonus-grid');
                 grid.style.display = 'grid';
             }
             
             // Competition Functions
-            function initCompetition() {
-                // Load competition data
-                db.ref('competition/current').once('value', snapshot => {
-                    const compData = snapshot.val();
-                    if (compData) {
-                        competitionData.currentCompetition = compData;
-                        competitionData.endTime = compData.endTime;
-                        competitionData.status = compData.status || 'active';
-                        
-                        // Start timer
-                        startCompetitionTimer();
-                        
-                        // Update UI
-                        updateCompetitionUI();
-                        
-                        // Load user tickets
-                        loadUserTickets();
-                        
-                        // Load leaderboard
-                        loadCompetitionLeaderboard();
-                        
-                        // Load previous winners
-                        loadPreviousWinners();
-                    } else {
-                        // Create new competition if none exists
-                        createNewCompetition();
+            window.selectTicketQuantity = function(quantity) {
+                competitionData.selectedQuantity = quantity;
+                
+                document.querySelectorAll('.ticket-quantity-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (parseInt(btn.textContent) === quantity) {
+                        btn.classList.add('active');
                     }
                 });
                 
-                // Setup event listeners
-                document.getElementById('ticket-amount').addEventListener('input', updateTicketCost);
+                updateTicketCost();
             }
             
-            function createNewCompetition() {
-                const now = Date.now();
-                const endTime = now + COMPETITION_DURATION;
-                
-                const newCompetition = {
-                    id: 'comp_' + Math.floor(Date.now() / 1000),
-                    startTime: now,
-                    endTime: endTime,
-                    status: 'active',
-                    totalTickets: 0,
-                    prizePool: 0,
-                    participants: 0,
-                    winner: null
-                };
-                
-                db.ref('competition/current').set(newCompetition).then(() => {
-                    competitionData.currentCompetition = newCompetition;
-                    competitionData.endTime = endTime;
-                    competitionData.status = 'active';
-                    
-                    startCompetitionTimer();
-                    updateCompetitionUI();
-                    loadUserTickets();
-                    loadCompetitionLeaderboard();
-                });
-            }
-            
-            function startCompetitionTimer() {
-                // Clear existing interval
-                if (competitionData.timerInterval) {
-                    clearInterval(competitionData.timerInterval);
-                }
-                
-                // Update timer immediately
-                updateTimer();
-                
-                // Set interval to update every second
-                competitionData.timerInterval = setInterval(updateTimer, 1000);
-                
-                // Check competition status every 30 seconds
-                setInterval(checkCompetitionStatus, 30000);
-            }
-            
-            function updateTimer() {
-                const now = Date.now();
-                const timeLeft = competitionData.endTime - now;
-                
-                if (timeLeft <= 0) {
-                    // Competition ended
-                    clearInterval(competitionData.timerInterval);
-                    document.getElementById('competition-timer').textContent = "00:00:00";
-                    
-                    // Check if we should start break or new competition
-                    checkCompetitionStatus();
+            window.buyTickets = function() {
+                if (!competitionData.isActive) {
+                    alert("Competition is not active. Please wait for the next competition.");
                     return;
                 }
                 
-                // Calculate hours, minutes, seconds
+                const quantity = competitionData.selectedQuantity;
+                const totalCostGLX = quantity * TICKET_PRICE_GLX;
+                const totalCostTON = quantity * TICKET_PRICE_TON;
+                
+                const currentBalance = appData.dogsBalance || 0;
+                if (totalCostGLX > currentBalance) {
+                    alert("Insufficient GLX balance!");
+                    return;
+                }
+                
+                if (!confirm(`Buy ${quantity} ticket(s) for ${totalCostGLX.toLocaleString()} GLX (${totalCostTON} TON)?\n\nThis will be added to the prize pool.`)) {
+                    return;
+                }
+                
+                const updates = {};
+                updates[`users/${user.id}/dogsBalance`] = (appData.dogsBalance || 0) - totalCostGLX;
+                
+                const userTicketsRef = db.ref(`competitions/current/tickets/${user.id}`);
+                userTicketsRef.transaction(current => (current || 0) + quantity);
+                
+                db.ref(`competitions/current/totalTickets`).transaction(current => (current || 0) + quantity);
+                
+                db.ref().update(updates).then(() => {
+                    addHistory('loss', `Competition Tickets (${quantity}x)`, totalCostGLX, 'GLX');
+                    
+                    alert(`✅ Successfully purchased ${quantity} ticket(s)!\n\n-${totalCostGLX.toLocaleString()} GLX\n+${quantity} Ticket(s)`);
+                    
+                    updateCompetitionData();
+                    renderUI();
+                    
+                    setTimeout(() => {
+                        loadCompetitionLeaderboard();
+                        updateUserTickets();
+                    }, 1000);
+                    
+                }).catch(error => {
+                    console.error("Error buying tickets:", error);
+                    alert("Error processing purchase. Please try again.");
+                });
+            }
+            
+            window.refreshLeaderboard = function() {
+                loadCompetitionLeaderboard();
+            }
+            
+            function updateTicketCost() {
+                const quantity = competitionData.selectedQuantity;
+                const totalCostGLX = quantity * TICKET_PRICE_GLX;
+                const totalCostTON = quantity * TICKET_PRICE_TON;
+                
+                document.getElementById('ticket-total-cost').textContent = totalCostGLX.toLocaleString() + ' GLX';
+                document.getElementById('ticket-total-ton').textContent = totalCostTON.toFixed(3);
+            }
+            
+            function initializeCompetition() {
+                db.ref('competitions/current').on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (!data) {
+                        // Initialize first competition
+                        const now = Date.now();
+                        const endTime = now + COMPETITION_DURATION;
+                        
+                        const initialData = {
+                            startTime: now,
+                            endTime: endTime,
+                            totalTickets: 0,
+                            prizePool: 0,
+                            isActive: true,
+                            lastWinner: null,
+                            breakEndTime: null
+                        };
+                        
+                        db.ref('competitions/current').set(initialData);
+                        competitionData = { ...competitionData, ...initialData };
+                    } else {
+                        competitionData = { ...competitionData, ...data };
+                        updateCompetitionUI();
+                        updateCountdown();
+                    }
+                });
+                
+                db.ref(`competitions/current/tickets/${user.id}`).on('value', (snapshot) => {
+                    competitionData.userTickets = snapshot.val() || 0;
+                    updateUserTickets();
+                });
+                
+                db.ref('competitions/current/totalTickets').on('value', (snapshot) => {
+                    competitionData.totalTickets = snapshot.val() || 0;
+                    competitionData.prizePool = competitionData.totalTickets * TICKET_PRICE_TON;
+                    updatePrizePool();
+                });
+                
+                loadWinnerHistory();
+                
+                selectTicketQuantity(1);
+                
+                setInterval(() => {
+                    updateCountdown();
+                    checkCompetitionStatus();
+                }, 1000);
+            }
+            
+            function updateCompetitionUI() {
+                const statusCard = document.getElementById('competition-status-card');
+                const statusText = document.getElementById('competition-status');
+                const modeText = document.getElementById('competition-mode');
+                
+                if (competitionData.isActive) {
+                    statusText.textContent = 'ACTIVE';
+                    statusText.style.color = '#27ae60';
+                    modeText.textContent = 'Buy tickets now!';
+                    statusCard.classList.add('active');
+                    statusCard.classList.remove('inactive');
+                } else {
+                    statusText.textContent = 'BREAK';
+                    statusText.style.color = '#ffb300';
+                    modeText.textContent = 'Next competition soon';
+                    statusCard.classList.remove('active');
+                    statusCard.classList.add('inactive');
+                }
+                
+                updateUserTickets();
+                updatePrizePool();
+            }
+            
+            function updateUserTickets() {
+                document.getElementById('user-tickets-count').textContent = competitionData.userTickets;
+            }
+            
+            function updatePrizePool() {
+                document.getElementById('total-prize-pool').textContent = competitionData.prizePool.toFixed(3) + ' TON';
+            }
+            
+            function updateCountdown() {
+                const timerElement = document.getElementById('countdown-timer');
+                if (!timerElement) return;
+                
+                const now = Date.now();
+                let targetTime = competitionData.endTime;
+                
+                if (!competitionData.isActive && competitionData.breakEndTime) {
+                    targetTime = competitionData.breakEndTime;
+                }
+                
+                const timeLeft = Math.max(0, targetTime - now);
+                
+                if (timeLeft <= 0) {
+                    timerElement.textContent = '00:00:00';
+                    return;
+                }
+                
                 const hours = Math.floor(timeLeft / (1000 * 60 * 60));
                 const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
                 const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
                 
-                // Format time
-                const formattedTime = 
-                    hours.toString().padStart(2, '0') + ':' +
-                    minutes.toString().padStart(2, '0') + ':' +
-                    seconds.toString().padStart(2, '0');
-                
-                document.getElementById('competition-timer').textContent = formattedTime;
-                
-                // Update status indicator
-                updateStatusIndicator();
-            }
-            
-            function updateStatusIndicator() {
-                const statusElement = document.getElementById('competition-status');
-                const now = Date.now();
-                const timeLeft = competitionData.endTime - now;
-                
-                if (competitionData.status === 'break') {
-                    statusElement.textContent = "⏸️ BREAK TIME";
-                    statusElement.className = "competition-status break";
-                } else if (timeLeft <= 0) {
-                    statusElement.textContent = "🏁 COMPETITION ENDED";
-                    statusElement.className = "competition-status ended";
-                } else {
-                    statusElement.textContent = "🏁 COMPETITION ACTIVE";
-                    statusElement.className = "competition-status active";
-                }
+                timerElement.textContent = 
+                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
             
             function checkCompetitionStatus() {
                 const now = Date.now();
                 
-                db.ref('competition/current').once('value', snapshot => {
-                    const compData = snapshot.val();
-                    if (!compData) return;
-                    
-                    if (now > compData.endTime && compData.status === 'active') {
-                        // Competition just ended, find winner
-                        endCompetitionAndFindWinner(compData);
-                    } else if (now > compData.endTime + COMPETITION_DURATION && compData.status === 'break') {
-                        // Break ended, start new competition
-                        createNewCompetition();
+                if (competitionData.isActive) {
+                    if (now >= competitionData.endTime) {
+                        endCompetition();
                     }
-                });
+                } else if (competitionData.breakEndTime && now >= competitionData.breakEndTime) {
+                    startNewCompetition();
+                }
             }
             
-            function endCompetitionAndFindWinner(compData) {
-                // Mark competition as ended
-                db.ref('competition/current/status').set('ended');
-                competitionData.status = 'ended';
+            function endCompetition() {
+                competitionData.isActive = false;
                 
-                // Find winner from participants
-                db.ref('competition/current/participants').once('value', participantsSnapshot => {
-                    const participants = participantsSnapshot.val() || {};
+                db.ref('competitions/current').update({
+                    isActive: false,
+                    breakEndTime: Date.now() + BREAK_DURATION
+                });
+                
+                determineWinner();
+                
+                updateCompetitionUI();
+            }
+            
+            function startNewCompetition() {
+                const now = Date.now();
+                const endTime = now + COMPETITION_DURATION;
+                
+                db.ref('competitions/current').set({
+                    startTime: now,
+                    endTime: endTime,
+                    totalTickets: 0,
+                    prizePool: 0,
+                    isActive: true,
+                    lastWinner: null,
+                    breakEndTime: null
+                });
+                
+                competitionData.totalTickets = 0;
+                competitionData.prizePool = 0;
+                competitionData.userTickets = 0;
+                
+                updateCompetitionUI();
+                alert("🎉 New competition started! Buy tickets now!");
+            }
+            
+            function determineWinner() {
+                db.ref('competitions/current/tickets').once('value', (ticketsSnapshot) => {
+                    const tickets = ticketsSnapshot.val();
+                    if (!tickets) {
+                        console.log("No tickets sold in this competition");
+                        return;
+                    }
+                    
                     let maxTickets = 0;
                     let winnerId = null;
                     
-                    Object.keys(participants).forEach(userId => {
-                        if (participants[userId] > maxTickets) {
-                            maxTickets = participants[userId];
+                    Object.entries(tickets).forEach(([userId, ticketCount]) => {
+                        if (ticketCount > maxTickets) {
+                            maxTickets = ticketCount;
                             winnerId = userId;
                         }
                     });
                     
-                    if (winnerId) {
-                        // Calculate prize pool
-                        const totalTickets = compData.totalTickets || 0;
-                        const prizePool = totalTickets * TICKET_VALUE_TON;
+                    if (winnerId && maxTickets > 0) {
+                        const prizeAmount = competitionData.prizePool;
                         
-                        // Update competition with winner
-                        db.ref('competition/current').update({
-                            winner: winnerId,
-                            prizePool: prizePool,
-                            status: 'ended'
-                        });
+                        db.ref(`users/${winnerId}/tonBalance`).transaction(balance => (balance || 0) + prizeAmount);
                         
-                        // Save to previous winners
-                        db.ref('users/' + winnerId).once('value', userSnapshot => {
-                            const userData = userSnapshot.val();
-                            const winnerName = userData?.name || 'Anonymous';
-                            
-                            const winnerData = {
-                                userId: winnerId,
-                                userName: winnerName,
-                                tickets: maxTickets,
-                                prize: prizePool,
-                                competitionId: compData.id,
-                                endTime: compData.endTime
-                            };
-                            
-                            db.ref('competition/winners').push(winnerData);
-                            
-                            // Award prize to winner
-                            awardPrizeToWinner(winnerId, prizePool, maxTickets);
-                        });
+                        addHistoryForUser(winnerId, 'earn', `Competition Win (${maxTickets} tickets)`, prizeAmount, 'TON');
                         
-                        // Start break period
-                        setTimeout(() => {
-                            db.ref('competition/current/status').set('break');
-                            competitionData.status = 'break';
-                            updateStatusIndicator();
-                            
-                            // After break, start new competition
-                            setTimeout(() => {
-                                createNewCompetition();
-                            }, BREAK_DURATION);
-                        }, 5000); // 5 seconds delay before break starts
+                        saveWinnerHistory(winnerId, maxTickets, prizeAmount);
+                        
+                        alertAllUsers(`🎉 Competition Winner: User with ${maxTickets} tickets won ${prizeAmount.toFixed(3)} TON!`);
                     }
                 });
             }
             
-            function awardPrizeToWinner(winnerId, prizeAmount, ticketsWon) {
-                // Add prize to winner's TON balance
-                db.ref('users/' + winnerId + '/tonBalance').transaction(balance => {
-                    return (balance || 0) + prizeAmount;
+            function saveWinnerHistory(winnerId, tickets, prize) {
+                db.ref(`users/${winnerId}`).once('value', (userSnap) => {
+                    const userData = userSnap.val();
+                    const winnerName = userData?.name || 'Anonymous';
+                    const winnerPhoto = userData?.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png';
+                    
+                    const winnerData = {
+                        userId: winnerId,
+                        name: winnerName,
+                        photo: winnerPhoto,
+                        tickets: tickets,
+                        prize: prize,
+                        date: Date.now()
+                    };
+                    
+                    db.ref('competitions/winners').push(winnerData);
+                    
+                    loadWinnerHistory();
                 });
-                
-                // Add transaction history
-                const historyRef = db.ref('users/' + winnerId + '/history').push();
-                historyRef.set({
-                    type: 'prize',
-                    description: `Competition Win (${ticketsWon} tickets)`,
-                    amount: prizeAmount,
-                    currency: 'TON',
-                    date: new Date().toISOString()
-                });
-                
-                // Update winner's stats
-                db.ref('users/' + winnerId + '/competitionWins').transaction(wins => (wins || 0) + 1);
-                db.ref('users/' + winnerId + '/totalPrizeWon').transaction(total => (total || 0) + prizeAmount);
             }
             
-            function updateCompetitionUI() {
-                if (!competitionData.currentCompetition) return;
-                
-                const comp = competitionData.currentCompetition;
-                const totalTickets = comp.totalTickets || 0;
-                const prizePool = totalTickets * TICKET_VALUE_TON;
-                
-                // Update prize pool display
-                document.getElementById('prize-pool-amount').textContent = prizePool.toFixed(3) + ' TON';
-                
-                // Update competition info
-                updateStatusIndicator();
-                
-                // Update user tickets
-                document.getElementById('user-tickets-count').textContent = competitionData.userTickets;
+            function loadWinnerHistory() {
+                db.ref('competitions/winners').orderByChild('date').limitToLast(10).once('value', (snapshot) => {
+                    const winnerHistory = [];
+                    snapshot.forEach(child => {
+                        winnerHistory.push(child.val());
+                    });
+                    
+                    winnerHistory.reverse();
+                    competitionData.winnerHistory = winnerHistory;
+                    renderWinnerHistory();
+                });
             }
             
-            function loadUserTickets() {
-                if (!competitionData.currentCompetition) return;
+            function renderWinnerHistory() {
+                const container = document.getElementById('winner-history-list');
+                if (!container) return;
                 
-                const compId = competitionData.currentCompetition.id;
-                db.ref('competition/current/participants/' + user.id).once('value', snapshot => {
-                    const tickets = snapshot.val() || 0;
-                    competitionData.userTickets = tickets;
-                    document.getElementById('user-tickets-count').textContent = tickets;
+                container.innerHTML = '';
+                
+                if (competitionData.winnerHistory.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted); font-size:12px;"><i class="fa-solid fa-trophy"></i> No previous winners yet</div>';
+                    return;
+                }
+                
+                competitionData.winnerHistory.forEach(winner => {
+                    const date = new Date(winner.date);
+                    const formattedDate = date.toLocaleDateString();
+                    
+                    const html = `
+                    <div class="winner-history-item">
+                        <div class="winner-history-header">
+                            <div class="winner-date">${formattedDate}</div>
+                            <div class="winner-prize">${winner.prize.toFixed(3)} TON</div>
+                        </div>
+                        <div class="winner-details">
+                            <div class="winner-avatar">
+                                <img src="${winner.photo}" alt="${winner.name}">
+                            </div>
+                            <div class="winner-info">
+                                <div class="winner-name">${winner.name}</div>
+                                <div class="winner-tickets">${winner.tickets} Tickets</div>
+                            </div>
+                        </div>
+                    </div>`;
+                    
+                    container.insertAdjacentHTML('beforeend', html);
                 });
             }
             
             function loadCompetitionLeaderboard() {
-                if (!competitionData.currentCompetition) return;
-                
-                db.ref('competition/current/participants').once('value', snapshot => {
-                    const participants = snapshot.val() || {};
-                    const leaderboardContainer = document.getElementById('competition-leaderboard-list');
-                    leaderboardContainer.innerHTML = '';
-                    
-                    // Convert to array and sort by tickets
-                    const leaderboardArray = Object.keys(participants).map(userId => ({
-                        userId,
-                        tickets: participants[userId]
-                    })).sort((a, b) => b.tickets - a.tickets);
-                    
-                    // Load user names for top 10
-                    let loaded = 0;
-                    const top10 = leaderboardArray.slice(0, 10);
-                    
-                    if (top10.length === 0) {
-                        leaderboardContainer.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 20px;">No participants yet</p>';
+                db.ref('competitions/current/tickets').orderByValue().limitToLast(10).once('value', (snapshot) => {
+                    const tickets = snapshot.val();
+                    if (!tickets) {
+                        const container = document.getElementById('competition-leaderboard-list');
+                        container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);">No tickets sold yet</div>';
                         return;
                     }
                     
-                    top10.forEach((entry, index) => {
-                        db.ref('users/' + entry.userId).once('value', userSnapshot => {
-                            const userData = userSnapshot.val();
-                            const userName = userData?.name || 'Anonymous';
-                            const userAvatar = userData?.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png';
-                            
-                            const rankClass = index === 0 ? 'first' : index === 1 ? 'second' : index === 2 ? 'third' : '';
-                            const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : index === 2 ? '#CD7F32' : '#a855f7';
-                            
-                            const html = `
-                            <div class="winner-item">
-                                <div class="winner-rank" style="background: ${rankColor}">${index + 1}</div>
-                                <img src="${userAvatar}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid ${rankColor};">
-                                <div class="winner-info">
-                                    <div class="winner-name">${userName}</div>
-                                    <div class="winner-details">
-                                        <span>Tickets: ${entry.tickets}</span>
-                                        <span>${(entry.tickets * TICKET_VALUE_TON).toFixed(3)} TON value</span>
-                                    </div>
-                                </div>
-                            </div>`;
-                            
-                            leaderboardContainer.insertAdjacentHTML('beforeend', html);
-                            
-                            loaded++;
-                            if (loaded === top10.length) {
-                                updateCompetitionUI();
-                            }
+                    const leaderboard = [];
+                    snapshot.forEach(child => {
+                        leaderboard.push({
+                            userId: child.key,
+                            tickets: child.val()
                         });
                     });
+                    
+                    leaderboard.sort((a, b) => b.tickets - a.tickets);
+                    competitionData.leaderboard = leaderboard;
+                    renderCompetitionLeaderboard();
                 });
             }
             
-            function loadPreviousWinners() {
-                db.ref('competition/winners').orderByChild('endTime').limitToLast(5).once('value', snapshot => {
-                    const container = document.getElementById('previous-winners-list');
-                    container.innerHTML = '';
-                    
-                    const winners = [];
-                    snapshot.forEach(child => {
-                        winners.push(child.val());
-                    });
-                    
-                    // Sort by date (newest first)
-                    winners.sort((a, b) => b.endTime - a.endTime);
-                    
-                    if (winners.length === 0) {
-                        container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding: 10px;">No previous winners yet</p>';
-                        return;
-                    }
-                    
-                    winners.forEach((winner, index) => {
-                        const date = new Date(winner.endTime).toLocaleDateString();
-                        const prize = winner.prize || 0;
+            function renderCompetitionLeaderboard() {
+                const container = document.getElementById('competition-leaderboard-list');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                if (competitionData.leaderboard.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);">No tickets sold yet</div>';
+                    return;
+                }
+                
+                let loadedUsers = 0;
+                const totalUsers = competitionData.leaderboard.length;
+                
+                competitionData.leaderboard.forEach((entry, index) => {
+                    db.ref(`users/${entry.userId}`).once('value', (userSnap) => {
+                        const userData = userSnap.val();
+                        const userName = userData?.name || 'Anonymous';
+                        const userPhoto = userData?.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png';
+                        
+                        const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
                         
                         const html = `
-                        <div class="winner-item">
-                            <div class="winner-rank" style="background: ${index === 0 ? '#FFD700' : '#a855f7'}">${index + 1}</div>
-                            <div class="winner-info">
-                                <div class="winner-name">${winner.userName}</div>
-                                <div class="winner-details">
-                                    <span>${winner.tickets} tickets</span>
-                                    <span>${date}</span>
-                                    <span style="color: #27ae60;">${prize.toFixed(4)} TON</span>
+                        <div class="leaderboard-item ${rankClass}">
+                            <div class="leaderboard-rank">${index + 1}</div>
+                            <div class="leaderboard-user">
+                                <div class="leaderboard-avatar">
+                                    <img src="${userPhoto}" alt="${userName}">
+                                </div>
+                                <div class="leaderboard-user-info">
+                                    <div class="leaderboard-username">${userName}</div>
                                 </div>
                             </div>
+                            <div class="leaderboard-tickets">${entry.tickets} Tickets</div>
                         </div>`;
                         
                         container.insertAdjacentHTML('beforeend', html);
+                        
+                        loadedUsers++;
+                        if (loadedUsers === totalUsers) {
+                            container.innerHTML += '<div style="text-align:center; padding:10px; font-size:10px; color:var(--text-muted);">Updated in real-time</div>';
+                        }
+                    }).catch(() => {
+                        const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
+                        
+                        const html = `
+                        <div class="leaderboard-item ${rankClass}">
+                            <div class="leaderboard-rank">${index + 1}</div>
+                            <div class="leaderboard-user">
+                                <div class="leaderboard-avatar">
+                                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Anonymous">
+                                </div>
+                                <div class="leaderboard-user-info">
+                                    <div class="leaderboard-username">Anonymous</div>
+                                </div>
+                            </div>
+                            <div class="leaderboard-tickets">${entry.tickets} Tickets</div>
+                        </div>`;
+                        
+                        container.insertAdjacentHTML('beforeend', html);
+                        
+                        loadedUsers++;
                     });
                 });
             }
             
-            window.setTicketAmount = function(amount) {
-                document.getElementById('ticket-amount').value = amount;
-                updateTicketCost();
-                
-                // Update button states
-                document.querySelectorAll('.ticket-btn').forEach(btn => {
-                    const btnAmount = parseInt(btn.textContent);
-                    btn.classList.remove('active');
-                    if (btnAmount === amount) {
-                        btn.classList.add('active');
-                    }
+            function addHistoryForUser(userId, type, description, amount, currency) {
+                db.ref(`users/${userId}/history`).push({ 
+                    type, 
+                    description, 
+                    amount, 
+                    currency, 
+                    date: new Date().toISOString() 
                 });
             }
             
-            function updateTicketCost() {
-                const amount = parseInt(document.getElementById('ticket-amount').value) || 1;
-                const totalGLX = amount * TICKET_PRICE_GLX;
-                const totalTON = amount * TICKET_VALUE_TON;
-                
-                document.getElementById('ticket-cost-glx').textContent = totalGLX.toLocaleString();
-                document.getElementById('ticket-cost-ton').textContent = totalTON.toFixed(3);
-            }
-            
-            window.buyTickets = function() {
-                if (competitionData.status !== 'active') {
-                    alert("Competition is not active right now. Please wait for the next competition.");
-                    return;
-                }
-                
-                const amount = parseInt(document.getElementById('ticket-amount').value) || 1;
-                if (amount < 1) {
-                    alert("Please enter a valid number of tickets.");
-                    return;
-                }
-                
-                const totalCostGLX = amount * TICKET_PRICE_GLX;
-                const currentBalance = appData.dogsBalance || 0;
-                
-                if (totalCostGLX > currentBalance) {
-                    alert(`Insufficient GLX balance. You need ${totalCostGLX.toLocaleString()} GLX.`);
-                    return;
-                }
-                
-                if (!confirm(`Buy ${amount} ticket(s) for ${totalCostGLX.toLocaleString()} GLX?\n\nEach ticket = 10,000 GLX = 0.001 TON prize pool value`)) {
-                    return;
-                }
-                
-                const buyBtn = document.getElementById('buy-tickets-btn');
-                buyBtn.disabled = true;
-                buyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PROCESSING...';
-                
-                // Deduct GLX from user
-                db.ref(`users/${user.id}/dogsBalance`).transaction(balance => {
-                    return (balance || 0) - totalCostGLX;
-                }).then(() => {
-                    // Update competition data
-                    const updates = {};
-                    
-                    // Update user's ticket count
-                    updates[`competition/current/participants/${user.id}`] = (competitionData.userTickets || 0) + amount;
-                    
-                    // Update total tickets
-                    db.ref('competition/current/totalTickets').transaction(total => {
-                        return (total || 0) + amount;
+            function alertAllUsers(message) {
+                db.ref('users').once('value', (snapshot) => {
+                    snapshot.forEach(child => {
+                        const userId = child.key;
+                        if (userId !== user.id) {
+                            db.ref(`users/${userId}/notifications`).push({
+                                message: message,
+                                type: 'competition',
+                                timestamp: Date.now(),
+                                read: false
+                            });
+                        }
                     });
-                    
-                    // Update participants count
-                    if (competitionData.userTickets === 0) {
-                        db.ref('competition/current/participantsCount').transaction(count => {
-                            return (count || 0) + 1;
-                        });
-                    }
-                    
-                    // Execute all updates
-                    db.ref().update(updates).then(() => {
-                        // Add transaction history
-                        addHistory('purchase', `Competition Tickets (${amount})`, totalCostGLX, 'GLX');
-                        
-                        // Update user tickets locally
-                        competitionData.userTickets += amount;
-                        
-                        // Update UI
-                        document.getElementById('user-tickets-count').textContent = competitionData.userTickets;
-                        updateTicketCost();
-                        
-                        // Update prize pool
-                        updateCompetitionUI();
-                        
-                        // Reload leaderboard
-                        loadCompetitionLeaderboard();
-                        
-                        alert(`✅ Success! Purchased ${amount} ticket(s) for ${totalCostGLX.toLocaleString()} GLX`);
-                        
-                        // Reset form
-                        document.getElementById('ticket-amount').value = 1;
-                        setTicketAmount(1);
-                        
-                        buyBtn.disabled = false;
-                        buyBtn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> BUY TICKETS';
-                        
-                        // Update main balance display
-                        renderUI();
-                        
-                    }).catch(error => {
-                        console.error("Error updating competition:", error);
-                        alert("Error processing purchase. Please try again.");
-                        buyBtn.disabled = false;
-                        buyBtn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> BUY TICKETS';
-                    });
-                    
-                }).catch(error => {
-                    console.error("Error deducting balance:", error);
-                    alert("Error processing purchase. Please try again.");
-                    buyBtn.disabled = false;
-                    buyBtn.innerHTML = '<i class="fa-solid fa-cart-shopping"></i> BUY TICKETS';
                 });
             }
             
-            window.viewAllWinners = function() {
-                alert("Feature coming soon: View all previous winners with detailed statistics.");
+            function updateCompetitionData() {
+                db.ref('competitions/current').update({
+                    totalTickets: competitionData.totalTickets,
+                    prizePool: competitionData.prizePool
+                });
             }
             
             // دالة لإخفاء جزء من الإيميل
@@ -2678,12 +2875,10 @@
                 initSlotsGame();
                 initCoinFlipGame();
                 initPromoCodes();
+                initializeCompetition(); // Initialize competition system
                 setTimeout(() => { isAdScriptLoaded = typeof show_10286382 === "function"; }, 2500);
                 
                 selectWithdrawalType('faucetpay');
-                
-                // Initialize competition
-                initCompetition();
             }
 
             function initializeUser() {
@@ -2827,11 +3022,34 @@
                 renderReferredUsers();
             }
             
-            // --- COIN FLIP GAME FUNCTIONS ---
-            window.initCoinFlipGame = function() {
+            // --- COIN FLIP GAME FUNCTIONS - النظام الجديد ---
+            function resetCoinFlipGame() {
+                const coin = document.getElementById('coin');
+                coin.classList.remove('coin-spinning', 'coin-final');
+                coin.style.transform = 'rotateY(0deg)';
+                coin.style.transition = 'none';
+                
+                document.getElementById('coin-game-result').style.display = 'none';
+                document.querySelectorAll('.side-btn').forEach(btn => {
+                    btn.classList.remove('win', 'lose');
+                    if (btn.id === 'choose-glx') {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                });
+                
+                coinGame.isFlipping = false;
+                coinGame.chosenSide = 'glx';
+                coinGame.betAmount = 1000;
+                coinGame.currentRotation = 0;
+                
                 document.getElementById('coin-bet-amount').value = 1000;
                 updateBetButtons();
-                chooseSide('glx');
+            }
+            
+            window.initCoinFlipGame = function() {
+                resetCoinFlipGame();
             }
 
             function updateBetButtons() {
@@ -2904,124 +3122,173 @@
                 coinGame.betAmount = inputAmount;
                 coinGame.isFlipping = true;
                 
+                // إعادة تعيين حالة العملة
+                const coin = document.getElementById('coin');
+                coin.classList.remove('coin-spinning', 'coin-final');
+                coin.style.transform = 'rotateY(0deg)';
+                coin.style.transition = 'none';
+                
+                // إعادة تعيين النتيجة
+                const resultElement = document.getElementById('coin-game-result');
+                resultElement.style.display = 'none';
+                
+                // إعادة تعيين أزرار الرهان
+                document.querySelectorAll('.bet-btn').forEach(btn => {
+                    btn.style.opacity = '0.5';
+                    btn.style.pointerEvents = 'none';
+                });
+                
+                // إعادة تعيين أزرار الجانب
+                document.querySelectorAll('.side-btn').forEach(btn => {
+                    btn.classList.remove('win', 'lose');
+                });
+                
+                // خصم المبلغ من الرصيد
                 db.ref(`users/${user.id}/dogsBalance`).transaction(balance => {
                     const newBalance = (balance || 0) - inputAmount;
                     return newBalance < 0 ? 0 : newBalance;
                 }).then(() => {
                     addHistory('loss', `Coin Flip Bet (${coinGame.chosenSide.toUpperCase()})`, inputAmount, 'GLX');
                     
+                    // تعطيل زر القلب
                     const flipBtn = document.getElementById('flip-coin-btn');
                     flipBtn.disabled = true;
                     flipBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> FLIPPING...';
                     
-                    const coin = document.getElementById('coin');
-                    coin.style.transform = 'rotateY(0deg)';
-                    coin.style.transition = 'transform 2.5s cubic-bezier(0.34, 1.56, 0.64, 1)';
-                    
-                    document.getElementById('coin-game-result').style.display = 'none';
-                    
-                    document.querySelectorAll('.bet-btn').forEach(btn => {
-                        btn.style.opacity = '0.5';
-                        btn.style.pointerEvents = 'none';
-                    });
-                    
+                    // إنشاء النتيجة العشوائية
                     setTimeout(() => {
                         const randomNum = Math.random() * 100;
                         const isWin = randomNum < coinGame.winChance;
                         const resultSide = isWin ? coinGame.chosenSide : (coinGame.chosenSide === 'glx' ? 'gold' : 'glx');
                         
-                        const rotations = 5 + Math.floor(Math.random() * 3);
-                        const bounceEffect = Math.random() * 180;
+                        // حساب الزاوية النهائية بناءً على الجانب الفائز
                         let finalRotation = 0;
                         
                         if (resultSide === 'glx') {
-                            finalRotation = (rotations * 360) + bounceEffect;
+                            // GLX side - زوجي من الدورات 180 درجة
+                            finalRotation = 720 + (Math.floor(Math.random() * 4) * 360);
                         } else {
-                            finalRotation = (rotations * 360) + 180 + bounceEffect;
+                            // Gold side - فردي من الدورات 180 درجة
+                            finalRotation = 720 + 180 + (Math.floor(Math.random() * 4) * 360);
                         }
                         
+                        // تطبيق الأنيميشن
                         coin.style.setProperty('--final-rotation', `${finalRotation}deg`);
-                        coin.classList.add('coin-flipping');
+                        coin.classList.add('coin-spinning');
                         
+                        // بدء الأنيميشن
                         setTimeout(() => {
-                            const resultElement = document.getElementById('coin-game-result');
-                            const resultText = document.getElementById('coin-result-text');
-                            const winAmountElement = document.getElementById('coin-win-amount');
-                            const lossAmountElement = document.getElementById('coin-loss-amount');
-                            
-                            coin.classList.remove('coin-flipping');
-                            coin.style.transform = `rotateY(${finalRotation}deg)`;
-                            
-                            if (isWin) {
-                                const winAmount = coinGame.betAmount * 2;
+                            // بعد انتهاء الأنيميشن
+                            setTimeout(() => {
+                                coin.classList.remove('coin-spinning');
+                                coin.classList.add('coin-final');
                                 
-                                db.ref(`users/${user.id}/dogsBalance`).transaction(balance => {
-                                    return (balance || 0) + winAmount;
+                                // عرض النتيجة
+                                showCoinFlipResult(isWin, resultSide, inputAmount, finalRotation);
+                                
+                                // تمكين الأزرار مرة أخرى
+                                flipBtn.disabled = false;
+                                flipBtn.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
+                                
+                                document.querySelectorAll('.bet-btn').forEach(btn => {
+                                    btn.style.opacity = '1';
+                                    btn.style.pointerEvents = 'auto';
                                 });
                                 
-                                resultText.innerHTML = `🎉 <strong>YOU WIN!</strong><br>${coinGame.chosenSide.toUpperCase()} appeared!`;
-                                resultText.style.color = '#27ae60';
-                                winAmountElement.textContent = `+${winAmount.toLocaleString()} GLX`;
-                                lossAmountElement.style.display = 'none';
-                                winAmountElement.style.display = 'block';
+                                coinGame.isFlipping = false;
+                                coinGame.lastFlipResult = resultSide;
+                                coinGame.currentRotation = finalRotation % 360;
                                 
-                                addHistory('earn', `Coin Flip Win (${coinGame.chosenSide})`, winAmount, 'GLX');
+                                // تحديث الواجهة
+                                setTimeout(() => {
+                                    renderUI();
+                                }, 500);
                                 
-                                const selectedBtn = coinGame.chosenSide === 'glx' ? 
-                                    document.getElementById('choose-glx') : 
-                                    document.getElementById('choose-gold');
-                                selectedBtn.classList.add('win');
-                                selectedBtn.classList.remove('active');
-                                
-                                if (winAmount >= 5000) {
-                                    setTimeout(() => {
-                                        alert(`🎊 BIG WIN! You won ${winAmount.toLocaleString()} GLX!`);
-                                    }, 500);
-                                }
-                            } else {
-                                const lossAmount = coinGame.betAmount;
-                                
-                                resultText.innerHTML = `😢 <strong>YOU LOSE</strong><br>${resultSide.toUpperCase()} appeared`;
-                                resultText.style.color = '#e74c3c';
-                                lossAmountElement.textContent = `-${lossAmount.toLocaleString()} GLX`;
-                                winAmountElement.style.display = 'none';
-                                lossAmountElement.style.display = 'block';
-                                
-                                const selectedBtn = coinGame.chosenSide === 'glx' ? 
-                                    document.getElementById('choose-glx') : 
-                                    document.getElementById('choose-gold');
-                                selectedBtn.classList.add('lose');
-                                selectedBtn.classList.remove('active');
-                            }
+                            }, 2500); // وقت الأنيميشن
                             
-                            resultElement.style.display = 'block';
-                            
-                            flipBtn.disabled = false;
-                            flipBtn.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
-                            
-                            document.querySelectorAll('.bet-btn').forEach(btn => {
-                                btn.style.opacity = '1';
-                                btn.style.pointerEvents = 'auto';
-                            });
-                            
-                            coinGame.isFlipping = false;
-                            coinGame.lastFlipResult = resultSide;
-                            
-                            setTimeout(() => {
-                                renderUI();
-                            }, 500);
-                            
-                        }, 2500);
+                        }, 50);
                         
                     }, 100);
                     
                 }).catch(error => {
                     console.error("Error deducting bet:", error);
                     alert("Error processing bet. Please try again.");
+                    
+                    // إعادة تعيين حالة اللعبة
                     coinGame.isFlipping = false;
-                    document.getElementById('flip-coin-btn').disabled = false;
-                    document.getElementById('flip-coin-btn').innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
+                    const flipBtn = document.getElementById('flip-coin-btn');
+                    flipBtn.disabled = false;
+                    flipBtn.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
+                    
+                    document.querySelectorAll('.bet-btn').forEach(btn => {
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                    });
                 });
+            }
+            
+            function showCoinFlipResult(isWin, resultSide, betAmount, finalRotation) {
+                const resultElement = document.getElementById('coin-game-result');
+                const resultText = document.getElementById('coin-result-text');
+                const winAmountElement = document.getElementById('coin-win-amount');
+                const lossAmountElement = document.getElementById('coin-loss-amount');
+                
+                // إخفاء جميع عناصر النتيجة أولاً
+                winAmountElement.style.display = 'none';
+                lossAmountElement.style.display = 'none';
+                
+                if (isWin) {
+                    const winAmount = betAmount * 2;
+                    
+                    // إضافة المكسب إلى الرصيد
+                    db.ref(`users/${user.id}/dogsBalance`).transaction(balance => {
+                        return (balance || 0) + winAmount;
+                    });
+                    
+                    resultText.innerHTML = `🎉 <strong>YOU WIN!</strong><br>${coinGame.chosenSide.toUpperCase()} appeared!`;
+                    resultText.style.color = '#27ae60';
+                    winAmountElement.textContent = `+${winAmount.toLocaleString()} GLX`;
+                    winAmountElement.style.display = 'block';
+                    
+                    addHistory('earn', `Coin Flip Win (${coinGame.chosenSide})`, winAmount, 'GLX');
+                    
+                    // تمييز الجانب الفائز
+                    const selectedBtn = coinGame.chosenSide === 'glx' ? 
+                        document.getElementById('choose-glx') : 
+                        document.getElementById('choose-gold');
+                    selectedBtn.classList.add('win');
+                    selectedBtn.classList.remove('active');
+                    
+                    // عرض تنبيه للمكاسب الكبيرة
+                    if (winAmount >= 5000) {
+                        setTimeout(() => {
+                            alert(`🎊 BIG WIN! You won ${winAmount.toLocaleString()} GLX!`);
+                        }, 500);
+                    }
+                } else {
+                    const lossAmount = betAmount;
+                    
+                    resultText.innerHTML = `😢 <strong>YOU LOSE</strong><br>${resultSide.toUpperCase()} appeared`;
+                    resultText.style.color = '#e74c3c';
+                    lossAmountElement.textContent = `-${lossAmount.toLocaleString()} GLX`;
+                    lossAmountElement.style.display = 'block';
+                    
+                    // تمييز الجانب الخاسر
+                    const selectedBtn = coinGame.chosenSide === 'glx' ? 
+                        document.getElementById('choose-glx') : 
+                        document.getElementById('choose-gold');
+                    selectedBtn.classList.add('lose');
+                    selectedBtn.classList.remove('active');
+                }
+                
+                resultElement.style.display = 'block';
+                
+                // التأكد من أن العملة في وضعها الصحيح
+                const coin = document.getElementById('coin');
+                setTimeout(() => {
+                    // إعادة تعيين التحويل للوضع النهائي
+                    coin.style.transform = `rotateY(${finalRotation}deg)`;
+                }, 100);
             }
             
             // --- PROMO CODES SYSTEM ---
@@ -4131,7 +4398,10 @@
                     floatingBtn.classList.add('hidden');
                 }
                 
-                if (targetId === 'leaderboard' && !isLeaderboardLoaded) { renderLeaderboard(); isLeaderboardLoaded = true; }
+                if (targetId === 'leaderboard' && !isLeaderboardLoaded) { 
+                    renderLeaderboard(); 
+                    isLeaderboardLoaded = true; 
+                }
                 if (targetId === 'bonus') { 
                     const grid = document.querySelector('.bonus-grid');
                     grid.style.display = 'grid';
@@ -4140,12 +4410,12 @@
                     document.getElementById('promo-codes-section').style.display = 'none';
                     document.getElementById('daily-streak-section').style.display = 'none';
                     document.getElementById('galaxy-slots-section').style.display = 'none';
-                    document.getElementById('competition-section').style.display = 'none';
                     
                     renderDailyBonusUI();
                     updateAvailableSpins();
-                    document.getElementById('coin').style.transform = 'rotateY(0deg)';
-                    document.getElementById('coin-game-result').style.display = 'none';
+                    
+                    // إعادة تعيين لعبة قلب العملة عند العودة لصفحة البونص
+                    resetCoinFlipGame();
                 }
                 if (targetId === 'withdrawal-history') {
                     renderWithdrawalHistory();
@@ -4153,6 +4423,12 @@
                 }
                 if (targetId === 'referrals') {
                     renderReferredUsers();
+                }
+                if (targetId === 'competition') {
+                    loadCompetitionLeaderboard();
+                    loadWinnerHistory();
+                    updateCompetitionUI();
+                    updateCountdown();
                 }
                 window.scrollTo(0,0);
             }
