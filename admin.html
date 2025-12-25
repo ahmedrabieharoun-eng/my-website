@@ -1,86 +1,1655 @@
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة تحكم Firebase</title>
-
-  <!-- Tailwind -->
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.0/dist/tailwind.min.css" rel="stylesheet">
-</head>
-
-<body class="bg-gray-900 text-white min-h-screen">
-  <div class="p-6 max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold mb-4 text-center">⚙️ لوحة تحكم Firebase</h1>
-
-    <div class="bg-gray-800 p-4 rounded-lg mb-6">
-      <h2 class="text-xl mb-2 font-semibold">➕ إضافة بيانات جديدة</h2>
-      <input id="newKey" placeholder="المفتاح" class="p-2 rounded bg-gray-700 w-full mb-2">
-      <textarea id="newValue" placeholder="القيمة" class="p-2 rounded bg-gray-700 w-full mb-2"></textarea>
-      <button id="addBtn" class="bg-green-600 px-4 py-2 rounded">إضافة</button>
-    </div>
-
-    <div id="dataContainer" class="bg-gray-800 p-4 rounded-lg"></div>
-  </div>
-
-  <!-- Firebase (MODULE ONLY) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-    import {
-      getDatabase,
-      ref,
-      onValue,
-      set,
-      remove,
-      update
-    } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-database.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyC0dke6nskYVo2B6kbqC3IvgArGBRzU8Tg",
-      authDomain: "cash-jungle-bot.firebaseapp.com",
-      databaseURL: "https://cash-jungle-bot-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "cash-jungle-bot",
-      storageBucket: "cash-jungle-bot.firebasestorage.app",
-      messagingSenderId: "361914347430",
-      appId: "1:361914347430:web:3d13817f7c0b8411552967"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const rootRef = ref(db, "/");
-    const dataContainer = document.getElementById("dataContainer");
-
-    onValue(rootRef, (snapshot) => {
-      const data = snapshot.val();
-      if (!data) {
-        dataContainer.innerHTML = "لا توجد بيانات";
-        return;
+// Cloudflare Worker لـ GLX Galaxy
+export default {
+    async fetch(request, env, ctx) {
+        // إعداد CORS
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action',
+                }
+            });
+        }
+        
+        const url = new URL(request.url);
+        const path = url.pathname;
+        
+        // التحقق من المسار
+        if (path !== '/api') {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid endpoint'
+            }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        try {
+            // استخراج البيانات من الطلب
+            const requestData = await request.json();
+            const action = request.headers.get('X-Action') || requestData.action;
+            const data = requestData.data || {};
+            const userId = request.headers.get('X-User-ID');
+            const telegramData = request.headers.get('X-Telegram-Data');
+            
+            // التحقق من المصادقة
+            if (!userId || !telegramData) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Authentication required'
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // التحقق من بيانات Telegram
+            if (!isValidTelegramData(telegramData, userId)) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Invalid Telegram data'
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // معالجة الإجراءات
+            let result;
+            switch (action) {
+                case 'initializeUser':
+                    result = await handleInitializeUser(userId, data);
+                    break;
+                    
+                case 'dbSet':
+                    result = await handleDbSet(env, data.path, data.data);
+                    break;
+                    
+                case 'dbGet':
+                    result = await handleDbGet(env, data.path);
+                    break;
+                    
+                case 'dbUpdate':
+                    result = await handleDbUpdate(env, data.path, data.updates);
+                    break;
+                    
+                case 'dbPush':
+                    result = await handleDbPush(env, data.path, data.data);
+                    break;
+                    
+                case 'dbTransaction':
+                    result = await handleDbTransaction(env, data.path, data.transactionFunction);
+                    break;
+                    
+                case 'dbIncrement':
+                    result = await handleDbIncrement(env, data.path, data.key, data.amount);
+                    break;
+                    
+                case 'getConfig':
+                    result = await handleGetConfig();
+                    break;
+                    
+                case 'executeSwap':
+                    result = await handleExecuteSwap(env, userId, data);
+                    break;
+                    
+                case 'verifyDeposit':
+                    result = await handleVerifyDeposit(env, userId, data);
+                    break;
+                    
+                case 'buyTickets':
+                    result = await handleBuyTickets(env, userId, data);
+                    break;
+                    
+                case 'getCompetitionLeaderboard':
+                    result = await handleGetCompetitionLeaderboard(env);
+                    break;
+                    
+                case 'getPreviousWinners':
+                    result = await handleGetPreviousWinners(env);
+                    break;
+                    
+                case 'flipCoin':
+                    result = await handleFlipCoin(env, userId, data);
+                    break;
+                    
+                case 'redeemPromoCode':
+                    result = await handleRedeemPromoCode(env, userId, data);
+                    break;
+                    
+                case 'createTask':
+                    result = await handleCreateTask(env, userId, data);
+                    break;
+                    
+                case 'verifyTaskPayment':
+                    result = await handleVerifyTaskPayment(env, data.taskId);
+                    break;
+                    
+                case 'spinSlots':
+                    result = await handleSpinSlots(env, userId);
+                    break;
+                    
+                case 'addExtraSpin':
+                    result = await handleAddExtraSpin(env, userId);
+                    break;
+                    
+                case 'claimDailyBonus':
+                    result = await handleClaimDailyBonus(env, userId);
+                    break;
+                    
+                case 'getTransactionHistory':
+                    result = await handleGetTransactionHistory(env, userId, data.limit);
+                    break;
+                    
+                case 'getUserWithdrawals':
+                    result = await handleGetUserWithdrawals(env, userId);
+                    break;
+                    
+                case 'getWithdrawalHistory':
+                    result = await handleGetWithdrawalHistory(env);
+                    break;
+                    
+                case 'getWithdrawalStats':
+                    result = await handleGetWithdrawalStats(env);
+                    break;
+                    
+                case 'getReferredUsers':
+                    result = await handleGetReferredUsers(env, userId);
+                    break;
+                    
+                case 'getTasks':
+                    result = await handleGetTasks(env, userId);
+                    break;
+                    
+                case 'verifyTaskCompletion':
+                    result = await handleVerifyTaskCompletion(env, userId, data);
+                    break;
+                    
+                case 'handleReferral':
+                    result = await handleReferral(env, data.userId, data.referrerId);
+                    break;
+                    
+                case 'handleAdClick':
+                    result = await handleAdClick(env, userId, data.adType, data.reward);
+                    break;
+                    
+                case 'submitWithdrawal':
+                    result = await handleSubmitWithdrawal(env, userId, data);
+                    break;
+                    
+                case 'getLeaderboard':
+                    result = await handleGetLeaderboard(env);
+                    break;
+                    
+                case 'testFirebase':
+                    result = await handleTestFirebase(env);
+                    break;
+                    
+                default:
+                    result = {
+                        success: false,
+                        error: 'Unknown action'
+                    };
+            }
+            
+            // إرجاع النتيجة
+            return new Response(JSON.stringify(result), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+            
+        } catch (error) {
+            console.error('Worker error:', error);
+            
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Internal server error',
+                details: error.message
+            }), {
+                status: 500,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+    }
+  };
+  
+  // التحقق من بيانات Telegram
+  function isValidTelegramData(telegramData, userId) {
+    try {
+        const params = new URLSearchParams(telegramData);
+        const userParam = params.get('user');
+        
+        if (!userParam) return false;
+        
+        const userData = JSON.parse(decodeURIComponent(userParam));
+        return userData.id.toString() === userId;
+        
+    } catch (error) {
+        console.error('Telegram data validation error:', error);
+        return false;
+    }
+  }
+  
+  // دالة مساعدة لإنشاء رابط Firebase
+  async function getFirebaseUrl(env, path) {
+      const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+      const cleanPath = path.replace(/^\//, '');
+      const apiKey = env.FIREBASE_API_KEY;
+      
+      if (!apiKey) {
+          throw new Error('FIREBASE_API_KEY is not configured');
       }
-
-      dataContainer.innerHTML = Object.keys(data).map(key => `
-        <div class="bg-gray-700 p-3 mb-2 rounded">
-          <b>${key}</b>
-          <textarea id="v-${key}" class="w-full bg-gray-800 mt-1">${JSON.stringify(data[key], null, 2)}</textarea>
-          <button onclick="updateData('${key}')" class="bg-blue-600 px-2 py-1 mt-1">تعديل</button>
-          <button onclick="deleteData('${key}')" class="bg-red-600 px-2 py-1 mt-1">حذف</button>
-        </div>
-      `).join("");
-    });
-
-    window.updateData = (key) => {
-      const v = document.getElementById(`v-${key}`).value;
-      update(ref(db, key), JSON.parse(v));
-    };
-
-    window.deleteData = (key) => {
-      remove(ref(db, key));
-    };
-
-    document.getElementById("addBtn").onclick = () => {
-      const k = newKey.value.trim();
-      const v = newValue.value.trim();
-      set(ref(db, k), JSON.parse(v));
-    };
-  </script>
-</body>
-</html>
+      
+      return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
+  }
+  
+  // وظائف إدارة قاعدة البيانات
+  async function handleDbSet(env, path, data) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Database SET error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleDbGet(env, path) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            success: true,
+            data: data
+        };
+    } catch (error) {
+        console.error('Database GET error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleDbUpdate(env, path, updates) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Database UPDATE error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleDbPush(env, path, data) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: { name: result.name }
+        };
+    } catch (error) {
+        console.error('Database PUSH error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleDbTransaction(env, path, transactionFunction) {
+    try {
+        const currentData = await handleDbGet(env, path);
+        
+        if (!currentData.success) {
+            return currentData;
+        }
+        
+        const func = new Function('currentValue', `return ${transactionFunction}(currentValue)`);
+        const newValue = func(currentData.data || null);
+        
+        const updateResult = await handleDbSet(env, path, newValue);
+        
+        return updateResult;
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleDbIncrement(env, path, key, amount) {
+    try {
+        const currentData = await handleDbGet(env, path);
+        
+        if (!currentData.success) {
+            return currentData;
+        }
+        
+        const currentValue = currentData.data[key] || 0;
+        const newValue = currentValue + amount;
+        
+        const updates = { [key]: newValue };
+        const updateResult = await handleDbUpdate(env, path, updates);
+        
+        return updateResult;
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  // وظيفة اختبار Firebase
+  async function handleTestFirebase(env) {
+    try {
+        console.log('Testing Firebase connection...');
+        console.log('API Key:', env.FIREBASE_API_KEY ? 'Present' : 'Missing');
+        console.log('DB URL:', env.FIREBASE_DATABASE_URL);
+        
+        // اختبار الاتصال
+        const testPath = 'connection_test';
+        const timestamp = Date.now();
+        
+        // محاولة الكتابة
+        const writeUrl = await getFirebaseUrl(env, testPath);
+        console.log('Write URL:', writeUrl);
+        
+        const writeResponse = await fetch(writeUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                test: true, 
+                timestamp: timestamp,
+                message: 'Firebase connection test'
+            })
+        });
+        
+        console.log('Write status:', writeResponse.status);
+        
+        if (!writeResponse.ok) {
+            const errorText = await writeResponse.text();
+            console.error('Write error:', errorText);
+            throw new Error(`Write failed: ${writeResponse.status} - ${errorText}`);
+        }
+        
+        const writeResult = await writeResponse.json();
+        console.log('Write result:', writeResult);
+        
+        // محاولة القراءة
+        const readResponse = await fetch(writeUrl);
+        console.log('Read status:', readResponse.status);
+        
+        if (!readResponse.ok) {
+            const errorText = await readResponse.text();
+            throw new Error(`Read failed: ${readResponse.status} - ${errorText}`);
+        }
+        
+        const readData = await readResponse.json();
+        console.log('Read data:', readData);
+        
+        return {
+            success: true,
+            message: 'Firebase connection successful',
+            data: {
+                writeStatus: writeResponse.status,
+                readStatus: readResponse.status,
+                testData: readData,
+                apiKeyLength: env.FIREBASE_API_KEY ? env.FIREBASE_API_KEY.length : 0,
+                databaseUrl: env.FIREBASE_DATABASE_URL
+            }
+        };
+    } catch (error) {
+        console.error('Firebase test error:', error);
+        return {
+            success: false,
+            error: error.message,
+            debug: {
+                apiKey: env.FIREBASE_API_KEY ? 'Present' : 'Missing',
+                apiKeyFirst10: env.FIREBASE_API_KEY ? env.FIREBASE_API_KEY.substring(0, 10) + '...' : 'None',
+                dbUrl: env.FIREBASE_DATABASE_URL,
+                fullUrl: env.FIREBASE_DATABASE_URL ? `${env.FIREBASE_DATABASE_URL}/test.json` : 'No URL'
+            }
+        };
+    }
+  }
+  
+  // وظائف التطبيق الرئيسية
+  async function handleInitializeUser(env, userId, data) {
+    try {
+        const { user } = data;
+        const fullName = `${user.first_name} ${user.last_name}`.trim();
+        
+        const userDataResult = await handleDbGet(env, `users/${userId}`);
+        let userData = userDataResult.data;
+        
+        if (!userData) {
+            userData = {
+                id: userId,
+                name: fullName,
+                dogsBalance: 500,
+                tonBalance: 0.00,
+                adsWatched: 0,
+                adsMonetag: 0,
+                adsGiga: 0,
+                adsAdsgram: 0,
+                completedTasks: {},
+                history: {},
+                referrals: 0,
+                dailyStreak: 0,
+                lastDailyClaim: 0,
+                extraSpins: 1,
+                referredUsers: [],
+                usedPromoCodes: [],
+                joinDate: Date.now()
+            };
+            
+            await handleDbSet(env, `users/${userId}`, userData);
+            
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'earn',
+                description: 'Welcome Bonus',
+                amount: 500,
+                currency: 'GLX',
+                date: new Date().toISOString()
+            });
+        } else {
+            if (userData.name !== fullName) {
+                await handleDbUpdate(env, `users/${userId}`, { name: fullName });
+                userData.name = fullName;
+            }
+            
+            const today = new Date().toDateString();
+            if (userData.lastAdDate !== today) {
+                const resetData = {
+                    adsWatched: 0,
+                    adsMonetag: 0,
+                    adsGiga: 0,
+                    adsAdsgram: 0,
+                    lastAdDate: today
+                };
+                
+                await handleDbUpdate(env, `users/${userId}`, resetData);
+                userData = { ...userData, ...resetData };
+            }
+        }
+        
+        const settingsResult = await handleGetConfig();
+        const settings = settingsResult.data?.settings || {};
+        
+        return {
+            success: true,
+            data: {
+                userData: userData,
+                settings: settings
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetConfig() {
+    try {
+        const settings = {
+            adRewardMonetag: 1000,
+            adRewardGiga: 2000,
+            adRewardAdsgram: 2000,
+            limitMonetag: 50,
+            limitGiga: 300,
+            limitAdsgram: 300,
+            minTonWithdrawal: 0.05,
+            minFaucetPayWithdrawal: 0.0001,
+            referralReward: 500,
+            pricePerClick: 0.0015
+        };
+        
+        return {
+            success: true,
+            data: { settings }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleExecuteSwap(env, userId, data) {
+    try {
+        const { type, amount, tonValue, glxValue } = data;
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        let updates = {};
+        let historyEntry = {};
+        
+        if (type === 'glx_to_ton') {
+            if (userData.dogsBalance < amount) {
+                return { success: false, error: 'Insufficient GLX balance' };
+            }
+            
+            updates.dogsBalance = userData.dogsBalance - amount;
+            updates.tonBalance = (userData.tonBalance || 0) + tonValue;
+            
+            historyEntry = {
+                type: 'swap_out',
+                description: 'Swap GLX to TON',
+                amount: amount,
+                currency: 'GLX',
+                date: new Date().toISOString()
+            };
+            
+            await handleDbPush(env, `users/${userId}/history`, historyEntry);
+            
+            historyEntry = {
+                type: 'swap_in',
+                description: 'Received from GLX Swap',
+                amount: tonValue,
+                currency: 'TON',
+                date: new Date().toISOString()
+            };
+            
+        } else if (type === 'ton_to_glx') {
+            if ((userData.tonBalance || 0) < amount) {
+                return { success: false, error: 'Insufficient TON balance' };
+            }
+            
+            updates.tonBalance = (userData.tonBalance || 0) - amount;
+            updates.dogsBalance = userData.dogsBalance + glxValue;
+            
+            historyEntry = {
+                type: 'swap_out',
+                description: 'Swap TON to GLX',
+                amount: amount,
+                currency: 'TON',
+                date: new Date().toISOString()
+            };
+            
+            await handleDbPush(env, `users/${userId}/history`, historyEntry);
+            
+            historyEntry = {
+                type: 'swap_in',
+                description: 'Received from TON Swap',
+                amount: glxValue,
+                currency: 'GLX',
+                date: new Date().toISOString()
+            };
+        } else {
+            return { success: false, error: 'Invalid swap type' };
+        }
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        await handleDbPush(env, `users/${userId}/history`, historyEntry);
+        
+        return {
+            success: true,
+            data: {
+                newGLXBalance: updates.dogsBalance,
+                newTONBalance: updates.tonBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleVerifyDeposit(env, userId, data) {
+    try {
+        const { memo, amount } = data;
+        
+        const currentTime = Date.now();
+        const memoTime = parseInt(memo.split('_').pop());
+        
+        if (currentTime - memoTime > 30000) {
+            const userResult = await handleDbGet(env, `users/${userId}`);
+            if (!userResult.success) {
+                return { success: false, error: 'User not found' };
+            }
+            
+            const userData = userResult.data;
+            const newBalance = (userData.tonBalance || 0) + amount;
+            
+            await handleDbUpdate(env, `users/${userId}`, { tonBalance: newBalance });
+            
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'deposit',
+                description: `TON Deposit #${memo.substring(0, 8)}`,
+                amount: amount,
+                currency: 'TON',
+                date: new Date().toISOString()
+            });
+            
+            return {
+                success: true,
+                data: {
+                    newBalance: newBalance,
+                    txHash: memo.substring(0, 12)
+                }
+            };
+        } else {
+            return { success: false, error: 'Deposit not confirmed yet' };
+        }
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleBuyTickets(env, userId, data) {
+    try {
+        const { tickets, totalCost } = data;
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        if (userData.dogsBalance < totalCost) {
+            return { success: false, error: 'Insufficient GLX balance' };
+        }
+        
+        const newBalance = userData.dogsBalance - totalCost;
+        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
+        
+        const competitionResult = await handleDbGet(env, 'competition/current');
+        const competitionData = competitionResult.data || {
+            isActive: true,
+            startTime: Date.now(),
+            endTime: Date.now() + (24 * 60 * 60 * 1000),
+            totalTickets: 0,
+            prizePool: 0,
+            userTickets: {},
+            winners: []
+        };
+        
+        const currentUserTickets = competitionData.userTickets[userId] || 0;
+        competitionData.userTickets[userId] = currentUserTickets + tickets;
+        
+        competitionData.totalTickets = (competitionData.totalTickets || 0) + tickets;
+        competitionData.prizePool = competitionData.totalTickets * 0.001;
+        
+        await handleDbSet(env, 'competition/current', competitionData);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'spend',
+            description: `Bought ${tickets} Competition Ticket${tickets > 1 ? 's' : ''}`,
+            amount: totalCost,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                newBalance: newBalance,
+                userTickets: competitionData.userTickets[userId],
+                totalTickets: competitionData.totalTickets,
+                prizePool: competitionData.prizePool
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetCompetitionLeaderboard(env) {
+    try {
+        const competitionResult = await handleDbGet(env, 'competition/current');
+        const competitionData = competitionResult.data || {};
+        
+        const userTickets = competitionData.userTickets || {};
+        const leaderboard = [];
+        
+        for (const [userId, tickets] of Object.entries(userTickets)) {
+            const userResult = await handleDbGet(env, `users/${userId}`);
+            if (userResult.success && userResult.data) {
+                leaderboard.push({
+                    userId: userId,
+                    name: userResult.data.name || 'Anonymous',
+                    photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                    tickets: tickets
+                });
+            }
+        }
+        
+        leaderboard.sort((a, b) => b.tickets - a.tickets);
+        
+        return {
+            success: true,
+            data: {
+                leaderboard: leaderboard.slice(0, 10)
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetPreviousWinners(env) {
+    try {
+        const winnersResult = await handleDbGet(env, 'competition/winners');
+        const winnersData = winnersResult.data || {};
+        
+        const winners = [];
+        
+        for (const [key, winner] of Object.entries(winnersData)) {
+            if (winner.userId) {
+                const userResult = await handleDbGet(env, `users/${winner.userId}`);
+                if (userResult.success && userResult.data) {
+                    winners.push({
+                        userId: winner.userId,
+                        name: userResult.data.name || 'Anonymous',
+                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                        tickets: winner.tickets || 0,
+                        prize: winner.prize || 0,
+                        timestamp: winner.timestamp || Date.now()
+                    });
+                }
+            }
+        }
+        
+        winners.sort((a, b) => b.timestamp - a.timestamp);
+        
+        return {
+            success: true,
+            data: {
+                winners: winners.slice(0, 10)
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleFlipCoin(env, userId, data) {
+    try {
+        const { betAmount, chosenSide } = data;
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        if (userData.dogsBalance < betAmount) {
+            return { success: false, error: 'Insufficient GLX balance' };
+        }
+        
+        const newBalance = userData.dogsBalance - betAmount;
+        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'loss',
+            description: `Coin Flip Bet (${chosenSide.toUpperCase()})`,
+            amount: betAmount,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        const randomNum = Math.random() * 100;
+        const isWin = randomNum < 45;
+        const resultSide = isWin ? chosenSide : (chosenSide === 'glx' ? 'gold' : 'glx');
+        const winAmount = isWin ? betAmount * 2 : 0;
+        
+        if (isWin) {
+            const finalBalance = newBalance + winAmount;
+            await handleDbUpdate(env, `users/${userId}`, { dogsBalance: finalBalance });
+            
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'earn',
+                description: `Coin Flip Win (${chosenSide})`,
+                amount: winAmount,
+                currency: 'GLX',
+                date: new Date().toISOString()
+            });
+        }
+        
+        return {
+            success: true,
+            data: {
+                isWin: isWin,
+                resultSide: resultSide,
+                winAmount: winAmount,
+                newBalance: isWin ? newBalance + winAmount : newBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleRedeemPromoCode(env, userId, data) {
+    try {
+        const { code } = data;
+        
+        const validCodes = {
+            'WELCOME100': 100,
+            'GALAXY500': 500,
+            'STAR1000': 1000,
+            'BONUS2000': 2000,
+            'VIP5000': 5000
+        };
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        const usedCodes = userData.usedPromoCodes || [];
+        
+        if (!validCodes[code]) {
+            return { success: false, error: 'Invalid or expired promo code' };
+        }
+        
+        if (usedCodes.includes(code)) {
+            return { success: false, error: 'This code has already been used' };
+        }
+        
+        const reward = validCodes[code];
+        
+        const newBalance = userData.dogsBalance + reward;
+        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
+        
+        usedCodes.push(code);
+        await handleDbUpdate(env, `users/${userId}`, { usedPromoCodes: usedCodes });
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `Promo Code: ${code}`,
+            amount: reward,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                reward: reward,
+                newBalance: newBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleCreateTask(env, userId, data) {
+    try {
+        const { taskId, name, link, category, count, cost } = data;
+        
+        const newTask = {
+            id: taskId,
+            title: name,
+            description: `Reward: ${category.toUpperCase()}`,
+            link: link,
+            reward: 2000,
+            category: 'community',
+            total: count,
+            remaining: count,
+            status: 'pending',
+            creator: userId,
+            cost: cost,
+            createdAt: Date.now()
+        };
+        
+        await handleDbSet(env, `tasks/${taskId}`, newTask);
+        
+        return {
+            success: true,
+            data: { taskId: taskId }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleVerifyTaskPayment(env, taskId) {
+    try {
+        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
+        if (!taskResult.success || !taskResult.data) {
+            return { success: false, error: 'Task not found' };
+        }
+        
+        const task = taskResult.data;
+        
+        if (task.status === 'pending') {
+            await handleDbUpdate(env, `tasks/${taskId}`, { status: 'active' });
+            
+            return {
+                success: true,
+                data: { verified: true }
+            };
+        } else if (task.status === 'active') {
+            return {
+                success: true,
+                data: { verified: true }
+            };
+        } else {
+            return { success: false, error: 'Payment not found' };
+        }
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleSpinSlots(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        if ((userData.extraSpins || 0) <= 0) {
+            return { success: false, error: 'No spins left' };
+        }
+        
+        const newSpins = (userData.extraSpins || 1) - 1;
+        await handleDbUpdate(env, `users/${userId}`, { extraSpins: newSpins });
+        
+        const symbols = ['🌟', '🪐', '💫', '⭐', '🚀', '🌌'];
+        const results = [
+            symbols[Math.floor(Math.random() * symbols.length)],
+            symbols[Math.floor(Math.random() * symbols.length)],
+            symbols[Math.floor(Math.random() * symbols.length)]
+        ];
+        
+        let winAmount = 0;
+        const resultString = results.join('');
+        
+        if (resultString === '🌟🌟🌟') winAmount = 10000;
+        else if (resultString === '🪐🪐🪐') winAmount = 5000;
+        else if (resultString === '💫💫💫') winAmount = 2500;
+        else if (resultString === '⭐⭐⭐') winAmount = 1200;
+        else if (results[0] === '🌟' && results[1] === '🌟') winAmount = 700;
+        else if (results[1] === '🌟' && results[2] === '🌟') winAmount = 700;
+        else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) winAmount = 500;
+        
+        if (winAmount > 0) {
+            const newBalance = userData.dogsBalance + winAmount;
+            await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
+            
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'earn',
+                description: `Galaxy Slots Win (${resultString})`,
+                amount: winAmount,
+                currency: 'GLX',
+                date: new Date().toISOString()
+            });
+            
+            return {
+                success: true,
+                data: {
+                    results: results,
+                    winAmount: winAmount,
+                    newBalance: newBalance,
+                    newSpins: newSpins
+                }
+            };
+        } else {
+            return {
+                success: true,
+                data: {
+                    results: results,
+                    winAmount: 0,
+                    newBalance: userData.dogsBalance,
+                    newSpins: newSpins
+                }
+            };
+        }
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleAddExtraSpin(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        const newSpins = (userData.extraSpins || 0) + 1;
+        await handleDbUpdate(env, `users/${userId}`, { extraSpins: newSpins });
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: 'Extra Spin from Ad',
+            amount: 1,
+            currency: 'Spin',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                newSpins: newSpins
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleClaimDailyBonus(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        const now = Date.now();
+        const msInDay = 86400000;
+        
+        let streak = userData.dailyStreak || 0;
+        const lastClaim = userData.lastDailyClaim || 0;
+        
+        if (now - lastClaim > 172800000) {
+            streak = 0;
+        }
+        
+        const rewards = [2000, 3000, 5000, 7000, 9000, 12000, 15000];
+        const reward = rewards[Math.min(streak, rewards.length - 1)] || 100;
+        
+        const updates = {
+            lastDailyClaim: now,
+            dailyStreak: streak + 1,
+            dogsBalance: userData.dogsBalance + reward
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `Daily Login Day ${streak + 1}`,
+            amount: reward,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                reward: reward,
+                lastDailyClaim: now,
+                dailyStreak: streak + 1,
+                newBalance: userData.dogsBalance + reward
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetTransactionHistory(env, userId, limit = 50) {
+    try {
+        const historyResult = await handleDbGet(env, `users/${userId}/history`);
+        const historyData = historyResult.data || {};
+        
+        const historyArray = Object.values(historyData)
+            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .slice(0, limit);
+        
+        return {
+            success: true,
+            data: {
+                history: historyArray
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetUserWithdrawals(env, userId) {
+    try {
+        const withdrawalsResult = await handleDbGet(env, 'withdrawals');
+        const withdrawalsData = withdrawalsResult.data || {};
+        
+        const userWithdrawals = [];
+        
+        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
+            if (withdrawal.userId === userId) {
+                userWithdrawals.push({
+                    key: key,
+                    ...withdrawal
+                });
+            }
+        }
+        
+        userWithdrawals.sort((a, b) => b.timestamp - a.timestamp);
+        
+        return {
+            success: true,
+            data: {
+                withdrawals: userWithdrawals
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetWithdrawalHistory(env) {
+    try {
+        const withdrawalsResult = await handleDbGet(env, 'withdrawals/completed');
+        const withdrawalsData = withdrawalsResult.data || {};
+        
+        const withdrawals = [];
+        
+        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
+            if (withdrawal.status === 'completed' || withdrawal.processed === true) {
+                const userResult = await handleDbGet(env, `users/${withdrawal.userId}`);
+                if (userResult.success && userResult.data) {
+                    withdrawals.push({
+                        ...withdrawal,
+                        key: key,
+                        name: userResult.data.name || 'Anonymous',
+                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'
+                    });
+                }
+            }
+        }
+        
+        withdrawals.sort((a, b) => b.timestamp - a.timestamp);
+        
+        return {
+            success: true,
+            data: {
+                withdrawals: withdrawals.slice(0, 50)
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetWithdrawalStats(env) {
+    try {
+        const withdrawalsResult = await handleDbGet(env, 'withdrawals');
+        const withdrawalsData = withdrawalsResult.data || {};
+        
+        let completedCount = 0;
+        let totalPaid = 0;
+        
+        for (const withdrawal of Object.values(withdrawalsData)) {
+            if (withdrawal.status === 'completed' || withdrawal.processed === true) {
+                completedCount++;
+                totalPaid += parseFloat(withdrawal.amount || 0);
+            }
+        }
+        
+        return {
+            success: true,
+            data: {
+                completedCount: completedCount,
+                totalPaid: totalPaid
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetReferredUsers(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        const referredUsers = userData.referredUsers || [];
+        
+        const referredUsersData = [];
+        
+        for (const referredUserId of referredUsers) {
+            const referredUserResult = await handleDbGet(env, `users/${referredUserId}`);
+            if (referredUserResult.success && referredUserResult.data) {
+                referredUsersData.push({
+                    userId: referredUserId,
+                    name: referredUserResult.data.name || 'Anonymous User',
+                    photoUrl: referredUserResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                    joinDate: referredUserResult.data.joinDate,
+                    dogsBalance: referredUserResult.data.dogsBalance || 0
+                });
+            }
+        }
+        
+        return {
+            success: true,
+            data: {
+                referredUsers: referredUsersData
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetTasks(env, userId) {
+    try {
+        const tasksResult = await handleDbGet(env, 'tasks');
+        const tasksData = tasksResult.data || {};
+        
+        const activeTasks = [];
+        
+        for (const [taskId, task] of Object.entries(tasksData)) {
+            if (task.status === 'active' && (task.remaining === undefined || task.remaining > 0)) {
+                activeTasks.push({
+                    id: taskId,
+                    ...task
+                });
+            }
+        }
+        
+        return {
+            success: true,
+            data: {
+                tasks: activeTasks
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleVerifyTaskCompletion(env, userId, data) {
+    try {
+        const { taskId, reward, title } = data;
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
+        if (!taskResult.success || !taskResult.data) {
+            return { success: false, error: 'Task not found' };
+        }
+        
+        const task = taskResult.data;
+        
+        const completedTasks = userData.completedTasks || {};
+        if (completedTasks[taskId]) {
+            return { success: false, error: 'Task already completed' };
+        }
+        
+        if (task.remaining !== undefined && task.remaining <= 0) {
+            return { success: false, error: 'No rewards left for this task' };
+        }
+        
+        const newBalance = userData.dogsBalance + parseInt(reward);
+        
+        const updates = {};
+        if (task.remaining !== undefined) {
+            updates.remaining = task.remaining - 1;
+        }
+        
+        const userUpdates = {
+            dogsBalance: newBalance
+        };
+        
+        completedTasks[taskId] = true;
+        userUpdates.completedTasks = completedTasks;
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        if (Object.keys(updates).length > 0) {
+            await handleDbUpdate(env, `tasks/${taskId}`, updates);
+        }
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `Mission: ${title}`,
+            amount: parseInt(reward),
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                newBalance: newBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleReferral(env, userId, referrerId) {
+    try {
+        if (!referrerId || referrerId === userId) {
+            return { success: false, error: 'Invalid referrer' };
+        }
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (userResult.success && userResult.data && userResult.data.referrer) {
+            return { success: false, error: 'Already referred' };
+        }
+        
+        await handleDbUpdate(env, `users/${userId}`, { referrer: referrerId, joinDate: Date.now() });
+        
+        const referrerResult = await handleDbGet(env, `users/${referrerId}`);
+        if (!referrerResult.success || !referrerResult.data) {
+            return { success: true, data: { referred: true } };
+        }
+        
+        const referrerData = referrerResult.data;
+        
+        const referredUsers = referrerData.referredUsers || [];
+        if (!referredUsers.includes(userId)) {
+            referredUsers.push(userId);
+        }
+        
+        const updates = {
+            referredUsers: referredUsers,
+            referrals: (referrerData.referrals || 0) + 1,
+            dogsBalance: (referrerData.dogsBalance || 0) + 500
+        };
+        
+        await handleDbUpdate(env, `users/${referrerId}`, updates);
+        
+        await handleDbPush(env, `users/${referrerId}/history`, {
+            type: 'referral',
+            description: 'Friend Invited',
+            amount: 500,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: { referred: true }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleAdClick(env, userId, adType, reward) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        const adCountField = `ads${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
+        const currentCount = userData[adCountField] || 0;
+        
+        const updates = {
+            [adCountField]: currentCount + 1,
+            adsWatched: (userData.adsWatched || 0) + 1,
+            dogsBalance: (userData.dogsBalance || 0) + reward
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `${adType} Ad Reward`,
+            amount: reward,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                [adCountField]: currentCount + 1,
+                adsWatched: updates.adsWatched,
+                newBalance: updates.dogsBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleSubmitWithdrawal(env, userId, data) {
+    try {
+        const { method, account, amount, maskedAccount, memo } = data;
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        if ((userData.tonBalance || 0) < amount) {
+            return { success: false, error: 'Insufficient TON balance' };
+        }
+        
+        const newBalance = (userData.tonBalance || 0) - amount;
+        await handleDbUpdate(env, `users/${userId}`, { tonBalance: newBalance });
+        
+        const withdrawalId = `withdrawal_${Date.now()}`;
+        const withdrawalData = {
+            userId: userId,
+            account: account,
+            maskedAccount: maskedAccount || account,
+            amount: amount,
+            method: method,
+            memo: memo || '',
+            status: 'pending',
+            timestamp: Date.now(),
+            processed: false
+        };
+        
+        await handleDbSet(env, `withdrawals/${withdrawalId}`, withdrawalData);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'withdraw',
+            description: `${method === 'ton' ? 'TON Wallet' : 'FaucetPay'} Withdrawal`,
+            amount: amount,
+            currency: 'TON',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                newBalance: newBalance,
+                withdrawalId: withdrawalId
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  async function handleGetLeaderboard(env) {
+    try {
+        const usersResult = await handleDbGet(env, 'users');
+        const usersData = usersResult.data || {};
+        
+        const users = [];
+        
+        for (const [userId, userData] of Object.entries(usersData)) {
+            users.push({
+                userId: userId,
+                name: userData.name || 'Anonymous',
+                dogsBalance: userData.dogsBalance || 0,
+                referrals: userData.referrals || 0
+            });
+        }
+        
+        const byInvites = [...users].sort((a, b) => b.referrals - a.referrals);
+        
+        const byGLX = [...users].sort((a, b) => b.dogsBalance - a.dogsBalance);
+        
+        return {
+            success: true,
+            data: {
+                byInvites: byInvites.slice(0, 50),
+                byGLX: byGLX.slice(0, 50)
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
