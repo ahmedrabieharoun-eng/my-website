@@ -2017,6 +2017,100 @@
             color: #fff;
             margin-top: 5px;
         }
+        
+        /* إضافة أنماط جديدة للرسائل */
+        .notification-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .notification-message {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+            border: 1px solid var(--glass-border);
+            z-index: 999;
+            animation: slideDown 0.3s ease;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .notification-message.success {
+            background: rgba(39,174,96,0.2);
+            border-color: rgba(39,174,96,0.5);
+            color: #27ae60;
+        }
+        
+        .notification-message.error {
+            background: rgba(231,76,60,0.2);
+            border-color: rgba(231,76,60,0.5);
+            color: #e74c3c;
+        }
+        
+        .notification-message.warning {
+            background: rgba(255,193,7,0.2);
+            border-color: rgba(255,193,7,0.5);
+            color: #FFC107;
+        }
+        
+        .notification-message.info {
+            background: rgba(52,152,219,0.2);
+            border-color: rgba(52,152,219,0.5);
+            color: #3498db;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+        
+        /* تعديل تخطيط HUD */
+        .hud-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50px;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .hud-left {
+            flex: 1;
+        }
+        
+        .hud-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -2062,30 +2156,34 @@
     
     <!-- Main App Container -->
     <div class="app-container" style="display:none;" id="app-container">
-        <!-- HUD Container -->
-        <div class="hud-container">
-            <div>
-                <div class="user-name" id="home-username">Explorer</div>
-                <div class="user-rank" id="home-user-level" style="display:none;"></div>
-                <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
-                    <div class="stats-pill" style="margin:0;padding:6px 12px;">
-                        <span style="color:var(--gold);">GLX:</span>
-                        <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
+        <!-- HUD Container مع حاوية الإشعارات -->
+        <div class="notification-container">
+            <div class="hud-main">
+                <div class="hud-left">
+                    <div class="user-name" id="home-username">Explorer</div>
+                    <div class="user-rank" id="home-user-level" style="display:none;"></div>
+                    <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
+                        <div class="stats-pill" style="margin:0;padding:6px 12px;">
+                            <span style="color:var(--gold);">GLX:</span>
+                            <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
+                        </div>
+                        <div class="stats-pill" style="margin:0;padding:6px 12px;">
+                            <span style="color:var(--gold);">TON:</span>
+                            <span id="hud-ton-balance" style="color:#fff;font-weight:700;">0.0000</span>
+                        </div>
                     </div>
-                    <div class="stats-pill" style="margin:0;padding:6px 12px;">
-                        <span style="color:var(--gold);">TON:</span>
-                        <span id="hud-ton-balance" style="color:#fff;font-weight:700;">0.0000</span>
+                </div>
+                <div class="hud-right">
+                    <div class="galaxy-log-icon" id="galaxy-log-button">
+                        <span style="font-size:20px;">📜</span>
+                    </div>
+                    <div class="hud-avatar">
+                        <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
                     </div>
                 </div>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div class="galaxy-log-icon" id="galaxy-log-button">
-                    <span style="font-size:20px;">📜</span>
-                </div>
-                <div class="hud-avatar">
-                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
-                </div>
-            </div>
+            <!-- حاوية الإشعارات -->
+            <div id="notification-area" style="position:absolute;top:100%;left:0;right:0;z-index:999;"></div>
         </div>
         
         <!-- Home Page -->
@@ -2243,7 +2341,7 @@
             <div id="galaxy-log-filtered-list" style="max-height:500px;overflow-y:auto;"></div>
         </main>
         
-        <!-- Deposit Page -->
+        <!-- Deposit Page - تم التعديل -->
         <main id="deposit" class="content-section">
             <div class="page-header">
                 <h1>Deposit TON</h1>
@@ -2276,42 +2374,17 @@
                         </div>
                         <div style="font-size:11px;line-height:1.5;">
                             <strong>Deposit Instructions:</strong><br>
-                            • Send exact amount to wallet address below<br>
-                            • Include the memo/comment in your transfer<br>
+                            • Contact support for deposit instructions<br>
+                            • Minimum deposit: 0.01 TON<br>
                             • Funds will be added within 10-30 minutes<br>
                             • Keep transaction proof for support<br>
                             • For paid tasks only (creating missions)
                         </div>
                     </div>
                 </div>
-                <div class="input-wrap" style="margin-top:20px;margin-bottom:20px;">
-                    <span class="input-label">Recipient Wallet Address</span>
-                    <div class="deposit-wallet-address">UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX</div>
-                    <button onclick="copyWalletAddress()" style="margin-top:10px;width:100%;padding:16px;background:linear-gradient(90deg,#a855f7,#7c3aed);border:none;border-radius:18px;color:#fff;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;">
-                        <i class="fa-solid fa-copy"></i> Copy Wallet Address
-                    </button>
-                </div>
-                <div class="input-wrap" style="margin-bottom:20px;">
-                    <span class="input-label">Memo / Comment (Required)</span>
-                    <div style="background:rgba(0,0,0,0.5);padding:15px;border-radius:12px;margin-top:8px;font-family:monospace;font-size:14px;color:#27ae60;text-align:center;font-weight:700;letter-spacing:1px;">
-                        deposit_<span id="deposit-memo-id">USER_ID</span>
-                    </div>
-                    <div style="text-align:center;font-size:10px;color:var(--text-muted);margin-top:8px;">You MUST include this memo in your transaction</div>
-                </div>
-                <button class="btn btn-primary" id="send-deposit-btn" onclick="sendDepositPayment()">
-                    <i class="fa-solid fa-paper-plane"></i> SEND PAYMENT
+                <button class="btn btn-primary" onclick="contactSupportForDeposit()">
+                    <i class="fa-solid fa-headset"></i> CONTACT SUPPORT FOR DEPOSIT
                 </button>
-                <div id="verify-deposit-section" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.1);">
-                    <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:15px;margin-bottom:15px;">
-                        <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;">Transaction Memo</div>
-                        <div style="font-family:monospace;font-size:14px;color:#27ae60;font-weight:700;letter-spacing:1px;" id="deposit-memo-display">deposit_USER_ID</div>
-                        <div style="font-size:10px;color:var(--text-muted);margin-top:5px;">You MUST include this memo in your transaction</div>
-                    </div>
-                    <button class="btn btn-primary" id="verify-deposit-btn" onclick="verifyDepositTransaction()" style="background:linear-gradient(90deg,#3498db,#2980b9);">
-                        <i class="fa-solid fa-magnifying-glass"></i> CHECK DEPOSIT STATUS
-                    </button>
-                    <div id="deposit-status-msg" style="font-size:10px;margin-top:10px;color:var(--text-muted);text-align:center;">After sending payment, click here to check status</div>
-                </div>
             </div>
         </main>
         
@@ -2595,6 +2668,7 @@
                         <div id="promo-result" style="padding:10px;border-radius:10px;font-size:12px;text-align:center;display:none;"></div>
                     </div>
                 </div>
+                <!-- تم تعديل بطاقة قناة الأكواد -->
                 <div class="code-channel-card" style="background:linear-gradient(135deg,rgba(255,193,7,0.2),rgba(255,152,0,0.2));border-radius:20px;padding:20px;border:2px solid rgba(255,193,7,0.3);position:relative;overflow:hidden;cursor:pointer;" onclick="window.open('https://t.me/earnmoney1685','_blank')">
                     <div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;background:rgba(255,193,7,0.1);border-radius:50%;"></div>
                     <div style="position:relative;z-index:2;">
@@ -2616,20 +2690,6 @@
                             </div>
                             <div style="width:40px;height:40px;background:rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFC107;font-size:18px;">
                                 <i class="fa-solid fa-arrow-right"></i>
-                            </div>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1);">
-                            <div style="text-align:center;">
-                                <div style="font-size:20px;font-weight:800;color:#FFC107;">5+</div>
-                                <div style="font-size:10px;color:rgba(255,255,255,0.7);">Active Codes</div>
-                            </div>
-                            <div style="text-align:center;">
-                                <div style="font-size:20px;font-weight:800;color:#FFC107;">10K+</div>
-                                <div style="font-size:10px;color:rgba(255,255,255,0.7);">Members</div>
-                            </div>
-                            <div style="text-align:center;">
-                                <div style="font-size:20px;font-weight:800;color:#FFC107;">24/7</div>
-                                <div style="font-size:10px;color:rgba(255,255,255,0.7);">Updates</div>
                             </div>
                         </div>
                     </div>
@@ -3086,30 +3146,39 @@
             }
         };
         
+        // وظيفة عرض الإشعارات
+        function showNotification(message, type = 'success') {
+            const notificationArea = document.getElementById('notification-area');
+            if (!notificationArea) return;
+            
+            // إزالة أي إشعارات سابقة
+            const existingNotification = notificationArea.querySelector('.notification-message');
+            if (existingNotification) {
+                existingNotification.remove();
+            }
+            
+            // إنشاء الإشعار الجديد
+            const notification = document.createElement('div');
+            notification.className = `notification-message ${type}`;
+            notification.innerHTML = message;
+            notification.style.display = 'block';
+            
+            // إضافة الإشعار
+            notificationArea.appendChild(notification);
+            
+            // إخفاء الإشعار بعد 5 ثواني
+            setTimeout(() => {
+                notification.style.animation = 'slideUp 0.3s ease forwards';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }, 5000);
+        }
+        
         function showStyledMessage(message, type = 'error', containerId = 'app-container') {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            
-            const existingMsg = container.querySelector('.security-message');
-            if (existingMsg) existingMsg.remove();
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'security-message';
-            const style = SECURITY_CONFIG[type + 'Style'] || SECURITY_CONFIG.errorStyle;
-            Object.assign(messageDiv.style, style);
-            
-            let icon = '❌';
-            if (type === 'warning') icon = '⚠️';
-            if (type === 'success') icon = '✅';
-            if (type === 'info') icon = 'ℹ️';
-            
-            messageDiv.innerHTML = `<div style="display:flex;align-items:center;gap:10px;font-size:14px;">
-                <div style="font-size:20px;">${icon}</div>
-                <div>${message}</div>
-            </div>`;
-            
-            container.insertBefore(messageDiv, container.firstChild);
-            return messageDiv;
+            showNotification(message, type);
         }
         
         function isTelegramMobileApp() {
@@ -3334,7 +3403,7 @@
         }
         
         // Cloudflare Worker API Configuration
-        const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev"; // استبدل هذا بعنوان Worker الخاص بك
+        const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
         
         // وظيفة الاتصال العامة بالـ Worker
         async function callAPI(action, data = {}) {
@@ -3362,7 +3431,7 @@
                 return result;
             } catch (error) {
                 console.error('API call failed:', error);
-                showStyledMessage("Connection error. Please try again.", "error", "app-container");
+                showNotification("Connection error. Please try again.", "error");
                 return { success: false, error: error.message };
             }
         }
@@ -3503,13 +3572,17 @@
                     appSettings = result.data.settings;
                 }
                 
-                // تحديث واجهة المستخدم
+                // تحديث واجهة المستخدم فوراً
                 renderUI(user);
-                renderDailyBonusUI();
-                updateAvailableSpins();
+                
+                // تحديث بيانات المسابقة
+                await updateCompetitionData();
                 
                 // التعامل مع الإحالات
                 handleReferral(user);
+                
+                // جلب المهام
+                await fetchAndRenderTasks(user);
             } else {
                 console.error('Error initializing user:', result.error);
             }
@@ -3565,6 +3638,8 @@
                         userId: user.id,
                         referrerId: referrerId
                     });
+                    // تحديث واجهة المستخدم بعد التعامل مع الإحالة
+                    renderUI(user);
                 }
             }
         }
@@ -3592,9 +3667,12 @@
             return 1;
         }
         
-        // وظيفة عرض واجهة المستخدم
-        function renderUI(user) {
+        // وظيفة عرض واجهة المستخدم - تم التعديل
+        async function renderUI(user) {
             if (!appData) return;
+            
+            // تحديث الرصيد أولاً
+            await updateUserBalance();
             
             const GLX = Math.floor(appData.dogsBalance || 0);
             const ton = (appData.tonBalance || 0).toFixed(7);
@@ -3635,31 +3713,64 @@
                 const el = document.getElementById('monetag-ad-task');
                 el.style.opacity = '0.5';
                 el.style.pointerEvents = 'none';
+            } else {
+                const el = document.getElementById('monetag-ad-task');
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
             }
             
             if (gigaCount >= limitG) {
                 const el = document.getElementById('gigapub-ad-task');
                 el.style.opacity = '0.5';
                 el.style.pointerEvents = 'none';
+            } else {
+                const el = document.getElementById('gigapub-ad-task');
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
             }
             
             if (adsgramCount >= limitA) {
                 const el = document.getElementById('adsgram-ad-task');
                 el.style.opacity = '0.5';
                 el.style.pointerEvents = 'none';
+            } else {
+                const el = document.getElementById('adsgram-ad-task');
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
             }
             
             // جلب وعرض المهام
-            fetchAndRenderTasks(user);
+            await fetchAndRenderTasks(user);
             
             // عرض التاريخ
-            renderHistory(document.getElementById('full-history-list'), 50, user);
+            await renderHistory(document.getElementById('full-history-list'), 50, user);
             
             // تحديث حسابات التبادل
             calculateSwap();
             
             // عرض المستخدمين المحالين
-            renderReferredUsers(user);
+            await renderReferredUsers(user);
+            
+            // تحديث بيانات السحب
+            await updateUserWithdrawalsStats();
+            await calculateWithdrawalStats();
+            
+            // تحديث بيانات المسابقة
+            await updateCompetitionData();
+        }
+        
+        // وظيفة تحديث رصيد المستخدم
+        async function updateUserBalance() {
+            try {
+                const result = await callAPI('getUserBalance');
+                if (result.success && result.data) {
+                    appData.dogsBalance = result.data.dogsBalance || 0;
+                    appData.tonBalance = result.data.tonBalance || 0;
+                    appData.referrals = result.data.referrals || 0;
+                }
+            } catch (error) {
+                console.error('Error updating user balance:', error);
+            }
         }
         
         // وظائف التبادل
@@ -3701,7 +3812,7 @@
             if (type === 'glx' || swapDirection === 'glx_to_ton') {
                 const currentBalance = appData.dogsBalance || 0;
                 if (currentBalance < 1000) {
-                    showStyledMessage("Minimum swap is 1,000 GLX", "warning", "app-container");
+                    showNotification("Minimum swap is 1,000 GLX", "warning");
                     return;
                 }
                 document.getElementById('swap-input-amount').value = currentBalance;
@@ -3709,7 +3820,7 @@
             } else {
                 const currentBalance = appData.tonBalance || 0;
                 if (currentBalance < 0.0001) {
-                    showStyledMessage("Minimum swap is 0.0001 TON", "warning", "app-container");
+                    showNotification("Minimum swap is 0.0001 TON", "warning");
                     return;
                 }
                 document.getElementById('ton-input-amount').value = currentBalance.toFixed(4);
@@ -3730,12 +3841,12 @@
             const currentGLX = appData.dogsBalance || 0;
             
             if (GLXInput < 1000) {
-                showStyledMessage("Min swap: 1,000 GLX", "warning", "app-container");
+                showNotification("Min swap: 1,000 GLX", "warning");
                 return;
             }
             
             if (GLXInput > currentGLX) {
-                showStyledMessage("Insufficient GLX Balance", "warning", "app-container");
+                showNotification("Insufficient GLX Balance", "warning");
                 return;
             }
             
@@ -3753,13 +3864,13 @@
                 appData.dogsBalance = result.data.newGLXBalance;
                 appData.tonBalance = result.data.newTONBalance;
                 
-                showStyledMessage(`Swap Complete!\n\n-${GLXInput.toLocaleString()} GLX\n+${tonValue.toFixed(7)} TON`, "success", "app-container");
+                showNotification(`Swap Complete!\n\n-${GLXInput.toLocaleString()} GLX\n+${tonValue.toFixed(7)} TON`, "success");
                 document.getElementById('swap-input-amount').value = '';
                 document.getElementById('swap-output-amount').textContent = '0.0000000';
                 switchTab('home');
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         }
         
@@ -3768,12 +3879,12 @@
             const currentTON = appData.tonBalance || 0;
             
             if (TONInput < 0.0001) {
-                showStyledMessage("Min swap: 0.0001 TON", "warning", "app-container");
+                showNotification("Min swap: 0.0001 TON", "warning");
                 return;
             }
             
             if (TONInput > currentTON) {
-                showStyledMessage("Insufficient TON Balance", "warning", "app-container");
+                showNotification("Insufficient TON Balance", "warning");
                 return;
             }
             
@@ -3791,13 +3902,13 @@
                 appData.tonBalance = result.data.newTONBalance;
                 appData.dogsBalance = result.data.newGLXBalance;
                 
-                showStyledMessage(`Swap Complete!\n\n-${TONInput.toFixed(4)} TON\n+${glxValue.toLocaleString()} GLX`, "success", "app-container");
+                showNotification(`Swap Complete!\n\n-${TONInput.toFixed(4)} TON\n+${glxValue.toLocaleString()} GLX`, "success");
                 document.getElementById('ton-input-amount').value = '';
                 document.getElementById('ton-output-amount').textContent = '0';
                 switchTab('home');
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         }
         
@@ -3832,104 +3943,12 @@
             grid.style.display = 'grid';
         };
         
-        // وظائف إيداع الأموال
-        window.copyWalletAddress = function() {
-            navigator.clipboard.writeText('UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX');
-            showStyledMessage('Wallet address copied!', 'success', 'app-container');
-        };
-        
-        window.sendDepositPayment = function() {
-            const amountInput = document.getElementById('deposit-amount');
-            const amount = parseFloat(amountInput.value);
-            
-            if (!amount || amount < 0.01) {
-                showStyledMessage("Minimum deposit is 0.01 TON", "warning", "app-container");
-                amountInput.focus();
-                return;
-            }
-            
-            currentDepositAmount = amount;
-            currentDepositMemo = `deposit_${window.Telegram?.WebApp?.initDataUnsafe?.user?.id}_${Date.now()}`;
-            
-            document.getElementById('send-deposit-btn').style.display = 'none';
-            document.getElementById('verify-deposit-section').style.display = 'block';
-            document.getElementById('deposit-memo-display').textContent = currentDepositMemo;
-            
-            const nanoTon = Math.floor(amount * 1000000000);
-            const paymentUrl = `https://app.tonkeeper.com/transfer/UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX?amount=${nanoTon}&text=${currentDepositMemo}`;
-            
+        // وظائف إيداع الأموال - تم التعديل
+        window.contactSupportForDeposit = function() {
             if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.openLink(paymentUrl);
+                window.Telegram.WebApp.openTelegramLink('https://t.me/aborabie777');
             } else {
-                window.open(paymentUrl, '_blank');
-            }
-            
-            const verifyBtn = document.getElementById('verify-deposit-btn');
-            verifyBtn.onclick = function() {
-                verifyDepositTransaction();
-            };
-            
-            clearInterval(depositCheckInterval);
-            depositCheckInterval = setInterval(() => {
-                if (document.getElementById('verify-deposit-section').style.display !== 'none') {
-                    verifyDepositTransaction();
-                }
-            }, 30000);
-        };
-        
-        window.verifyDepositTransaction = async function() {
-            const btn = document.getElementById('verify-deposit-btn');
-            const statusMsg = document.getElementById('deposit-status-msg');
-            
-            if (btn.disabled) return;
-            btn.disabled = true;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-            statusMsg.textContent = "Connecting to TON blockchain...";
-            statusMsg.style.color = "#ffb300";
-            
-            try {
-                const result = await callAPI('verifyDeposit', {
-                    memo: currentDepositMemo,
-                    amount: currentDepositAmount
-                });
-                
-                if (result.success) {
-                    clearInterval(depositCheckInterval);
-                    
-                    appData.tonBalance = result.data.newBalance;
-                    
-                    statusMsg.innerHTML = `✅ <strong>Deposit Verified!</strong><br>+${currentDepositAmount} TON added to your balance<br><small style="color:#aaa;">TX: ${result.data.txHash?.substring(0,12) || 'Confirmed'}...</small>`;
-                    statusMsg.style.color = "#27ae60";
-                    btn.innerHTML = '<i class="fa-solid fa-check"></i> VERIFIED';
-                    btn.style.background = 'linear-gradient(135deg,#27ae60,#2ecc71)';
-                    
-                    setTimeout(() => {
-                        renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-                    }, 1000);
-                    
-                    setTimeout(() => {
-                        document.getElementById('send-deposit-btn').style.display = 'block';
-                        document.getElementById('verify-deposit-section').style.display = 'none';
-                        document.getElementById('deposit-amount').value = '0.01';
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> CHECK DEPOSIT STATUS';
-                        btn.style.background = 'linear-gradient(135deg,#3498db,#2980b9)';
-                        statusMsg.textContent = "After sending payment, click here to check status";
-                        statusMsg.style.color = "var(--text-muted)";
-                    }, 5000);
-                } else {
-                    statusMsg.textContent = "Deposit not found yet. Please wait 1-2 minutes and try again.";
-                    statusMsg.style.color = "#e74c3c";
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> CHECK AGAIN';
-                }
-            } catch (e) {
-                console.error("Deposit verification error:", e);
-                statusMsg.textContent = "Error checking blockchain. Please try again.";
-                statusMsg.style.color = "#e74c3c";
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> TRY AGAIN';
+                window.open('https://t.me/aborabie777', '_blank');
             }
         };
         
@@ -3944,10 +3963,22 @@
             }
         }
         
-        function initializeCompetition() {
-            // سيتم تحديث هذا الجزء بعد إنشاء وظائف المسابقة في Worker
-            updateCompetitionUI();
+        async function initializeCompetition() {
+            await updateCompetitionData();
+            startCountdown();
             loadPreviousWinners();
+        }
+        
+        async function updateCompetitionData() {
+            try {
+                const result = await callAPI('getCompetitionData');
+                if (result.success && result.data) {
+                    competitionData = result.data;
+                    updateCompetitionUI();
+                }
+            } catch (error) {
+                console.error('Error updating competition data:', error);
+            }
         }
         
         function updateCompetitionUI() {
@@ -3991,7 +4022,9 @@
         function startCountdown() {
             if (countdownInterval) clearInterval(countdownInterval);
             
-            countdownInterval = setInterval(() => {
+            countdownInterval = setInterval(async () => {
+                await updateCompetitionData();
+                
                 const now = Date.now();
                 let timeRemaining = 0;
                 let isBreak = competitionData.breakMode || false;
@@ -4003,11 +4036,7 @@
                 }
                 
                 if (timeRemaining <= 0) {
-                    if (isBreak) {
-                        startNewCompetition();
-                    } else {
-                        endCompetitionAndStartBreak();
-                    }
+                    clearInterval(countdownInterval);
                     return;
                 }
                 
@@ -4036,7 +4065,7 @@
             const maxTickets = Math.floor(currentBalance / TICKET_PRICE);
             
             if (maxTickets < 1) {
-                showStyledMessage("You don't have enough GLX to buy a ticket (10,000 GLX required)", "warning", "app-container");
+                showNotification("You don't have enough GLX to buy a ticket (10,000 GLX required)", "warning");
                 return;
             }
             
@@ -4047,12 +4076,12 @@
         
         window.buyTickets = async function() {
             if (competitionData.breakMode) {
-                showStyledMessage("Competition is on break. Please wait for the next round.", "warning", "app-container");
+                showNotification("Competition is on break. Please wait for the next round.", "warning");
                 return;
             }
             
             if (!competitionData.isActive) {
-                showStyledMessage("Competition has ended. Please wait for the next round.", "warning", "app-container");
+                showNotification("Competition has ended. Please wait for the next round.", "warning");
                 return;
             }
             
@@ -4060,7 +4089,7 @@
             const tickets = parseInt(ticketInput.value) || 0;
             
             if (tickets < 1) {
-                showStyledMessage("Please enter at least 1 ticket", "warning", "app-container");
+                showNotification("Please enter at least 1 ticket", "warning");
                 return;
             }
             
@@ -4068,7 +4097,7 @@
             const currentBalance = appData.dogsBalance || 0;
             
             if (totalCost > currentBalance) {
-                showStyledMessage(`Insufficient GLX balance. You need ${totalCost.toLocaleString()} GLX`, "warning", "app-container");
+                showNotification(`Insufficient GLX balance. You need ${totalCost.toLocaleString()} GLX`, "warning");
                 return;
             }
             
@@ -4110,7 +4139,7 @@
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 updateCompetitionUI();
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
                 statusMsg.textContent = "❌ Error processing purchase";
@@ -4209,7 +4238,7 @@
             const minAmount = 0.0001;
             
             if (currentBalance < minAmount) {
-                showStyledMessage(`Minimum withdrawal is ${minAmount} TON`, "warning", "app-container");
+                showNotification(`Minimum withdrawal is ${minAmount} TON`, "warning");
                 return;
             }
             
@@ -4221,14 +4250,14 @@
             const minAmount = 0.05;
             
             if (currentBalance < minAmount) {
-                showStyledMessage(`Minimum withdrawal is ${minAmount} TON`, "warning", "app-container");
+                showNotification(`Minimum withdrawal is ${minAmount} TON`, "warning");
                 return;
             }
             
             document.getElementById('ton-withdraw-amount').value = currentBalance.toFixed(2);
         };
         
-        // وظائف سجل المعاملات
+        // وظائف سجل المعاملات - تم التعديل
         window.renderGalaxyLog = async function() {
             const result = await callAPI('getTransactionHistory');
             
@@ -4252,60 +4281,65 @@
             }
         };
         
-        window.filterLogs = function(type, historyData) {
-            if (!historyData) {
-                renderGalaxyLog();
-                return;
-            }
+        window.filterLogs = async function(type) {
+            const result = await callAPI('getTransactionHistory');
             
-            const container = document.getElementById('galaxy-log-filtered-list');
-            container.innerHTML = '';
-            
-            const filtered = historyData.filter(item => {
-                if (type === 'all') return true;
-                if (type === 'earn') return item.type.includes('earn') || item.type === 'referral';
-                if (type === 'spend') return item.type.includes('spend') || item.type.includes('loss');
-                if (type === 'swap') return item.type.includes('swap');
-                if (type === 'withdraw') return item.type.includes('withdraw');
-                return true;
-            });
-            
-            filtered.forEach(item => {
-                let icon = '📜';
-                let color = '#fff';
-                let typeClass = '';
+            if (result.success) {
+                const historyData = result.data.history || [];
+                const container = document.getElementById('galaxy-log-filtered-list');
+                container.innerHTML = '';
                 
-                if (item.type.includes('earn') || item.type === 'referral') {
-                    icon = '💰';
-                    color = '#27ae60';
-                    typeClass = 'earn';
-                } else if (item.type.includes('spend') || item.type.includes('loss')) {
-                    icon = '📉';
-                    color = '#e74c3c';
-                    typeClass = 'spend';
-                } else if (item.type.includes('swap')) {
-                    icon = '🔄';
-                    color = '#3498db';
-                    typeClass = 'swap';
-                } else if (item.type.includes('withdraw')) {
-                    icon = '🏦';
-                    color = '#9b59b6';
-                    typeClass = 'withdraw';
+                const filtered = historyData.filter(item => {
+                    if (type === 'all') return true;
+                    if (type === 'earn') return item.type.includes('earn') || item.type === 'referral';
+                    if (type === 'spend') return item.type.includes('spend') || item.type.includes('loss');
+                    if (type === 'swap') return item.type.includes('swap');
+                    if (type === 'withdraw') return item.type.includes('withdraw');
+                    return true;
+                });
+                
+                if (filtered.length === 0) {
+                    container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">No transactions found</p>';
+                    return;
                 }
                 
-                const amount = item.currency === 'TON' ? parseFloat(item.amount).toFixed(4) + ' TON' : Math.floor(item.amount).toLocaleString() + ' GLX';
-                
-                const html = `<div class="log-item ${typeClass}">
-                    <div style="font-size:20px;margin-right:12px;">${icon}</div>
-                    <div style="flex:1;">
-                        <div style="font-size:13px;font-weight:600;margin-bottom:2px;">${item.description}</div>
-                        <div style="font-size:10px;color:var(--text-muted);">${new Date(item.date).toLocaleString()}</div>
-                    </div>
-                    <div style="font-size:14px;font-weight:700;color:${color};">${amount}</div>
-                </div>`;
-                
-                container.insertAdjacentHTML('beforeend', html);
-            });
+                filtered.forEach(item => {
+                    let icon = '📜';
+                    let color = '#fff';
+                    let typeClass = '';
+                    
+                    if (item.type.includes('earn') || item.type === 'referral') {
+                        icon = '💰';
+                        color = '#27ae60';
+                        typeClass = 'earn';
+                    } else if (item.type.includes('spend') || item.type.includes('loss')) {
+                        icon = '📉';
+                        color = '#e74c3c';
+                        typeClass = 'spend';
+                    } else if (item.type.includes('swap')) {
+                        icon = '🔄';
+                        color = '#3498db';
+                        typeClass = 'swap';
+                    } else if (item.type.includes('withdraw')) {
+                        icon = '🏦';
+                        color = '#9b59b6';
+                        typeClass = 'withdraw';
+                    }
+                    
+                    const amount = item.currency === 'TON' ? parseFloat(item.amount).toFixed(4) + ' TON' : Math.floor(item.amount).toLocaleString() + ' GLX';
+                    
+                    const html = `<div class="log-item ${typeClass}">
+                        <div style="font-size:20px;margin-right:12px;">${icon}</div>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;font-weight:600;margin-bottom:2px;">${item.description}</div>
+                            <div style="font-size:10px;color:var(--text-muted);">${new Date(item.date).toLocaleString()}</div>
+                        </div>
+                        <div style="font-size:14px;font-weight:700;color:${color};">${amount}</div>
+                    </div>`;
+                    
+                    container.insertAdjacentHTML('beforeend', html);
+                });
+            }
         };
         
         window.filterUserWithdrawals = async function(type) {
@@ -4446,7 +4480,7 @@
             const maxBet = Math.floor(currentBalance / 1000) * 1000;
             
             if (maxBet < 1000) {
-                showStyledMessage("Minimum bet is 1,000 GLX", "warning", "app-container");
+                showNotification("Minimum bet is 1,000 GLX", "warning");
                 return;
             }
             
@@ -4486,7 +4520,7 @@
             const inputAmount = parseInt(inputElement.value);
             
             if (!inputAmount || inputAmount < 1000) {
-                showStyledMessage("❌ Minimum bet is 1,000 GLX", "warning", "app-container");
+                showNotification("❌ Minimum bet is 1,000 GLX", "warning");
                 inputElement.focus();
                 inputElement.style.borderColor = '#e74c3c';
                 setTimeout(() => inputElement.style.borderColor = '', 2000);
@@ -4495,7 +4529,7 @@
             
             const currentBalance = appData.dogsBalance || 0;
             if (inputAmount > currentBalance) {
-                showStyledMessage("💰 Insufficient GLX balance!", "warning", "app-container");
+                showNotification("💰 Insufficient GLX balance!", "warning");
                 return;
             }
             
@@ -4564,14 +4598,15 @@
                             coinGame.lastFlipResult = resultSide;
                             coinGame.currentRotation = finalRotation % 360;
                             
-                            setTimeout(() => {
-                                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                            // تحديث الرصيد بعد اللعبة
+                            setTimeout(async () => {
+                                await renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                             }, 500);
                         }, 2500);
                     }, 50);
                 }, 100);
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
                 coinGame.isFlipping = false;
                 
                 const flipBtn = document.getElementById('flip-coin-btn');
@@ -4606,7 +4641,7 @@
                 
                 if (winAmount >= 5000) {
                     setTimeout(() => {
-                        showStyledMessage(`🎊 BIG WIN! You won ${winAmount.toLocaleString()} GLX!`, "success", "app-container");
+                        showNotification(`🎊 BIG WIN! You won ${winAmount.toLocaleString()} GLX!`, "success");
                     }, 500);
                 }
             } else {
@@ -4809,12 +4844,12 @@
             const link = document.getElementById('new-task-link').value.trim();
             
             if (!name || !link) {
-                showStyledMessage("Please fill all fields.", "warning", "app-container");
+                showNotification("Please fill all fields.", "warning");
                 return;
             }
             
             if (!link.startsWith('http')) {
-                showStyledMessage("Invalid link.", "warning", "app-container");
+                showNotification("Invalid link.", "warning");
                 return;
             }
             
@@ -4842,7 +4877,7 @@
                 document.getElementById('payment-step-1').style.display = 'none';
                 document.getElementById('payment-step-2').style.display = 'block';
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         };
         
@@ -4864,7 +4899,7 @@
                     msg.textContent = "Payment Verified! Activating Mission...";
                     msg.style.color = "#a855f7";
                     
-                    showStyledMessage("Success! Your mission is now live.", "success", "app-container");
+                    showNotification("Success! Your mission is now live.", "success");
                     document.getElementById('payment-step-1').style.display = 'block';
                     document.getElementById('payment-step-2').style.display = 'none';
                     document.getElementById('new-task-name').value = '';
@@ -4926,7 +4961,7 @@
             
             const extraSpins = appData.extraSpins || 0;
             if (extraSpins <= 0) {
-                showStyledMessage("You don't have any spins left! Watch an ad to get more spins.", "warning", "app-container");
+                showNotification("You don't have any spins left! Watch an ad to get more spins.", "warning");
                 return;
             }
             
@@ -4971,7 +5006,7 @@
                         
                         if (winGLX >= 1000) {
                             setTimeout(() => {
-                                showStyledMessage(`🎊 JACKPOT! You won ${winGLX} GLX!`, "success", "app-container");
+                                showNotification(`🎊 JACKPOT! You won ${winGLX} GLX!`, "success");
                             }, 500);
                         }
                     } else {
@@ -4988,7 +5023,7 @@
                     }, 1000);
                 }, 2000);
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
                 isSpinning = false;
                 spinBtn.disabled = false;
             }
@@ -5003,15 +5038,15 @@
                     
                     if (result.success) {
                         appData.extraSpins = result.data.newSpins;
-                        showStyledMessage("🎉 You earned an extra spin!", "success", "app-container");
+                        showNotification("🎉 You earned an extra spin!", "success");
                         updateAvailableSpins();
                     }
                 } catch (e) {
                     console.error("Ad error:", e);
-                    showStyledMessage("Ad not available.", "warning", "app-container");
+                    showNotification("Ad not available.", "warning");
                 }
             } else {
-                showStyledMessage("Ads system loading...", "info", "app-container");
+                showNotification("Ads system loading...", "info");
             }
         };
         
@@ -5069,11 +5104,11 @@
                 appData.dailyStreak = result.data.dailyStreak;
                 appData.dogsBalance = result.data.newBalance;
                 
-                showStyledMessage(`🎉 Daily bonus claimed! +${result.data.reward} GLX`, "success", "app-container");
+                showNotification(`🎉 Daily bonus claimed! +${result.data.reward} GLX`, "success");
                 renderDailyBonusUI();
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         }
         
@@ -5193,21 +5228,21 @@
             const container = document.getElementById('referred-users-list');
             const noReferralsMsg = document.getElementById('no-referrals-msg');
             
-            if (!appData.referredUsers || appData.referredUsers.length === 0) {
-                if (container) container.innerHTML = '';
-                if (noReferralsMsg) noReferralsMsg.style.display = 'block';
-                return;
-            }
-            
-            if (noReferralsMsg) noReferralsMsg.style.display = 'none';
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
             const result = await callAPI('getReferredUsers');
             
             if (result.success) {
                 const referredUsers = result.data.referredUsers || [];
+                
+                if (referredUsers.length === 0) {
+                    if (container) container.innerHTML = '';
+                    if (noReferralsMsg) noReferralsMsg.style.display = 'block';
+                    return;
+                }
+                
+                if (noReferralsMsg) noReferralsMsg.style.display = 'none';
+                if (!container) return;
+                
+                container.innerHTML = '';
                 
                 referredUsers.forEach(userData => {
                     const userName = userData.name || 'Anonymous User';
@@ -5229,7 +5264,7 @@
             }
         }
         
-        // وظائف جلب المهام
+        // وظائف جلب المهام - تم التعديل
         async function fetchAndRenderTasks(user) {
             const result = await callAPI('getTasks');
             
@@ -5243,51 +5278,63 @@
                 const tasks = result.data.tasks || [];
                 const completedTasks = appData.completedTasks || {};
                 
-                tasks.forEach(task => {
-                    if (task.status !== 'active' || (task.remaining !== undefined && task.remaining <= 0)) return;
-                    
-                    const isDone = completedTasks[task.id];
-                    let iconImg = 'https://img.icons8.com/fluency/96/task.png';
-                    
-                    const lt = task.title.toLowerCase();
-                    const ll = (task.link || '').toLowerCase();
-                    
-                    if (lt.includes('bot') || ll.includes('bot') || ll.includes('start=')) {
-                        iconImg = 'https://i.ibb.co/Myz4Gkmy/Picsart-25-12-10-04-34-59-799.png';
-                    } else if (lt.includes('telegram') || lt.includes('channel') || lt.includes('group') || lt.includes('join') || ll.includes('t.me')) {
-                        iconImg = 'https://i.ibb.co/5WZRG8fw/tele.png';
-                    } else if (lt.includes('youtube') || lt.includes('subscribe')) iconImg = 'https://i.ibb.co/CSz6kg9/20251203-200546.png';
-                    else if (lt.includes('twitter') || lt.includes('retweet') || lt.includes('follow') || lt.includes('x ')) iconImg = 'https://i.ibb.co/60jp6MsF/20251203-200516.png';
-                    else if (lt.includes('instagram')) iconImg = 'https://img.icons8.com/fluency/96/instagram-new.png';
-                    
-                    const html = `<div class="list-card dynamic-task ${isDone ? 'disabled' : ''}" 
-                        style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}" 
-                        data-id="${task.id}" 
-                        data-reward="${task.reward}" 
-                        data-title="${task.title}" 
-                        data-link="${task.link}" 
-                        onclick="handleDynamicTask(this)">
-                        <div class="lc-icon"><img src="${iconImg}"></div>
-                        <div class="lc-content">
-                            <div class="lc-title">${task.title}</div>
-                            <div class="lc-sub" id="status-${task.id}">${task.description}</div>
-                        </div>
-                        <div class="lc-end">
-                            <div class="lc-val" id="reward-${task.id}">+${task.reward}</div>
-                        </div>
-                    </div>`;
-                    
-                    if (task.category === 'partner') {
-                        pCont.insertAdjacentHTML('beforeend', html);
-                    } else {
-                        cCont.insertAdjacentHTML('beforeend', html);
-                    }
-                });
-                
-                if (pCont.innerHTML === '') {
+                // عرض مهام Partners
+                const partnerTasks = tasks.filter(task => task.category === 'partner' && task.status === 'active');
+                if (partnerTasks.length > 0) {
+                    document.getElementById('partner-tasks-card').style.display = 'block';
+                    partnerTasks.forEach(task => {
+                        renderTaskItem(task, pCont, completedTasks);
+                    });
+                } else {
                     document.getElementById('partner-tasks-card').style.display = 'none';
                 }
+                
+                // عرض مهام Community
+                const communityTasks = tasks.filter(task => task.category === 'community' && task.status === 'active');
+                if (communityTasks.length > 0) {
+                    document.getElementById('community-tasks-card').style.display = 'block';
+                    communityTasks.forEach(task => {
+                        renderTaskItem(task, cCont, completedTasks);
+                    });
+                } else {
+                    document.getElementById('community-tasks-card').style.display = 'none';
+                }
             }
+        }
+        
+        function renderTaskItem(task, container, completedTasks) {
+            const isDone = completedTasks[task.id];
+            let iconImg = 'https://img.icons8.com/fluency/96/task.png';
+            
+            const lt = task.title.toLowerCase();
+            const ll = (task.link || '').toLowerCase();
+            
+            if (lt.includes('bot') || ll.includes('bot') || ll.includes('start=')) {
+                iconImg = 'https://i.ibb.co/Myz4Gkmy/Picsart-25-12-10-04-34-59-799.png';
+            } else if (lt.includes('telegram') || lt.includes('channel') || lt.includes('group') || lt.includes('join') || ll.includes('t.me')) {
+                iconImg = 'https://i.ibb.co/5WZRG8fw/tele.png';
+            } else if (lt.includes('youtube') || lt.includes('subscribe')) iconImg = 'https://i.ibb.co/CSz6kg9/20251203-200546.png';
+            else if (lt.includes('twitter') || lt.includes('retweet') || lt.includes('follow') || lt.includes('x ')) iconImg = 'https://i.ibb.co/60jp6MsF/20251203-200516.png';
+            else if (lt.includes('instagram')) iconImg = 'https://img.icons8.com/fluency/96/instagram-new.png';
+            
+            const html = `<div class="list-card dynamic-task ${isDone ? 'disabled' : ''}" 
+                style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}" 
+                data-id="${task.id}" 
+                data-reward="${task.reward}" 
+                data-title="${task.title}" 
+                data-link="${task.link}" 
+                onclick="handleDynamicTask(this)">
+                <div class="lc-icon"><img src="${iconImg}"></div>
+                <div class="lc-content">
+                    <div class="lc-title">${task.title}</div>
+                    <div class="lc-sub" id="status-${task.id}">${task.description}</div>
+                </div>
+                <div class="lc-end">
+                    <div class="lc-val" id="reward-${task.id}">+${task.reward}</div>
+                </div>
+            </div>`;
+            
+            container.insertAdjacentHTML('beforeend', html);
         }
         
         // إعداد المستمعين للأحداث
@@ -5317,7 +5364,7 @@
             
             document.getElementById('copy-referral-btn').addEventListener('click', () => {
                 navigator.clipboard.writeText(document.getElementById('referral-link-display').textContent).then(() => {
-                    showStyledMessage("Copied!", "success", "app-container");
+                    showNotification("Copied!", "success");
                 });
             });
             
@@ -5370,7 +5417,7 @@
         
         async function handleMonetagAd() {
             if (!canClickAd()) {
-                showStyledMessage("Please wait 3 seconds before clicking again.", "warning", "app-container");
+                showNotification("Please wait 3 seconds before clicking again.", "warning");
                 return;
             }
             
@@ -5379,7 +5426,7 @@
             
             if ((appData.adsMonetag || 0) >= limit) return;
             if (!isAdScriptLoaded) {
-                showStyledMessage("Loading ad...", "info", "app-container");
+                showNotification("Loading ad...", "info");
                 return;
             }
             
@@ -5396,17 +5443,17 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
-                    showStyledMessage(`✅ +${appSettings.adRewardMonetag || 1000} GLX added!`, "success", "app-container");
+                    showNotification(`✅ +${appSettings.adRewardMonetag || 1000} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 }
             } catch (e) {
-                showStyledMessage("Ad not ready", "warning", "app-container");
+                showNotification("Ad not ready", "warning");
             }
         }
         
         async function handleGigaAd() {
             if (!canClickAd()) {
-                showStyledMessage("Please wait 3 seconds before clicking again.", "warning", "app-container");
+                showNotification("Please wait 3 seconds before clicking again.", "warning");
                 return;
             }
             
@@ -5415,7 +5462,7 @@
             
             if ((appData.adsGiga || 0) >= limit) return;
             if (typeof window.showGiga !== 'function') {
-                showStyledMessage("Giga Ads loading...", "info", "app-container");
+                showNotification("Giga Ads loading...", "info");
                 return;
             }
             
@@ -5432,18 +5479,18 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
-                    showStyledMessage(`✅ +${appSettings.adRewardGiga || 2000} GLX added!`, "success", "app-container");
+                    showNotification(`✅ +${appSettings.adRewardGiga || 2000} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 }
             } catch (e) {
                 console.error(e);
-                showStyledMessage("Ad failed or closed.", "warning", "app-container");
+                showNotification("Ad failed or closed.", "warning");
             }
         }
         
         async function handleAdsgramAd() {
             if (!canClickAd()) {
-                showStyledMessage("Please wait 3 seconds before clicking again.", "warning", "app-container");
+                showNotification("Please wait 3 seconds before clicking again.", "warning");
                 return;
             }
             
@@ -5452,7 +5499,7 @@
             
             if ((appData.adsAdsgram || 0) >= limit) return;
             if (!AdController) {
-                showStyledMessage("AdsGram not initialized", "warning", "app-container");
+                showNotification("AdsGram not initialized", "warning");
                 return;
             }
             
@@ -5469,13 +5516,13 @@
                         appData.adsAdsgram = apiResult.data.adsAdsgram;
                         appData.dogsBalance = apiResult.data.newBalance;
                         
-                        showStyledMessage(`✅ +${appSettings.adRewardAdsgram || 2000} GLX added!`, "success", "app-container");
+                        showNotification(`✅ +${appSettings.adRewardAdsgram || 2000} GLX added!`, "success");
                         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                     }
                 }
             } catch (error) {
                 console.error("AdsGram error:", error);
-                showStyledMessage("Ad playback error.", "error", "app-container");
+                showNotification("Ad playback error.", "error");
             }
         }
         
@@ -5502,17 +5549,17 @@
             const currentBalance = appData.tonBalance || 0;
             
             if (!email || !email.includes('@')) {
-                showStyledMessage("Please enter a valid email address.", "warning", "app-container");
+                showNotification("Please enter a valid email address.", "warning");
                 return;
             }
             
             if (amount < minAmount) {
-                showStyledMessage(`Minimum withdrawal is ${minAmount} TON for FaucetPay.`, "warning", "app-container");
+                showNotification(`Minimum withdrawal is ${minAmount} TON for FaucetPay.`, "warning");
                 return;
             }
             
             if (amount > currentBalance) {
-                showStyledMessage("Insufficient TON balance.", "warning", "app-container");
+                showNotification("Insufficient TON balance.", "warning");
                 return;
             }
             
@@ -5539,7 +5586,7 @@
             if (result.success) {
                 appData.tonBalance = result.data.newBalance;
                 
-                showStyledMessage(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to ${maskedEmail} within 1 minute.\n\nYour email is partially hidden for privacy.`, "success", "app-container");
+                showNotification(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to ${maskedEmail} within 1 minute.\n\nYour email is partially hidden for privacy.`, "success");
                 
                 document.getElementById('faucetpay-email').value = '';
                 document.getElementById('faucetpay-amount').value = minAmount;
@@ -5548,7 +5595,7 @@
                 switchTab('home');
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         }
         
@@ -5560,17 +5607,17 @@
             const currentBalance = appData.tonBalance || 0;
             
             if (!address || address.length < 5) {
-                showStyledMessage("Please enter a valid TON wallet address.", "warning", "app-container");
+                showNotification("Please enter a valid TON wallet address.", "warning");
                 return;
             }
             
             if (amount < minAmount) {
-                showStyledMessage(`Minimum withdrawal is ${minAmount} TON for TON Wallet.`, "warning", "app-container");
+                showNotification(`Minimum withdrawal is ${minAmount} TON for TON Wallet.`, "warning");
                 return;
             }
             
             if (amount > currentBalance) {
-                showStyledMessage("Insufficient TON balance.", "warning", "app-container");
+                showNotification("Insufficient TON balance.", "warning");
                 return;
             }
             
@@ -5593,7 +5640,7 @@
             if (result.success) {
                 appData.tonBalance = result.data.newBalance;
                 
-                showStyledMessage(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to your wallet within 24 hours.\n\nAddress: ${shortAddress}`, "success", "app-container");
+                showNotification(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to your wallet within 24 hours.\n\nAddress: ${shortAddress}`, "success");
                 
                 document.getElementById('ton-wallet-address').value = '';
                 document.getElementById('ton-memo').value = '';
@@ -5602,7 +5649,7 @@
                 switchTab('home');
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("Error: " + result.error, "error", "app-container");
+                showNotification("Error: " + result.error, "error");
             }
         }
         
@@ -5647,10 +5694,10 @@
                 document.getElementById(`status-${taskId}`).style.color = "#a855f7";
                 document.getElementById(`reward-${taskId}`).textContent = "Done";
                 
-                showStyledMessage(`✅ Task Completed! +${reward} GLX`, "success", "app-container");
+                showNotification(`✅ Task Completed! +${reward} GLX`, "success");
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             } else {
-                showStyledMessage("❌ " + result.error, "warning", "app-container");
+                showNotification("❌ " + result.error, "warning");
                 element.classList.remove('waiting-verify');
                 
                 const statusEl = document.getElementById(`status-${taskId}`);
@@ -5660,7 +5707,7 @@
         }
         
         // وظيفة التبديل بين الصفحات
-        function switchTab(targetId) {
+        async function switchTab(targetId) {
             // إخفاء جميع الصفحات
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -5697,24 +5744,25 @@
             }
             
             if (targetId === 'withdrawal-history') {
-                renderWithdrawalHistory();
-                calculateWithdrawalStats();
+                await renderWithdrawalHistory();
+                await calculateWithdrawalStats();
             }
             
             if (targetId === 'referrals') {
-                renderReferredUsers({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                await renderReferredUsers({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             }
             
             if (targetId === 'competition') {
+                await updateCompetitionData();
                 updateCompetitionUI();
             }
             
             if (targetId === 'galaxy-log-page') {
-                renderGalaxyLog();
+                await renderGalaxyLog();
             }
             
             if (targetId === 'user-withdrawals') {
-                updateUserWithdrawalsStats();
+                await updateUserWithdrawalsStats();
             }
             
             // التمرير لأعلى الصفحة
