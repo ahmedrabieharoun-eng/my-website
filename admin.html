@@ -60,7 +60,7 @@ export default {
             let result;
             switch (action) {
                 case 'initializeUser':
-                    result = await handleInitializeUser(userId, data);
+                    result = await handleInitializeUser(env, userId, data);
                     break;
                     
                 case 'dbSet':
@@ -185,6 +185,18 @@ export default {
                     
                 case 'testFirebase':
                     result = await handleTestFirebase(env);
+                    break;
+                    
+                case 'getUserData':
+                    result = await handleGetUserData(env, userId);
+                    break;
+                    
+                case 'getCompetitionData':
+                    const competitionData = await updateOrCreateCompetition(env);
+                    result = {
+                        success: true,
+                        data: competitionData
+                    };
                     break;
                     
                 default:
@@ -492,8 +504,8 @@ export default {
         const { user } = data;
         const fullName = `${user.first_name} ${user.last_name}`.trim();
         
-        const userDataResult = await handleDbGet(env, `users/${userId}`);
-        let userData = userDataResult.data;
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        let userData = userResult.data;
         
         if (!userData) {
             userData = {
@@ -513,7 +525,8 @@ export default {
                 extraSpins: 1,
                 referredUsers: [],
                 usedPromoCodes: [],
-                joinDate: Date.now()
+                joinDate: Date.now(),
+                lastAdDate: new Date().toDateString()
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
@@ -526,11 +539,12 @@ export default {
                 date: new Date().toISOString()
             });
         } else {
+            // تحديث الاسم إذا تغير
             if (userData.name !== fullName) {
                 await handleDbUpdate(env, `users/${userId}`, { name: fullName });
-                userData.name = fullName;
             }
             
+            // إعادة تعيين عداد الإعلانات إذا تغير اليوم
             const today = new Date().toDateString();
             if (userData.lastAdDate !== today) {
                 const resetData = {
@@ -542,21 +556,40 @@ export default {
                 };
                 
                 await handleDbUpdate(env, `users/${userId}`, resetData);
-                userData = { ...userData, ...resetData };
             }
+            
+            // تحديث بيانات المستخدم بعد التغييرات
+            const updatedResult = await handleDbGet(env, `users/${userId}`);
+            userData = updatedResult.data || userData;
         }
+        
+        // تحديث/إنشاء المسابقة
+        const competitionData = await updateOrCreateCompetition(env);
         
         const settingsResult = await handleGetConfig();
         const settings = settingsResult.data?.settings || {};
+        
+        // جلب عدد تذاكر المستخدم في المسابقة
+        const userTickets = competitionData?.userTickets || {};
+        const userTicketCount = userTickets[userId] || 0;
         
         return {
             success: true,
             data: {
                 userData: userData,
-                settings: settings
+                settings: settings,
+                contest: {
+                    yourTickets: userTicketCount,
+                    totalTickets: competitionData?.totalTickets || 0,
+                    prizePool: competitionData?.prizePool || 0,
+                    isActive: competitionData?.isActive !== false,
+                    endTime: competitionData?.endTime || (Date.now() + 86400000),
+                    startTime: competitionData?.startTime || Date.now()
+                }
             }
         };
     } catch (error) {
+        console.error('Initialize user error:', error);
         return {
             success: false,
             error: error.message
@@ -663,11 +696,15 @@ export default {
         
         await handleDbPush(env, `users/${userId}/history`, historyEntry);
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
+        
         return {
             success: true,
             data: {
-                newGLXBalance: updates.dogsBalance,
-                newTONBalance: updates.tonBalance
+                newGLXBalance: updatedUserData.dogsBalance,
+                newTONBalance: updatedUserData.tonBalance
             }
         };
     } catch (error) {
@@ -740,16 +777,8 @@ export default {
         const newBalance = userData.dogsBalance - totalCost;
         await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
         
-        const competitionResult = await handleDbGet(env, 'competition/current');
-        const competitionData = competitionResult.data || {
-            isActive: true,
-            startTime: Date.now(),
-            endTime: Date.now() + (24 * 60 * 60 * 1000),
-            totalTickets: 0,
-            prizePool: 0,
-            userTickets: {},
-            winners: []
-        };
+        // تأكد من وجود مسابقة نشطة
+        const competitionData = await updateOrCreateCompetition(env);
         
         const currentUserTickets = competitionData.userTickets[userId] || 0;
         competitionData.userTickets[userId] = currentUserTickets + tickets;
@@ -767,16 +796,22 @@ export default {
             date: new Date().toISOString()
         });
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || userData;
+        
         return {
             success: true,
             data: {
-                newBalance: newBalance,
+                newBalance: updatedUserData.dogsBalance,
                 userTickets: competitionData.userTickets[userId],
                 totalTickets: competitionData.totalTickets,
-                prizePool: competitionData.prizePool
+                prizePool: competitionData.prizePool,
+                contestEndTime: competitionData.endTime
             }
         };
     } catch (error) {
+        console.error('Buy tickets error:', error);
         return {
             success: false,
             error: error.message
@@ -786,8 +821,8 @@ export default {
   
   async function handleGetCompetitionLeaderboard(env) {
     try {
-        const competitionResult = await handleDbGet(env, 'competition/current');
-        const competitionData = competitionResult.data || {};
+        // تأكد من وجود مسابقة نشطة
+        const competitionData = await updateOrCreateCompetition(env);
         
         const userTickets = competitionData.userTickets || {};
         const leaderboard = [];
@@ -809,10 +844,17 @@ export default {
         return {
             success: true,
             data: {
-                leaderboard: leaderboard.slice(0, 10)
+                leaderboard: leaderboard.slice(0, 10),
+                contest: {
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    endTime: competitionData.endTime,
+                    isActive: competitionData.isActive !== false
+                }
             }
         };
     } catch (error) {
+        console.error('Get competition leaderboard error:', error);
         return {
             success: false,
             error: error.message
@@ -903,13 +945,18 @@ export default {
             });
         }
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || userData;
+        
         return {
             success: true,
             data: {
                 isWin: isWin,
                 resultSide: resultSide,
                 winAmount: winAmount,
-                newBalance: isWin ? newBalance + winAmount : newBalance
+                newBalance: isWin ? newBalance + winAmount : newBalance,
+                currentBalance: updatedUserData.dogsBalance
             }
         };
     } catch (error) {
@@ -964,11 +1011,15 @@ export default {
             date: new Date().toISOString()
         });
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || userData;
+        
         return {
             success: true,
             data: {
                 reward: reward,
-                newBalance: newBalance
+                newBalance: updatedUserData.dogsBalance
             }
         };
     } catch (error) {
@@ -1090,22 +1141,30 @@ export default {
                 date: new Date().toISOString()
             });
             
+            // جلب بيانات المستخدم المحدثة
+            const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+            const updatedUserData = updatedUserResult.data || userData;
+            
             return {
                 success: true,
                 data: {
                     results: results,
                     winAmount: winAmount,
-                    newBalance: newBalance,
+                    newBalance: updatedUserData.dogsBalance,
                     newSpins: newSpins
                 }
             };
         } else {
+            // جلب بيانات المستخدم المحدثة
+            const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+            const updatedUserData = updatedUserResult.data || userData;
+            
             return {
                 success: true,
                 data: {
                     results: results,
                     winAmount: 0,
-                    newBalance: userData.dogsBalance,
+                    newBalance: updatedUserData.dogsBalance,
                     newSpins: newSpins
                 }
             };
@@ -1189,13 +1248,17 @@ export default {
             date: new Date().toISOString()
         });
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || userData;
+        
         return {
             success: true,
             data: {
                 reward: reward,
                 lastDailyClaim: now,
                 dailyStreak: streak + 1,
-                newBalance: userData.dogsBalance + reward
+                newBalance: updatedUserData.dogsBalance
             }
         };
     } catch (error) {
@@ -1305,11 +1368,14 @@ export default {
         
         let completedCount = 0;
         let totalPaid = 0;
+        let pendingCount = 0;
         
-        for (const withdrawal of Object.values(withdrawalsData)) {
+        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
             if (withdrawal.status === 'completed' || withdrawal.processed === true) {
                 completedCount++;
                 totalPaid += parseFloat(withdrawal.amount || 0);
+            } else if (withdrawal.status === 'pending') {
+                pendingCount++;
             }
         }
         
@@ -1317,10 +1383,13 @@ export default {
             success: true,
             data: {
                 completedCount: completedCount,
-                totalPaid: totalPaid
+                totalPaid: totalPaid.toFixed(4),
+                pendingCount: pendingCount,
+                totalWithdrawals: Object.keys(withdrawalsData).length
             }
         };
     } catch (error) {
+        console.error('Get withdrawal stats error:', error);
         return {
             success: false,
             error: error.message
@@ -1452,10 +1521,14 @@ export default {
             date: new Date().toISOString()
         });
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || userData;
+        
         return {
             success: true,
             data: {
-                newBalance: newBalance
+                newBalance: updatedUserData.dogsBalance
             }
         };
     } catch (error) {
@@ -1547,12 +1620,16 @@ export default {
             date: new Date().toISOString()
         });
         
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
+        
         return {
             success: true,
             data: {
                 [adCountField]: currentCount + 1,
                 adsWatched: updates.adsWatched,
-                newBalance: updates.dogsBalance
+                newBalance: updatedUserData.dogsBalance
             }
         };
     } catch (error) {
@@ -1651,5 +1728,113 @@ export default {
             success: false,
             error: error.message
         };
+    }
+  }
+  
+  // وظيفة جديدة: جلب بيانات المستخدم المحدثة
+  async function handleGetUserData(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        // جلب بيانات المسابقة الحالية للمستخدم
+        const competitionResult = await handleDbGet(env, 'competition/current');
+        const competitionData = competitionResult.data || {};
+        
+        const userTickets = competitionData.userTickets || {};
+        const userTicketCount = userTickets[userId] || 0;
+        
+        return {
+            success: true,
+            data: {
+                userData: userResult.data,
+                contest: {
+                    yourTickets: userTicketCount,
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    isActive: competitionData.isActive !== false,
+                    endTime: competitionData.endTime || (Date.now() + 86400000),
+                    startTime: competitionData.startTime || Date.now()
+                }
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+  }
+  
+  // وظيفة لإنشاء/تحديث المسابقة
+  async function updateOrCreateCompetition(env) {
+    try {
+        const competitionResult = await handleDbGet(env, 'competition/current');
+        let competitionData = competitionResult.data || {};
+        
+        const now = Date.now();
+        const shouldCreateNew = 
+            !competitionData.isActive || 
+            !competitionData.endTime || 
+            now > competitionData.endTime;
+        
+        if (shouldCreateNew) {
+            // إنشاء مسابقة جديدة
+            competitionData = {
+                isActive: true,
+                startTime: now,
+                endTime: now + (24 * 60 * 60 * 1000), // 24 ساعة
+                totalTickets: 0,
+                prizePool: 0,
+                userTickets: {},
+                winners: []
+            };
+            
+            await handleDbSet(env, 'competition/current', competitionData);
+            
+            // إذا كانت هناك مسابقة سابقة، حفظ الفائزين
+            if (competitionResult.data && competitionResult.data.userTickets) {
+                const oldTickets = competitionResult.data.userTickets;
+                if (Object.keys(oldTickets).length > 0) {
+                    // اختيار الفائز (يمكن تطوير هذا المنطق)
+                    const userIds = Object.keys(oldTickets);
+                    const winnerId = userIds[Math.floor(Math.random() * userIds.length)];
+                    
+                    const winnerData = {
+                        userId: winnerId,
+                        tickets: oldTickets[winnerId] || 0,
+                        prize: competitionResult.data.prizePool || 0,
+                        timestamp: now
+                    };
+                    
+                    await handleDbPush(env, 'competition/winners', winnerData);
+                    
+                    // منح الجائزة للمستخدم الفائز
+                    const userResult = await handleDbGet(env, `users/${winnerId}`);
+                    if (userResult.success && userResult.data) {
+                        const userData = userResult.data;
+                        const newBalance = (userData.tonBalance || 0) + (competitionResult.data.prizePool || 0);
+                        await handleDbUpdate(env, `users/${winnerId}`, { 
+                            tonBalance: newBalance 
+                        });
+                        
+                        await handleDbPush(env, `users/${winnerId}/history`, {
+                            type: 'earn',
+                            description: 'Competition Prize',
+                            amount: competitionResult.data.prizePool || 0,
+                            currency: 'TON',
+                            date: new Date().toISOString()
+                        });
+                    }
+                }
+            }
+        }
+        
+        return competitionData;
+    } catch (error) {
+        console.error('Error updating competition:', error);
+        return null;
     }
   }
