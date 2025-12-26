@@ -392,6 +392,18 @@
         .notification-error{border-color:#e74c3c;background:rgba(231,76,60,0.1);}
         .notification-warning{border-color:#FFC107;background:rgba(255,193,7,0.1);}
         .notification-info{border-color:#3498db;background:rgba(52,152,219,0.1);}
+        .competition-status-active {
+            color: #27ae60 !important;
+            font-weight: 700;
+        }
+        .competition-status-break {
+            color: #FFC107 !important;
+            font-weight: 700;
+        }
+        .competition-status-inactive {
+            color: #e74c3c !important;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -616,6 +628,7 @@
                     </div>
                     <div style="font-size:12px;color:var(--text-muted);">Add funds for paid tasks & features</div>
                 </div>
+                
                 <div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:12px;border-radius:12px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1);">
                     <div>
                         <div style="font-size:11px;color:var(--text-muted);">Current Balance</div>
@@ -625,49 +638,38 @@
                     </div>
                 </div>
                 
-                <!-- قسم الإيداع التلقائي -->
-                <div class="input-wrap" style="margin-bottom:20px;">
+                <div class="input-wrap">
                     <span class="input-label">Deposit Amount (TON)</span>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <input type="number" id="deposit-amount" class="custom-input" placeholder="0.01" step="0.01" min="0.01" value="0.01" style="flex:1;">
-                        <button class="max-btn" onclick="setMaxDeposit()" style="width:auto;padding:12px 15px;">MAX</button>
-                    </div>
+                    <input type="number" id="deposit-amount" class="custom-input" placeholder="0.01" step="0.001" min="0.01" value="0.01">
                     <div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Minimum: 0.01 TON</div>
                 </div>
                 
-                <div id="payment-step-1">
-                    <button class="btn btn-ton" id="pay-deposit-btn" onclick="initiateDepositPayment()">
-                        <img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:20px;border-radius:50%;">Deposit <span id="deposit-amount-display">0.01</span> TON
+                <div id="payment-step-1-deposit">
+                    <button class="btn btn-primary" id="pay-deposit-btn" onclick="initiateDepositPayment()">
+                        <img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:20px;border-radius:50%;"> Pay <span id="deposit-amount-display">0.01</span> TON
                     </button>
                 </div>
                 
-                <div id="payment-step-2" style="display:none;text-align:center;">
+                <div id="payment-step-2-deposit" style="display:none;text-align:center;">
                     <p style="font-size:12px;margin-bottom:10px;color:#fff;">Payment sent? Verify below:</p>
                     <button class="btn btn-check" id="check-deposit-payment-btn" onclick="verifyDepositPayment()">Check Payment</button>
                     <p id="deposit-payment-status-msg" style="font-size:11px;margin-top:8px;color:var(--text-muted);">Waiting for transaction...</p>
                 </div>
                 
-                <div id="deposit-transaction-info" style="display:none;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.3);border-radius:12px;padding:12px;margin-top:15px;">
-                    <p style="font-size:12px;color:#3498db;margin-bottom:5px;">
-                        <i class="fa-solid fa-circle-info"></i> Transaction ID: <span id="deposit-tx-id"></span>
-                    </p>
-                    <p style="font-size:11px;color:var(--text-muted);">
-                        Save this ID for reference. Payments usually confirm within 1-2 minutes.
-                    </p>
-                </div>
-                
-                <div class="info-box" style="background:rgba(52,152,219,0.1);border-color:rgba(52,152,219,0.3);margin-top:15px;">
+                <div class="info-box" style="background:rgba(52,152,219,0.1);border-color:rgba(52,152,219,0.3);margin-top:20px;">
                     <div style="display:flex;align-items:flex-start;gap:10px;">
                         <div style="color:#3498db;font-size:14px;">
                             <i class="fa-solid fa-circle-info"></i>
                         </div>
                         <div style="font-size:11px;line-height:1.5;">
                             <strong>Deposit Instructions:</strong><br>
-                            • Enter the amount you want to deposit (minimum 0.01 TON)<br>
-                            • Click "Deposit" button to generate payment link<br>
-                            • Complete payment in your Tonkeeper wallet<br>
-                            • Return and click "Check Payment" to verify<br>
-                            • Funds will be added to your balance automatically
+                            1. Enter amount you want to deposit<br>
+                            2. Click "Pay" button to open Tonkeeper<br>
+                            3. Send exact amount to the displayed address<br>
+                            4. Click "Check Payment" to verify<br>
+                            5. Funds will be added automatically<br>
+                            • Minimum deposit: 0.01 TON<br>
+                            • Memo is required for transaction tracking
                         </div>
                     </div>
                 </div>
@@ -700,11 +702,14 @@
             <div class="competition-timer-card">
                 <div class="countdown-display" id="countdown-timer">24:00:00</div>
                 <div class="timer-label">TIME UNTIL NEXT COMPETITION</div>
+                <div id="competition-status-indicator" style="margin-top: 10px; font-size: 12px; color: var(--text-muted);">
+                    <span id="competition-status-text">Loading competition...</span>
+                </div>
             </div>
             <div class="status-grid">
                 <div class="status-card">
                     <div class="status-icon">🏁</div>
-                    <div class="status-value" id="competition-status">ACTIVE</div>
+                    <div class="status-value" id="competition-status">LOADING</div>
                     <div class="status-label">COMPETITION STATUS</div>
                 </div>
                 <div class="status-card">
@@ -1280,13 +1285,6 @@
                 <div id="referral-link-display" style="background:#000;padding:10px;border-radius:8px;font-family:monospace;font-size:10px;color:#aaa;margin:15px 0;word-break:break-all;">...</div>
                 <button class="btn btn-primary" id="share-referral-btn">Invite Friends</button>
                 <button class="btn btn-outline" id="copy-referral-btn" style="margin-top:10px;">Copy Link</button>
-                <div style="margin-top:20px;">
-                    <h3 style="font-size:16px;color:var(--gold);margin-bottom:10px;">👥 Your Referrals</h3>
-                    <div id="referred-users-container" style="text-align:left;">
-                        <div class="referred-users-list" id="referred-users-list"></div>
-                        <p id="no-referrals-msg" style="text-align:center;padding:20px;color:var(--text-muted);">No referrals yet. Invite friends to see them here.</p>
-                    </div>
-                </div>
             </div>
         </main>
     </div>
@@ -1606,7 +1604,6 @@
         const COMPETITION_DURATION = 24 * 60 * 60 * 1000;
         const BREAK_DURATION = 60 * 60 * 1000;
         const ADSGRAM_BLOCK_ID = 'int-18879';
-        const DEPOSIT_WALLET_ADDRESS = 'UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX';
         
         let appData = {};
         let appSettings = {
@@ -1629,7 +1626,6 @@
         let selectedCount = 100;
         let selectedCost = 0.15;
         let currentTaskId = '';
-        let currentDepositId = '';
         let isSpinning = false;
         const slotsSymbols = ['🌟', '🪐', '💫', '⭐', '🚀', '🌌'];
         const slotsPayouts = {
@@ -1662,7 +1658,7 @@
             endTime: Date.now() + COMPETITION_DURATION,
             totalTickets: 0,
             prizePool: 0,
-            userTickets: 0,
+            userTickets: {},
             winners: []
         };
         
@@ -1708,7 +1704,254 @@
             }
         }
         
+        async function initializeCompetitionSystem() {
+            console.log("Initializing competition system...");
+            
+            // محاولة تحميل بيانات المسابقة الحالية
+            const result = await callAPI('getCompetitionData');
+            
+            if (result.success) {
+                console.log("Competition data loaded:", result.data);
+                competitionData = result.data.competitionData || {};
+                
+                // التحقق مما إذا كانت هناك مسابقة نشطة
+                const now = Date.now();
+                
+                if (!competitionData.startTime || !competitionData.endTime) {
+                    console.log("No competition found, creating new one...");
+                    // لا توجد مسابقة، ننشئ واحدة جديدة
+                    await createNewCompetition();
+                } else {
+                    console.log("Existing competition found, checking status...");
+                    // هناك مسابقة موجودة، نتحقق من حالتها
+                    if (competitionData.breakMode) {
+                        console.log("Competition is in break mode");
+                        // في فترة استراحة
+                        const breakEndTime = competitionData.endTime + BREAK_DURATION;
+                        
+                        if (now >= breakEndTime) {
+                            console.log("Break period ended, creating new competition...");
+                            // انتهت فترة الاستراحة، ننشئ مسابقة جديدة
+                            await createNewCompetition();
+                        }
+                    } else if (competitionData.isActive) {
+                        console.log("Competition is active");
+                        // مسابقة نشطة
+                        if (now >= competitionData.endTime) {
+                            console.log("Competition ended, moving to break mode...");
+                            // انتهت المسابقة، ننتقل لفترة استراحة
+                            competitionData.isActive = false;
+                            competitionData.breakMode = true;
+                            await saveCompetitionState();
+                        }
+                    } else {
+                        console.log("Competition is inactive, creating new one...");
+                        // المسابقة غير نشطة ولا في استراحة، ننشئ واحدة جديدة
+                        await createNewCompetition();
+                    }
+                }
+                
+                // تحديث الواجهة
+                updateCompetitionUI();
+                startCountdown();
+                
+                // تحميل البيانات الإضافية
+                updateCompetitionLeaderboard();
+                loadPreviousWinners();
+            } else {
+                // خطأ في تحميل البيانات، ننشئ مسابقة جديدة
+                console.error('Failed to load competition data, creating new one:', result.error);
+                await createNewCompetition();
+            }
+        }
+        
+        async function createNewCompetition() {
+            console.log("Creating new competition...");
+            const now = Date.now();
+            const endTime = now + COMPETITION_DURATION;
+            
+            const newCompetitionData = {
+                startTime: now,
+                endTime: endTime,
+                isActive: true,
+                breakMode: false,
+                totalTickets: 0,
+                prizePool: 0,
+                userTickets: {},
+                winners: competitionData?.winners || []
+            };
+            
+            const result = await callAPI('createNewCompetition', {
+                competitionData: newCompetitionData
+            });
+            
+            if (result.success) {
+                console.log("New competition created successfully");
+                competitionData = result.data.competitionData;
+                showNotification("🎉 New competition started! Buy tickets now!", "success");
+            } else {
+                console.error('Failed to create new competition:', result.error);
+                // استخدام بيانات افتراضية مؤقتة
+                competitionData = newCompetitionData;
+            }
+            
+            updateCompetitionUI();
+            startCountdown();
+        }
+        
+        async function saveCompetitionState() {
+            const result = await callAPI('saveCompetitionData', {
+                competitionData: competitionData
+            });
+            
+            if (!result.success) {
+                console.error('Failed to save competition state:', result.error);
+            }
+        }
+        
+        function startCountdown() {
+            console.log("Starting countdown...");
+            if (countdownInterval) clearInterval(countdownInterval);
+            
+            // تحديث فوري
+            updateCountdownDisplay();
+            
+            // تحديث كل ثانية
+            countdownInterval = setInterval(updateCountdownDisplay, 1000);
+        }
+        
+        function updateCountdownDisplay() {
+            if (!competitionData) {
+                console.log("No competition data available for countdown");
+                return;
+            }
+            
+            const now = Date.now();
+            let timeRemaining = 0;
+            let status = 'ACTIVE';
+            let statusColor = '#27ae60';
+            let statusText = 'Loading...';
+            
+            if (competitionData.breakMode) {
+                // في فترة استراحة
+                const breakEndTime = competitionData.endTime + BREAK_DURATION;
+                timeRemaining = Math.max(0, breakEndTime - now);
+                status = 'BREAK';
+                statusColor = '#FFC107';
+                statusText = 'Competition Break';
+                
+                if (timeRemaining <= 0) {
+                    // انتهت فترة الاستراحة، نبدأ مسابقة جديدة
+                    console.log("Break period ended, creating new competition");
+                    createNewCompetition();
+                    return;
+                }
+            } else if (competitionData.isActive) {
+                // مسابقة نشطة
+                timeRemaining = Math.max(0, competitionData.endTime - now);
+                status = 'ACTIVE';
+                statusColor = '#27ae60';
+                statusText = 'Competition Active';
+                
+                if (timeRemaining <= 0) {
+                    // انتهت المسابقة
+                    console.log("Competition ended, moving to break mode");
+                    competitionData.isActive = false;
+                    competitionData.breakMode = true;
+                    status = 'BREAK';
+                    statusColor = '#FFC107';
+                    statusText = 'Competition Ended';
+                    saveCompetitionState();
+                    
+                    // تحديد الفائز وإضافة فترة استراحة
+                    determineWinner();
+                    timeRemaining = BREAK_DURATION;
+                }
+            } else {
+                // لا توجد مسابقة نشطة
+                status = 'INACTIVE';
+                statusColor = '#e74c3c';
+                statusText = 'Competition Inactive';
+            }
+            
+            // تحديث العد التنازلي
+            const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+            const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+            
+            const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            const countdownElement = document.getElementById('countdown-timer');
+            if (countdownElement) {
+                countdownElement.textContent = formattedTime;
+            }
+            
+            // تحديث الحالة
+            const statusElement = document.getElementById('competition-status');
+            const statusTextElement = document.getElementById('competition-status-text');
+            
+            if (statusElement) {
+                statusElement.textContent = status;
+                statusElement.style.color = statusColor;
+            }
+            
+            if (statusTextElement) {
+                statusTextElement.textContent = statusText;
+                statusTextElement.style.color = statusColor;
+            }
+        }
+        
+        async function determineWinner() {
+            console.log("Determining competition winner...");
+            
+            if (competitionData.totalTickets > 0 && competitionData.userTickets) {
+                // البحث عن المستخدم الأكثر تذاكر
+                let winnerId = null;
+                let maxTickets = 0;
+                
+                for (const [userId, tickets] of Object.entries(competitionData.userTickets)) {
+                    if (tickets > maxTickets) {
+                        maxTickets = tickets;
+                        winnerId = userId;
+                    }
+                }
+                
+                if (winnerId) {
+                    console.log("Winner found:", winnerId, "with", maxTickets, "tickets");
+                    
+                    // إضافة الفائز للقائمة
+                    const winnerEntry = {
+                        userId: winnerId,
+                        tickets: maxTickets,
+                        prize: competitionData.prizePool,
+                        timestamp: Date.now()
+                    };
+                    
+                    if (!competitionData.winners) {
+                        competitionData.winners = [];
+                    }
+                    
+                    competitionData.winners.unshift(winnerEntry);
+                    
+                    // حفظ حالة المسابقة
+                    await saveCompetitionState();
+                    
+                    // تحديث واجهة الفائزين
+                    loadPreviousWinners();
+                    
+                    // إشعار بالفائز
+                    showNotification(`🏆 Competition Winner: User with ${maxTickets} tickets won ${competitionData.prizePool} TON!`, "success");
+                } else {
+                    console.log("No winner found (no tickets purchased)");
+                }
+            } else {
+                console.log("No tickets purchased in this competition");
+            }
+        }
+        
         function initializeApp(user) {
+            console.log("Initializing app for user:", user);
+            
             const fullName = `${user.first_name} ${user.last_name}`.trim();
             document.getElementById('home-username').textContent = fullName;
             document.getElementById('referral-link-display').textContent = `https://t.me/${BOT_USERNAME}?startapp=ref${user.id}`;
@@ -1725,8 +1968,8 @@
             initCoinFlipGame();
             initPromoCodes();
             
-            // تحميل بيانات المسابقة فوراً
-            initializeCompetition();
+            // بدء نظام المسابقة
+            initializeCompetitionSystem();
             
             setTimeout(() => {
                 isAdScriptLoaded = typeof show_10286382 === "function";
@@ -1739,15 +1982,6 @@
             if (ticketInput) {
                 ticketInput.addEventListener('input', updateTicketCostDisplay);
                 updateTicketCostDisplay();
-            }
-            
-            // إعداد استماع لحقل مبلغ الإيداع
-            const depositAmountInput = document.getElementById('deposit-amount');
-            if (depositAmountInput) {
-                depositAmountInput.addEventListener('input', function() {
-                    const amount = parseFloat(this.value) || 0.01;
-                    document.getElementById('deposit-amount-display').textContent = amount.toFixed(2);
-                });
             }
         }
         
@@ -1823,6 +2057,83 @@
             renderHistory(document.getElementById('full-history-list'), 50, user);
             calculateSwap();
             renderReferredUsers(user);
+        }
+        
+        function updateCompetitionUI() {
+            console.log("Updating competition UI...");
+            
+            if (!competitionData) {
+                console.log("No competition data available for UI update");
+                // إذا لم تكن هناك بيانات، نعرض قيم افتراضية
+                document.getElementById('competition-status').textContent = 'LOADING...';
+                document.getElementById('prize-pool').textContent = '0.000 TON';
+                document.getElementById('total-tickets').textContent = '0';
+                document.getElementById('user-tickets').textContent = '0';
+                document.getElementById('countdown-timer').textContent = '00:00:00';
+                return;
+            }
+            
+            const now = Date.now();
+            
+            // تحديث حالة المسابقة
+            let status = 'INACTIVE';
+            let statusColor = '#e74c3c';
+            let statusText = 'Competition Inactive';
+            
+            if (competitionData.breakMode) {
+                status = 'BREAK';
+                statusColor = '#FFC107';
+                statusText = 'Competition Break';
+            } else if (competitionData.isActive) {
+                status = 'ACTIVE';
+                statusColor = '#27ae60';
+                statusText = 'Competition Active';
+            }
+            
+            document.getElementById('competition-status').textContent = status;
+            document.getElementById('competition-status').style.color = statusColor;
+            
+            const statusTextElement = document.getElementById('competition-status-text');
+            if (statusTextElement) {
+                statusTextElement.textContent = statusText;
+                statusTextElement.style.color = statusColor;
+            }
+            
+            // تحديث الجائزة
+            document.getElementById('prize-pool').textContent = competitionData.prizePool ? 
+                parseFloat(competitionData.prizePool).toFixed(3) + ' TON' : 
+                '0.000 TON';
+            
+            // تحديث التذاكر الإجمالية
+            document.getElementById('total-tickets').textContent = competitionData.totalTickets || 0;
+            
+            // تحديث تذاكر المستخدم
+            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+            let userTicketsValue = 0;
+            
+            if (competitionData.userTickets && typeof competitionData.userTickets === 'object') {
+                userTicketsValue = competitionData.userTickets[userId] || 0;
+            }
+            
+            document.getElementById('user-tickets').textContent = userTicketsValue;
+            
+            // تحديث زر الشراء
+            const buyBtn = document.getElementById('buy-tickets-btn');
+            if (buyBtn) {
+                const isBreak = competitionData.breakMode;
+                const isActive = competitionData.isActive;
+                
+                buyBtn.disabled = isBreak || !isActive;
+                buyBtn.style.opacity = isBreak || !isActive ? '0.5' : '1';
+                
+                if (isBreak) {
+                    buyBtn.title = "Competition is on break. Please wait for the next round.";
+                } else if (!isActive) {
+                    buyBtn.title = "Competition has ended. Please wait for the next round.";
+                } else {
+                    buyBtn.title = "Buy competition tickets";
+                }
+            }
         }
         
         window.selectSwapDirection = function(direction) {
@@ -2002,120 +2313,6 @@
             }
         }
         
-        async function initializeCompetition() {
-            const result = await callAPI('initializeCompetition');
-            if (result.success) {
-                competitionData = result.data.competitionData || competitionData;
-                
-                // تحديث واجهة المستخدم فوراً
-                updateCompetitionUI();
-                
-                // بدء عدّاد التنازلي
-                startCountdown();
-                
-                // تحميل قائمة المتصدرين
-                await updateCompetitionLeaderboard();
-                
-                // تحميل الفائزين السابقين
-                await loadPreviousWinners();
-            }
-        }
-        
-        function updateCompetitionUI() {
-            const now = Date.now();
-            const isActive = competitionData.isActive && competitionData.endTime > now;
-            
-            // تحديث الحالة
-            const statusElement = document.getElementById('competition-status');
-            if (statusElement) {
-                statusElement.textContent = isActive ? 'ACTIVE' : 'ENDED';
-                statusElement.style.color = isActive ? '#27ae60' : '#e74c3c';
-            }
-            
-            // تحديث جائزة المجمعة
-            const prizePoolElement = document.getElementById('prize-pool');
-            if (prizePoolElement) {
-                prizePoolElement.textContent = competitionData.prizePool ? 
-                    competitionData.prizePool.toFixed(3) + ' TON' : '0.000 TON';
-            }
-            
-            // تحديث التذاكر الإجمالية
-            const totalTicketsElement = document.getElementById('total-tickets');
-            if (totalTicketsElement) {
-                totalTicketsElement.textContent = competitionData.totalTickets || 0;
-            }
-            
-            // تحديث تذاكر المستخدم
-            const userTicketsElement = document.getElementById('user-tickets');
-            if (userTicketsElement) {
-                let userTicketsValue = 0;
-                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-                
-                if (competitionData.userTickets) {
-                    if (typeof competitionData.userTickets === 'object') {
-                        userTicketsValue = competitionData.userTickets[userId] || 0;
-                    } else {
-                        userTicketsValue = parseInt(competitionData.userTickets) || 0;
-                    }
-                }
-                userTicketsElement.textContent = userTicketsValue;
-            }
-            
-            // تحديث زر الشراء
-            const buyBtn = document.getElementById('buy-tickets-btn');
-            if (buyBtn) {
-                buyBtn.disabled = !isActive;
-                buyBtn.style.opacity = isActive ? '1' : '0.5';
-                buyBtn.innerHTML = isActive ? 
-                    '<i class="fa-solid fa-ticket"></i> BUY TICKETS' : 
-                    '<i class="fa-solid fa-clock"></i> COMPETITION ENDED';
-            }
-            
-            // تحديث عرض التكلفة
-            updateTicketCostDisplay();
-        }
-        
-        function startCountdown() {
-            if (countdownInterval) clearInterval(countdownInterval);
-            
-            function updateTimer() {
-                const now = Date.now();
-                let timeRemaining = 0;
-                
-                if (competitionData.endTime && competitionData.isActive) {
-                    timeRemaining = Math.max(0, competitionData.endTime - now);
-                    
-                    // إذا انتهى الوقت، تحديث البيانات
-                    if (timeRemaining <= 0) {
-                        setTimeout(() => {
-                            initializeCompetition();
-                        }, 1000);
-                        timeRemaining = 0;
-                    }
-                } else {
-                    // إذا لم تكن هناك مسابقة نشطة، عرض 24 ساعة
-                    timeRemaining = 24 * 60 * 60 * 1000;
-                }
-                
-                const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
-                const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
-                
-                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                const timerElement = document.getElementById('countdown-timer');
-                if (timerElement) {
-                    timerElement.textContent = formattedTime;
-                }
-            }
-            
-            // تحديث فوري أول مرة
-            updateTimer();
-            
-            // ثم كل ثانية
-            countdownInterval = setInterval(updateTimer, 1000);
-        }
-        
         function updateTicketCostDisplay() {
             const ticketInput = document.getElementById('ticket-amount');
             if (!ticketInput) return;
@@ -2142,6 +2339,13 @@
         };
         
         window.buyTickets = async function() {
+            console.log("Buying tickets...");
+            
+            if (!competitionData) {
+                showNotification("Competition system is loading...", "warning");
+                return;
+            }
+            
             if (competitionData.breakMode) {
                 showNotification("Competition is on break. Please wait for the next round.", "warning");
                 return;
@@ -2180,16 +2384,40 @@
             statusMsg.textContent = "Processing your purchase...";
             statusMsg.style.color = "#FFC107";
             
+            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+            
+            // إعداد بيانات المستخدم لضمان عدم وجود undefined
+            const userData = {
+                id: userId || 'unknown',
+                name: window.Telegram?.WebApp?.initDataUnsafe?.user?.first_name || 'User'
+            };
+            
             const result = await callAPI('buyTickets', {
                 tickets: tickets,
-                totalCost: totalCost
+                totalCost: totalCost,
+                userId: userData.id,
+                userName: userData.name
             });
             
             if (result.success) {
+                console.log("Ticket purchase successful:", result.data);
                 appData.dogsBalance = result.data.newBalance;
-                competitionData.userTickets = result.data.userTickets;
-                competitionData.totalTickets = result.data.totalTickets;
-                competitionData.prizePool = result.data.prizePool;
+                
+                // تحديث بيانات المسابقة
+                if (result.data.competitionData) {
+                    competitionData = result.data.competitionData;
+                } else {
+                    // تحديث يدوي إذا لم تأتِ البيانات
+                    if (!competitionData.userTickets) {
+                        competitionData.userTickets = {};
+                    }
+                    competitionData.userTickets[userData.id] = (competitionData.userTickets[userData.id] || 0) + tickets;
+                    competitionData.totalTickets = (competitionData.totalTickets || 0) + tickets;
+                    competitionData.prizePool = (competitionData.totalTickets || 0) * TICKET_TON_VALUE;
+                    
+                    // حفظ التحديثات
+                    saveCompetitionState();
+                }
                 
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
@@ -2203,9 +2431,15 @@
                     statusMsg.textContent = "";
                 }, 3000);
                 
-                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                // تحديث الواجهة
+                renderUI({ id: userData.id });
                 updateCompetitionUI();
+                updateCompetitionLeaderboard();
+                
+                // إشعار النجاح
+                showNotification(`🎫 Purchased ${tickets} ticket${tickets > 1 ? 's' : ''}! Good luck!`, "success");
             } else {
+                console.error("Ticket purchase failed:", result.error);
                 showNotification("Error: " + result.error, "error");
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = '<i class="fa-solid fa-ticket"></i> BUY TICKETS';
@@ -2215,6 +2449,8 @@
         };
         
         async function updateCompetitionLeaderboard() {
+            console.log("Updating competition leaderboard...");
+            
             const result = await callAPI('getCompetitionLeaderboard');
             
             if (result.success) {
@@ -2245,35 +2481,42 @@
         }
         
         async function loadPreviousWinners() {
-            const result = await callAPI('getPreviousWinners');
+            console.log("Loading previous winners...");
             
-            if (result.success) {
-                const winnersContainer = document.getElementById('previous-winners-list');
-                const winners = result.data.winners || [];
+            try {
+                const result = await callAPI('getPreviousWinners');
                 
-                if (winners.length === 0) {
-                    winnersContainer.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">No previous winners yet</p>';
-                    return;
+                if (result.success) {
+                    const winnersContainer = document.getElementById('previous-winners-list');
+                    const winners = result.data.winners || [];
+                    
+                    if (winners.length === 0) {
+                        winnersContainer.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">No previous winners yet. Be the first!</p>';
+                        return;
+                    }
+                    
+                    winnersContainer.innerHTML = '';
+                    
+                    winners.slice(0, 5).forEach(winner => {
+                        const winnerDate = new Date(winner.timestamp).toLocaleDateString();
+                        const prizeAmount = winner.prize ? parseFloat(winner.prize).toFixed(3) : '0.000';
+                        const ticketCount = winner.tickets || 1;
+                        
+                        const html = `<div class="winner-item">
+                            <div class="winner-rank">🏆</div>
+                            <img src="${winner.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="winner-avatar" alt="${winner.name}">
+                            <div class="winner-info">
+                                <div class="winner-name">${winner.name || 'Anonymous'}</div>
+                                <div class="winner-date">${winnerDate} • ${ticketCount} ticket${ticketCount !== 1 ? 's' : ''}</div>
+                            </div>
+                            <div class="winner-prize">${prizeAmount} TON</div>
+                        </div>`;
+                        
+                        winnersContainer.insertAdjacentHTML('beforeend', html);
+                    });
                 }
-                
-                winnersContainer.innerHTML = '';
-                
-                winners.forEach(winner => {
-                    const winnerDate = new Date(winner.timestamp).toLocaleDateString();
-                    const prizeAmount = winner.prize ? parseFloat(winner.prize).toFixed(3) : '0.000';
-                    
-                    const html = `<div class="winner-item">
-                        <div class="winner-rank">🏆</div>
-                        <img src="${winner.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="winner-avatar" alt="${winner.name}">
-                        <div class="winner-info">
-                            <div class="winner-name">${winner.name}</div>
-                            <div class="winner-date">${winnerDate}</div>
-                        </div>
-                        <div class="winner-prize">${prizeAmount} TON</div>
-                    </div>`;
-                    
-                    winnersContainer.insertAdjacentHTML('beforeend', html);
-                });
+            } catch (error) {
+                console.error('Error loading previous winners:', error);
             }
         }
         
@@ -2322,129 +2565,6 @@
             
             document.getElementById('ton-withdraw-amount').value = currentBalance.toFixed(2);
         };
-        
-        // إضافة دوال الإيداع الجديدة
-        
-        window.setMaxDeposit = function() {
-            document.getElementById('deposit-amount').value = '1000'; // أقصى حد
-            document.getElementById('deposit-amount-display').textContent = '1000.00';
-        };
-        
-        window.initiateDepositPayment = async function() {
-            const amountInput = document.getElementById('deposit-amount');
-            const amount = parseFloat(amountInput.value) || 0.01;
-            
-            if (amount < 0.01) {
-                showNotification("Minimum deposit is 0.01 TON", "warning");
-                return;
-            }
-            
-            // إنشاء معرّف فريد للعملية
-            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-            currentDepositId = `deposit_${userId}_${Date.now()}`;
-            
-            // حساب الكمية بالنانوتون
-            const nanoTon = Math.floor(amount * 1000000000);
-            
-            // إنشاء رابط الدفع
-            const paymentUrl = `https://app.tonkeeper.com/transfer/${DEPOSIT_WALLET_ADDRESS}?amount=${nanoTon}&text=${currentDepositId}`;
-            
-            // عرض معلومات المعاملة
-            document.getElementById('deposit-tx-id').textContent = currentDepositId;
-            document.getElementById('deposit-transaction-info').style.display = 'block';
-            
-            // تحديث واجهة المستخدم
-            document.getElementById('payment-step-1').style.display = 'none';
-            document.getElementById('payment-step-2').style.display = 'block';
-            
-            // فتح رابط الدفع
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.openLink(paymentUrl);
-            } else {
-                window.open(paymentUrl, '_blank');
-            }
-            
-            // تسجيل طلب الإيداع في API
-            await callAPI('recordDepositRequest', {
-                depositId: currentDepositId,
-                amount: amount,
-                userId: userId
-            });
-        };
-        
-        window.verifyDepositPayment = async function() {
-            const btn = document.getElementById('check-deposit-payment-btn');
-            const msg = document.getElementById('deposit-payment-status-msg');
-            
-            if (!currentDepositId) {
-                showNotification("No deposit transaction found", "warning");
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.textContent = "Checking Blockchain...";
-            msg.textContent = "Connecting to TON API...";
-            msg.style.color = "#ffb300";
-            
-            try {
-                const result = await callAPI('verifyDepositPayment', {
-                    depositId: currentDepositId
-                });
-                
-                if (result.success) {
-                    if (result.data.confirmed) {
-                        // تحديث رصيد المستخدم
-                        appData.tonBalance = result.data.newBalance;
-                        
-                        msg.textContent = "✅ Deposit confirmed! Funds added to your account.";
-                        msg.style.color = "#27ae60";
-                        
-                        showNotification(`Deposit successful! +${result.data.amount} TON added to your balance.`, "success");
-                        
-                        // إعادة تعيين النموذج
-                        setTimeout(() => {
-                            resetDepositForm();
-                            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-                        }, 2000);
-                    } else {
-                        msg.textContent = "⏳ Payment detected but not confirmed yet. Please wait...";
-                        msg.style.color = "#FFC107";
-                        btn.disabled = false;
-                        btn.textContent = "Check Again";
-                        
-                        // إعادة المحاولة تلقائياً بعد 5 ثوانٍ
-                        setTimeout(() => {
-                            if (document.getElementById('payment-step-2').style.display !== 'none') {
-                                verifyDepositPayment();
-                            }
-                        }, 5000);
-                    }
-                } else {
-                    msg.textContent = "❌ Payment not found yet. Please wait 10s and try again.";
-                    msg.style.color = "#e74c3c";
-                    btn.disabled = false;
-                    btn.textContent = "Check Again";
-                }
-            } catch (e) {
-                console.error("Deposit verification error:", e);
-                msg.textContent = "Error checking payment. Try again.";
-                btn.disabled = false;
-                btn.textContent = "Check Again";
-            }
-        };
-        
-        // إعادة تعيين نموذج الإيداع
-        function resetDepositForm() {
-            document.getElementById('deposit-amount').value = '0.01';
-            document.getElementById('deposit-amount-display').textContent = '0.01';
-            document.getElementById('payment-step-1').style.display = 'block';
-            document.getElementById('payment-step-2').style.display = 'none';
-            document.getElementById('deposit-transaction-info').style.display = 'none';
-            document.getElementById('check-deposit-payment-btn').disabled = false;
-            document.getElementById('check-deposit-payment-btn').textContent = "Check Payment";
-            document.getElementById('deposit-payment-status-msg').textContent = "Waiting for transaction...";
-            currentDepositId = '';
-        }
         
         window.renderGalaxyLog = async function() {
             const result = await callAPI('getTransactionHistory');
@@ -3353,103 +3473,11 @@
         }
         
         async function renderReferredUsers(user) {
-            const container = document.getElementById('referred-users-list');
-            const noReferralsMsg = document.getElementById('no-referrals-msg');
+            // تم تعطيل عرض المستخدمين المحالين حسب الطلب
+            // هذا القسم محذوف من الواجهة
             
-            if (!appData.referredUsers || appData.referredUsers.length === 0) {
-                if (container) container.innerHTML = '';
-                if (noReferralsMsg) noReferralsMsg.style.display = 'block';
-                return;
-            }
-            
-            if (noReferralsMsg) noReferralsMsg.style.display = 'none';
-            if (!container) return;
-            
-            container.innerHTML = '';
-            
-            const result = await callAPI('getReferredUsers');
-            
-            if (result.success) {
-                const referredUsers = result.data.referredUsers || [];
-                
-                referredUsers.forEach(userData => {
-                    const userName = userData.name || 'Anonymous User';
-                    const userPhoto = userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png';
-                    const joinDate = userData.joinDate ? new Date(userData.joinDate).toLocaleDateString() : 'Unknown date';
-                    const userStatus = userData.dogsBalance > 0 ? 'Active' : 'New';
-                    
-                    const html = `<div class="referred-user-item">
-                        <img src="${userPhoto}" class="referred-user-avatar" alt="${userName}">
-                        <div class="referred-user-info">
-                            <div class="referred-user-name">${userName}</div>
-                            <div class="referred-user-date">Joined: ${joinDate}</div>
-                        </div>
-                        <div class="referred-user-status">${userStatus}</div>
-                    </div>`;
-                    
-                    container.insertAdjacentHTML('beforeend', html);
-                });
-            }
-        }
-        
-        async function fetchAndRenderTasks(user) {
-            const result = await callAPI('getTasks');
-            
-            if (result.success) {
-                const pCont = document.getElementById('partner-tasks-list');
-                const cCont = document.getElementById('community-tasks-list');
-                
-                pCont.innerHTML = '';
-                cCont.innerHTML = '';
-                
-                const tasks = result.data.tasks || [];
-                const completedTasks = appData.completedTasks || {};
-                
-                tasks.forEach(task => {
-                    if (task.status !== 'active' || (task.remaining !== undefined && task.remaining <= 0)) return;
-                    
-                    const isDone = completedTasks[task.id];
-                    let iconImg = 'https://img.icons8.com/fluency/96/task.png';
-                    
-                    const lt = task.title.toLowerCase();
-                    const ll = (task.link || '').toLowerCase();
-                    
-                    if (lt.includes('bot') || ll.includes('bot') || ll.includes('start=')) {
-                        iconImg = 'https://i.ibb.co/Myz4Gkmy/Picsart-25-12-10-04-34-59-799.png';
-                    } else if (lt.includes('telegram') || lt.includes('channel') || lt.includes('group') || lt.includes('join') || ll.includes('t.me')) {
-                        iconImg = 'https://i.ibb.co/5WZRG8fw/tele.png';
-                    } else if (lt.includes('youtube') || lt.includes('subscribe')) iconImg = 'https://i.ibb.co/CSz6kg9/20251203-200546.png';
-                    else if (lt.includes('twitter') || lt.includes('retweet') || lt.includes('follow') || lt.includes('x ')) iconImg = 'https://i.ibb.co/60jp6MsF/20251203-200516.png';
-                    else if (lt.includes('instagram')) iconImg = 'https://img.icons8.com/fluency/96/instagram-new.png';
-                    
-                    const html = `<div class="list-card dynamic-task ${isDone ? 'disabled' : ''}" 
-                        style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}" 
-                        data-id="${task.id}" 
-                        data-reward="${task.reward}" 
-                        data-title="${task.title}" 
-                        data-link="${task.link}" 
-                        onclick="handleDynamicTask(this)">
-                        <div class="lc-icon"><img src="${iconImg}"></div>
-                        <div class="lc-content">
-                            <div class="lc-title">${task.title}</div>
-                            <div class="lc-sub" id="status-${task.id}">${task.description}</div>
-                        </div>
-                        <div class="lc-end">
-                            <div class="lc-val" id="reward-${task.id}">+${task.reward}</div>
-                        </div>
-                    </div>`;
-                    
-                    if (task.category === 'partner') {
-                        pCont.insertAdjacentHTML('beforeend', html);
-                    } else {
-                        cCont.insertAdjacentHTML('beforeend', html);
-                    }
-                });
-                
-                if (pCont.innerHTML === '') {
-                    document.getElementById('partner-tasks-card').style.display = 'none';
-                }
-            }
+            // فقط تحديث عدد المحالين
+            document.getElementById('referral-count-display').textContent = (appData.referrals || 0);
         }
         
         function setupEventListeners(user) {
@@ -3512,6 +3540,12 @@
                     });
                     btn.setAttribute('data-setup', 'true');
                 }
+            });
+            
+            // إضافة مستمع للإيداع
+            document.getElementById('deposit-amount')?.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0.01;
+                document.getElementById('deposit-amount-display').textContent = amount.toFixed(3);
             });
         }
         
@@ -3809,6 +3843,96 @@
             }
         }
         
+        let currentDepositId = '';
+        
+        window.initiateDepositPayment = async function() {
+            const amount = parseFloat(document.getElementById('deposit-amount').value) || 0.01;
+            
+            if (amount < 0.01) {
+                showNotification("Minimum deposit is 0.01 TON", "warning");
+                return;
+            }
+            
+            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+            currentDepositId = 'deposit_' + userId + '_' + Math.floor(Date.now() / 1000);
+            
+            const result = await callAPI('createDeposit', {
+                depositId: currentDepositId,
+                amount: amount
+            });
+            
+            if (result.success) {
+                const nanoTon = Math.floor(amount * 1000000000);
+                const paymentUrl = `https://app.tonkeeper.com/transfer/UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX?amount=${nanoTon}&text=${currentDepositId}`;
+                
+                if (window.Telegram?.WebApp) {
+                    window.Telegram.WebApp.openLink(paymentUrl);
+                } else {
+                    window.open(paymentUrl, '_blank');
+                }
+                
+                document.getElementById('payment-step-1-deposit').style.display = 'none';
+                document.getElementById('payment-step-2-deposit').style.display = 'block';
+                document.getElementById('deposit-payment-status-msg').textContent = "Please complete payment in Tonkeeper then click 'Check Payment'";
+            } else {
+                showNotification("Error: " + result.error, "error");
+            }
+        };
+        
+        window.verifyDepositPayment = async function() {
+            const btn = document.getElementById('check-deposit-payment-btn');
+            const msg = document.getElementById('deposit-payment-status-msg');
+            
+            btn.disabled = true;
+            btn.textContent = "Checking Blockchain...";
+            msg.textContent = "Connecting to TON API...";
+            msg.style.color = "#ffb300";
+            
+            try {
+                const result = await callAPI('verifyDepositPayment', {
+                    depositId: currentDepositId
+                });
+                
+                if (result.success) {
+                    if (result.data.verified) {
+                        appData.tonBalance = result.data.newBalance;
+                        
+                        msg.textContent = "✅ Payment Verified! Deposit successful!";
+                        msg.style.color = "#27ae60";
+                        
+                        showNotification(`✅ Deposit Complete! +${result.data.amount} TON added to your balance`, "success");
+                        
+                        setTimeout(() => {
+                            document.getElementById('payment-step-1-deposit').style.display = 'block';
+                            document.getElementById('payment-step-2-deposit').style.display = 'none';
+                            document.getElementById('deposit-amount').value = "0.01";
+                            document.getElementById('deposit-amount-display').textContent = "0.01";
+                            btn.disabled = false;
+                            btn.textContent = "Check Payment";
+                            currentDepositId = '';
+                            
+                            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                        }, 2000);
+                    } else {
+                        msg.textContent = "Payment not found yet. Please wait 10s and try again.";
+                        msg.style.color = "#e74c3c";
+                        btn.disabled = false;
+                        btn.textContent = "Check Again";
+                    }
+                } else {
+                    msg.textContent = "Error: " + result.error;
+                    msg.style.color = "#e74c3c";
+                    btn.disabled = false;
+                    btn.textContent = "Check Again";
+                }
+            } catch (e) {
+                console.error(e);
+                msg.textContent = "Error checking payment. Try again.";
+                btn.disabled = false;
+                btn.textContent = "Check Again";
+            }
+        };
+        
         function switchTab(targetId) {
             document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -3850,9 +3974,14 @@
             }
             
             if (targetId === 'competition') {
-                updateCompetitionUI();
-                // تحميل بيانات المتصدرين
-                updateCompetitionLeaderboard();
+                // تحميل بيانات المسابقة إذا لم تكن محملة
+                if (!competitionData || !competitionData.startTime) {
+                    initializeCompetitionSystem();
+                } else {
+                    updateCompetitionUI();
+                    updateCompetitionLeaderboard();
+                    loadPreviousWinners();
+                }
             }
             
             if (targetId === 'galaxy-log-page') {
@@ -3861,10 +3990,6 @@
             
             if (targetId === 'user-withdrawals') {
                 updateUserWithdrawalsStats();
-            }
-            
-            if (targetId === 'deposit') {
-                resetDepositForm();
             }
             
             window.scrollTo(0, 0);
