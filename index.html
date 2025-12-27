@@ -8,6 +8,9 @@
     <script src="//libtl.com/sdk.js" data-zone="10286382" data-sdk="show_10286382" async></script>
     <script src="https://ad.gigapub.tech/script?id=4102"></script>
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    <!-- إضافة Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
@@ -1323,6 +1326,69 @@
             infoStyle: {background:'rgba(52,152,219,0.1)',border:'1px solid rgba(52,152,219,0.3)',color:'#3498db',borderRadius:'12px',padding:'15px',margin:'15px 0'}
         };
         
+        // إعدادات التطبيق الأساسية
+        const APP_CONFIG = {
+            botUsername: 'testtt1257bot',
+            botWallet: 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv',
+            botToken: '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI',
+            
+            defaultSettings: {
+                adRewardMonetag: 1000,
+                adRewardGiga: 2000,
+                adRewardAdsgram: 2000,
+                limitMonetag: 50,
+                limitGiga: 300,
+                limitAdsgram: 300,
+                minTonWithdrawal: 0.05,
+                minFaucetPayWithdrawal: 0.0001,
+                referralReward: 2000,
+                pricePerClick: 0.0015,
+                glxToTonRate: 0.0000001,
+                tonToGlxRate: 10000000,
+                ticketPrice: 10000,
+                ticketTonValue: 0.001,
+                competitionDuration: 24 * 60 * 60 * 1000,
+                breakDuration: 60 * 60 * 1000,
+                dailyRewards: [2000, 3000, 5000, 7000, 9000, 12000, 15000],
+                coinFlipWinChance: 45,
+                slotsPayouts: {
+                    '🌟🌟🌟': 10000,
+                    '🪐🪐🪐': 5000,
+                    '💫💫💫': 2500,
+                    '⭐⭐⭐': 1200,
+                    '🌟🌟': 700,
+                    'default': 500
+                },
+                promoCodeRewards: 5000
+            }
+        };
+        
+        // استخدام القيم من APP_CONFIG
+        const BOT_USERNAME = APP_CONFIG.botUsername;
+        const BOT_WALLET = APP_CONFIG.botWallet;
+        const BOT_TOKEN = APP_CONFIG.botToken;
+        
+        // تهيئة Firebase
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        let db = null;
+        try {
+            if (firebase && firebase.initializeApp) {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+                console.log("✅ Firebase initialized successfully");
+            }
+        } catch (error) {
+            console.error("❌ Firebase initialization error:", error);
+        }
+        
         function showNotification(message, type = 'info', duration = 5000) {
             const notification = document.createElement('div');
             notification.className = `notification-message notification-${type}`;
@@ -1587,7 +1653,6 @@
             }
         }
         
-        const BOT_USERNAME = 'CashJungleBot';
         const GLX_TO_TON_RATE = 0.0000001;
         const TON_TO_GLX_RATE = 10000000;
         const TICKET_PRICE = 10000;
@@ -1597,18 +1662,7 @@
         const ADSGRAM_BLOCK_ID = 'int-18879';
         
         let appData = {};
-        let appSettings = {
-            adRewardMonetag: 1000,
-            adRewardGiga: 2000,
-            adRewardAdsgram: 2000,
-            limitMonetag: 50,
-            limitGiga: 300,
-            limitAdsgram: 300,
-            minTonWithdrawal: 0.05,
-            minFaucetPayWithdrawal: 0.0001,
-            referralReward: 500,
-            pricePerClick: 0.0015
-        };
+        let appSettings = { ...APP_CONFIG.defaultSettings };
         
         let isAdScriptLoaded = false;
         let isLeaderboardLoaded = false;
@@ -1657,6 +1711,44 @@
         let lastAdClickTime = 0;
         const AD_CLICK_DELAY = 3000;
         
+        // دالة لجلب الإعدادات من Firebase
+        async function fetchAppSettings() {
+            if (!db) {
+                console.log("Firebase not available, using default settings");
+                return appSettings;
+            }
+            
+            try {
+                const doc = await db.collection('settings').doc('appSettings').get();
+                
+                if (doc.exists) {
+                    const firebaseSettings = doc.data();
+                    
+                    // تحديث الإعدادات الحالية بقيم Firebase
+                    const updatedSettings = {
+                        ...appSettings,
+                        ...firebaseSettings
+                    };
+                    
+                    console.log("✅ Settings loaded from Firebase:", updatedSettings);
+                    return updatedSettings;
+                } else {
+                    console.log("No settings found in Firebase, using defaults");
+                    return appSettings;
+                }
+            } catch (error) {
+                console.error("Error fetching settings from Firebase:", error);
+                return appSettings;
+            }
+        }
+        
+        // دالة للحصول على إعدادات محدثة
+        async function getUpdatedSettings() {
+            const newSettings = await fetchAppSettings();
+            appSettings = newSettings;
+            return newSettings;
+        }
+        
         document.addEventListener('DOMContentLoaded', async function() {
             const verificationResult = await performSecurityVerification();
             if (!verificationResult) {
@@ -1682,9 +1774,9 @@
             
             if (result.success) {
                 appData = result.data.userData || {};
-                if (result.data.settings) {
-                    appSettings = result.data.settings;
-                }
+                
+                // جلب الإعدادات من Firebase
+                await getUpdatedSettings();
                 
                 renderUI(user);
                 renderDailyBonusUI();
@@ -2039,9 +2131,14 @@
             document.getElementById('total-tickets').textContent = competitionData.totalTickets || 0;
             
             let userTicketsValue = 0;
-            if (competitionData.userTickets) {
+            
+            if (competitionData && competitionData.userTickets) {
                 if (typeof competitionData.userTickets === 'object') {
-                    userTicketsValue = competitionData.userTickets[userId] || 0;
+                    const userIdStr = userId.toString();
+                    userTicketsValue = competitionData.userTickets[userIdStr] || 0;
+                } else if (Array.isArray(competitionData.userTickets)) {
+                    const userEntry = competitionData.userTickets.find(entry => entry.userId === userId);
+                    userTicketsValue = userEntry ? userEntry.tickets || 0 : 0;
                 } else {
                     userTicketsValue = parseInt(competitionData.userTickets) || 0;
                 }
@@ -2062,6 +2159,26 @@
             }
             
             updateCompetitionLeaderboard();
+        }
+        
+        // دالة لتحميل بيانات المسابقة للمستخدم
+        async function loadUserCompetitionData() {
+            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+            
+            if (!userId) return;
+            
+            const result = await callAPI('getUserCompetitionData', { userId: userId });
+            
+            if (result.success && result.data) {
+                if (result.data.userTickets) {
+                    if (!competitionData.userTickets) {
+                        competitionData.userTickets = {};
+                    }
+                    competitionData.userTickets[userId] = result.data.userTickets;
+                }
+                
+                updateCompetitionUI();
+            }
         }
         
         function startCountdown() {
@@ -2887,7 +3004,7 @@
             
             if (result.success) {
                 const nanoTon = Math.floor(selectedCost * 1000000000);
-                const paymentUrl = `https://app.tonkeeper.com/transfer/UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX?amount=${nanoTon}&text=${currentTaskId}`;
+                const paymentUrl = `https://app.tonkeeper.com/transfer/${BOT_WALLET}?amount=${nanoTon}&text=${currentTaskId}`;
                 
                 if (window.Telegram?.WebApp) {
                     window.Telegram.WebApp.openLink(paymentUrl);
@@ -3080,7 +3197,7 @@
             const msInDay = 86400000;
             const canClaim = (now - lastClaim) >= msInDay;
             
-            const rewards = [2000, 3000, 5000, 7000, 9000, 12000, 15000];
+            const rewards = appSettings.dailyRewards || [2000, 3000, 5000, 7000, 9000, 12000, 15000];
             
             for (let i = 0; i < 7; i++) {
                 let statusClass = '';
@@ -3250,7 +3367,7 @@
             
             const nanoTon = Math.floor(amount * 1000000000);
             
-            const paymentUrl = `https://app.tonkeeper.com/transfer/UQCg1DjKHH1_guXQ0TFmkvj09igxYwEJGfKPijLaHyOHIPTX?amount=${nanoTon}&text=${depositTransactionId}`;
+            const paymentUrl = `https://app.tonkeeper.com/transfer/${BOT_WALLET}?amount=${nanoTon}&text=${depositTransactionId}`;
             
             document.getElementById('deposit-status').style.display = 'block';
             document.getElementById('deposit-status-message').textContent = "Payment link generated. Opening Tonkeeper...";
@@ -3308,6 +3425,51 @@
                 msg.style.color = "#e74c3c";
                 btn.disabled = false;
                 btn.textContent = "Check Again";
+            }
+        }
+        
+        // دالة التحقق من عضوية القناة
+        async function verifyChannelMembership(channelId, userId) {
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: channelId,
+                        user_id: userId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    const status = result.result.status;
+                    return ['member', 'administrator', 'creator'].includes(status);
+                }
+                return false;
+            } catch (error) {
+                console.error('Error verifying membership:', error);
+                return false;
+            }
+        }
+        
+        // استخراج معرف القناة من الرابط
+        function extractChannelIdFromLink(link) {
+            try {
+                const url = new URL(link);
+                const path = url.pathname;
+                
+                if (path.startsWith('/')) {
+                    const username = path.substring(1);
+                    return username;
+                }
+                
+                return null;
+            } catch (e) {
+                console.error('Error parsing link:', e);
+                return null;
             }
         }
         
@@ -3445,6 +3607,9 @@
                 return;
             }
             
+            // تحديث الإعدادات أولاً
+            await getUpdatedSettings();
+            
             lastAdClickTime = Date.now();
             const limit = appSettings.limitMonetag || 50;
             
@@ -3480,6 +3645,9 @@
                 showNotification("Please wait 3 seconds before clicking again.", "warning");
                 return;
             }
+            
+            // تحديث الإعدادات أولاً
+            await getUpdatedSettings();
             
             lastAdClickTime = Date.now();
             const limit = appSettings.limitGiga || 300;
@@ -3517,6 +3685,9 @@
                 showNotification("Please wait 3 seconds before clicking again.", "warning");
                 return;
             }
+            
+            // تحديث الإعدادات أولاً
+            await getUpdatedSettings();
             
             lastAdClickTime = Date.now();
             const limit = appSettings.limitAdsgram || 300;
@@ -3700,30 +3871,67 @@
         };
         
         async function verifyMembership(element, link, taskId, reward, title) {
-            const result = await callAPI('verifyTaskCompletion', {
-                taskId: taskId,
-                reward: reward,
-                title: title,
-                link: link
-            });
+            const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
             
-            if (result.success) {
-                appData.dogsBalance = result.data.newBalance;
-                
-                element.style.opacity = '0.5';
-                element.style.pointerEvents = 'none';
-                document.getElementById(`status-${taskId}`).textContent = "Completed";
-                document.getElementById(`status-${taskId}`).style.color = "#a855f7";
-                document.getElementById(`reward-${taskId}`).textContent = "Done";
-                
-                showNotification(`✅ Task Completed! +${reward} GLX`, "success");
-                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-            } else {
-                showNotification("❌ " + result.error, "warning");
+            if (!userId) {
+                showNotification("❌ User authentication error", "error");
                 element.classList.remove('waiting-verify');
+                return;
+            }
+            
+            const channelId = extractChannelIdFromLink(link);
+            
+            if (!channelId) {
+                showNotification("❌ Invalid channel link", "error");
+                element.classList.remove('waiting-verify');
+                return;
+            }
+            
+            const statusEl = document.getElementById(`status-${taskId}`);
+            statusEl.textContent = "Verifying membership...";
+            statusEl.style.color = "#FFC107";
+            
+            try {
+                const isMember = await verifyChannelMembership(channelId, userId);
                 
-                const statusEl = document.getElementById(`status-${taskId}`);
-                statusEl.textContent = "Join First!";
+                if (isMember) {
+                    const result = await callAPI('verifyTaskCompletion', {
+                        taskId: taskId,
+                        reward: reward,
+                        title: title,
+                        link: link,
+                        channelId: channelId,
+                        verified: true
+                    });
+                    
+                    if (result.success) {
+                        appData.dogsBalance = result.data.newBalance;
+                        
+                        element.style.opacity = '0.5';
+                        element.style.pointerEvents = 'none';
+                        document.getElementById(`status-${taskId}`).textContent = "Verified ✓";
+                        document.getElementById(`status-${taskId}`).style.color = "#27ae60";
+                        document.getElementById(`reward-${taskId}`).textContent = "Done";
+                        
+                        showNotification(`✅ Channel Verified! +${reward} GLX`, "success");
+                        renderUI({ id: userId });
+                    } else {
+                        showNotification("❌ " + result.error, "warning");
+                        element.classList.remove('waiting-verify');
+                        statusEl.textContent = "Join First!";
+                        statusEl.style.color = "#ff4444";
+                    }
+                } else {
+                    showNotification("❌ You must join the channel first!", "warning");
+                    element.classList.remove('waiting-verify');
+                    statusEl.textContent = "Join First!";
+                    statusEl.style.color = "#ff4444";
+                }
+            } catch (error) {
+                console.error("Verification error:", error);
+                showNotification("❌ Verification error. Please try again.", "error");
+                element.classList.remove('waiting-verify');
+                statusEl.textContent = "Error - Try Again";
                 statusEl.style.color = "#ff4444";
             }
         }
