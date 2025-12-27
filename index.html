@@ -1331,6 +1331,234 @@
             infoStyle: {background:'rgba(52,152,219,0.1)',border:'1px solid rgba(52,152,219,0.3)',color:'#3498db',borderRadius:'12px',padding:'15px',margin:'15px 0'}
         };
         
+        // نظام التوكن الأمني
+        let securityToken = null;
+        let tokenExpiryTime = null;
+        let isTokenRefreshing = false;
+        let tokenRefreshQueue = [];
+        
+        // دالة للحصول على توكن أمني صالح
+        async function getValidSecurityToken() {
+            const now = Date.now();
+            
+            // إذا كان التوكن موجوداً ولم ينتهِ، ارجعه
+            if (securityToken && tokenExpiryTime && now < tokenExpiryTime) {
+                return securityToken;
+            }
+            
+            // إذا كان هناك عملية تجديد قيد التنفيذ، انتظرها
+            if (isTokenRefreshing) {
+                return new Promise((resolve) => {
+                    tokenRefreshQueue.push(resolve);
+                });
+            }
+            
+            // طلب توكن جديد
+            return await requestNewSecurityToken();
+        }
+        
+        // دالة لطلب توكن أمني جديد
+        async function requestNewSecurityToken() {
+            try {
+                isTokenRefreshing = true;
+                
+                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'browser_user';
+                const timestamp = Date.now();
+                
+                // طلب توكن جديد من السيرفر
+                const response = await fetch(`${API_URL}/api`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Action': 'getSecurityToken',
+                        'X-User-ID': userId,
+                        'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
+                        'X-Request-ID': 'token_' + timestamp
+                    },
+                    body: JSON.stringify({
+                        action: 'getSecurityToken',
+                        data: { userId: userId },
+                        timestamp: timestamp
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Token request failed: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.token) {
+                    securityToken = result.data.token;
+                    // التوكن صالح لمدة 5 دقائق (300000 مللي ثانية)
+                    tokenExpiryTime = Date.now() + 300000;
+                    console.log("✅ Security token obtained");
+                    
+                    // معالجة الطلبات المنتظرة
+                    while (tokenRefreshQueue.length > 0) {
+                        const resolve = tokenRefreshQueue.shift();
+                        resolve(securityToken);
+                    }
+                    
+                    return securityToken;
+                } else {
+                    throw new Error(result.error || "Failed to get security token");
+                }
+            } catch (error) {
+                console.error("❌ Error getting security token:", error);
+                
+                // في حالة الفشل، إنشاء توكن محلي مؤقت
+                const fallbackToken = 'fallback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                securityToken = fallbackToken;
+                tokenExpiryTime = Date.now() + 60000; // دقيقة واحدة كبديل
+                
+                // معالجة الطلبات المنتظرة
+                while (tokenRefreshQueue.length > 0) {
+                    const resolve = tokenRefreshQueue.shift();
+                    resolve(securityToken);
+                }
+                
+                return securityToken;
+            } finally {
+                isTokenRefreshing = false;
+            }
+        }
+        
+        // دالة لمعالجة أخطاء API
+        async function handleApiError(response, action) {
+            const errorText = await response.text();
+            console.error(`API Error (${action}): ${response.status} - ${errorText}`);
+            
+            let errorMessage = `Request failed with status ${response.status}`;
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // ليس JSON
+            }
+            
+            return {
+                success: false,
+                error: errorMessage,
+                status: response.status
+            };
+        }
+        
+        // دالة لاستدعاء API محمي
+        async function callProtectedAPI(action, data = {}) {
+            try {
+                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'browser_user';
+                const timestamp = Date.now();
+                
+                // الحصول على توكن أمني صالح
+                const token = await getValidSecurityToken();
+                
+                const response = await fetch(`${API_URL}/api`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-ID': userId,
+                        'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
+                        'X-Action': action,
+                        'X-Security-Token': token,
+                        'X-Request-ID': action + '_' + timestamp
+                    },
+                    body: JSON.stringify({
+                        action: action,
+                        data: data,
+                        userId: userId,
+                        timestamp: timestamp
+                    })
+                });
+                
+                if (!response.ok) {
+                    // إذا كان الخطأ بسبب توكن منتهي، حاول تجديده وإعادة الطلب
+                    if (response.status === 401 || response.status === 403) {
+                        console.log("Token expired or invalid, refreshing...");
+                        securityToken = null;
+                        tokenExpiryTime = null;
+                        
+                        // إعادة المحاولة مرة واحدة بعد تجديد التوكن
+                        const newToken = await requestNewSecurityToken();
+                        
+                        const retryResponse = await fetch(`${API_URL}/api`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-User-ID': userId,
+                                'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
+                                'X-Action': action,
+                                'X-Security-Token': newToken,
+                                'X-Request-ID': action + '_retry_' + Date.now()
+                            },
+                            body: JSON.stringify({
+                                action: action,
+                                data: data,
+                                userId: userId,
+                                timestamp: Date.now()
+                            })
+                        });
+                        
+                        if (!retryResponse.ok) {
+                            return await handleApiError(response, action);
+                        }
+                        
+                        const retryResult = await retryResponse.json();
+                        return retryResult;
+                    }
+                    
+                    return await handleApiError(response, action);
+                }
+                
+                const result = await response.json();
+                
+                // إذا كان السيرفر يشير إلى أن التوكن منتهي
+                if (result.error && result.error.includes('token') && (result.error.includes('expired') || result.error.includes('invalid'))) {
+                    console.log("Token invalid according to server, refreshing...");
+                    securityToken = null;
+                    tokenExpiryTime = null;
+                    
+                    // إعادة المحاولة مرة واحدة
+                    const newToken = await requestNewSecurityToken();
+                    
+                    const retryResponse = await fetch(`${API_URL}/api`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-User-ID': userId,
+                            'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
+                            'X-Action': action,
+                            'X-Security-Token': newToken,
+                            'X-Request-ID': action + '_retry2_' + Date.now()
+                        },
+                        body: JSON.stringify({
+                            action: action,
+                            data: data,
+                            userId: userId,
+                            timestamp: Date.now()
+                        })
+                    });
+                    
+                    if (!retryResponse.ok) {
+                        return await handleApiError(retryResponse, action);
+                    }
+                    
+                    const retryResult = await retryResponse.json();
+                    return retryResult;
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Protected API call failed:', error);
+                showNotification("Connection error. Please try again.", "error");
+                return { 
+                    success: false, 
+                    error: error.message,
+                    isNetworkError: true
+                };
+            }
+        }
+        
         // إعدادات التطبيق الأساسية
         const APP_CONFIG = {
             botUsername: 'testtt1257bot',
@@ -1554,54 +1782,6 @@
         
         const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
         
-        async function callAPI(action, data = {}) {
-            try {
-                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-                
-                const response = await fetch(`${API_URL}/api`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-ID': userId || '',
-                        'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
-                        'X-Action': action
-                    },
-                    body: JSON.stringify({
-                        action: action,
-                        data: data,
-                        userId: userId,
-                        timestamp: Date.now()
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (action === 'getCompetitionData' && result.success) {
-                    if (result.data.competitionData && !result.data.competitionData.userTickets) {
-                        result.data.competitionData.userTickets = {};
-                    }
-                }
-                
-                return result;
-            } catch (error) {
-                console.error('API call failed:', error);
-                showNotification("Connection error. Please try again.", "error");
-                return { success: false, error: error.message };
-            }
-        }
-        
-        const GLX_TO_TON_RATE = 0.0000001;
-        const TON_TO_GLX_RATE = 10000000;
-        const TICKET_PRICE = 10000;
-        const TICKET_TON_VALUE = 0.001;
-        const COMPETITION_DURATION = 24 * 60 * 60 * 1000;
-        const BREAK_DURATION = 60 * 60 * 1000;
-        const ADSGRAM_BLOCK_ID = 'int-18879';
-        
         let appData = {};
         let appSettings = { ...APP_CONFIG.defaultSettings };
         
@@ -1708,10 +1888,24 @@
             
             await initializeUser(user);
             initializeApp(user);
+            
+            // إعداد تجديد التوكن التلقائي كل 4 دقائق
+            setInterval(async () => {
+                if (securityToken && tokenExpiryTime) {
+                    const timeUntilExpiry = tokenExpiryTime - Date.now();
+                    if (timeUntilExpiry < 60000) { // أقل من دقيقة متبقية
+                        console.log("Token nearing expiry, refreshing...");
+                        await requestNewSecurityToken();
+                    }
+                }
+            }, 4 * 60 * 1000); // 4 دقائق
         });
         
         async function initializeUser(user) {
-            const result = await callAPI('initializeUser', { user });
+            // طلب توكن أمني أولاً
+            await getValidSecurityToken();
+            
+            const result = await callProtectedAPI('initializeUser', { user });
             
             if (result.success) {
                 appData = result.data.userData || {};
@@ -1772,7 +1966,7 @@
             if (startParam && startParam.startsWith('ref')) {
                 const referrerId = startParam.replace('ref', '');
                 if (referrerId && referrerId !== user.id) {
-                    const result = await callAPI('handleReferral', {
+                    const result = await callProtectedAPI('handleReferral', {
                         userId: user.id,
                         referrerId: referrerId,
                         rewardAmount: 10000 // تحديث المكافأة إلى 10000
@@ -1929,7 +2123,7 @@
             
             if (!confirm(`Swap ${GLXInput.toLocaleString()} GLX for ${tonValue.toFixed(7)} TON?\n\nRate: 100,000 GLX = 0.01 TON`)) return;
             
-            const result = await callAPI('executeSwap', {
+            const result = await callProtectedAPI('executeSwap', {
                 type: 'glx_to_ton',
                 amount: GLXInput,
                 tonValue: tonValue
@@ -1967,7 +2161,7 @@
             
             if (!confirm(`Swap ${TONInput.toFixed(4)} TON for ${glxValue.toLocaleString()} GLX?\n\nRate: 0.01 TON = 100,000 GLX`)) return;
             
-            const result = await callAPI('executeSwap', {
+            const result = await callProtectedAPI('executeSwap', {
                 type: 'ton_to_glx',
                 amount: TONInput,
                 glxValue: glxValue
@@ -2028,7 +2222,7 @@
         
         async function initializeCompetition() {
             try {
-                const result = await callAPI('getCompetitionData');
+                const result = await callProtectedAPI('getCompetitionData');
                 if (result.success) {
                     competitionData = result.data.competitionData || competitionData;
                     
@@ -2061,7 +2255,7 @@
                 winners: []
             };
             
-            await callAPI('createCompetition', {
+            await callProtectedAPI('createCompetition', {
                 startTime: now,
                 endTime: now + COMPETITION_DURATION
             });
@@ -2126,7 +2320,7 @@
                 return;
             }
             
-            const result = await callAPI('getUserCompetitionData', { userId: userId });
+            const result = await callProtectedAPI('getUserCompetitionData', { userId: userId });
             
             if (result.success && result.data) {
                 if (result.data.userTickets || result.data.competitionTickets) {
@@ -2261,7 +2455,7 @@
             statusMsg.style.color = "#FFC107";
             
             try {
-                const result = await callAPI('buyTickets', {
+                const result = await callProtectedAPI('buyTickets', {
                     userId: userId,
                     tickets: tickets,
                     totalCost: totalCost
@@ -2306,7 +2500,7 @@
         };
         
         async function updateCompetitionLeaderboard() {
-            const result = await callAPI('getCompetitionLeaderboard');
+            const result = await callProtectedAPI('getCompetitionLeaderboard');
             
             if (result.success) {
                 const leaderboardContainer = document.getElementById('competition-leaderboard-list');
@@ -2336,7 +2530,7 @@
         }
         
         async function loadPreviousWinners() {
-            const result = await callAPI('getPreviousWinners');
+            const result = await callProtectedAPI('getPreviousWinners');
             
             if (result.success) {
                 const winnersContainer = document.getElementById('previous-winners-list');
@@ -2415,7 +2609,7 @@
         };
         
         window.renderGalaxyLog = async function() {
-            const result = await callAPI('getTransactionHistory');
+            const result = await callProtectedAPI('getTransactionHistory');
             
             if (result.success) {
                 const historyData = result.data.history || [];
@@ -2480,7 +2674,7 @@
         };
         
         async function updateUserWithdrawalsStats() {
-            const result = await callAPI('getUserWithdrawals');
+            const result = await callProtectedAPI('getUserWithdrawals');
             
             if (result.success) {
                 const withdrawals = result.data.withdrawals || [];
@@ -2490,7 +2684,7 @@
         
         async function updateUserWithdrawalsList(filterType, withdrawalsData) {
             if (!withdrawalsData) {
-                const result = await callAPI('getUserWithdrawals');
+                const result = await callProtectedAPI('getUserWithdrawals');
                 if (result.success) {
                     withdrawalsData = result.data.withdrawals || [];
                 } else {
@@ -2664,7 +2858,7 @@
                 btn.classList.remove('win', 'lose');
             });
             
-            const result = await callAPI('flipCoin', {
+            const result = await callProtectedAPI('flipCoin', {
                 betAmount: inputAmount,
                 chosenSide: coinGame.chosenSide
             });
@@ -2855,7 +3049,7 @@
             redeemBtn.disabled = true;
             redeemBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
             
-            const result = await callAPI('redeemPromoCode', { code: code });
+            const result = await callProtectedAPI('redeemPromoCode', { code: code });
             
             if (result.success) {
                 const reward = result.data.reward;
@@ -2964,7 +3158,7 @@
             
             currentTaskId = 'task_' + Math.floor(Date.now() / 1000);
             
-            const result = await callAPI('createTask', {
+            const result = await callProtectedAPI('createTask', {
                 taskId: currentTaskId,
                 name: name,
                 link: link,
@@ -3000,7 +3194,7 @@
             msg.style.color = "#ffb300";
             
             try {
-                const result = await callAPI('verifyTaskPayment', {
+                const result = await callProtectedAPI('verifyTaskPayment', {
                     taskId: currentTaskId
                 });
                 
@@ -3082,7 +3276,7 @@
             resultText.textContent = "Spinning...";
             winAmount.textContent = "0 GLX";
             
-            const result = await callAPI('spinSlots');
+            const result = await callProtectedAPI('spinSlots');
             
             if (result.success) {
                 const results = result.data.results;
@@ -3142,7 +3336,7 @@
                 try {
                     await window.showGiga();
                     
-                    const result = await callAPI('addExtraSpin');
+                    const result = await callProtectedAPI('addExtraSpin');
                     
                     if (result.success) {
                         appData.extraSpins = result.data.newSpins;
@@ -3204,7 +3398,7 @@
         }
         
         async function handleDailyClaim() {
-            const result = await callAPI('claimDailyBonus');
+            const result = await callProtectedAPI('claimDailyBonus');
             
             if (result.success) {
                 appData.lastDailyClaim = result.data.lastDailyClaim;
@@ -3222,7 +3416,7 @@
         async function renderHistory(container, limit, user) {
             container.innerHTML = '';
             
-            const result = await callAPI('getTransactionHistory', { limit: limit });
+            const result = await callProtectedAPI('getTransactionHistory', { limit: limit });
             
             if (result.success) {
                 const historyData = result.data.history || [];
@@ -3272,7 +3466,7 @@
         }
         
         async function renderWithdrawalHistory() {
-            const result = await callAPI('getWithdrawalHistory');
+            const result = await callProtectedAPI('getWithdrawalHistory');
             
             if (result.success) {
                 const container = document.getElementById('withdrawal-history-list');
@@ -3361,7 +3555,7 @@
             msg.style.color = "#FFC107";
             
             try {
-                const result = await callAPI('verifyDeposit', {
+                const result = await callProtectedAPI('verifyDeposit', {
                     transactionId: depositTransactionId
                 });
                 
@@ -3405,7 +3599,7 @@
                 // تحويل @username إلى username بدون @
                 const username = channelUsername.replace('@', '');
                 
-                const result = await callAPI('verifyTelegramMembership', {
+                const result = await callProtectedAPI('verifyTelegramMembership', {
                     channelUsername: username,
                     userId: userId
                 });
@@ -3422,7 +3616,7 @@
             try {
                 const username = channelUsername.replace('@', '');
                 
-                const result = await callAPI('verifyTaskChannel', {
+                const result = await callProtectedAPI('verifyTaskChannel', {
                     taskId: taskId,
                     channelUsername: username
                 });
@@ -3454,7 +3648,7 @@
         }
         
         async function fetchAndRenderTasks(user) {
-            const result = await callAPI('getTasks');
+            const result = await callProtectedAPI('getTasks');
             
             if (result.success) {
                 const pCont = document.getElementById('partner-tasks-list');
@@ -3602,7 +3796,7 @@
             try {
                 await show_10286382({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 
-                const result = await callAPI('handleAdClick', {
+                const result = await callProtectedAPI('handleAdClick', {
                     adType: 'monetag',
                     reward: appSettings.adRewardMonetag || 1000
                 });
@@ -3641,7 +3835,7 @@
             try {
                 await window.showGiga();
                 
-                const result = await callAPI('handleAdClick', {
+                const result = await callProtectedAPI('handleAdClick', {
                     adType: 'giga',
                     reward: appSettings.adRewardGiga || 2000
                 });
@@ -3682,7 +3876,7 @@
                 const result = await AdController.show();
                 
                 if (result.done) {
-                    const apiResult = await callAPI('handleAdClick', {
+                    const apiResult = await callProtectedAPI('handleAdClick', {
                         adType: 'adsgram',
                         reward: appSettings.adRewardAdsgram || 2000
                     });
@@ -3751,7 +3945,7 @@
                 return;
             }
             
-            const result = await callAPI('submitWithdrawal', {
+            const result = await callProtectedAPI('submitWithdrawal', {
                 method: 'faucetpay',
                 account: email,
                 amount: amount,
@@ -3806,7 +4000,7 @@
                 return;
             }
             
-            const result = await callAPI('submitWithdrawal', {
+            const result = await callProtectedAPI('submitWithdrawal', {
                 method: 'ton',
                 account: address,
                 amount: amount,
@@ -3881,7 +4075,7 @@
                     const isMember = verificationResult.data.isMember;
                     
                     if (isMember) {
-                        const result = await callAPI('verifyTaskCompletion', {
+                        const result = await callProtectedAPI('verifyTaskCompletion', {
                             taskId: taskId,
                             reward: reward,
                             title: title,
@@ -3985,7 +4179,7 @@
         }
         
         async function renderLeaderboard() {
-            const result = await callAPI('getLeaderboard');
+            const result = await callProtectedAPI('getLeaderboard');
             
             if (result.success) {
                 const byInv = result.data.byInvites || [];
@@ -4034,6 +4228,15 @@
             if (balance >= 5000) return 2;
             return 1;
         }
+        
+        // تعريف المتغيرات العالمية التي تحتاجها الدوال
+        const GLX_TO_TON_RATE = 0.0000001;
+        const TON_TO_GLX_RATE = 10000000;
+        const TICKET_PRICE = 10000;
+        const TICKET_TON_VALUE = 0.001;
+        const COMPETITION_DURATION = 24 * 60 * 60 * 1000;
+        const BREAK_DURATION = 60 * 60 * 1000;
+        const ADSGRAM_BLOCK_ID = 'int-18879';
     </script>
 </body>
 </html>
