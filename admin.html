@@ -60,7 +60,11 @@ export default {
             let result;
             switch (action) {
                 case 'initializeUser':
-                    result = await handleInitializeUser(env, userId, data);
+                    result = await handleInitializeUser(env, userId, data, telegramData);
+                    break;
+                    
+                case 'getCompetitionData':
+                    result = await handleGetCompetitionData(env, userId);
                     break;
                     
                 case 'dbSet':
@@ -127,6 +131,10 @@ export default {
                     result = await handleVerifyTaskPayment(env, data.taskId);
                     break;
                     
+                case 'verifyTaskChannel':
+                    result = await handleVerifyTaskChannel(env, userId, data);
+                    break;
+                    
                 case 'spinSlots':
                     result = await handleSpinSlots(env, userId);
                     break;
@@ -191,12 +199,16 @@ export default {
                     result = await handleGetUserData(env, userId);
                     break;
                     
-                case 'getCompetitionData':
-                    const competitionData = await updateOrCreateCompetition(env);
-                    result = {
-                        success: true,
-                        data: competitionData
-                    };
+                case 'refreshCompetition':
+                    result = await handleRefreshCompetition(env);
+                    break;
+                    
+                case 'verifyTelegramMembership':
+                    result = await handleVerifyTelegramMembership(env, userId, data);
+                    break;
+                    
+                case 'syncUserCompetitionTickets':
+                    result = await handleSyncUserCompetitionTickets(env, userId);
                     break;
                     
                 default:
@@ -230,10 +242,10 @@ export default {
             });
         }
     }
-  };
-  
-  // التحقق من بيانات Telegram
-  function isValidTelegramData(telegramData, userId) {
+};
+
+// التحقق من بيانات Telegram
+function isValidTelegramData(telegramData, userId) {
     try {
         const params = new URLSearchParams(telegramData);
         const userParam = params.get('user');
@@ -247,23 +259,200 @@ export default {
         console.error('Telegram data validation error:', error);
         return false;
     }
-  }
-  
-  // دالة مساعدة لإنشاء رابط Firebase
-  async function getFirebaseUrl(env, path) {
-      const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-      const cleanPath = path.replace(/^\//, '');
-      const apiKey = env.FIREBASE_API_KEY;
-      
-      if (!apiKey) {
-          throw new Error('FIREBASE_API_KEY is not configured');
-      }
-      
-      return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
-  }
-  
-  // وظائف إدارة قاعدة البيانات
-  async function handleDbSet(env, path, data) {
+}
+
+// دالة مساعدة لإنشاء رابط Firebase
+async function getFirebaseUrl(env, path) {
+    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+    const cleanPath = path.replace(/^\//, '');
+    const apiKey = env.FIREBASE_API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('FIREBASE_API_KEY is not configured');
+    }
+    
+    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
+}
+
+// دالة مساعدة لضمان وجود مسابقة نشطة وجلب بياناتها
+async function ensureAndGetCompetition(env, userId = null) {
+    try {
+        // جلب المسابقة الحالية
+        const competitionResult = await handleDbGet(env, 'competition/current');
+        let competitionData = competitionResult.data || {};
+        
+        const now = Date.now();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+        
+        // التحقق مما إذا كان يجب إنشاء مسابقة جديدة
+        const shouldCreateNew = 
+            !competitionData ||
+            Object.keys(competitionData).length === 0 ||
+            !competitionData.isActive || 
+            !competitionData.endTime || 
+            now > competitionData.endTime;
+        
+        if (shouldCreateNew) {
+            console.log('Creating new competition... Current time:', now);
+            
+            // إذا كانت هناك مسابقة قديمة، حفظ الفائزين
+            if (competitionData && competitionData.userTickets && Object.keys(competitionData.userTickets).length > 0) {
+                await saveCompetitionWinners(env, competitionData);
+            }
+            
+            // إنشاء مسابقة جديدة
+            competitionData = {
+                isActive: true,
+                startTime: now,
+                endTime: now + ONE_DAY_MS, // 24 ساعة من الآن
+                totalTickets: 0,
+                prizePool: 0,
+                userTickets: {},
+                winners: [],
+                lastUpdated: now
+            };
+            
+            // حفظ المسابقة الجديدة
+            await handleDbSet(env, 'competition/current', competitionData);
+            console.log('New competition created. End time:', new Date(competitionData.endTime).toISOString());
+        } else {
+            console.log('Existing competition found. End time:', new Date(competitionData.endTime).toISOString());
+        }
+        
+        // حساب الوقت المتبقي
+        competitionData.timeRemaining = Math.max(0, competitionData.endTime - now);
+        competitionData.isActiveNow = competitionData.isActive && competitionData.timeRemaining > 0;
+        
+        // إذا انتهت المسابقة، إنشاء مسابقة جديدة
+        if (competitionData.timeRemaining <= 0 && competitionData.isActive) {
+            console.log('Competition ended, creating new one...');
+            competitionData.isActive = false;
+            await handleDbSet(env, 'competition/current', competitionData);
+            return await ensureAndGetCompetition(env, userId);
+        }
+        
+        // إذا تم تمرير userId، حساب تذاكره بشكل صحيح
+        if (userId) {
+            competitionData.userTickets = competitionData.userTickets || {};
+            competitionData.userTicketCount = competitionData.userTickets[userId] || 0;
+            console.log(`User ${userId} tickets in competition:`, competitionData.userTicketCount);
+            
+            // تحديث تذاكر المستخدم في قاعدة البيانات
+            await syncUserCompetitionTickets(env, userId, competitionData.userTicketCount);
+        }
+        
+        // إضافة التنسيق الزمني للوقت المتبقي
+        competitionData.timeRemainingFormatted = formatTimeRemaining(competitionData.timeRemaining);
+        
+        return competitionData;
+    } catch (error) {
+        console.error('Error ensuring competition:', error);
+        return null;
+    }
+}
+
+// دالة لتنسيق الوقت المتبقي
+function formatTimeRemaining(ms) {
+    if (ms <= 0) return '00:00:00';
+    
+    const hours = Math.floor(ms / (1000 * 60 * 60));
+    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// دالة لحفظ الفائزين في المسابقة القديمة
+async function saveCompetitionWinners(env, competitionData) {
+    try {
+        if (!competitionData.userTickets || Object.keys(competitionData.userTickets).length === 0) {
+            return;
+        }
+        
+        const userIds = Object.keys(competitionData.userTickets);
+        const totalTickets = competitionData.totalTickets || 0;
+        
+        if (totalTickets > 0) {
+            // اختيار الفائز (الذي لديه أكبر عدد تذاكر)
+            let winnerId = userIds[0];
+            let maxTickets = competitionData.userTickets[winnerId] || 0;
+            
+            for (const userId of userIds) {
+                const tickets = competitionData.userTickets[userId] || 0;
+                if (tickets > maxTickets) {
+                    maxTickets = tickets;
+                    winnerId = userId;
+                }
+            }
+            
+            // حفظ بيانات الفائز
+            const winnerData = {
+                userId: winnerId,
+                tickets: maxTickets,
+                prize: competitionData.prizePool || 0,
+                timestamp: Date.now(),
+                competitionEndTime: competitionData.endTime
+            };
+            
+            await handleDbPush(env, 'competition/winners', winnerData);
+            
+            // منح الجائزة للمستخدم الفائز
+            const userResult = await handleDbGet(env, `users/${winnerId}`);
+            if (userResult.success && userResult.data) {
+                const userData = userResult.data;
+                const newBalance = (userData.tonBalance || 0) + (competitionData.prizePool || 0);
+                await handleDbUpdate(env, `users/${winnerId}`, { 
+                    tonBalance: newBalance 
+                });
+                
+                await handleDbPush(env, `users/${winnerId}/history`, {
+                    type: 'earn',
+                    description: 'Competition Prize',
+                    amount: competitionData.prizePool || 0,
+                    currency: 'TON',
+                    date: new Date().toISOString()
+                });
+                
+                console.log(`Prize awarded to user ${winnerId}: ${competitionData.prizePool} TON`);
+            }
+        }
+    } catch (error) {
+        console.error('Error saving competition winners:', error);
+    }
+}
+
+// دالة لتحديث تذاكر المسابقة للمستخدم في قاعدة البيانات
+async function syncUserCompetitionTickets(env, userId, ticketCount) {
+    try {
+        // جلب بيانات المستخدم أولاً
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            console.log(`User ${userId} not found for ticket sync`);
+            return false;
+        }
+        
+        const userData = userResult.data;
+        const currentTickets = userData.competitionTickets || 0;
+        
+        // تحديث فقط إذا كانت القيمة مختلفة
+        if (currentTickets !== ticketCount) {
+            console.log(`Syncing tickets for user ${userId}: ${currentTickets} -> ${ticketCount}`);
+            await handleDbUpdate(env, `users/${userId}`, {
+                competitionTickets: ticketCount,
+                lastTicketSync: Date.now()
+            });
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('Error syncing user competition tickets:', error);
+        return false;
+    }
+}
+
+// وظائف إدارة قاعدة البيانات
+async function handleDbSet(env, path, data) {
     try {
         const firebaseUrl = await getFirebaseUrl(env, path);
         
@@ -291,9 +480,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleDbGet(env, path) {
+}
+
+async function handleDbGet(env, path) {
     try {
         const firebaseUrl = await getFirebaseUrl(env, path);
         
@@ -317,9 +506,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleDbUpdate(env, path, updates) {
+}
+
+async function handleDbUpdate(env, path, updates) {
     try {
         const firebaseUrl = await getFirebaseUrl(env, path);
         
@@ -347,9 +536,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleDbPush(env, path, data) {
+}
+
+async function handleDbPush(env, path, data) {
     try {
         const firebaseUrl = await getFirebaseUrl(env, path);
         
@@ -377,9 +566,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleDbTransaction(env, path, transactionFunction) {
+}
+
+async function handleDbTransaction(env, path, transactionFunction) {
     try {
         const currentData = await handleDbGet(env, path);
         
@@ -399,9 +588,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleDbIncrement(env, path, key, amount) {
+}
+
+async function handleDbIncrement(env, path, key, amount) {
     try {
         const currentData = await handleDbGet(env, path);
         
@@ -422,10 +611,10 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  // وظيفة اختبار Firebase
-  async function handleTestFirebase(env) {
+}
+
+// وظيفة اختبار Firebase
+async function handleTestFirebase(env) {
     try {
         console.log('Testing Firebase connection...');
         console.log('API Key:', env.FIREBASE_API_KEY ? 'Present' : 'Missing');
@@ -496,21 +685,58 @@ export default {
             }
         };
     }
-  }
-  
-  // وظائف التطبيق الرئيسية
-  async function handleInitializeUser(env, userId, data) {
+}
+
+// وظائف التطبيق الرئيسية
+async function handleInitializeUser(env, userId, data, telegramData) {
     try {
         const { user } = data;
-        const fullName = `${user.first_name} ${user.last_name}`.trim();
+        const fullName = `${user.first_name} ${user.last_name || ''}`.trim();
         
+        // استخراج صورة المستخدم من بيانات Telegram
+        let photoUrl = 'https://i.ibb.co/tTkJX1Qy/logo.png'; // صورة افتراضية
+        
+        try {
+            const params = new URLSearchParams(telegramData);
+            const userParam = params.get('user');
+            
+            if (userParam) {
+                const telegramUserData = JSON.parse(decodeURIComponent(userParam));
+                // صورة المستخدم من Telegram
+                if (telegramUserData.photo_url) {
+                    photoUrl = telegramUserData.photo_url;
+                } else if (telegramUserData.username) {
+                    // أو استخدام صورة افتراضية بناءً على اسم المستخدم
+                    photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUserData.username)}&background=random&color=fff`;
+                }
+            }
+        } catch (photoError) {
+            console.log('Could not extract user photo:', photoError);
+        }
+        
+        // 1. أولاً: ضمان وجود مسابقة نشطة وجلب بياناتها
+        const competitionData = await ensureAndGetCompetition(env, userId);
+        
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'Failed to initialize competition'
+            };
+        }
+        
+        // 2. جلب بيانات المستخدم
         const userResult = await handleDbGet(env, `users/${userId}`);
         let userData = userResult.data;
         
+        // احصل على عدد التذاكر الحقيقي من المسابقة
+        const realTicketCount = competitionData.userTicketCount || 0;
+        
         if (!userData) {
+            // إنشاء مستخدم جديد مع الصورة وعدد التذاكر الحقيقي
             userData = {
                 id: userId,
                 name: fullName,
+                photoUrl: photoUrl, // حفظ صورة المستخدم
                 dogsBalance: 500,
                 tonBalance: 0.00,
                 adsWatched: 0,
@@ -526,7 +752,9 @@ export default {
                 referredUsers: [],
                 usedPromoCodes: [],
                 joinDate: Date.now(),
-                lastAdDate: new Date().toDateString()
+                lastAdDate: new Date().toDateString(),
+                competitionTickets: realTicketCount, // استخدم القيمة الحقيقية من البداية
+                lastTicketSync: Date.now()
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
@@ -539,9 +767,27 @@ export default {
                 date: new Date().toISOString()
             });
         } else {
-            // تحديث الاسم إذا تغير
+            // تحديث الاسم والصورة إذا تغيرت
+            const updates = {};
+            
             if (userData.name !== fullName) {
-                await handleDbUpdate(env, `users/${userId}`, { name: fullName });
+                updates.name = fullName;
+            }
+            
+            // تحديث الصورة إذا كانت غير موجودة أو مختلفة
+            if (!userData.photoUrl || userData.photoUrl === 'https://i.ibb.co/tTkJX1Qy/logo.png') {
+                updates.photoUrl = photoUrl;
+            }
+            
+            // تحديث عدد تذاكر المسابقة من المسابقة الحالية (هام: حتى لو كانت 0)
+            if (userData.competitionTickets !== realTicketCount) {
+                updates.competitionTickets = realTicketCount;
+                updates.lastTicketSync = Date.now();
+                console.log(`Updating user ${userId} tickets from ${userData.competitionTickets} to ${realTicketCount}`);
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                await handleDbUpdate(env, `users/${userId}`, updates);
             }
             
             // إعادة تعيين عداد الإعلانات إذا تغير اليوم
@@ -563,28 +809,30 @@ export default {
             userData = updatedResult.data || userData;
         }
         
-        // تحديث/إنشاء المسابقة
-        const competitionData = await updateOrCreateCompetition(env);
-        
+        // جلب الإعدادات
         const settingsResult = await handleGetConfig();
         const settings = settingsResult.data?.settings || {};
         
-        // جلب عدد تذاكر المستخدم في المسابقة
-        const userTickets = competitionData?.userTickets || {};
-        const userTicketCount = userTickets[userId] || 0;
+        // التأكد من أن عدد التذاكر يعكس القيمة الحقيقية
+        const userTickets = realTicketCount;
         
         return {
             success: true,
             data: {
-                userData: userData,
+                userData: {
+                    ...userData,
+                    competitionTickets: userTickets // تحديث حقل التذاكر بالقيمة الحقيقية
+                },
                 settings: settings,
                 contest: {
-                    yourTickets: userTicketCount,
-                    totalTickets: competitionData?.totalTickets || 0,
-                    prizePool: competitionData?.prizePool || 0,
-                    isActive: competitionData?.isActive !== false,
-                    endTime: competitionData?.endTime || (Date.now() + 86400000),
-                    startTime: competitionData?.startTime || Date.now()
+                    yourTickets: userTickets,
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    isActive: competitionData.isActiveNow,
+                    endTime: competitionData.endTime,
+                    startTime: competitionData.startTime,
+                    timeRemaining: competitionData.timeRemaining,
+                    timeRemainingFormatted: competitionData.timeRemainingFormatted || '24:00:00'
                 }
             }
         };
@@ -595,9 +843,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetConfig() {
+}
+
+async function handleGetConfig() {
     try {
         const settings = {
             adRewardMonetag: 1000,
@@ -609,7 +857,10 @@ export default {
             minTonWithdrawal: 0.05,
             minFaucetPayWithdrawal: 0.0001,
             referralReward: 500,
-            pricePerClick: 0.0015
+            pricePerClick: 0.0015,
+            botUsername: '@testtt1257bot',
+            botWallet: 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv',
+            botToken: '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI'
         };
         
         return {
@@ -622,9 +873,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleExecuteSwap(env, userId, data) {
+}
+
+async function handleExecuteSwap(env, userId, data) {
     try {
         const { type, amount, tonValue, glxValue } = data;
         
@@ -713,9 +964,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleVerifyDeposit(env, userId, data) {
+}
+
+async function handleVerifyDeposit(env, userId, data) {
     try {
         const { memo, amount } = data;
         
@@ -757,9 +1008,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleBuyTickets(env, userId, data) {
+}
+
+async function handleBuyTickets(env, userId, data) {
     try {
         const { tickets, totalCost } = data;
         
@@ -775,18 +1026,45 @@ export default {
         }
         
         const newBalance = userData.dogsBalance - totalCost;
-        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
+        
+        // تحديث رصيد المستخدم أولاً
+        await handleDbUpdate(env, `users/${userId}`, { 
+            dogsBalance: newBalance
+        });
         
         // تأكد من وجود مسابقة نشطة
-        const competitionData = await updateOrCreateCompetition(env);
+        const competitionData = await ensureAndGetCompetition(env, userId);
         
+        if (!competitionData) {
+            return { success: false, error: 'No active competition found' };
+        }
+        
+        // تحديث تذاكر المستخدم في المسابقة
         const currentUserTickets = competitionData.userTickets[userId] || 0;
         competitionData.userTickets[userId] = currentUserTickets + tickets;
         
+        // تحديث الإحصائيات العامة
         competitionData.totalTickets = (competitionData.totalTickets || 0) + tickets;
         competitionData.prizePool = competitionData.totalTickets * 0.001;
         
-        await handleDbSet(env, 'competition/current', competitionData);
+        // حفظ المسابقة المحدثة
+        await handleDbSet(env, 'competition/current', {
+            isActive: competitionData.isActive,
+            startTime: competitionData.startTime,
+            endTime: competitionData.endTime,
+            totalTickets: competitionData.totalTickets,
+            prizePool: competitionData.prizePool,
+            userTickets: competitionData.userTickets,
+            winners: competitionData.winners || [],
+            lastUpdated: Date.now()
+        });
+        
+        // تحديث عدد تذاكر المستخدم في بياناته الشخصية
+        const newTicketCount = competitionData.userTickets[userId];
+        await handleDbUpdate(env, `users/${userId}`, {
+            competitionTickets: newTicketCount,
+            lastTicketSync: Date.now()
+        });
         
         await handleDbPush(env, `users/${userId}/history`, {
             type: 'spend',
@@ -800,6 +1078,11 @@ export default {
         const updatedUserResult = await handleDbGet(env, `users/${userId}`);
         const updatedUserData = updatedUserResult.data || userData;
         
+        // حساب الوقت المتبقي
+        const now = Date.now();
+        const timeRemaining = Math.max(0, competitionData.endTime - now);
+        const timeRemainingFormatted = formatTimeRemaining(timeRemaining);
+        
         return {
             success: true,
             data: {
@@ -807,7 +1090,10 @@ export default {
                 userTickets: competitionData.userTickets[userId],
                 totalTickets: competitionData.totalTickets,
                 prizePool: competitionData.prizePool,
-                contestEndTime: competitionData.endTime
+                contestEndTime: competitionData.endTime,
+                timeRemaining: timeRemaining,
+                timeRemainingFormatted: timeRemainingFormatted,
+                userCompetitionTickets: newTicketCount
             }
         };
     } catch (error) {
@@ -817,25 +1103,34 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetCompetitionLeaderboard(env) {
+}
+
+async function handleGetCompetitionLeaderboard(env) {
     try {
         // تأكد من وجود مسابقة نشطة
-        const competitionData = await updateOrCreateCompetition(env);
+        const competitionData = await ensureAndGetCompetition(env);
+        
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'No active competition found'
+            };
+        }
         
         const userTickets = competitionData.userTickets || {};
         const leaderboard = [];
         
         for (const [userId, tickets] of Object.entries(userTickets)) {
-            const userResult = await handleDbGet(env, `users/${userId}`);
-            if (userResult.success && userResult.data) {
-                leaderboard.push({
-                    userId: userId,
-                    name: userResult.data.name || 'Anonymous',
-                    photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                    tickets: tickets
-                });
+            if (tickets > 0) {
+                const userResult = await handleDbGet(env, `users/${userId}`);
+                if (userResult.success && userResult.data) {
+                    leaderboard.push({
+                        userId: userId,
+                        name: userResult.data.name || 'Anonymous',
+                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                        tickets: tickets
+                    });
+                }
             }
         }
         
@@ -849,7 +1144,10 @@ export default {
                     totalTickets: competitionData.totalTickets || 0,
                     prizePool: competitionData.prizePool || 0,
                     endTime: competitionData.endTime,
-                    isActive: competitionData.isActive !== false
+                    startTime: competitionData.startTime,
+                    timeRemaining: competitionData.timeRemaining,
+                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
+                    isActive: competitionData.isActiveNow
                 }
             }
         };
@@ -860,9 +1158,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetPreviousWinners(env) {
+}
+
+async function handleGetPreviousWinners(env) {
     try {
         const winnersResult = await handleDbGet(env, 'competition/winners');
         const winnersData = winnersResult.data || {};
@@ -899,9 +1197,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleFlipCoin(env, userId, data) {
+}
+
+async function handleFlipCoin(env, userId, data) {
     try {
         const { betAmount, chosenSide } = data;
         
@@ -965,9 +1263,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleRedeemPromoCode(env, userId, data) {
+}
+
+async function handleRedeemPromoCode(env, userId, data) {
     try {
         const { code } = data;
         
@@ -1028,9 +1326,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleCreateTask(env, userId, data) {
+}
+
+async function handleCreateTask(env, userId, data) {
     try {
         const { taskId, name, link, category, count, cost } = data;
         
@@ -1061,9 +1359,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleVerifyTaskPayment(env, taskId) {
+}
+
+async function handleVerifyTaskPayment(env, taskId) {
     try {
         const taskResult = await handleDbGet(env, `tasks/${taskId}`);
         if (!taskResult.success || !taskResult.data) {
@@ -1093,9 +1391,165 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleSpinSlots(env, userId) {
+}
+
+// دالة جديدة للتحقق من الاشتراك في قناة Telegram
+async function handleVerifyTaskChannel(env, userId, data) {
+    try {
+        const { taskId, channelUsername } = data;
+        
+        // جلب بيانات المستخدم
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        const completedTasks = userData.completedTasks || {};
+        
+        // التحقق مما إذا كانت المهمة مكتملة بالفعل
+        if (completedTasks[taskId]) {
+            return { success: false, error: 'Task already completed' };
+        }
+        
+        // هنا يمكنك إضافة التحقق من الاشتراك في القناة باستخدام Telegram Bot API
+        // يتم إضافة token البوت في بيانات البيئة
+        const botToken = env.TELEGRAM_BOT_TOKEN || '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI';
+        
+        // استخدام Telegram Bot API للتحقق من عضوية المستخدم في القناة
+        const chatMemberUrl = `https://api.telegram.org/bot${botToken}/getChatMember`;
+        
+        const response = await fetch(chatMemberUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: channelUsername,
+                user_id: parseInt(userId)
+            })
+        });
+        
+        if (!response.ok) {
+            return { 
+                success: false, 
+                error: 'Failed to verify channel membership',
+                details: await response.text()
+            };
+        }
+        
+        const result = await response.json();
+        
+        // التحقق مما إذا كان المستخدم عضوًا في القناة
+        const isMember = result.ok && 
+            (result.result.status === 'member' || 
+             result.result.status === 'administrator' || 
+             result.result.status === 'creator');
+        
+        if (!isMember) {
+            return { success: false, error: 'You are not a member of this channel' };
+        }
+        
+        // إذا كان المستخدم عضوًا، تحديث بيانات المهمة
+        completedTasks[taskId] = true;
+        await handleDbUpdate(env, `users/${userId}`, { 
+            completedTasks: completedTasks,
+            dogsBalance: (userData.dogsBalance || 0) + 2000
+        });
+        
+        // تحديث المهمة في قاعدة البيانات
+        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
+        if (taskResult.success && taskResult.data) {
+            const task = taskResult.data;
+            if (task.remaining !== undefined && task.remaining > 0) {
+                await handleDbUpdate(env, `tasks/${taskId}`, { 
+                    remaining: task.remaining - 1 
+                });
+            }
+        }
+        
+        // إضافة إلى سجل المعاملات
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `Joined Telegram Channel: ${channelUsername}`,
+            amount: 2000,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        return {
+            success: true,
+            data: {
+                verified: true,
+                reward: 2000,
+                newBalance: (userData.dogsBalance || 0) + 2000
+            }
+        };
+        
+    } catch (error) {
+        console.error('Verify task channel error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// دالة للتحقق من عضوية Telegram بشكل عام
+async function handleVerifyTelegramMembership(env, userId, data) {
+    try {
+        const { channelUsername } = data;
+        
+        const botToken = env.TELEGRAM_BOT_TOKEN || '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI';
+        
+        const chatMemberUrl = `https://api.telegram.org/bot${botToken}/getChatMember`;
+        
+        const response = await fetch(chatMemberUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: channelUsername,
+                user_id: parseInt(userId)
+            })
+        });
+        
+        if (!response.ok) {
+            return { 
+                success: false, 
+                error: 'Failed to verify membership',
+                details: await response.text()
+            };
+        }
+        
+        const result = await response.json();
+        
+        const isMember = result.ok && 
+            (result.result.status === 'member' || 
+             result.result.status === 'administrator' || 
+             result.result.status === 'creator');
+        
+        return {
+            success: true,
+            data: {
+                isMember: isMember,
+                channelUsername: channelUsername,
+                userId: userId,
+                status: isMember ? 'member' : 'not_member'
+            }
+        };
+        
+    } catch (error) {
+        console.error('Verify telegram membership error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+async function handleSpinSlots(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1175,9 +1629,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleAddExtraSpin(env, userId) {
+}
+
+async function handleAddExtraSpin(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1209,9 +1663,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleClaimDailyBonus(env, userId) {
+}
+
+async function handleClaimDailyBonus(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1267,9 +1721,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetTransactionHistory(env, userId, limit = 50) {
+}
+
+async function handleGetTransactionHistory(env, userId, limit = 50) {
     try {
         const historyResult = await handleDbGet(env, `users/${userId}/history`);
         const historyData = historyResult.data || {};
@@ -1290,9 +1744,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetUserWithdrawals(env, userId) {
+}
+
+async function handleGetUserWithdrawals(env, userId) {
     try {
         const withdrawalsResult = await handleDbGet(env, 'withdrawals');
         const withdrawalsData = withdrawalsResult.data || {};
@@ -1322,9 +1776,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetWithdrawalHistory(env) {
+}
+
+async function handleGetWithdrawalHistory(env) {
     try {
         const withdrawalsResult = await handleDbGet(env, 'withdrawals/completed');
         const withdrawalsData = withdrawalsResult.data || {};
@@ -1359,9 +1813,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetWithdrawalStats(env) {
+}
+
+async function handleGetWithdrawalStats(env) {
     try {
         const withdrawalsResult = await handleDbGet(env, 'withdrawals');
         const withdrawalsData = withdrawalsResult.data || {};
@@ -1395,9 +1849,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetReferredUsers(env, userId) {
+}
+
+async function handleGetReferredUsers(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1434,9 +1888,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetTasks(env, userId) {
+}
+
+async function handleGetTasks(env, userId) {
     try {
         const tasksResult = await handleDbGet(env, 'tasks');
         const tasksData = tasksResult.data || {};
@@ -1464,9 +1918,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleVerifyTaskCompletion(env, userId, data) {
+}
+
+async function handleVerifyTaskCompletion(env, userId, data) {
     try {
         const { taskId, reward, title } = data;
         
@@ -1537,9 +1991,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleReferral(env, userId, referrerId) {
+}
+
+async function handleReferral(env, userId, referrerId) {
     try {
         if (!referrerId || referrerId === userId) {
             return { success: false, error: 'Invalid referrer' };
@@ -1590,9 +2044,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleAdClick(env, userId, adType, reward) {
+}
+
+async function handleAdClick(env, userId, adType, reward) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1638,9 +2092,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleSubmitWithdrawal(env, userId, data) {
+}
+
+async function handleSubmitWithdrawal(env, userId, data) {
     try {
         const { method, account, amount, maskedAccount, memo } = data;
         
@@ -1694,9 +2148,9 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  async function handleGetLeaderboard(env) {
+}
+
+async function handleGetLeaderboard(env) {
     try {
         const usersResult = await handleDbGet(env, 'users');
         const usersData = usersResult.data || {};
@@ -1707,6 +2161,7 @@ export default {
             users.push({
                 userId: userId,
                 name: userData.name || 'Anonymous',
+                photoUrl: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
                 dogsBalance: userData.dogsBalance || 0,
                 referrals: userData.referrals || 0
             });
@@ -1729,10 +2184,69 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  // وظيفة جديدة: جلب بيانات المستخدم المحدثة
-  async function handleGetUserData(env, userId) {
+}
+
+// وظيفة جديدة: جلب بيانات المسابقة فقط
+async function handleGetCompetitionData(env, userId = null) {
+    try {
+        // أولاً: ضمان وجود مسابقة نشطة
+        const competitionData = await ensureAndGetCompetition(env, userId);
+        
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'Failed to load competition data'
+            };
+        }
+        
+        // جلب المتصدرين
+        const userTickets = competitionData.userTickets || {};
+        const leaderboard = [];
+        
+        for (const [uId, tickets] of Object.entries(userTickets)) {
+            if (tickets > 0) {
+                const userResult = await handleDbGet(env, `users/${uId}`);
+                if (userResult.success && userResult.data) {
+                    leaderboard.push({
+                        userId: uId,
+                        name: userResult.data.name || 'Anonymous',
+                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                        tickets: tickets
+                    });
+                }
+            }
+        }
+        
+        leaderboard.sort((a, b) => b.tickets - a.tickets);
+        
+        return {
+            success: true,
+            data: {
+                competitionData: {
+                    isActive: competitionData.isActive,
+                    startTime: competitionData.startTime,
+                    endTime: competitionData.endTime,
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    timeRemaining: competitionData.timeRemaining,
+                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
+                    isActiveNow: competitionData.isActiveNow
+                },
+                userTickets: userId ? competitionData.userTicketCount || 0 : 0,
+                leaderboard: leaderboard.slice(0, 10)
+            }
+        };
+    } catch (error) {
+        console.error('Error getting competition data:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// وظيفة جديدة: جلب بيانات المستخدم المحدثة
+async function handleGetUserData(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
@@ -1740,23 +2254,40 @@ export default {
         }
         
         // جلب بيانات المسابقة الحالية للمستخدم
-        const competitionResult = await handleDbGet(env, 'competition/current');
-        const competitionData = competitionResult.data || {};
+        const competitionData = await ensureAndGetCompetition(env, userId);
         
-        const userTickets = competitionData.userTickets || {};
-        const userTicketCount = userTickets[userId] || 0;
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'Failed to load competition data'
+            };
+        }
+        
+        // التأكد من تحديث حقل competitionTickets في بيانات المستخدم
+        const currentUserTickets = competitionData.userTicketCount || 0;
+        if (userResult.data.competitionTickets !== currentUserTickets) {
+            await handleDbUpdate(env, `users/${userId}`, { 
+                competitionTickets: currentUserTickets,
+                lastTicketSync: Date.now()
+            });
+        }
         
         return {
             success: true,
             data: {
-                userData: userResult.data,
+                userData: {
+                    ...userResult.data,
+                    competitionTickets: currentUserTickets
+                },
                 contest: {
-                    yourTickets: userTicketCount,
+                    yourTickets: currentUserTickets,
                     totalTickets: competitionData.totalTickets || 0,
                     prizePool: competitionData.prizePool || 0,
-                    isActive: competitionData.isActive !== false,
-                    endTime: competitionData.endTime || (Date.now() + 86400000),
-                    startTime: competitionData.startTime || Date.now()
+                    isActive: competitionData.isActiveNow,
+                    endTime: competitionData.endTime,
+                    startTime: competitionData.startTime,
+                    timeRemaining: competitionData.timeRemaining,
+                    timeRemainingFormatted: competitionData.timeRemainingFormatted
                 }
             }
         };
@@ -1766,75 +2297,86 @@ export default {
             error: error.message
         };
     }
-  }
-  
-  // وظيفة لإنشاء/تحديث المسابقة
-  async function updateOrCreateCompetition(env) {
+}
+
+// وظيفة جديدة: تحديث المسابقة يدويًا
+async function handleRefreshCompetition(env) {
     try {
-        const competitionResult = await handleDbGet(env, 'competition/current');
-        let competitionData = competitionResult.data || {};
+        const competitionData = await ensureAndGetCompetition(env);
         
-        const now = Date.now();
-        const shouldCreateNew = 
-            !competitionData.isActive || 
-            !competitionData.endTime || 
-            now > competitionData.endTime;
-        
-        if (shouldCreateNew) {
-            // إنشاء مسابقة جديدة
-            competitionData = {
-                isActive: true,
-                startTime: now,
-                endTime: now + (24 * 60 * 60 * 1000), // 24 ساعة
-                totalTickets: 0,
-                prizePool: 0,
-                userTickets: {},
-                winners: []
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'Failed to refresh competition'
             };
-            
-            await handleDbSet(env, 'competition/current', competitionData);
-            
-            // إذا كانت هناك مسابقة سابقة، حفظ الفائزين
-            if (competitionResult.data && competitionResult.data.userTickets) {
-                const oldTickets = competitionResult.data.userTickets;
-                if (Object.keys(oldTickets).length > 0) {
-                    // اختيار الفائز (يمكن تطوير هذا المنطق)
-                    const userIds = Object.keys(oldTickets);
-                    const winnerId = userIds[Math.floor(Math.random() * userIds.length)];
-                    
-                    const winnerData = {
-                        userId: winnerId,
-                        tickets: oldTickets[winnerId] || 0,
-                        prize: competitionResult.data.prizePool || 0,
-                        timestamp: now
-                    };
-                    
-                    await handleDbPush(env, 'competition/winners', winnerData);
-                    
-                    // منح الجائزة للمستخدم الفائز
-                    const userResult = await handleDbGet(env, `users/${winnerId}`);
-                    if (userResult.success && userResult.data) {
-                        const userData = userResult.data;
-                        const newBalance = (userData.tonBalance || 0) + (competitionResult.data.prizePool || 0);
-                        await handleDbUpdate(env, `users/${winnerId}`, { 
-                            tonBalance: newBalance 
-                        });
-                        
-                        await handleDbPush(env, `users/${winnerId}/history`, {
-                            type: 'earn',
-                            description: 'Competition Prize',
-                            amount: competitionResult.data.prizePool || 0,
-                            currency: 'TON',
-                            date: new Date().toISOString()
-                        });
-                    }
-                }
-            }
         }
         
-        return competitionData;
+        return {
+            success: true,
+            data: {
+                competitionData: {
+                    isActive: competitionData.isActive,
+                    startTime: competitionData.startTime,
+                    endTime: competitionData.endTime,
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    timeRemaining: competitionData.timeRemaining,
+                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
+                    isActiveNow: competitionData.isActiveNow
+                }
+            }
+        };
     } catch (error) {
-        console.error('Error updating competition:', error);
-        return null;
+        console.error('Error refreshing competition:', error);
+        return {
+            success: false,
+            error: error.message
+        };
     }
-  }
+}
+
+// وظيفة جديدة: مزامنة تذاكر المسابقة للمستخدم
+async function handleSyncUserCompetitionTickets(env, userId) {
+    try {
+        // جلب بيانات المسابقة الحالية
+        const competitionData = await ensureAndGetCompetition(env, userId);
+        
+        if (!competitionData) {
+            return {
+                success: false,
+                error: 'Failed to load competition data'
+            };
+        }
+        
+        const currentTickets = competitionData.userTicketCount || 0;
+        
+        // تحديث بيانات المستخدم
+        await handleDbUpdate(env, `users/${userId}`, {
+            competitionTickets: currentTickets,
+            lastTicketSync: Date.now()
+        });
+        
+        // جلب بيانات المستخدم المحدثة
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        
+        return {
+            success: true,
+            data: {
+                competitionTickets: currentTickets,
+                userData: userResult.data,
+                contest: {
+                    yourTickets: currentTickets,
+                    totalTickets: competitionData.totalTickets || 0,
+                    prizePool: competitionData.prizePool || 0,
+                    isActive: competitionData.isActiveNow
+                }
+            }
+        };
+    } catch (error) {
+        console.error('Error syncing user competition tickets:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
