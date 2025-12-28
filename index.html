@@ -1485,7 +1485,7 @@
             try {
                 const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
                 const telegramData = window.Telegram?.WebApp?.initData || '';
-                const timestamp = Date.now();
+                const timestamp = Date.now(); // إضافة timestamp حالي
                 
                 let securityToken;
                 try {
@@ -1501,7 +1501,7 @@
                         'Content-Type': 'application/json',
                         'X-User-ID': userId || '',
                         'X-Telegram-Data': telegramData,
-                        'X-Timestamp': timestamp.toString(),
+                        'X-Timestamp': timestamp.toString(), // إضافة timestamp في header
                         'X-Security-Token': securityToken,
                         'X-Action': action
                     },
@@ -1509,7 +1509,7 @@
                         action: action,
                         data: data,
                         userId: userId,
-                        timestamp: timestamp
+                        timestamp: timestamp // إضافة timestamp في body
                     })
                 });
                 
@@ -1518,6 +1518,13 @@
                 }
                 
                 const result = await response.json();
+                
+                // معالجة حالة الحظر بشكل صريح
+                if (result.error === 'ACCOUNT_BANNED') {
+                    SecurityTokenManager.handleTokenError('ACCOUNT_BANNED');
+                    showBlockedAccess("Your account has been permanently banned due to security violations.");
+                    return { success: false, error: 'Account banned', banned: true };
+                }
                 
                 if (result.error === 'INVALID_TOKEN' || result.error === 'TOKEN_REQUIRED') {
                     if (retryCount < maxRetries) {
@@ -1533,16 +1540,6 @@
                         SecurityTokenManager.handleTokenError('INVALID_TOKEN');
                         return { success: false, error: 'Authentication failed' };
                     }
-                }
-                
-                if (result.error === 'ACCOUNT_BANNED') {
-                    SecurityTokenManager.handleTokenError('ACCOUNT_BANNED');
-                    return { success: false, error: 'Account banned' };
-                }
-                
-                if (result.error === 'Account banned') {
-                    showBlockedAccess("Your account has been suspended due to security violations.");
-                    return { success: false, error: 'Account banned' };
                 }
                 
                 if (action === 'getCompetitionData' && result.success) {
@@ -1772,59 +1769,26 @@
         }
         
         function showBlockedAccess(reason) {
-            // إذا كان هناك div للتحقق الأمني، أخفيه
-            const verificationDiv = document.getElementById('security-verification');
-            if (verificationDiv) {
-                verificationDiv.style.display = 'none';
-            }
+            document.getElementById('security-verification').style.display = 'none';
+            document.getElementById('app-container').style.display = 'none';
+            document.getElementById('blocked-access').style.display = 'block';
+            document.getElementById('blocked-reason').innerHTML = reason;
             
-            // إذا كان هناك div للتطبيق الرئيسي، أخفيه
-            const appDiv = document.getElementById('app-container');
-            if (appDiv) {
-                appDiv.style.display = 'none';
-            }
+            // إيقاف أي أنشطة API لاحقة
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (competitionInterval) clearInterval(competitionInterval);
             
-            // إذا كان هناك div للحظر، أظهره
-            const blockedDiv = document.getElementById('blocked-access');
-            if (blockedDiv) {
-                blockedDiv.style.display = 'block';
-                const reasonDiv = document.getElementById('blocked-reason');
-                if (reasonDiv) {
-                    reasonDiv.innerHTML = reason;
-                }
-            } else {
-                // أو أنشئ رسالة حظر
-                const blockedMessage = document.createElement('div');
-                blockedMessage.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.9);
-                    color: #e74c3c;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 9999;
-                    padding: 20px;
-                    text-align: center;
-                `;
-                blockedMessage.innerHTML = `
-                    <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
-                    <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">ACCESS BLOCKED</div>
-                    <div style="font-size: 16px; margin-bottom: 20px; max-width: 400px;">${reason}</div>
-                    <div style="font-size: 12px; color: #999;">If you believe this is an error, contact support</div>
-                `;
-                document.body.appendChild(blockedMessage);
-            }
+            // منع أي تفاعل مع الصفحة
+            document.body.style.pointerEvents = 'none';
+            document.body.style.opacity = '0.7';
         }
         
         function showMainApp() {
             document.getElementById('security-verification').style.display = 'none';
             document.getElementById('blocked-access').style.display = 'none';
             document.getElementById('app-container').style.display = 'block';
+            document.body.style.pointerEvents = 'auto';
+            document.body.style.opacity = '1';
         }
         
         const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
@@ -1954,7 +1918,10 @@
         });
         
         async function initializeUser(user) {
-            const result = await callAPI('initializeUser', { user });
+            const result = await callAPI('initializeUser', { 
+                user,
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 appData = result.data.userData || {};
@@ -2016,11 +1983,11 @@
                     const result = await callAPI('handleReferral', {
                         userId: user.id,
                         referrerId: referrerId,
-                        rewardAmount: 10000
+                        timestamp: Date.now()
                     });
                     
-                    if (result.success) {
-                        showNotification("🎉 Welcome bonus activated! +10,000 GLX", "success");
+                    if (result.success && result.data.reward) {
+                        showNotification(`🎉 Welcome bonus activated! +${result.data.reward} GLX`, "success");
                     }
                 }
             }
@@ -2171,7 +2138,7 @@
             const result = await callAPI('executeSwap', {
                 type: 'glx_to_ton',
                 amount: GLXInput,
-                tonValue: tonValue
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -2209,7 +2176,7 @@
             const result = await callAPI('executeSwap', {
                 type: 'ton_to_glx',
                 amount: TONInput,
-                glxValue: glxValue
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -2267,7 +2234,9 @@
         
         async function initializeCompetition() {
             try {
-                const result = await callAPI('getCompetitionData');
+                const result = await callAPI('getCompetitionData', {
+                    timestamp: Date.now()
+                });
                 if (result.success) {
                     competitionData = result.data.competitionData || competitionData;
                     
@@ -2302,7 +2271,8 @@
             
             await callAPI('createCompetition', {
                 startTime: now,
-                endTime: now + COMPETITION_DURATION
+                endTime: now + COMPETITION_DURATION,
+                timestamp: now
             });
             
             startCountdown();
@@ -2363,7 +2333,10 @@
                 return;
             }
             
-            const result = await callAPI('getUserCompetitionData', { userId: userId });
+            const result = await callAPI('getUserCompetitionData', { 
+                userId: userId,
+                timestamp: Date.now()
+            });
             
             if (result.success && result.data) {
                 if (result.data.userTickets || result.data.competitionTickets) {
@@ -2497,7 +2470,7 @@
                 const result = await callAPI('buyTickets', {
                     userId: userId,
                     tickets: tickets,
-                    totalCost: totalCost
+                    timestamp: Date.now()
                 });
                 
                 if (result.success) {
@@ -2539,7 +2512,9 @@
         };
         
         async function updateCompetitionLeaderboard() {
-            const result = await callAPI('getCompetitionLeaderboard');
+            const result = await callAPI('getCompetitionLeaderboard', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const leaderboardContainer = document.getElementById('competition-leaderboard-list');
@@ -2569,7 +2544,9 @@
         }
         
         async function loadPreviousWinners() {
-            const result = await callAPI('getPreviousWinners');
+            const result = await callAPI('getPreviousWinners', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const winnersContainer = document.getElementById('previous-winners-list');
@@ -2648,7 +2625,9 @@
         };
         
         window.renderGalaxyLog = async function() {
-            const result = await callAPI('getTransactionHistory');
+            const result = await callAPI('getTransactionHistory', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const historyData = result.data.history || [];
@@ -2713,7 +2692,9 @@
         };
         
         async function updateUserWithdrawalsStats() {
-            const result = await callAPI('getUserWithdrawals');
+            const result = await callAPI('getUserWithdrawals', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const withdrawals = result.data.withdrawals || [];
@@ -2723,7 +2704,9 @@
         
         async function updateUserWithdrawalsList(filterType, withdrawalsData) {
             if (!withdrawalsData) {
-                const result = await callAPI('getUserWithdrawals');
+                const result = await callAPI('getUserWithdrawals', {
+                    timestamp: Date.now()
+                });
                 if (result.success) {
                     withdrawalsData = result.data.withdrawals || [];
                 } else {
@@ -2899,7 +2882,8 @@
             
             const result = await callAPI('flipCoin', {
                 betAmount: inputAmount,
-                chosenSide: coinGame.chosenSide
+                chosenSide: coinGame.chosenSide,
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -3088,7 +3072,10 @@
             redeemBtn.disabled = true;
             redeemBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
             
-            const result = await callAPI('redeemPromoCode', { code: code });
+            const result = await callAPI('redeemPromoCode', { 
+                code: code,
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const reward = result.data.reward;
@@ -3203,7 +3190,8 @@
                 link: link,
                 category: selectedCategory,
                 count: selectedCount,
-                cost: selectedCost
+                cost: selectedCost,
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -3234,7 +3222,8 @@
             
             try {
                 const result = await callAPI('verifyTaskPayment', {
-                    taskId: currentTaskId
+                    taskId: currentTaskId,
+                    timestamp: Date.now()
                 });
                 
                 if (result.success) {
@@ -3315,7 +3304,9 @@
             resultText.textContent = "Spinning...";
             winAmount.textContent = "0 GLX";
             
-            const result = await callAPI('spinSlots');
+            const result = await callAPI('spinSlots', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const results = result.data.results;
@@ -3375,7 +3366,9 @@
                 try {
                     await window.showGiga();
                     
-                    const result = await callAPI('addExtraSpin');
+                    const result = await callAPI('addExtraSpin', {
+                        timestamp: Date.now()
+                    });
                     
                     if (result.success) {
                         appData.extraSpins = result.data.newSpins;
@@ -3437,7 +3430,9 @@
         }
         
         async function handleDailyClaim() {
-            const result = await callAPI('claimDailyBonus');
+            const result = await callAPI('claimDailyBonus', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 appData.lastDailyClaim = result.data.lastDailyClaim;
@@ -3455,7 +3450,10 @@
         async function renderHistory(container, limit, user) {
             container.innerHTML = '';
             
-            const result = await callAPI('getTransactionHistory', { limit: limit });
+            const result = await callAPI('getTransactionHistory', { 
+                limit: limit,
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const historyData = result.data.history || [];
@@ -3505,7 +3503,9 @@
         }
         
         async function renderWithdrawalHistory() {
-            const result = await callAPI('getWithdrawalHistory');
+            const result = await callAPI('getWithdrawalHistory', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const container = document.getElementById('withdrawal-history-list');
@@ -3595,7 +3595,8 @@
             
             try {
                 const result = await callAPI('verifyDeposit', {
-                    transactionId: depositTransactionId
+                    transactionId: depositTransactionId,
+                    timestamp: Date.now()
                 });
                 
                 if (result.success) {
@@ -3638,7 +3639,8 @@
                 
                 const result = await callAPI('verifyTelegramMembership', {
                     channelUsername: username,
-                    userId: userId
+                    userId: userId,
+                    timestamp: Date.now()
                 });
                 
                 return result.success && result.data.isMember === true;
@@ -3654,7 +3656,8 @@
                 
                 const result = await callAPI('verifyTaskChannel', {
                     taskId: taskId,
-                    channelUsername: username
+                    channelUsername: username,
+                    timestamp: Date.now()
                 });
                 
                 return result;
@@ -3683,7 +3686,9 @@
         }
         
         async function fetchAndRenderTasks(user) {
-            const result = await callAPI('getTasks');
+            const result = await callAPI('getTasks', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const pCont = document.getElementById('partner-tasks-list');
@@ -3831,7 +3836,8 @@
                 await show_10286382({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 
                 const result = await callAPI('handleAdClick', {
-                    adType: 'monetag'
+                    adType: 'monetag',
+                    timestamp: Date.now()
                 });
                 
                 if (result.success) {
@@ -3839,15 +3845,9 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
-                    const rewardAmount = result.data.reward || appSettings.adRewardMonetag || 1000;
+                    const rewardAmount = result.data.reward || 1000;
                     showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-                } else {
-                    if (result.error === 'Account banned') {
-                        showBlockedAccess("Your account has been suspended due to security violations.");
-                    } else {
-                        showNotification("Error: " + result.error, "error");
-                    }
                 }
             } catch (e) {
                 showNotification("Ad not ready", "warning");
@@ -3875,7 +3875,8 @@
                 await window.showGiga();
                 
                 const result = await callAPI('handleAdClick', {
-                    adType: 'giga'
+                    adType: 'giga',
+                    timestamp: Date.now()
                 });
                 
                 if (result.success) {
@@ -3883,15 +3884,9 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
-                    const rewardAmount = result.data.reward || appSettings.adRewardGiga || 2000;
+                    const rewardAmount = result.data.reward || 2000;
                     showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-                } else {
-                    if (result.error === 'Account banned') {
-                        showBlockedAccess("Your account has been suspended due to security violations.");
-                    } else {
-                        showNotification("Error: " + result.error, "error");
-                    }
                 }
             } catch (e) {
                 console.error(e);
@@ -3921,22 +3916,17 @@
                 
                 if (result.done) {
                     const apiResult = await callAPI('handleAdClick', {
-                        adType: 'adsgram'
+                        adType: 'adsgram',
+                        timestamp: Date.now()
                     });
                     
                     if (apiResult.success) {
                         appData.adsAdsgram = apiResult.data.adsAdsgram;
                         appData.dogsBalance = apiResult.data.newBalance;
                         
-                        const rewardAmount = apiResult.data.reward || appSettings.adRewardAdsgram || 2000;
+                        const rewardAmount = apiResult.data.reward || 2000;
                         showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-                    } else {
-                        if (apiResult.error === 'Account banned') {
-                            showBlockedAccess("Your account has been suspended due to security violations.");
-                        } else {
-                            showNotification("Error: " + apiResult.error, "error");
-                        }
                     }
                 }
             } catch (error) {
@@ -3998,7 +3988,8 @@
                 method: 'faucetpay',
                 account: email,
                 amount: amount,
-                maskedAccount: maskedEmail
+                maskedAccount: maskedEmail,
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -4052,7 +4043,8 @@
                 method: 'ton',
                 account: address,
                 amount: amount,
-                memo: memo || ''
+                memo: memo || '',
+                timestamp: Date.now()
             });
             
             if (result.success) {
@@ -4124,11 +4116,10 @@
                     if (isMember) {
                         const result = await callAPI('verifyTaskCompletion', {
                             taskId: taskId,
-                            reward: reward,
                             title: title,
                             link: link,
                             channelUsername: channelUsername,
-                            verified: true
+                            timestamp: Date.now()
                         });
                         
                         if (result.success) {
@@ -4140,7 +4131,8 @@
                             document.getElementById(`status-${taskId}`).style.color = "#27ae60";
                             document.getElementById(`reward-${taskId}`).textContent = "Done";
                             
-                            showNotification(`✅ Channel Verified! +${reward} GLX`, "success");
+                            const rewardAmount = result.data.reward || reward;
+                            showNotification(`✅ Channel Verified! +${rewardAmount} GLX`, "success");
                             renderUI({ id: userId });
                         } else {
                             showNotification("❌ " + result.error, "warning");
@@ -4226,7 +4218,9 @@
         }
         
         async function renderLeaderboard() {
-            const result = await callAPI('getLeaderboard');
+            const result = await callAPI('getLeaderboard', {
+                timestamp: Date.now()
+            });
             
             if (result.success) {
                 const byInv = result.data.byInvites || [];
