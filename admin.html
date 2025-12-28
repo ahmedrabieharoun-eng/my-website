@@ -1540,11 +1540,6 @@
                     return { success: false, error: 'Account banned' };
                 }
                 
-                if (result.error === 'Account banned') {
-                    showBlockedAccess("Your account has been suspended due to security violations.");
-                    return { success: false, error: 'Account banned' };
-                }
-                
                 if (action === 'getCompetitionData' && result.success) {
                     if (result.data.competitionData && !result.data.competitionData.userTickets) {
                         result.data.competitionData.userTickets = {};
@@ -1772,53 +1767,10 @@
         }
         
         function showBlockedAccess(reason) {
-            // إذا كان هناك div للتحقق الأمني، أخفيه
-            const verificationDiv = document.getElementById('security-verification');
-            if (verificationDiv) {
-                verificationDiv.style.display = 'none';
-            }
-            
-            // إذا كان هناك div للتطبيق الرئيسي، أخفيه
-            const appDiv = document.getElementById('app-container');
-            if (appDiv) {
-                appDiv.style.display = 'none';
-            }
-            
-            // إذا كان هناك div للحظر، أظهره
-            const blockedDiv = document.getElementById('blocked-access');
-            if (blockedDiv) {
-                blockedDiv.style.display = 'block';
-                const reasonDiv = document.getElementById('blocked-reason');
-                if (reasonDiv) {
-                    reasonDiv.innerHTML = reason;
-                }
-            } else {
-                // أو أنشئ رسالة حظر
-                const blockedMessage = document.createElement('div');
-                blockedMessage.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0,0,0,0.9);
-                    color: #e74c3c;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 9999;
-                    padding: 20px;
-                    text-align: center;
-                `;
-                blockedMessage.innerHTML = `
-                    <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
-                    <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">ACCESS BLOCKED</div>
-                    <div style="font-size: 16px; margin-bottom: 20px; max-width: 400px;">${reason}</div>
-                    <div style="font-size: 12px; color: #999;">If you believe this is an error, contact support</div>
-                `;
-                document.body.appendChild(blockedMessage);
-            }
+            document.getElementById('security-verification').style.display = 'none';
+            document.getElementById('blocked-access').style.display = 'block';
+            document.getElementById('blocked-reason').innerHTML = reason;
+            document.getElementById('app-container').style.display = 'none';
         }
         
         function showMainApp() {
@@ -3830,8 +3782,10 @@
             try {
                 await show_10286382({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
                 
+                // 🔴 التعديل: إزالة إرسال قيمة reward تماماً
                 const result = await callAPI('handleAdClick', {
                     adType: 'monetag'
+                    // تم حذف: reward: appSettings.adRewardMonetag || 1000
                 });
                 
                 if (result.success) {
@@ -3839,6 +3793,7 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
+                    // 🔴 استخدام قيمة الـ reward من استجابة السيرفر
                     const rewardAmount = result.data.reward || appSettings.adRewardMonetag || 1000;
                     showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
@@ -3874,8 +3829,10 @@
             try {
                 await window.showGiga();
                 
+                // 🔴 التعديل: إزالة إرسال قيمة reward تماماً
                 const result = await callAPI('handleAdClick', {
                     adType: 'giga'
+                    // تم حذف: reward: appSettings.adRewardGiga || 2000
                 });
                 
                 if (result.success) {
@@ -3883,6 +3840,7 @@
                     appData.adsWatched = result.data.adsWatched;
                     appData.dogsBalance = result.data.newBalance;
                     
+                    // 🔴 استخدام قيمة الـ reward من استجابة السيرفر
                     const rewardAmount = result.data.reward || appSettings.adRewardGiga || 2000;
                     showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                     renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
@@ -3920,14 +3878,17 @@
                 const result = await AdController.show();
                 
                 if (result.done) {
+                    // 🔴 التعديل: إزالة إرسال قيمة reward تماماً
                     const apiResult = await callAPI('handleAdClick', {
                         adType: 'adsgram'
+                        // تم حذف: reward: appSettings.adRewardAdsgram || 2000
                     });
                     
                     if (apiResult.success) {
                         appData.adsAdsgram = apiResult.data.adsAdsgram;
                         appData.dogsBalance = apiResult.data.newBalance;
                         
+                        // 🔴 استخدام قيمة الـ reward من استجابة السيرفر
                         const rewardAmount = apiResult.data.reward || appSettings.adRewardAdsgram || 2000;
                         showNotification(`✅ +${rewardAmount} GLX added!`, "success");
                         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
