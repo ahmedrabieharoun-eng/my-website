@@ -7,7 +7,7 @@ export default {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Timestamp',
                 }
             });
         }
@@ -33,6 +33,113 @@ export default {
             const data = requestData.data || {};
             const userId = request.headers.get('X-User-ID');
             const telegramData = request.headers.get('X-Telegram-Data');
+            
+            // ========== التحقق من Timestamp ==========
+            let timestamp;
+            if (requestData.timestamp) {
+                timestamp = requestData.timestamp;
+            } else if (data.timestamp) {
+                timestamp = data.timestamp;
+            }
+            
+            // التحقق من حظر المستخدم أولاً
+            const isBanned = await checkIfUserBanned(env, userId);
+            if (isBanned) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Account suspended',
+                    details: 'Your account has been banned for cheating'
+                }), {
+                    status: 403,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+            }
+            
+            if (timestamp) {
+                const now = Date.now();
+                const requestTime = parseInt(timestamp);
+                
+                // رفض الطلبات القديمة (أكثر من 30 ثانية)
+                const timeDiff = now - requestTime;
+                if (timeDiff > 30000) {
+                    console.warn(`Timestamp expired - Banning user: ${userId}, Diff: ${timeDiff}ms`);
+                    
+                    // حظر المستخدم فوراً
+                    await banUser(env, userId, {
+                        reason: 'timestamp_expired',
+                        action: action,
+                        timeDiff: timeDiff,
+                        timestamp: now
+                    });
+                    
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'Account banned',
+                        details: 'Your account has been banned for cheating'
+                    }), {
+                        status: 403,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+                
+                // رفض الطلبات من المستقبل (أكثر من 5 ثواني)
+                if (requestTime > now + 5000) {
+                    console.warn(`Future timestamp - Banning user: ${userId}, Future: ${requestTime - now}ms`);
+                    
+                    // حظر المستخدم فوراً
+                    await banUser(env, userId, {
+                        reason: 'future_timestamp',
+                        action: action,
+                        futureTime: requestTime - now,
+                        timestamp: now
+                    });
+                    
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'Account banned',
+                        details: 'Your account has been banned for cheating'
+                    }), {
+                        status: 403,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+            } else {
+                // رفض الطلبات بدون timestamp للإجراءات الحساسة
+                const sensitiveActions = ['handleAdClick', 'buyTickets', 'executeSwap', 'submitWithdrawal', 'flipCoin'];
+                if (sensitiveActions.includes(action)) {
+                    console.warn(`No timestamp for sensitive action - Banning user: ${userId}, Action: ${action}`);
+                    
+                    // حظر المستخدم فوراً
+                    await banUser(env, userId, {
+                        reason: 'no_timestamp',
+                        action: action,
+                        details: 'Missing timestamp for sensitive action',
+                        timestamp: Date.now()
+                    });
+                    
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'Account banned',
+                        details: 'Your account has been banned for cheating'
+                    }), {
+                        status: 403,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+            }
+            // =========================================
             
             // التحقق من المصادقة
             if (!userId || !telegramData) {
@@ -180,7 +287,8 @@ export default {
                     break;
                     
                 case 'handleAdClick':
-                    result = await handleAdClick(env, userId, data.adType, data.reward);
+                    // التحقق من قيمة الـ Reward قبل المعالجة مع الحظر
+                    result = await handleAdClickWithBan(env, userId, data);
                     break;
                     
                 case 'submitWithdrawal':
@@ -243,6 +351,117 @@ export default {
         }
     }
 };
+
+// ========== دوال الحظر والتحقق ==========
+
+// التحقق إذا كان المستخدم محظوراً
+async function checkIfUserBanned(env, userId) {
+    try {
+        const bannedResult = await handleDbGet(env, `banned_users/${userId}`);
+        if (bannedResult.success && bannedResult.data && bannedResult.data.isBanned === true) {
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error checking user ban status:', error);
+        return false;
+    }
+}
+
+// حظر المستخدم فوراً
+async function banUser(env, userId, reasonData) {
+    try {
+        const banData = {
+            userId: userId,
+            isBanned: true,
+            banReason: reasonData.reason || 'cheating',
+            banDetails: reasonData,
+            bannedAt: Date.now(),
+            bannedBy: 'system_auto_ban',
+            ipAddress: 'unknown' // يمكن إضافة IP في المستقبل
+        };
+        
+        // حفظ في قاعدة البيانات
+        await handleDbSet(env, `banned_users/${userId}`, banData);
+        
+        // إضافة إلى سجل الحظر
+        await handleDbPush(env, 'ban_logs', banData);
+        
+        console.log(`User ${userId} banned permanently for: ${reasonData.reason}`);
+        
+        return true;
+    } catch (error) {
+        console.error('Error banning user:', error);
+        return false;
+    }
+}
+
+// دالة handleAdClick مع التحقق والحظر
+async function handleAdClickWithBan(env, userId, data) {
+    try {
+        const { adType, reward } = data;
+        
+        // القيم الصحيحة للـ Rewards
+        const validRewards = {
+            'monetag': 1000,
+            'giga': 2000,
+            'adsgram': 2000
+        };
+        
+        // التحقق من نوع الإعلان
+        if (!validRewards[adType]) {
+            console.warn(`Invalid ad type - Banning user: ${userId}, AdType: ${adType}`);
+            
+            // حظر المستخدم فوراً
+            await banUser(env, userId, {
+                reason: 'invalid_ad_type',
+                action: 'handleAdClick',
+                adType: adType,
+                timestamp: Date.now()
+            });
+            
+            return { 
+                success: false, 
+                error: 'Account banned',
+                details: 'Your account has been banned for cheating'
+            };
+        }
+        
+        // الحصول على القيمة الصحيحة
+        const correctReward = validRewards[adType];
+        
+        // التحقق من قيمة الـ Reward
+        if (parseInt(reward) !== correctReward) {
+            console.warn(`Invalid reward value - Banning user: ${userId}, Expected: ${correctReward}, Received: ${reward}`);
+            
+            // حظر المستخدم فوراً
+            await banUser(env, userId, {
+                reason: 'reward_tampering',
+                action: 'handleAdClick',
+                expected: correctReward,
+                received: reward,
+                adType: adType,
+                timestamp: Date.now()
+            });
+            
+            return { 
+                success: false, 
+                error: 'Account banned',
+                details: 'Your account has been banned for cheating'
+            };
+        }
+        
+        // الآن نستدعي الدالة الأصلية مع القيمة الصحيحة
+        return await handleAdClick(env, userId, adType, correctReward);
+        
+    } catch (error) {
+        console.error('Error in handleAdClickWithBan:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
 
 // التحقق من بيانات Telegram
 function isValidTelegramData(telegramData, userId) {
@@ -1549,6 +1768,55 @@ async function handleVerifyTelegramMembership(env, userId, data) {
     }
 }
 
+// دالة handleAdClick الأصلية (للاستدعاء من handleAdClickWithBan)
+async function handleAdClick(env, userId, adType, reward) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        const userData = userResult.data;
+        
+        const adCountField = `ads${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
+        const currentCount = userData[adCountField] || 0;
+        
+        const updates = {
+            [adCountField]: currentCount + 1,
+            adsWatched: (userData.adsWatched || 0) + 1,
+            dogsBalance: (userData.dogsBalance || 0) + reward
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `${adType} Ad Reward`,
+            amount: reward,
+            currency: 'GLX',
+            date: new Date().toISOString()
+        });
+        
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
+        
+        return {
+            success: true,
+            data: {
+                [adCountField]: currentCount + 1,
+                adsWatched: updates.adsWatched,
+                newBalance: updatedUserData.dogsBalance
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
 async function handleSpinSlots(env, userId) {
     try {
         const userResult = await handleDbGet(env, `users/${userId}`);
@@ -2037,54 +2305,6 @@ async function handleReferral(env, userId, referrerId) {
         return {
             success: true,
             data: { referred: true }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleAdClick(env, userId, adType, reward) {
-    try {
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        const adCountField = `ads${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
-        const currentCount = userData[adCountField] || 0;
-        
-        const updates = {
-            [adCountField]: currentCount + 1,
-            adsWatched: (userData.adsWatched || 0) + 1,
-            dogsBalance: (userData.dogsBalance || 0) + reward
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `${adType} Ad Reward`,
-            amount: reward,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
-        
-        return {
-            success: true,
-            data: {
-                [adCountField]: currentCount + 1,
-                adsWatched: updates.adsWatched,
-                newBalance: updatedUserData.dogsBalance
-            }
         };
     } catch (error) {
         return {
