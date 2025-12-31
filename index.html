@@ -398,92 +398,73 @@
     </style>
 </head>
 <body>
-<script>
-    (function(){
-        'use strict';
-        
-        // التحقق من أن التطبيق يعمل داخل Telegram Web App
-        function isTelegramWebApp() {
-            // Telegram Web App يضيف هذا الكائن
-            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
-                return true;
-            }
+    <script>
+        (function(){
+            'use strict';
             
-            // أو يمكنك التحقق من معلمة initData
-            if (window.Telegram?.WebApp?.initData) {
-                return true;
-            }
-            
-            // التحقق من عنوان URL الخاص بـ Telegram Web
-            const hostname = window.location.hostname;
-            const isTelegramWeb = hostname.includes('web.telegram.org') || 
-                                  hostname.includes('t.me') || 
-                                  hostname.includes('telegram.me');
-            
-            return isTelegramWeb;
-        }
-        
-        // التحقق من أن التطبيق يعمل داخل تطبيق Telegram Mobile
-        function isTelegramMobileApp() {
-            const userAgent = navigator.userAgent.toLowerCase();
-            const isMobileApp = userAgent.includes('telegram') || 
-                               userAgent.includes('webview') ||
-                               (window.Telegram?.WebApp?.platform !== 'unknown' && 
-                                window.Telegram?.WebApp?.platform !== 'web');
-            
-            return isMobileApp;
-        }
-        
-        // التحقق الرئيسي
-        const isInTelegram = isTelegramWebApp() || isTelegramMobileApp();
-        
-        if (!isInTelegram) {
-            // إذا لم يكن داخل Telegram، عرض رسالة الخطأ ومنع الوصول
-            document.body.innerHTML = `
-                <div style="
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    text-align: center;
-                    padding: 20px;
-                ">
-                    <div style="max-width: 500px;">
-                        <div style="font-size: 80px; margin-bottom: 20px;">🚫</div>
-                        <h1 style="font-size: 28px; margin-bottom: 15px;">Access Restricted</h1>
-                        <p style="font-size: 16px; margin-bottom: 25px; line-height: 1.6;">
-                            This application can only be accessed through the Telegram app.
-                            <br><br>
-                            Please open this link in Telegram to continue.
-                        </p>
-                        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                            <p style="margin-bottom: 10px;">To open in Telegram:</p>
-                            <p style="font-size: 14px; opacity: 0.9;">
-                                1. Copy this link<br>
-                                2. Open Telegram app<br>
-                                3. Paste the link in any chat<br>
-                                4. Click the link
+            // ============== 1. منع الفتح في المتصفح الخارجي ==============
+            function checkTelegramEnvironment() {
+                // التحقق من أننا داخل تطبيق Telegram
+                const userAgent = navigator.userAgent.toLowerCase();
+                const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
+                const isTelegramWeb = userAgent.includes('web.telegram.org') || 
+                                     userAgent.includes('telegram.me') || 
+                                     userAgent.includes('t.me');
+                
+                // إذا لم يكن داخل Telegram Web App أو Telegram Web
+                if (!isTelegramWebApp && !isTelegramWeb) {
+                    // منع التحميل وعرض رسالة خطأ
+                    document.body.innerHTML = `
+                        <div style="
+                            position: fixed;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 100%;
+                            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+                            color: white;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            text-align: center;
+                            padding: 20px;
+                            z-index: 9999;
+                        ">
+                            <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+                            <h1 style="color: #e74c3c; margin-bottom: 15px;">ACCESS RESTRICTED</h1>
+                            <p style="color: #aaa; max-width: 400px; line-height: 1.6;">
+                                This application can only be used within Telegram Messenger.
+                                <br><br>
+                                Please open this link in:
+                                <br>
+                                <strong>• Telegram Mobile App</strong>
+                                <br>
+                                • Telegram Web (web.telegram.org)
                             </p>
+                            <div style="margin-top: 30px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; max-width: 400px;">
+                                <p style="font-size: 12px; color: #ffb300;">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    For security reasons, direct browser access is not allowed.
+                                </p>
+                            </div>
                         </div>
-                        <p style="font-size: 14px; opacity: 0.8;">
-                            If you're already in Telegram, make sure you're using the latest version.
-                        </p>
-                    </div>
-                </div>
-            `;
+                    `;
+                    return false;
+                }
+                
+                return true;
+            }
             
-            // منع أي تفاعل إضافي
-            document.body.style.pointerEvents = 'none';
-            throw new Error('Access denied: This app can only be used in Telegram');
-        }
-        
-        console.log("✅ Running inside Telegram Web App");
-        
-    })();
-</script>
+            // التحقق من البيئة قبل أي شيء آخر
+            if (!checkTelegramEnvironment()) {
+                throw new Error("Browser access not allowed");
+            }
+            
+            console.log("✅ Telegram environment verified");
+            
+        })();
+    </script>
     
     <div id="security-verification" class="verification-container">
         <div style="margin-bottom:25px;">
@@ -1471,6 +1452,73 @@
             console.error("❌ Firebase initialization error:", error);
         }
         
+        // ============== 2. إنشاء بصمة الجهاز ==============
+        async function generateDeviceFingerprint() {
+            const components = [];
+            
+            try {
+                // 1. User Agent
+                components.push(navigator.userAgent);
+                
+                // 2. Screen properties
+                components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+                
+                // 3. Timezone
+                components.push(new Date().getTimezoneOffset());
+                
+                // 4. Language
+                components.push(navigator.language);
+                
+                // 5. Platform
+                components.push(navigator.platform);
+                
+                // 6. WebGL vendor (if available)
+                if (window.WebGLRenderingContext) {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (debugInfo) {
+                            components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
+                            components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+                        }
+                    }
+                }
+                
+                // 7. Touch support
+                components.push('ontouchstart' in window);
+                
+                // 8. Hardware concurrency
+                components.push(navigator.hardwareConcurrency || 'unknown');
+                
+                // 9. Device memory
+                components.push(navigator.deviceMemory || 'unknown');
+                
+                // 10. Cookies enabled
+                components.push(navigator.cookieEnabled);
+                
+                // 11. Do Not Track
+                components.push(navigator.doNotTrack || 'unknown');
+                
+                // إنشاء بصمة فريدة
+                const fingerprintString = components.join('|');
+                
+                // استخدام SHA-256 للحصول على بصمة آمنة
+                const encoder = new TextEncoder();
+                const data = encoder.encode(fingerprintString);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                return fingerprint;
+            } catch (error) {
+                console.error("Error generating fingerprint:", error);
+                // بديل في حالة الفشل
+                const fallbackFingerprint = btoa(components.join('|')).slice(0, 64);
+                return fallbackFingerprint;
+            }
+        }
+        
         function showNotification(message, type = 'info', duration = 5000) {
             const notification = document.createElement('div');
             notification.className = `notification-message notification-${type}`;
@@ -1528,8 +1576,9 @@
         }
         
         function isTelegramMobileApp() {
-            // تعطيل التحقق مؤقتاً للسماح بالفتح في المتصفح
-            return true;
+            // التحقق من أننا داخل تطبيق Telegram Mobile
+            const userAgent = navigator.userAgent.toLowerCase();
+            return userAgent.includes('telegram') || userAgent.includes('webview');
         }
         
         function isTelegramWeb() {
@@ -1566,20 +1615,38 @@
         }
         
         async function performSecurityVerification() {
-            // تعطيل التحقق الصارم
-            console.log("⚠️ Security verification is in relaxed mode");
-            
             const stepsContainer = document.getElementById('verification-steps');
             const progressBar = document.getElementById('verification-progress-bar');
             const resultContainer = document.getElementById('verification-result');
             
-            // تخطي التحقق الشديد
-            stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Browser mode enabled', 'completed');
-            progressBar.style.width = '50%';
+            // الخطوة 1: التحقق من البيئة
+            stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Verifying Telegram environment', 'active');
+            progressBar.style.width = '20%';
             
+            if (!isTelegramMobileApp() && !isTelegramWeb()) {
+                showBlockedAccess("This application can only be used within Telegram Messenger.");
+                return null;
+            }
+            
+            stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+            progressBar.style.width = '40%';
             await new Promise(resolve => setTimeout(resolve, 800));
             
-            // محاولة استخدام بيانات Telegram إن وجدت
+            // الخطوة 2: إنشاء/التحقق من بصمة الجهاز
+            stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Generating device fingerprint', 'active');
+            progressBar.style.width = '60%';
+            
+            const deviceFingerprint = await generateDeviceFingerprint();
+            console.log("Device Fingerprint:", deviceFingerprint);
+            
+            stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+            stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+            progressBar.style.width = '80%';
+            
+            // الخطوة 3: جلب بيانات المستخدم من Telegram
+            stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Loading Telegram user data', 'active');
+            progressBar.style.width = '100%';
+            
             let user = null;
             let isExisting = false;
             
@@ -1592,29 +1659,30 @@
                     username: tgUser.username || ''
                 };
                 isExisting = true;
+                
+                // حفظ بصمة الجهاز مع بيانات المستخدم
+                user.deviceFingerprint = deviceFingerprint;
+                
+                stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                
+                resultContainer.innerHTML = `<div style="background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 20px; margin-bottom: 10px;">✅</div>
+                    <div style="font-weight: 700; color: #27ae60; margin-bottom: 5px;">Security Verified</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Welcome, ${user.first_name}!</div>
+                </div>`;
             } else {
-                // إنشاء مستخدم مؤقت للمتصفح
-                user = {
-                    id: 'browser_user_' + Date.now(),
-                    first_name: 'Browser',
-                    last_name: 'User',
-                    username: 'browser_user'
-                };
-                isExisting = false;
+                stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user not found', 'failed');
+                
+                showBlockedAccess("Telegram user authentication failed. Please restart the bot.");
+                return null;
             }
             
-            stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Browser mode enabled', 'completed');
-            stepsContainer.innerHTML += createVerificationStep(2, 'User Setup', isExisting ? 'Telegram user detected' : 'Browser session created', 'completed');
-            progressBar.style.width = '100%';
-            
-            resultContainer.innerHTML = `<div style="background: rgba(52,152,219,0.1); border: 1px solid rgba(52,152,219,0.3); border-radius: 12px; padding: 15px; text-align: center;">
-                <div style="font-size: 20px; margin-bottom: 10px;">⚠️</div>
-                <div style="font-weight: 700; color: #3498db; margin-bottom: 5px;">Browser Mode Active</div>
-                <div style="font-size: 12px; color: var(--text-muted);">Some features may be limited in browser mode</div>
-            </div>`;
-            
             await new Promise(resolve => setTimeout(resolve, 1500));
-            return { user, isExisting };
+            return { user, isExisting, deviceFingerprint };
         }
         
         function showBlockedAccess(reason) {
@@ -1729,6 +1797,75 @@
         let lastAdClickTime = 0;
         const AD_CLICK_DELAY = 3000;
         
+        // ============== 3. إعلان Giga قبل الإجراءات ==============
+        let gigaAdRequired = false;
+        let gigaAdCallback = null;
+        
+        function showGigaAdBeforeAction(actionName, callback) {
+            if (typeof window.showGiga === 'function') {
+                gigaAdRequired = true;
+                gigaAdCallback = callback;
+                
+                showNotification(`Please watch an ad to ${actionName}`, "info");
+                
+                // عرض إعلان Giga
+                window.showGiga().then(() => {
+                    gigaAdRequired = false;
+                    if (gigaAdCallback) {
+                        gigaAdCallback();
+                        gigaAdCallback = null;
+                    }
+                }).catch(() => {
+                    showNotification("Ad failed or was skipped", "warning");
+                    gigaAdRequired = false;
+                    gigaAdCallback = null;
+                });
+            } else {
+                // إذا لم يكن Giga متاحاً، تنفيذ الإجراء مباشرة
+                callback();
+            }
+        }
+        
+        // دالة محمية بالإعلان للتحقق اليومي
+        function protectedDailyClaim() {
+            if (gigaAdRequired) {
+                showNotification("Please complete the ad first", "warning");
+                return;
+            }
+            
+            showGigaAdBeforeAction("claim daily bonus", handleDailyClaim);
+        }
+        
+        // دالة محمية بالإعلان لشراء التذاكر
+        function protectedBuyTickets() {
+            if (gigaAdRequired) {
+                showNotification("Please complete the ad first", "warning");
+                return;
+            }
+            
+            showGigaAdBeforeAction("buy tickets", buyTickets);
+        }
+        
+        // دالة محمية بالإعلان للعبة Coin Flip
+        function protectedFlipCoin() {
+            if (gigaAdRequired) {
+                showNotification("Please complete the ad first", "warning");
+                return;
+            }
+            
+            showGigaAdBeforeAction("play coin flip", flipCoin);
+        }
+        
+        // دالة محمية بالإعلان لاستخدام الرمز الترويجي
+        function protectedRedeemCode() {
+            if (gigaAdRequired) {
+                showNotification("Please complete the ad first", "warning");
+                return;
+            }
+            
+            showGigaAdBeforeAction("redeem promo code", handlePromoCode);
+        }
+        
         // دالة لجلب الإعدادات من Firebase
         async function fetchAppSettings() {
             if (!db) {
@@ -1774,7 +1911,7 @@
             }
             
             showMainApp();
-            const { user, isExisting } = verificationResult;
+            const { user, isExisting, deviceFingerprint } = verificationResult;
             
             if (window.Telegram?.WebApp) {
                 window.Telegram.WebApp.ready();
@@ -1783,12 +1920,31 @@
                 window.Telegram.WebApp.backgroundColor = '#202020';
             }
             
-            await initializeUser(user);
+            await initializeUser(user, deviceFingerprint);
             initializeApp(user);
         });
         
-        async function initializeUser(user) {
-            const result = await callAPI('initializeUser', { user });
+        async function initializeUser(user, deviceFingerprint) {
+            // ============== التحقق من بصمة الجهاز ==============
+            const fingerprintCheck = await callAPI('checkDeviceFingerprint', {
+                userId: user.id,
+                deviceFingerprint: deviceFingerprint
+            });
+            
+            if (!fingerprintCheck.success) {
+                showBlockedAccess("Device security check failed. Please contact support.");
+                return;
+            }
+            
+            if (fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded) {
+                showBlockedAccess("Device limit exceeded. Each device can only have one account.");
+                return;
+            }
+            
+            const result = await callAPI('initializeUser', { 
+                user,
+                deviceFingerprint: deviceFingerprint 
+            });
             
             if (result.success) {
                 appData = result.data.userData || {};
@@ -2198,8 +2354,6 @@
             const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
             
             if (!userId) {
-                // استخدام ID مؤقت للمتصفح
-                const tempUserId = 'browser_user_' + Date.now();
                 return;
             }
             
@@ -2904,13 +3058,14 @@
             const promoInput = document.getElementById('promo-code-input');
             
             if (redeemBtn) {
-                redeemBtn.addEventListener('click', handlePromoCode);
+                // استخدام الدالة المحمية بالإعلان
+                redeemBtn.addEventListener('click', protectedRedeemCode);
             }
             
             if (promoInput) {
                 promoInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
-                        handlePromoCode();
+                        protectedRedeemCode();
                     }
                 });
             }
@@ -3627,7 +3782,10 @@
                 });
             });
             
-            document.getElementById('claim-daily-btn').addEventListener('click', handleDailyClaim);
+            // استبدال الأزرار المحمية بالإعلان
+            document.getElementById('claim-daily-btn').addEventListener('click', protectedDailyClaim);
+            document.getElementById('buy-tickets-btn').addEventListener('click', protectedBuyTickets);
+            document.getElementById('flip-coin-btn').addEventListener('click', protectedFlipCoin);
             
             document.getElementById('coin-bet-amount').addEventListener('input', function() {
                 const value = parseInt(this.value);
