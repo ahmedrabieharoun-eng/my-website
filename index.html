@@ -1658,20 +1658,84 @@
                     last_name: tgUser.last_name || '',
                     username: tgUser.username || ''
                 };
-                isExisting = true;
                 
-                // حفظ بصمة الجهاز مع بيانات المستخدم
-                user.deviceFingerprint = deviceFingerprint;
+                // التحقق من بصمة الجهاز مع الـ API
+                stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Checking device authorization', 'active');
                 
-                stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
-                stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
-                stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                const fingerprintCheck = await callAPI('checkDeviceFingerprint', {
+                    userId: user.id,
+                    deviceFingerprint: deviceFingerprint
+                });
                 
-                resultContainer.innerHTML = `<div style="background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 12px; padding: 15px; text-align: center;">
-                    <div style="font-size: 20px; margin-bottom: 10px;">✅</div>
-                    <div style="font-weight: 700; color: #27ae60; margin-bottom: 5px;">Security Verified</div>
-                    <div style="font-size: 12px; color: var(--text-muted);">Welcome, ${user.first_name}!</div>
-                </div>`;
+                if (fingerprintCheck.success) {
+                    if (fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded) {
+                        stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                        stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                        stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                        stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device already has an account', 'failed');
+                        
+                        showBlockedAccess(`
+                            <div style="text-align:left; padding:15px;">
+                                <div style="font-size:16px; font-weight:bold; color:#e74c3c; margin-bottom:10px;">
+                                    ⚠️ Device Already Registered
+                                </div>
+                                <div style="font-size:14px; color:#fff; margin-bottom:15px;">
+                                    This device already has a GLX Galaxy account associated with it.
+                                </div>
+                                <div style="background:rgba(231,76,60,0.1); border:1px solid rgba(231,76,60,0.3); border-radius:8px; padding:10px; margin-bottom:15px;">
+                                    <div style="font-size:12px; color:#e74c3c; margin-bottom:5px;">
+                                        <strong>Security Policy:</strong>
+                                    </div>
+                                    <div style="font-size:11px; color:#fff; line-height:1.4;">
+                                        • One account per device only<br>
+                                        • Each device can only have one GLX Galaxy account<br>
+                                        • Multiple accounts from same device are not allowed
+                                    </div>
+                                </div>
+                                <div style="font-size:12px; color:#aaa;">
+                                    If you believe this is an error, please contact support.
+                                </div>
+                            </div>
+                        `);
+                        return null;
+                    }
+                    
+                    isExisting = true;
+                    
+                    // حفظ بصمة الجهاز للمستخدم الجديد
+                    if (!fingerprintCheck.data.isExistingUser) {
+                        const saveResult = await callAPI('saveDeviceFingerprint', {
+                            userId: user.id,
+                            deviceFingerprint: deviceFingerprint
+                        });
+                        
+                        if (!saveResult.success) {
+                            console.error("Failed to save device fingerprint:", saveResult.error);
+                        }
+                    }
+                    
+                    // حفظ بصمة الجهاز مع بيانات المستخدم
+                    user.deviceFingerprint = deviceFingerprint;
+                    
+                    stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device authorized successfully', 'completed');
+                    
+                    resultContainer.innerHTML = `<div style="background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 12px; padding: 15px; text-align: center;">
+                        <div style="font-size: 20px; margin-bottom: 10px;">✅</div>
+                        <div style="font-weight: 700; color: #27ae60; margin-bottom: 5px;">Security Verified</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Welcome, ${user.first_name}!</div>
+                    </div>`;
+                } else {
+                    stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device verification failed', 'failed');
+                    
+                    showBlockedAccess("Device security check failed. Please contact support.");
+                    return null;
+                }
             } else {
                 stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
                 stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
@@ -1688,7 +1752,22 @@
         function showBlockedAccess(reason) {
             document.getElementById('security-verification').style.display = 'none';
             document.getElementById('blocked-access').style.display = 'block';
-            document.getElementById('blocked-reason').innerHTML = reason;
+            
+            // إذا كان السبب يحتوي على HTML، استخدمه مباشرة
+            if (reason.includes('<div')) {
+                document.getElementById('blocked-reason').innerHTML = reason;
+            } else {
+                document.getElementById('blocked-reason').innerHTML = `
+                    <div style="padding:15px;">
+                        <div style="font-size:16px; color:#e74c3c; font-weight:bold; margin-bottom:10px;">
+                            ⚠️ Security Restriction
+                        </div>
+                        <div style="font-size:14px; color:#fff; line-height:1.4;">
+                            ${reason}
+                        </div>
+                    </div>
+                `;
+            }
         }
         
         function showMainApp() {
@@ -1802,6 +1881,16 @@
         let gigaAdCallback = null;
         
         function showGigaAdBeforeAction(actionName, callback) {
+            // قائمة العمليات التي لا تحتاج إلى إعلان
+            const noAdActions = ['play coin flip', 'buy tickets', 'play slots'];
+            
+            // التحقق إذا كانت العملية من القائمة المستثناة
+            if (noAdActions.includes(actionName.toLowerCase())) {
+                // تنفيذ الإجراء مباشرة بدون إعلان
+                callback();
+                return;
+            }
+            
             if (typeof window.showGiga === 'function') {
                 gigaAdRequired = true;
                 gigaAdCallback = callback;
@@ -1826,14 +1915,14 @@
             }
         }
         
-        // دالة محمية بالإعلان للتحقق اليومي
-        function protectedDailyClaim() {
+        // دالة محمية بالإعلان للعبة Coin Flip
+        function protectedFlipCoin() {
             if (gigaAdRequired) {
                 showNotification("Please complete the ad first", "warning");
                 return;
             }
             
-            showGigaAdBeforeAction("claim daily bonus", handleDailyClaim);
+            showGigaAdBeforeAction("play coin flip", flipCoin);
         }
         
         // دالة محمية بالإعلان لشراء التذاكر
@@ -1846,17 +1935,27 @@
             showGigaAdBeforeAction("buy tickets", buyTickets);
         }
         
-        // دالة محمية بالإعلان للعبة Coin Flip
-        function protectedFlipCoin() {
+        // دالة محمية بالإعلان للعبة Slots
+        function protectedSlotsSpin() {
             if (gigaAdRequired) {
                 showNotification("Please complete the ad first", "warning");
                 return;
             }
             
-            showGigaAdBeforeAction("play coin flip", flipCoin);
+            showGigaAdBeforeAction("play slots", handleSlotsSpin);
         }
         
-        // دالة محمية بالإعلان لاستخدام الرمز الترويجي
+        // الحفاظ على إعلان Giga لتسجيل الدخول اليومي
+        function protectedDailyClaim() {
+            if (gigaAdRequired) {
+                showNotification("Please complete the ad first", "warning");
+                return;
+            }
+            
+            showGigaAdBeforeAction("claim daily bonus", handleDailyClaim);
+        }
+        
+        // الحفاظ على إعلان Giga للرمز الترويجي
         function protectedRedeemCode() {
             if (gigaAdRequired) {
                 showNotification("Please complete the ad first", "warning");
@@ -1925,21 +2024,8 @@
         });
         
         async function initializeUser(user, deviceFingerprint) {
-            // ============== التحقق من بصمة الجهاز ==============
-            const fingerprintCheck = await callAPI('checkDeviceFingerprint', {
-                userId: user.id,
-                deviceFingerprint: deviceFingerprint
-            });
-            
-            if (!fingerprintCheck.success) {
-                showBlockedAccess("Device security check failed. Please contact support.");
-                return;
-            }
-            
-            if (fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded) {
-                showBlockedAccess("Device limit exceeded. Each device can only have one account.");
-                return;
-            }
+            // تم نقل التحقق من بصمة الجهاز إلى performSecurityVerification
+            // للحصول على تحقق متسلسل أفضل
             
             const result = await callAPI('initializeUser', { 
                 user,
@@ -3277,7 +3363,7 @@
                 }
             }
             
-            document.getElementById('slots-spin-btn').addEventListener('click', handleSlotsSpin);
+            document.getElementById('slots-spin-btn').addEventListener('click', protectedSlotsSpin);
         }
         
         function updateAvailableSpins() {
