@@ -7,7 +7,7 @@ export default {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint',
                 }
             });
         }
@@ -33,6 +33,7 @@ export default {
             const data = requestData.data || {};
             const userId = request.headers.get('X-User-ID');
             const telegramData = request.headers.get('X-Telegram-Data');
+            const deviceFingerprint = request.headers.get('X-Device-Fingerprint') || data.deviceFingerprint;
             
             // التحقق من المصادقة
             if (!userId || !telegramData) {
@@ -55,6 +56,39 @@ export default {
                     headers: { 'Content-Type': 'application/json' }
                 });
             }
+            
+            // ==================== نظام التحقق من بصمة الجهاز ====================
+            // التحقق من بصمة الجهاز فقط لإجراء initializeUser
+            if (action === 'initializeUser') {
+                // جلب بيانات المستخدم أولاً للتحقق مما إذا كان جديدًا
+                const userResult = await handleDbGet(env, `users/${userId}`);
+                const userData = userResult.data;
+                
+                // إذا كان المستخدم جديدًا (لا توجد بيانات) أو ليس لديه بصمة جهاز
+                if ((!userResult.success || !userData || !userData.deviceFingerprint) && deviceFingerprint) {
+                    // التحقق مما إذا كانت بصمة الجهاز مستخدمة بالفعل
+                    const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+                    
+                    if (fingerprintCheck.deviceAlreadyUsed) {
+                        return new Response(JSON.stringify({
+                            success: false,
+                            error: 'Device already registered with another account',
+                            data: {
+                                deviceAlreadyUsed: true,
+                                existingUserId: fingerprintCheck.existingUserId,
+                                existingUserName: fingerprintCheck.existingUserName
+                            }
+                        }), {
+                            status: 403,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    }
+                    
+                    // إذا لم تكن البصمة مستخدمة، سنقوم بحفظها لاحقًا في handleInitializeUser
+                    data.deviceFingerprint = deviceFingerprint;
+                }
+            }
+            // ==================== نهاية نظام التحقق من بصمة الجهاز ====================
             
             // ==================== نظام الحظر التلقائي ====================
             // التحقق من الحظر قبل معالجة أي طلب
@@ -290,6 +324,14 @@ export default {
                     result = await handleSyncUserCompetitionTickets(env, userId);
                     break;
                     
+                case 'checkDeviceFingerprint':
+                    result = await handleCheckDeviceFingerprint(env, userId, data);
+                    break;
+                    
+                case 'saveDeviceFingerprint':
+                    result = await handleSaveDeviceFingerprint(env, userId, data);
+                    break;
+                    
                 default:
                     result = {
                         success: false,
@@ -322,6 +364,124 @@ export default {
         }
     }
 };
+
+// ==================== نظام التحقق من بصمة الجهاز ====================
+
+// التحقق مما إذا كانت بصمة الجهاز مستخدمة مسبقًا
+async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = null) {
+    try {
+        if (!deviceFingerprint) {
+            return { deviceAlreadyUsed: false };
+        }
+        
+        // البحث في جميع المستخدمين عن بصمة الجهاز
+        const usersResult = await handleDbGet(env, 'users');
+        const usersData = usersResult.data || {};
+        
+        for (const [userId, userData] of Object.entries(usersData)) {
+            // تخطي المستخدم الحالي إذا كان موجودًا
+            if (currentUserId && userId === currentUserId) continue;
+            
+            if (userData.deviceFingerprint === deviceFingerprint) {
+                return {
+                    deviceAlreadyUsed: true,
+                    existingUserId: userId,
+                    existingUserName: userData.name || 'Anonymous User',
+                    existingUserPhoto: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'
+                };
+            }
+        }
+        
+        return { deviceAlreadyUsed: false };
+    } catch (error) {
+        console.error('Error checking device fingerprint:', error);
+        return { deviceAlreadyUsed: false };
+    }
+}
+
+// معالجة التحقق من بصمة الجهاز
+async function handleCheckDeviceFingerprint(env, userId, data) {
+    try {
+        const { deviceFingerprint } = data;
+        
+        if (!deviceFingerprint) {
+            return {
+                success: false,
+                error: 'Device fingerprint is required'
+            };
+        }
+        
+        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+        
+        return {
+            success: true,
+            data: fingerprintCheck
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// معالجة حفظ بصمة الجهاز
+async function handleSaveDeviceFingerprint(env, userId, data) {
+    try {
+        const { deviceFingerprint } = data;
+        
+        if (!deviceFingerprint) {
+            return {
+                success: false,
+                error: 'Device fingerprint is required'
+            };
+        }
+        
+        // التحقق من الحظر
+        const isBlocked = await checkUserBlocked(env, userId);
+        if (isBlocked) {
+            return { success: false, error: 'Your account has been blocked for violating system rules' };
+        }
+        
+        // التحقق من أن المستخدم موجود
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { success: false, error: 'User not found' };
+        }
+        
+        // التحقق مما إذا كانت البصمة مستخدمة بالفعل من قبل مستخدم آخر
+        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+        
+        if (fingerprintCheck.deviceAlreadyUsed) {
+            return {
+                success: false,
+                error: 'Device already registered with another account',
+                data: fingerprintCheck
+            };
+        }
+        
+        // تحديث المستخدم بإضافة بصمة الجهاز
+        await handleDbUpdate(env, `users/${userId}`, {
+            deviceFingerprint: deviceFingerprint,
+            deviceRegisteredAt: Date.now(),
+            lastDeviceCheck: Date.now(),
+            deviceInfo: data.deviceInfo || {}
+        });
+        
+        return {
+            success: true,
+            data: {
+                message: 'Device fingerprint saved successfully',
+                deviceRegisteredAt: Date.now()
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
 
 // ==================== نظام الحظر التلقائي ====================
 
@@ -1297,6 +1457,22 @@ async function handleInitializeUser(env, userId, data, telegramData) {
             };
         }
         
+        // ==================== التحقق من بصمة الجهاز ====================
+        const deviceFingerprint = data.deviceFingerprint;
+        if (deviceFingerprint) {
+            // التحقق مما إذا كانت بصمة الجهاز مستخدمة بالفعل من قبل مستخدم آخر
+            const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+            
+            if (fingerprintCheck.deviceAlreadyUsed) {
+                return {
+                    success: false,
+                    error: 'Device already registered with another account',
+                    data: fingerprintCheck
+                };
+            }
+        }
+        // ==================== نهاية التحقق من بصمة الجهاز ====================
+        
         // 1. أولاً: ضمان وجود مسابقة نشطة وجلب بياناتها
         const competitionData = await ensureAndGetCompetition(env, userId);
         
@@ -1341,7 +1517,14 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 isBlocked: false,
                 blockReason: null,
                 blockedAt: null,
-                violationCount: 0
+                violationCount: 0,
+                // حفظ بصمة الجهاز إذا كانت متوفرة
+                ...(deviceFingerprint && {
+                    deviceFingerprint: deviceFingerprint,
+                    deviceRegisteredAt: Date.now(),
+                    lastDeviceCheck: Date.now(),
+                    deviceInfo: data.deviceInfo || {}
+                })
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
@@ -1386,6 +1569,14 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                     updates.blockReason = null;
                     updates.blockedAt = null;
                 }
+            }
+            
+            // تحديث بصمة الجهاز إذا لم تكن موجودة وكانت متوفرة
+            if (!userData.deviceFingerprint && deviceFingerprint) {
+                updates.deviceFingerprint = deviceFingerprint;
+                updates.deviceRegisteredAt = Date.now();
+                updates.lastDeviceCheck = Date.now();
+                updates.deviceInfo = data.deviceInfo || {};
             }
             
             if (Object.keys(updates).length > 0) {
@@ -1496,6 +1687,11 @@ async function handleGetConfig() {
             
             // حدود البرومو كود
             maxPromoReward: 10000, // الحد الأقصى لمكافأة البرومو كود
+            
+            // نظام بصمة الجهاز
+            enableDeviceFingerprint: true, // تفعيل نظام التحقق من بصمة الجهاز
+            allowMultipleDevices: false, // عدم السماح بأجهزة متعددة لنفس المستخدم
+            deviceCheckRequired: true // التحقق من الجهاز مطلوب للمستخدمين الجدد
         };
         
         return {
