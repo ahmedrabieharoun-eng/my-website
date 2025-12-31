@@ -810,7 +810,7 @@
                         <span id="tickets-cost-display">10,000 GLX</span>
                     </div>
                 </div>
-                <button class="btn btn-primary" id="buy-tickets-btn" onclick="buyTickets()">
+                <button class="btn btn-primary" id="buy-tickets-btn">
                     <i class="fa-solid fa-ticket"></i> BUY TICKETS
                 </button>
                 <p id="buy-tickets-status" style="text-align:center;font-size:11px;margin-top:10px;color:var(--text-muted);"></p>
@@ -928,7 +928,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="btn btn-primary" id="flip-coin-btn" onclick="flipCoin()">
+                    <button class="btn btn-primary" id="flip-coin-btn">
                         <i class="fa-solid fa-play"></i> FLIP COIN
                     </button>
                     <div class="game-result" id="coin-game-result" style="display:none;">
@@ -1404,7 +1404,7 @@
                 limitAdsgram: 300,
                 minTonWithdrawal: 0.05,
                 minFaucetPayWithdrawal: 0.0001,
-                referralReward: 10000, // تحديث إلى 10000
+                referralReward: 10000,
                 pricePerClick: 0.0015,
                 glxToTonRate: 0.0000001,
                 tonToGlxRate: 10000000,
@@ -1452,7 +1452,7 @@
             console.error("❌ Firebase initialization error:", error);
         }
         
-        // ============== 2. إنشاء بصمة الجهاز ==============
+        // ============== 1. إنشاء بصمة الجهاز ==============
         async function generateDeviceFingerprint() {
             const components = [];
             
@@ -1519,6 +1519,19 @@
             }
         }
         
+        // ============== 2. إعدادات الإعلانات ==============
+        const AD_CONFIG = {
+            // العمليات المحمية من الإعلانات (لا تظهر إعلان قبلها)
+            protectedActions: ['coinFlip', 'buyTickets', 'spinSlots'],
+            
+            // العمليات التي تظهر إعلان قبلها
+            adRequiredActions: ['dailyClaim', 'redeemCode'],
+            
+            // إعدادات التوقيت
+            adDelay: 3000,
+            dailyAdLimit: 650
+        };
+        
         function showNotification(message, type = 'info', duration = 5000) {
             const notification = document.createElement('div');
             notification.className = `notification-message notification-${type}`;
@@ -1576,7 +1589,6 @@
         }
         
         function isTelegramMobileApp() {
-            // التحقق من أننا داخل تطبيق Telegram Mobile
             const userAgent = navigator.userAgent.toLowerCase();
             return userAgent.includes('telegram') || userAgent.includes('webview');
         }
@@ -1614,6 +1626,7 @@
             </div>`;
         }
         
+        // ============== 3. التحقق الأمني المتكامل ==============
         async function performSecurityVerification() {
             const stepsContainer = document.getElementById('verification-steps');
             const progressBar = document.getElementById('verification-progress-bar');
@@ -1632,7 +1645,7 @@
             progressBar.style.width = '40%';
             await new Promise(resolve => setTimeout(resolve, 800));
             
-            // الخطوة 2: إنشاء/التحقق من بصمة الجهاز
+            // الخطوة 2: إنشاء بصمة الجهاز
             stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Generating device fingerprint', 'active');
             progressBar.style.width = '60%';
             
@@ -1648,7 +1661,6 @@
             progressBar.style.width = '100%';
             
             let user = null;
-            let isExisting = false;
             
             if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
                 const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
@@ -1659,83 +1671,48 @@
                     username: tgUser.username || ''
                 };
                 
-                // التحقق من بصمة الجهاز مع الـ API
-                stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Checking device authorization', 'active');
-                
+                // التحقق من بصمة الجهاز
                 const fingerprintCheck = await callAPI('checkDeviceFingerprint', {
                     userId: user.id,
                     deviceFingerprint: deviceFingerprint
                 });
                 
-                if (fingerprintCheck.success) {
-                    if (fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded) {
-                        stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
-                        stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
-                        stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
-                        stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device already has an account', 'failed');
-                        
-                        showBlockedAccess(`
-                            <div style="text-align:left; padding:15px;">
-                                <div style="font-size:16px; font-weight:bold; color:#e74c3c; margin-bottom:10px;">
-                                    ⚠️ Device Already Registered
-                                </div>
-                                <div style="font-size:14px; color:#fff; margin-bottom:15px;">
-                                    This device already has a GLX Galaxy account associated with it.
-                                </div>
-                                <div style="background:rgba(231,76,60,0.1); border:1px solid rgba(231,76,60,0.3); border-radius:8px; padding:10px; margin-bottom:15px;">
-                                    <div style="font-size:12px; color:#e74c3c; margin-bottom:5px;">
-                                        <strong>Security Policy:</strong>
-                                    </div>
-                                    <div style="font-size:11px; color:#fff; line-height:1.4;">
-                                        • One account per device only<br>
-                                        • Each device can only have one GLX Galaxy account<br>
-                                        • Multiple accounts from same device are not allowed
-                                    </div>
-                                </div>
-                                <div style="font-size:12px; color:#aaa;">
-                                    If you believe this is an error, please contact support.
-                                </div>
-                            </div>
-                        `);
-                        return null;
-                    }
-                    
-                    isExisting = true;
-                    
-                    // حفظ بصمة الجهاز للمستخدم الجديد
-                    if (!fingerprintCheck.data.isExistingUser) {
-                        const saveResult = await callAPI('saveDeviceFingerprint', {
-                            userId: user.id,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                        
-                        if (!saveResult.success) {
-                            console.error("Failed to save device fingerprint:", saveResult.error);
-                        }
-                    }
-                    
-                    // حفظ بصمة الجهاز مع بيانات المستخدم
-                    user.deviceFingerprint = deviceFingerprint;
-                    
+                if (!fingerprintCheck.success) {
                     stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
                     stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
-                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
-                    stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device authorized successfully', 'completed');
-                    
-                    resultContainer.innerHTML = `<div style="background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 12px; padding: 15px; text-align: center;">
-                        <div style="font-size: 20px; margin-bottom: 10px;">✅</div>
-                        <div style="font-weight: 700; color: #27ae60; margin-bottom: 5px;">Security Verified</div>
-                        <div style="font-size: 12px; color: var(--text-muted);">Welcome, ${user.first_name}!</div>
-                    </div>`;
-                } else {
-                    stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
-                    stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
-                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
-                    stepsContainer.innerHTML += createVerificationStep(4, 'Account Verification', 'Device verification failed', 'failed');
+                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Device security check failed', 'failed');
                     
                     showBlockedAccess("Device security check failed. Please contact support.");
                     return null;
                 }
+                
+                if (fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded) {
+                    stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                    stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Device limit exceeded', 'failed');
+                    
+                    showBlockedAccess("Device limit exceeded. Each device can only have one account.");
+                    return null;
+                }
+                
+                // حفظ بصمة الجهاز
+                await callAPI('saveDeviceFingerprint', {
+                    userId: user.id,
+                    deviceFingerprint: deviceFingerprint
+                });
+                
+                // حفظ بصمة الجهاز مع بيانات المستخدم
+                user.deviceFingerprint = deviceFingerprint;
+                
+                stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
+                stepsContainer.innerHTML += createVerificationStep(3, 'User Authentication', 'Telegram user authenticated', 'completed');
+                
+                resultContainer.innerHTML = `<div style="background: rgba(39,174,96,0.1); border: 1px solid rgba(39,174,96,0.3); border-radius: 12px; padding: 15px; text-align: center;">
+                    <div style="font-size: 20px; margin-bottom: 10px;">✅</div>
+                    <div style="font-weight: 700; color: #27ae60; margin-bottom: 5px;">Security Verified</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Welcome, ${user.first_name}!</div>
+                </div>`;
             } else {
                 stepsContainer.innerHTML = createVerificationStep(1, 'Environment Check', 'Telegram environment verified', 'completed');
                 stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Device fingerprint generated', 'completed');
@@ -1746,28 +1723,13 @@
             }
             
             await new Promise(resolve => setTimeout(resolve, 1500));
-            return { user, isExisting, deviceFingerprint };
+            return { user, deviceFingerprint };
         }
         
         function showBlockedAccess(reason) {
             document.getElementById('security-verification').style.display = 'none';
             document.getElementById('blocked-access').style.display = 'block';
-            
-            // إذا كان السبب يحتوي على HTML، استخدمه مباشرة
-            if (reason.includes('<div')) {
-                document.getElementById('blocked-reason').innerHTML = reason;
-            } else {
-                document.getElementById('blocked-reason').innerHTML = `
-                    <div style="padding:15px;">
-                        <div style="font-size:16px; color:#e74c3c; font-weight:bold; margin-bottom:10px;">
-                            ⚠️ Security Restriction
-                        </div>
-                        <div style="font-size:14px; color:#fff; line-height:1.4;">
-                            ${reason}
-                        </div>
-                    </div>
-                `;
-            }
+            document.getElementById('blocked-reason').innerHTML = reason;
         }
         
         function showMainApp() {
@@ -1776,6 +1738,7 @@
             document.getElementById('app-container').style.display = 'block';
         }
         
+        // ============== 4. إعدادات النظام ==============
         const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
         
         async function callAPI(action, data = {}) {
@@ -1876,28 +1839,18 @@
         let lastAdClickTime = 0;
         const AD_CLICK_DELAY = 3000;
         
-        // ============== 3. إعلان Giga قبل الإجراءات ==============
+        // ============== 5. نظام الإعلانات الذكي ==============
         let gigaAdRequired = false;
         let gigaAdCallback = null;
         
+        // دالة ذكية للتحكم في ظهور الإعلانات
         function showGigaAdBeforeAction(actionName, callback) {
-            // قائمة العمليات التي لا تحتاج إلى إعلان
-            const noAdActions = ['play coin flip', 'buy tickets', 'play slots'];
-            
-            // التحقق إذا كانت العملية من القائمة المستثناة
-            if (noAdActions.includes(actionName.toLowerCase())) {
-                // تنفيذ الإجراء مباشرة بدون إعلان
-                callback();
-                return;
-            }
-            
             if (typeof window.showGiga === 'function') {
                 gigaAdRequired = true;
                 gigaAdCallback = callback;
                 
                 showNotification(`Please watch an ad to ${actionName}`, "info");
                 
-                // عرض إعلان Giga
                 window.showGiga().then(() => {
                     gigaAdRequired = false;
                     if (gigaAdCallback) {
@@ -1910,62 +1863,55 @@
                     gigaAdCallback = null;
                 });
             } else {
-                // إذا لم يكن Giga متاحاً، تنفيذ الإجراء مباشرة
                 callback();
             }
         }
         
-        // دالة محمية بالإعلان للعبة Coin Flip
-        function protectedFlipCoin() {
+        // دالة ذكية للإجراءات المحمية
+        function protectedAction(actionName, callback) {
             if (gigaAdRequired) {
                 showNotification("Please complete the ad first", "warning");
                 return;
             }
             
-            showGigaAdBeforeAction("play coin flip", flipCoin);
-        }
-        
-        // دالة محمية بالإعلان لشراء التذاكر
-        function protectedBuyTickets() {
-            if (gigaAdRequired) {
-                showNotification("Please complete the ad first", "warning");
-                return;
+            // التحقق إذا كانت العملية محمية من الإعلانات
+            if (AD_CONFIG.protectedActions.includes(actionName)) {
+                // تنفيذ مباشر بدون إعلان
+                callback();
+            } else if (AD_CONFIG.adRequiredActions.includes(actionName)) {
+                // عرض إعلان قبل الإجراء
+                showGigaAdBeforeAction(actionName, callback);
+            } else {
+                // تنفيذ مباشر
+                callback();
             }
-            
-            showGigaAdBeforeAction("buy tickets", buyTickets);
         }
         
-        // دالة محمية بالإعلان للعبة Slots
-        function protectedSlotsSpin() {
-            if (gigaAdRequired) {
-                showNotification("Please complete the ad first", "warning");
-                return;
-            }
-            
-            showGigaAdBeforeAction("play slots", handleSlotsSpin);
-        }
-        
-        // الحفاظ على إعلان Giga لتسجيل الدخول اليومي
+        // دالة محمية للعملية اليومية
         function protectedDailyClaim() {
-            if (gigaAdRequired) {
-                showNotification("Please complete the ad first", "warning");
-                return;
-            }
-            
-            showGigaAdBeforeAction("claim daily bonus", handleDailyClaim);
+            protectedAction('dailyClaim', handleDailyClaim);
         }
         
-        // الحفاظ على إعلان Giga للرمز الترويجي
+        // دالة محمية لشراء التذاكر
+        function protectedBuyTickets() {
+            protectedAction('buyTickets', buyTickets);
+        }
+        
+        // دالة محمية للعبة Coin Flip
+        function protectedFlipCoin() {
+            protectedAction('coinFlip', flipCoin);
+        }
+        
+        // دالة محمية للعبة Slots
+        function protectedSpinSlots() {
+            protectedAction('spinSlots', handleSlotsSpin);
+        }
+        
+        // دالة محمية للرمز الترويجي
         function protectedRedeemCode() {
-            if (gigaAdRequired) {
-                showNotification("Please complete the ad first", "warning");
-                return;
-            }
-            
-            showGigaAdBeforeAction("redeem promo code", handlePromoCode);
+            protectedAction('redeemCode', handlePromoCode);
         }
         
-        // دالة لجلب الإعدادات من Firebase
         async function fetchAppSettings() {
             if (!db) {
                 console.log("Firebase not available, using default settings");
@@ -1978,7 +1924,6 @@
                 if (doc.exists) {
                     const firebaseSettings = doc.data();
                     
-                    // تحديث الإعدادات الحالية بقيم Firebase
                     const updatedSettings = {
                         ...appSettings,
                         ...firebaseSettings
@@ -1996,13 +1941,13 @@
             }
         }
         
-        // دالة للحصول على إعدادات محدثة
         async function getUpdatedSettings() {
             const newSettings = await fetchAppSettings();
             appSettings = newSettings;
             return newSettings;
         }
         
+        // ============== 6. التهيئة الرئيسية ==============
         document.addEventListener('DOMContentLoaded', async function() {
             const verificationResult = await performSecurityVerification();
             if (!verificationResult) {
@@ -2010,7 +1955,7 @@
             }
             
             showMainApp();
-            const { user, isExisting, deviceFingerprint } = verificationResult;
+            const { user, deviceFingerprint } = verificationResult;
             
             if (window.Telegram?.WebApp) {
                 window.Telegram.WebApp.ready();
@@ -2024,9 +1969,6 @@
         });
         
         async function initializeUser(user, deviceFingerprint) {
-            // تم نقل التحقق من بصمة الجهاز إلى performSecurityVerification
-            // للحصول على تحقق متسلسل أفضل
-            
             const result = await callAPI('initializeUser', { 
                 user,
                 deviceFingerprint: deviceFingerprint 
@@ -2035,7 +1977,6 @@
             if (result.success) {
                 appData = result.data.userData || {};
                 
-                // جلب الإعدادات من Firebase
                 await getUpdatedSettings();
                 
                 renderUI(user);
@@ -2080,7 +2021,6 @@
             
             initializeCompetition();
             
-            // تحميل تذاكر المستخدم عند فتح الويب
             loadUserCompetitionData();
         }
         
@@ -2094,7 +2034,7 @@
                     const result = await callAPI('handleReferral', {
                         userId: user.id,
                         referrerId: referrerId,
-                        rewardAmount: 10000 // تحديث المكافأة إلى 10000
+                        rewardAmount: 10000
                     });
                     
                     if (result.success) {
@@ -2111,7 +2051,6 @@
             const ton = (appData.tonBalance || 0).toFixed(7);
             const userLevel = getLevel(GLX);
             
-            // تحديث تذاكر المسابقة من appData
             const userTickets = appData.competitionTickets || 0;
             
             document.getElementById('home-user-level').textContent = `Level ${userLevel}`;
@@ -2120,7 +2059,6 @@
             document.getElementById('swap-max-GLX').textContent = GLX.toLocaleString();
             document.getElementById('swap-max-TON').textContent = parseFloat(ton).toFixed(4);
             
-            // تحديث تذاكر المسابقة في الصفحة الرئيسية
             document.getElementById('user-tickets').textContent = userTickets;
             
             document.querySelectorAll('.user-ton-balance').forEach(el => {
@@ -2435,7 +2373,6 @@
             updateCompetitionLeaderboard();
         }
         
-        // دالة لتحميل بيانات المسابقة للمستخدم
         async function loadUserCompetitionData() {
             const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
             
@@ -2451,19 +2388,15 @@
                         competitionData.userTickets = {};
                     }
                     
-                    // تحديث بيانات التذاكر
                     const ticketsFromAPI = result.data.userTickets || result.data.competitionTickets || 0;
                     
-                    // تحديث في competitionData
                     competitionData.userTickets[userId] = ticketsFromAPI;
                     
-                    // تحديث في appData مباشرة
                     appData.competitionTickets = ticketsFromAPI;
                     
                     updateCompetitionUI();
                 }
             } else {
-                // إذا فشل الـ API، استخدم القيمة المحلية
                 appData.competitionTickets = appData.competitionTickets || 0;
             }
         }
@@ -2531,7 +2464,8 @@
             updateTicketCostDisplay();
         };
         
-        window.buyTickets = async function() {
+        // تم تعديل هذه الدالة لاستخدام النظام الذكي للإعلانات
+        async function buyTickets() {
             const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
             
             if (!userId) {
@@ -2941,7 +2875,8 @@
             selectedBtn.classList.add('active');
         };
         
-        window.flipCoin = async function() {
+        // تم تعديل هذه الدالة لاستخدام النظام الذكي للإعلانات
+        async function flipCoin() {
             if (coinGame.isFlipping) return;
             
             const inputElement = document.getElementById('coin-bet-amount');
@@ -3144,7 +3079,6 @@
             const promoInput = document.getElementById('promo-code-input');
             
             if (redeemBtn) {
-                // استخدام الدالة المحمية بالإعلان
                 redeemBtn.addEventListener('click', protectedRedeemCode);
             }
             
@@ -3363,7 +3297,10 @@
                 }
             }
             
-            document.getElementById('slots-spin-btn').addEventListener('click', protectedSlotsSpin);
+            // تم تعديل هذا السطر لاستخدام النظام الذكي للإعلانات
+            document.getElementById('slots-spin-btn').addEventListener('click', () => {
+                protectedSpinSlots();
+            });
         }
         
         function updateAvailableSpins() {
@@ -3382,6 +3319,7 @@
             }
         }
         
+        // تم تعديل هذه الدالة لاستخدام النظام الذكي للإعلانات
         async function handleSlotsSpin() {
             if (isSpinning) return;
             
@@ -3717,10 +3655,8 @@
             }
         }
         
-        // دالة محسنة للتحقق من عضوية القنوات
         async function verifyTelegramMembership(channelUsername, userId) {
             try {
-                // تحويل @username إلى username بدون @
                 const username = channelUsername.replace('@', '');
                 
                 const result = await callAPI('verifyTelegramMembership', {
@@ -3735,7 +3671,6 @@
             }
         }
         
-        // دالة للتحقق من مهمة القناة
         async function verifyTaskChannel(taskId, channelUsername) {
             try {
                 const username = channelUsername.replace('@', '');
@@ -3752,13 +3687,12 @@
             }
         }
         
-        // دالة لاستخراج اسم المستخدم من رابط التليجرام
         function extractChannelUsernameFromLink(link) {
             try {
                 if (link.includes('t.me/')) {
                     const url = new URL(link);
                     const pathParts = url.pathname.split('/');
-                    const username = pathParts[1]; // الجزء الأول بعد t.me/
+                    const username = pathParts[1];
                     
                     if (username && !username.includes('joinchat') && !username.includes('+')) {
                         return '@' + username;
@@ -3831,6 +3765,7 @@
             }
         }
         
+        // ============== 7. إعداد المستمعين للأحداث ==============
         function setupEventListeners(user) {
             document.querySelectorAll('.nav-item').forEach(btn => {
                 btn.addEventListener('click', () => switchTab(btn.dataset.target));
@@ -3868,7 +3803,7 @@
                 });
             });
             
-            // استبدال الأزرار المحمية بالإعلان
+            // إعداد المستمعين للأزرار المحمية
             document.getElementById('claim-daily-btn').addEventListener('click', protectedDailyClaim);
             document.getElementById('buy-tickets-btn').addEventListener('click', protectedBuyTickets);
             document.getElementById('flip-coin-btn').addEventListener('click', protectedFlipCoin);
@@ -3908,7 +3843,6 @@
                 return;
             }
             
-            // تحديث الإعدادات أولاً
             await getUpdatedSettings();
             
             lastAdClickTime = Date.now();
@@ -3947,7 +3881,6 @@
                 return;
             }
             
-            // تحديث الإعدادات أولاً
             await getUpdatedSettings();
             
             lastAdClickTime = Date.now();
@@ -3987,7 +3920,6 @@
                 return;
             }
             
-            // تحديث الإعدادات أولاً
             await getUpdatedSettings();
             
             lastAdClickTime = Date.now();
@@ -4053,7 +3985,6 @@
                 return;
             }
             
-            // تحديث شرط التحقق: يجب أن يكون الرصيد أكبر من المبلغ المطلوب
             if (amount >= currentBalance) {
                 showNotification(`Insufficient TON balance. You need at least ${(amount + 0.000001).toFixed(6)} TON.`, "warning");
                 return;
@@ -4112,7 +4043,6 @@
                 return;
             }
             
-            // تحديث شرط التحقق: يجب أن يكون الرصيد أكبر من المبلغ المطلوب
             if (amount >= currentBalance) {
                 showNotification(`Insufficient TON balance. You need at least ${(amount + 0.0001).toFixed(4)} TON.`, "warning");
                 return;
@@ -4195,7 +4125,6 @@
             statusEl.style.color = "#FFC107";
             
             try {
-                // استخدام API الخاص بك للتحقق
                 const verificationResult = await verifyTaskChannel(taskId, channelUsername);
                 
                 if (verificationResult.success) {
