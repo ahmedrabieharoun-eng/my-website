@@ -398,15 +398,92 @@
     </style>
 </head>
 <body>
-    <script>
-        (function(){
-            'use strict';
+<script>
+    (function(){
+        'use strict';
+        
+        // التحقق من أن التطبيق يعمل داخل Telegram Web App
+        function isTelegramWebApp() {
+            // Telegram Web App يضيف هذا الكائن
+            if (typeof window.Telegram !== 'undefined' && window.Telegram.WebApp) {
+                return true;
+            }
             
-            // تعطيل التحقق من فتح المتصفح
-            console.log("⚠️ Browser access is currently allowed (verification disabled)");
+            // أو يمكنك التحقق من معلمة initData
+            if (window.Telegram?.WebApp?.initData) {
+                return true;
+            }
             
-        })();
-    </script>
+            // التحقق من عنوان URL الخاص بـ Telegram Web
+            const hostname = window.location.hostname;
+            const isTelegramWeb = hostname.includes('web.telegram.org') || 
+                                  hostname.includes('t.me') || 
+                                  hostname.includes('telegram.me');
+            
+            return isTelegramWeb;
+        }
+        
+        // التحقق من أن التطبيق يعمل داخل تطبيق Telegram Mobile
+        function isTelegramMobileApp() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const isMobileApp = userAgent.includes('telegram') || 
+                               userAgent.includes('webview') ||
+                               (window.Telegram?.WebApp?.platform !== 'unknown' && 
+                                window.Telegram?.WebApp?.platform !== 'web');
+            
+            return isMobileApp;
+        }
+        
+        // التحقق الرئيسي
+        const isInTelegram = isTelegramWebApp() || isTelegramMobileApp();
+        
+        if (!isInTelegram) {
+            // إذا لم يكن داخل Telegram، عرض رسالة الخطأ ومنع الوصول
+            document.body.innerHTML = `
+                <div style="
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    text-align: center;
+                    padding: 20px;
+                ">
+                    <div style="max-width: 500px;">
+                        <div style="font-size: 80px; margin-bottom: 20px;">🚫</div>
+                        <h1 style="font-size: 28px; margin-bottom: 15px;">Access Restricted</h1>
+                        <p style="font-size: 16px; margin-bottom: 25px; line-height: 1.6;">
+                            This application can only be accessed through the Telegram app.
+                            <br><br>
+                            Please open this link in Telegram to continue.
+                        </p>
+                        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                            <p style="margin-bottom: 10px;">To open in Telegram:</p>
+                            <p style="font-size: 14px; opacity: 0.9;">
+                                1. Copy this link<br>
+                                2. Open Telegram app<br>
+                                3. Paste the link in any chat<br>
+                                4. Click the link
+                            </p>
+                        </div>
+                        <p style="font-size: 14px; opacity: 0.8;">
+                            If you're already in Telegram, make sure you're using the latest version.
+                        </p>
+                    </div>
+                </div>
+            `;
+            
+            // منع أي تفاعل إضافي
+            document.body.style.pointerEvents = 'none';
+            throw new Error('Access denied: This app can only be used in Telegram');
+        }
+        
+        console.log("✅ Running inside Telegram Web App");
+        
+    })();
+</script>
     
     <div id="security-verification" class="verification-container">
         <div style="margin-bottom:25px;">
