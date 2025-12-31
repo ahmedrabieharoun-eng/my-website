@@ -7,7 +7,7 @@ export default {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint, X-Client-IP',
                 }
             });
         }
@@ -34,6 +34,7 @@ export default {
             const userId = request.headers.get('X-User-ID');
             const telegramData = request.headers.get('X-Telegram-Data');
             const deviceFingerprint = request.headers.get('X-Device-Fingerprint') || data.deviceFingerprint;
+            const clientIp = request.headers.get('X-Client-IP') || request.headers.get('CF-Connecting-IP') || 'Unknown';
             
             // التحقق من المصادقة
             if (!userId || !telegramData) {
@@ -76,7 +77,8 @@ export default {
                             data: {
                                 deviceAlreadyUsed: true,
                                 existingUserId: fingerprintCheck.existingUserId,
-                                existingUserName: fingerprintCheck.existingUserName
+                                existingUserName: fingerprintCheck.existingUserName,
+                                existingUserPhoto: fingerprintCheck.existingUserPhoto
                             }
                         }), {
                             status: 403,
@@ -86,6 +88,7 @@ export default {
                     
                     // إذا لم تكن البصمة مستخدمة، سنقوم بحفظها لاحقًا في handleInitializeUser
                     data.deviceFingerprint = deviceFingerprint;
+                    data.clientIp = clientIp;
                 }
             }
             // ==================== نهاية نظام التحقق من بصمة الجهاز ====================
@@ -111,7 +114,9 @@ export default {
                     action: action,
                     violation: validationResult.violation,
                     details: validationResult.details,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    clientIp: clientIp,
+                    deviceFingerprint: deviceFingerprint
                 });
                 
                 // تطبيق الحظر الفوري بعد مخالفة واحدة
@@ -121,7 +126,9 @@ export default {
                     action: action,
                     details: validationResult.details,
                     timestamp: Date.now(),
-                    permanent: true // حظر دائم
+                    permanent: true, // حظر دائم
+                    clientIp: clientIp,
+                    deviceFingerprint: deviceFingerprint
                 });
                 
                 return new Response(JSON.stringify({
@@ -139,7 +146,7 @@ export default {
             let result;
             switch (action) {
                 case 'initializeUser':
-                    result = await handleInitializeUser(env, userId, data, telegramData);
+                    result = await handleInitializeUser(env, userId, data, telegramData, clientIp);
                     break;
                     
                 case 'getCompetitionData':
@@ -281,7 +288,9 @@ export default {
                             action: 'handleAdClick',
                             details: adValidation.details,
                             timestamp: Date.now(),
-                            permanent: true
+                            permanent: true,
+                            clientIp: clientIp,
+                            deviceFingerprint: deviceFingerprint
                         });
                         
                         return new Response(JSON.stringify({
@@ -329,7 +338,15 @@ export default {
                     break;
                     
                 case 'saveDeviceFingerprint':
-                    result = await handleSaveDeviceFingerprint(env, userId, data);
+                    result = await handleSaveDeviceFingerprint(env, userId, data, clientIp);
+                    break;
+                    
+                case 'periodicDeviceCheck':
+                    result = await handlePeriodicDeviceCheck(env, userId, data);
+                    break;
+                    
+                case 'getClientIP':
+                    result = await handleGetClientIP(clientIp);
                     break;
                     
                 default:
@@ -365,7 +382,7 @@ export default {
     }
 };
 
-// ==================== نظام التحقق من بصمة الجهاز ====================
+// ==================== نظام بصمة الجهاز المحسن ====================
 
 // التحقق مما إذا كانت بصمة الجهاز مستخدمة مسبقًا
 async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = null) {
@@ -387,7 +404,8 @@ async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = nu
                     deviceAlreadyUsed: true,
                     existingUserId: userId,
                     existingUserName: userData.name || 'Anonymous User',
-                    existingUserPhoto: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'
+                    existingUserPhoto: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                    violationType: 'DEVICE_MULTI_ACCOUNT'
                 };
             }
         }
@@ -426,7 +444,7 @@ async function handleCheckDeviceFingerprint(env, userId, data) {
 }
 
 // معالجة حفظ بصمة الجهاز
-async function handleSaveDeviceFingerprint(env, userId, data) {
+async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
     try {
         const { deviceFingerprint } = data;
         
@@ -453,26 +471,70 @@ async function handleSaveDeviceFingerprint(env, userId, data) {
         const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
         
         if (fingerprintCheck.deviceAlreadyUsed) {
+            // تسجيل المخالفة
+            await recordViolation(env, userId, {
+                action: 'saveDeviceFingerprint',
+                violation: 'DEVICE_MULTI_ACCOUNT_ATTEMPT',
+                details: 'Attempt to use device registered with another account',
+                timestamp: Date.now(),
+                clientIp: clientIp,
+                deviceFingerprint: deviceFingerprint
+            });
+            
+            // تطبيق الحظر
+            await applyBlock(env, userId, {
+                reason: 'Device multi-account violation',
+                violation: 'DEVICE_MULTI_ACCOUNT',
+                action: 'saveDeviceFingerprint',
+                details: 'Attempt to use device registered with another account',
+                timestamp: Date.now(),
+                permanent: true,
+                clientIp: clientIp,
+                deviceFingerprint: deviceFingerprint
+            });
+            
             return {
                 success: false,
-                error: 'Device already registered with another account',
-                data: fingerprintCheck
+                error: 'Device already registered with another account - Account has been blocked',
+                data: {
+                    deviceAlreadyUsed: true,
+                    existingUserId: fingerprintCheck.existingUserId,
+                    existingUserName: fingerprintCheck.existingUserName,
+                    existingUserPhoto: fingerprintCheck.existingUserPhoto,
+                    violationType: 'DEVICE_MULTI_ACCOUNT'
+                }
             };
         }
         
-        // تحديث المستخدم بإضافة بصمة الجهاز
-        await handleDbUpdate(env, `users/${userId}`, {
+        // تحديث المستخدم بإضافة بصمة الجهاز وعنوان IP
+        const userData = userResult.data;
+        let ipAddresses = userData.ipAddresses || [];
+        
+        if (clientIp && clientIp !== 'Unknown' && !ipAddresses.includes(clientIp)) {
+            ipAddresses.push(clientIp);
+            if (ipAddresses.length > 3) {
+                ipAddresses = ipAddresses.slice(-3); // حفظ آخر 3 عناوين IP فقط
+            }
+        }
+        
+        const updateData = {
             deviceFingerprint: deviceFingerprint,
             deviceRegisteredAt: Date.now(),
             lastDeviceCheck: Date.now(),
-            deviceInfo: data.deviceInfo || {}
-        });
+            deviceInfo: data.deviceInfo || {},
+            lastIpAddress: clientIp,
+            ipAddresses: ipAddresses,
+            deviceLoginCount: (userData.deviceLoginCount || 0) + 1
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, updateData);
         
         return {
             success: true,
             data: {
                 message: 'Device fingerprint saved successfully',
-                deviceRegisteredAt: Date.now()
+                deviceRegisteredAt: Date.now(),
+                ipAddressesCount: ipAddresses.length
             }
         };
     } catch (error) {
@@ -483,7 +545,96 @@ async function handleSaveDeviceFingerprint(env, userId, data) {
     }
 }
 
-// ==================== نظام الحظر التلقائي ====================
+// معالجة الفحص الدوري للجهاز
+async function handlePeriodicDeviceCheck(env, userId, data) {
+    try {
+        const { deviceFingerprint } = data;
+        
+        if (!deviceFingerprint) {
+            return {
+                success: false,
+                error: 'Device fingerprint is required'
+            };
+        }
+        
+        // التحقق من الحظر
+        const isBlocked = await checkUserBlocked(env, userId);
+        if (isBlocked) {
+            return { 
+                success: false, 
+                error: 'Your account has been blocked for violating system rules',
+                data: { isBlocked: true }
+            };
+        }
+        
+        // التحقق من بصمة الجهاز
+        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+        
+        if (fingerprintCheck.deviceAlreadyUsed) {
+            // تسجيل المخالفة
+            await recordViolation(env, userId, {
+                action: 'periodicDeviceCheck',
+                violation: 'PERIODIC_DEVICE_MULTI_ACCOUNT_DETECTED',
+                details: 'Multiple accounts detected from same device during session',
+                timestamp: Date.now(),
+                deviceFingerprint: deviceFingerprint
+            });
+            
+            // تطبيق الحظر
+            await applyBlock(env, userId, {
+                reason: 'Session multi-account violation',
+                violation: 'PERIODIC_DEVICE_MULTI_ACCOUNT',
+                action: 'periodicDeviceCheck',
+                details: 'Multiple accounts detected from same device during session',
+                timestamp: Date.now(),
+                permanent: true,
+                deviceFingerprint: deviceFingerprint
+            });
+            
+            return {
+                success: true,
+                data: {
+                    securityViolation: true,
+                    deviceAlreadyUsed: true,
+                    violationType: 'SESSION_MULTI_ACCOUNT_DETECTED',
+                    actionRequired: 'SESSION_TERMINATION'
+                }
+            };
+        }
+        
+        // تحديث وقت آخر فحص
+        await handleDbUpdate(env, `users/${userId}`, {
+            lastPeriodicCheck: Date.now(),
+            deviceCheckCount: (data.deviceCheckCount || 0) + 1
+        });
+        
+        return {
+            success: true,
+            data: {
+                securityViolation: false,
+                lastCheck: Date.now()
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+// معالجة الحصول على IP العميل
+async function handleGetClientIP(clientIp) {
+    return {
+        success: true,
+        data: {
+            clientIp: clientIp,
+            timestamp: Date.now()
+        }
+    };
+}
+
+// ==================== نظام الحظر التلقائي المحسن ====================
 
 // التحقق من صحة الطلب
 async function validateRequest(env, userId, action, data, requestTimestamp) {
@@ -545,6 +696,19 @@ async function validateRequest(env, userId, action, data, requestTimestamp) {
     // 3. التحقق من صحة المهام والمكافآت
     if (action === 'verifyTaskCompletion' || action === 'verifyTaskChannel') {
         return await validateTaskReward(env, userId, data, action);
+    }
+    
+    // 4. التحقق من متطلبات الإجراءات الحساسة
+    if (action === 'submitWithdrawal') {
+        return await validateWithdrawalRequest(env, userId, data);
+    }
+    
+    if (action === 'executeSwap') {
+        return await validateSwapRequest(env, userId, data);
+    }
+    
+    if (action === 'verifyDeposit') {
+        return await validateDepositRequest(env, userId, data);
     }
     
     return { valid: true };
@@ -832,6 +996,101 @@ async function validateDailyBonus(env, userId) {
     return { valid: true };
 }
 
+// التحقق من صحة طلب السحب
+async function validateWithdrawalRequest(env, userId, data) {
+    const { amount, method } = data;
+    
+    const userResult = await handleDbGet(env, `users/${userId}`);
+    if (userResult.success && userResult.data) {
+        const userData = userResult.data;
+        
+        // التحقق من الحد الأدنى للسحب
+        const configResult = await handleGetConfig();
+        const settings = configResult.data?.settings || {};
+        
+        let minAmount = 0.05; // الحد الأدنى الافتراضي
+        if (method === 'ton') {
+            minAmount = settings.minTonWithdrawal || 0.05;
+        } else if (method === 'faucetpay') {
+            minAmount = settings.minFaucetPayWithdrawal || 0.0001;
+        }
+        
+        if (parseFloat(amount) < minAmount) {
+            return {
+                valid: false,
+                violation: 'INSUFFICIENT_WITHDRAWAL_AMOUNT',
+                details: `Withdrawal amount too low: ${amount} (min ${minAmount})`
+            };
+        }
+        
+        // التحقق من الرصيد الكافي
+        if ((userData.tonBalance || 0) < parseFloat(amount)) {
+            return {
+                valid: false,
+                violation: 'INSUFFICIENT_BALANCE_FOR_WITHDRAWAL',
+                details: 'Insufficient TON balance for withdrawal'
+            };
+        }
+    }
+    
+    return { valid: true };
+}
+
+// التحقق من صحة طلب التحويل
+async function validateSwapRequest(env, userId, data) {
+    const { type, amount, tonValue, glxValue } = data;
+    
+    const userResult = await handleDbGet(env, `users/${userId}`);
+    if (userResult.success && userResult.data) {
+        const userData = userResult.data;
+        
+        if (type === 'glx_to_ton') {
+            if (userData.dogsBalance < amount) {
+                return {
+                    valid: false,
+                    violation: 'INSUFFICIENT_GLX_FOR_SWAP',
+                    details: 'Insufficient GLX balance for swap'
+                };
+            }
+        } else if (type === 'ton_to_glx') {
+            if ((userData.tonBalance || 0) < amount) {
+                return {
+                    valid: false,
+                    violation: 'INSUFFICIENT_TON_FOR_SWAP',
+                    details: 'Insufficient TON balance for swap'
+                };
+            }
+        }
+    }
+    
+    return { valid: true };
+}
+
+// التحقق من صحة طلب الإيداع
+async function validateDepositRequest(env, userId, data) {
+    const { memo, amount } = data;
+    
+    // التحقق من صحة تنسيق memo
+    if (!memo || typeof memo !== 'string') {
+        return {
+            valid: false,
+            violation: 'INVALID_DEPOSIT_MEMO',
+            details: 'Invalid deposit memo format'
+        };
+    }
+    
+    // التحقق من أن المبلغ إيجابي
+    if (parseFloat(amount) <= 0) {
+        return {
+            valid: false,
+            violation: 'INVALID_DEPOSIT_AMOUNT',
+            details: 'Deposit amount must be positive'
+        };
+    }
+    
+    return { valid: true };
+}
+
 // التحقق من استخدام نفس الطابع الزمني مسبقًا
 async function checkDuplicateTimestamp(env, userId, timestamp) {
     try {
@@ -942,7 +1201,9 @@ async function applyBlock(env, userId, blockData) {
             permanent: true, // حظر دائم
             blockData: blockData,
             action: blockData.action || 'UNKNOWN',
-            details: blockData.details || 'No details'
+            details: blockData.details || 'No details',
+            clientIp: blockData.clientIp || 'Unknown',
+            deviceFingerprint: blockData.deviceFingerprint || 'Unknown'
         };
         
         // حفظ معلومات الحظر
@@ -953,7 +1214,8 @@ async function applyBlock(env, userId, blockData) {
             isBlocked: true,
             blockReason: blockInfo.reason,
             blockedAt: Date.now(),
-            violationCount: 1
+            violationCount: 1,
+            lastViolation: Date.now()
         });
         
         // تسجيل الحظر في سجل الحظر العام
@@ -964,7 +1226,9 @@ async function applyBlock(env, userId, blockData) {
             appliedAt: Date.now(),
             permanent: true,
             action: blockData.action,
-            details: blockData.details
+            details: blockData.details,
+            clientIp: blockData.clientIp,
+            deviceFingerprint: blockData.deviceFingerprint
         });
         
         console.log(`User ${userId} permanently blocked after 1 violation: ${blockInfo.reason}`);
@@ -1389,7 +1653,7 @@ async function handleTestFirebase(env) {
         
         if (!readResponse.ok) {
             const errorText = await readResponse.text();
-            throw new Error(`Read failed: ${readResponse.status} - ${errorText}`);
+            throw new Error(`Read failed: ${writeResponse.status} - ${errorText}`);
         }
         
         const readData = await readResponse.json();
@@ -1421,10 +1685,11 @@ async function handleTestFirebase(env) {
     }
 }
 
-// وظائف التطبيق الرئيسية
-async function handleInitializeUser(env, userId, data, telegramData) {
+// وظائف التطبيق الرئيسية المحسنة
+async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
     try {
         const { user } = data;
+        const deviceFingerprint = data.deviceFingerprint;
         const fullName = `${user.first_name} ${user.last_name || ''}`.trim();
         
         // استخراج صورة المستخدم من بيانات Telegram
@@ -1453,21 +1718,50 @@ async function handleInitializeUser(env, userId, data, telegramData) {
         if (isBlocked) {
             return {
                 success: false,
-                error: 'Your account has been blocked for violating system rules'
+                error: 'Your account has been blocked for violating system rules',
+                data: { isBlocked: true }
             };
         }
         
         // ==================== التحقق من بصمة الجهاز ====================
-        const deviceFingerprint = data.deviceFingerprint;
         if (deviceFingerprint) {
             // التحقق مما إذا كانت بصمة الجهاز مستخدمة بالفعل من قبل مستخدم آخر
             const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
             
             if (fingerprintCheck.deviceAlreadyUsed) {
+                // تسجيل المخالفة
+                await recordViolation(env, userId, {
+                    action: 'initializeUser',
+                    violation: 'INITIALIZE_DEVICE_MULTI_ACCOUNT',
+                    details: 'Attempt to create new account with device registered to another account',
+                    timestamp: Date.now(),
+                    clientIp: clientIp,
+                    deviceFingerprint: deviceFingerprint
+                });
+                
+                // تطبيق الحظر
+                await applyBlock(env, userId, {
+                    reason: 'Device multi-account violation during initialization',
+                    violation: 'DEVICE_MULTI_ACCOUNT',
+                    action: 'initializeUser',
+                    details: 'Attempt to create new account with device registered to another account',
+                    timestamp: Date.now(),
+                    permanent: true,
+                    clientIp: clientIp,
+                    deviceFingerprint: deviceFingerprint
+                });
+                
                 return {
                     success: false,
-                    error: 'Device already registered with another account',
-                    data: fingerprintCheck
+                    error: 'Device already registered with another account - Account creation blocked',
+                    data: {
+                        deviceAlreadyUsed: true,
+                        existingUserId: fingerprintCheck.existingUserId,
+                        existingUserName: fingerprintCheck.existingUserName,
+                        existingUserPhoto: fingerprintCheck.existingUserPhoto,
+                        violationType: 'DEVICE_MULTI_ACCOUNT',
+                        isBlocked: true
+                    }
                 };
             }
         }
@@ -1490,12 +1784,18 @@ async function handleInitializeUser(env, userId, data, telegramData) {
         // احصل على عدد التذاكر الحقيقي من المسابقة
         const realTicketCount = competitionData.userTicketCount || 0;
         
+        // إعداد مصفوفة عناوين IP
+        let ipAddresses = [];
+        if (clientIp && clientIp !== 'Unknown') {
+            ipAddresses.push(clientIp);
+        }
+        
         if (!userData) {
-            // إنشاء مستخدم جديد مع الصورة وعدد التذاكر الحقيقي
+            // إنشاء مستخدم جديد
             userData = {
                 id: userId,
                 name: fullName,
-                photoUrl: photoUrl, // حفظ صورة المستخدم
+                photoUrl: photoUrl,
                 dogsBalance: 500,
                 tonBalance: 0.00,
                 adsWatched: 0,
@@ -1511,20 +1811,25 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 referredUsers: [],
                 usedPromoCodes: [],
                 joinDate: Date.now(),
+                lastLogin: Date.now(),
                 lastAdDate: new Date().toDateString(),
-                competitionTickets: realTicketCount, // استخدم القيمة الحقيقية من البداية
+                competitionTickets: realTicketCount,
                 lastTicketSync: Date.now(),
                 isBlocked: false,
                 blockReason: null,
                 blockedAt: null,
                 violationCount: 0,
-                // حفظ بصمة الجهاز إذا كانت متوفرة
+                // بيانات الأمان
                 ...(deviceFingerprint && {
                     deviceFingerprint: deviceFingerprint,
                     deviceRegisteredAt: Date.now(),
                     lastDeviceCheck: Date.now(),
-                    deviceInfo: data.deviceInfo || {}
-                })
+                    deviceInfo: data.deviceInfo || {},
+                    deviceLoginCount: 1
+                }),
+                // بيانات IP
+                lastIpAddress: clientIp,
+                ipAddresses: ipAddresses
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
@@ -1534,22 +1839,24 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 description: 'Welcome Bonus',
                 amount: 500,
                 currency: 'GLX',
-                date: new Date().toISOString()
+                date: new Date().toISOString(),
+                securityCheck: 'initialized'
             });
-        } else {
-            // تحديث الاسم والصورة إذا تغيرت
-            const updates = {};
             
-            if (userData.name !== fullName) {
-                updates.name = fullName;
-            }
+            console.log(`New user created: ${userId} with device fingerprint: ${deviceFingerprint ? 'Yes' : 'No'}`);
+        } else {
+            // تحديث بيانات المستخدم الموجود
+            const updates = {
+                name: fullName,
+                lastLogin: Date.now()
+            };
             
             // تحديث الصورة إذا كانت غير موجودة أو مختلفة
             if (!userData.photoUrl || userData.photoUrl === 'https://i.ibb.co/tTkJX1Qy/logo.png') {
                 updates.photoUrl = photoUrl;
             }
             
-            // تحديث عدد تذاكر المسابقة من المسابقة الحالية (هام: حتى لو كانت 0)
+            // تحديث عدد تذاكر المسابقة من المسابقة الحالية
             if (userData.competitionTickets !== realTicketCount) {
                 updates.competitionTickets = realTicketCount;
                 updates.lastTicketSync = Date.now();
@@ -1562,7 +1869,8 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 if (blockStatus) {
                     return {
                         success: false,
-                        error: 'Your account has been blocked for violating system rules'
+                        error: 'Your account has been blocked for violating system rules',
+                        data: { isBlocked: true }
                     };
                 } else {
                     updates.isBlocked = false;
@@ -1577,6 +1885,26 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 updates.deviceRegisteredAt = Date.now();
                 updates.lastDeviceCheck = Date.now();
                 updates.deviceInfo = data.deviceInfo || {};
+                updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
+            } else if (deviceFingerprint) {
+                // تحديث آخر فحص للجهاز
+                updates.lastDeviceCheck = Date.now();
+                updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
+            }
+            
+            // تحديث IP
+            if (clientIp && clientIp !== 'Unknown') {
+                updates.lastIpAddress = clientIp;
+                
+                // تحديث مصفوفة IPs
+                let existingIpAddresses = userData.ipAddresses || [];
+                if (!existingIpAddresses.includes(clientIp)) {
+                    existingIpAddresses.push(clientIp);
+                    if (existingIpAddresses.length > 3) {
+                        existingIpAddresses = existingIpAddresses.slice(-3);
+                    }
+                    updates.ipAddresses = existingIpAddresses;
+                }
             }
             
             if (Object.keys(updates).length > 0) {
@@ -1600,6 +1928,8 @@ async function handleInitializeUser(env, userId, data, telegramData) {
             // تحديث بيانات المستخدم بعد التغييرات
             const updatedResult = await handleDbGet(env, `users/${userId}`);
             userData = updatedResult.data || userData;
+            
+            console.log(`Existing user logged in: ${userId} with device fingerprint: ${deviceFingerprint ? 'Yes' : 'No'}`);
         }
         
         // جلب الإعدادات
@@ -1614,7 +1944,10 @@ async function handleInitializeUser(env, userId, data, telegramData) {
             data: {
                 userData: {
                     ...userData,
-                    competitionTickets: userTickets // تحديث حقل التذاكر بالقيمة الحقيقية
+                    competitionTickets: userTickets,
+                    deviceFingerprint: deviceFingerprint || userData.deviceFingerprint,
+                    ipAddresses: userData.ipAddresses || ipAddresses,
+                    lastIpAddress: clientIp || userData.lastIpAddress
                 },
                 settings: settings,
                 contest: {
@@ -1626,6 +1959,11 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                     startTime: competitionData.startTime,
                     timeRemaining: competitionData.timeRemaining,
                     timeRemainingFormatted: competitionData.timeRemainingFormatted || '24:00:00'
+                },
+                securityInfo: {
+                    deviceVerified: !!deviceFingerprint,
+                    ipAddress: clientIp,
+                    multiAccountCheck: true
                 }
             }
         };
@@ -1691,7 +2029,13 @@ async function handleGetConfig() {
             // نظام بصمة الجهاز
             enableDeviceFingerprint: true, // تفعيل نظام التحقق من بصمة الجهاز
             allowMultipleDevices: false, // عدم السماح بأجهزة متعددة لنفس المستخدم
-            deviceCheckRequired: true // التحقق من الجهاز مطلوب للمستخدمين الجدد
+            deviceCheckRequired: true, // التحقق من الجهاز مطلوب للمستخدمين الجدد
+            maxIpsPerUser: 3, // الحد الأقصى لعدد IPs المخزنة لكل مستخدم
+            
+            // إعدادات الأمان
+            periodicDeviceCheckInterval: 30000, // فحص دوري كل 30 ثانية
+            enableIpTracking: true, // تتبع عناوين IP
+            multiAccountDetection: true // كشف الحسابات المتعددة
         };
         
         return {
