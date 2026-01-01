@@ -3,30 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLX Galaxy - Admin Panel</title>
+    <title>GLX Galaxy - Direct Admin Panel</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         :root {
             --primary-green: #a855f7;
             --deep-Galaxy: #202020;
             --gold: #d6bcfa;
-            --gold-glow: rgba(168, 85, 247, 0.4);
             --glass-bg: rgba(32, 32, 32, 0.7);
             --glass-border: rgba(255, 255, 255, 0.1);
             --text-color: #ffffff;
             --text-muted: #b0b0b0;
-            --nav-bg: rgba(40, 40, 40, 0.98);
-            --success-color: #a855f7;
+            --success-color: #27ae60;
             --danger-color: #e74c3c;
             --warning-color: #f39c12;
-            --info-color: #3498db;
         }
 
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -98,6 +94,7 @@
 
         .stat-card:hover {
             transform: translateY(-5px);
+            border-color: var(--primary-green);
         }
 
         .stat-card h3 {
@@ -112,19 +109,6 @@
             font-size: 28px;
             font-weight: 800;
             color: var(--primary-green);
-        }
-
-        .stat-change {
-            font-size: 12px;
-            margin-top: 5px;
-        }
-
-        .stat-change.positive {
-            color: #27ae60;
-        }
-
-        .stat-change.negative {
-            color: var(--danger-color);
         }
 
         .admin-tabs {
@@ -164,14 +148,8 @@
         }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .card {
@@ -232,29 +210,9 @@
             color: white;
         }
 
-        .btn-warning {
-            background: linear-gradient(90deg, #f39c12, #e67e22);
-            color: white;
-        }
-
-        .btn-info {
-            background: linear-gradient(90deg, #3498db, #2980b9);
-            color: white;
-        }
-
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
         }
 
         .search-box {
@@ -307,16 +265,148 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .data-table tr:last-child td {
-            border-bottom: none;
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s;
+            margin: 0 2px;
         }
 
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 2px solid var(--primary-green);
-            object-fit: cover;
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .action-btn.edit {
+            background: rgba(52, 152, 219, 0.3);
+            color: #3498db;
+        }
+
+        .action-btn.delete {
+            background: rgba(231, 76, 60, 0.3);
+            color: #e74c3c;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid var(--glass-border);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gold);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-green);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            display: none;
+            align-items: center;
+            gap: 10px;
+            z-index: 1001;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .notification.success {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .notification.error {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
         }
 
         .status-badge {
@@ -343,380 +433,6 @@
             color: #e74c3c;
         }
 
-        .status-completed {
-            background: rgba(52, 152, 219, 0.2);
-            color: #3498db;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-        }
-
-        .action-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border: none;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            transition: all 0.3s;
-        }
-
-        .action-btn:hover {
-            transform: scale(1.1);
-        }
-
-        .action-btn.edit {
-            background: rgba(52, 152, 219, 0.3);
-            color: #3498db;
-        }
-
-        .action-btn.delete {
-            background: rgba(231, 76, 60, 0.3);
-            color: #e74c3c;
-        }
-
-        .action-btn.block {
-            background: rgba(243, 156, 18, 0.3);
-            color: #f39c12;
-        }
-
-        .action-btn.approve {
-            background: rgba(39, 174, 96, 0.3);
-            color: #27ae60;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-content {
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid var(--glass-border);
-            animation: slideUp 0.4s ease;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .modal-title {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--gold);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px;
-        }
-
-        .modal-close:hover {
-            color: white;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 12px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: white;
-            font-size: 14px;
-            font-family: inherit;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: var(--primary-green);
-            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 30px;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .page-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .page-btn.active {
-            background: var(--primary-green);
-        }
-
-        .page-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 15px 20px;
-            border-radius: 12px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            display: none;
-            align-items: center;
-            gap: 10px;
-            z-index: 1001;
-            animation: slideInRight 0.3s ease;
-        }
-
-        @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .notification.success {
-            border-color: #27ae60;
-            background: rgba(39, 174, 96, 0.1);
-        }
-
-        .notification.error {
-            border-color: #e74c3c;
-            background: rgba(231, 76, 60, 0.1);
-        }
-
-        .notification.warning {
-            border-color: #f39c12;
-            background: rgba(243, 156, 18, 0.1);
-        }
-
-        .notification.info {
-            border-color: #3498db;
-            background: rgba(52, 152, 219, 0.1);
-        }
-
-        .notification-icon {
-            font-size: 20px;
-        }
-
-        .notification-message {
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1002;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top-color: var(--primary-green);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted);
-        }
-
-        .empty-state i {
-            font-size: 48px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-
-        .filter-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-
-        .filter-select {
-            padding: 10px 15px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: white;
-            font-size: 14px;
-            min-width: 150px;
-        }
-
-        .date-range {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .date-input {
-            padding: 10px 15px;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: white;
-            font-size: 14px;
-        }
-
-        .quick-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .quick-stat {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 15px;
-            text-align: center;
-        }
-
-        .quick-stat-value {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary-green);
-            margin-bottom: 5px;
-        }
-
-        .quick-stat-label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .admin-login {
-            max-width: 400px;
-            margin: 100px auto;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-radius: 24px;
-            padding: 40px;
-            border: 1px solid var(--glass-border);
-            text-align: center;
-        }
-
-        .admin-login h2 {
-            margin-bottom: 30px;
-            color: var(--gold);
-        }
-
-        .login-error {
-            color: var(--danger-color);
-            font-size: 12px;
-            margin-top: 10px;
-            display: none;
-        }
-
         @media (max-width: 768px) {
             .admin-container {
                 padding: 10px;
@@ -726,35 +442,19 @@
                 grid-template-columns: 1fr;
             }
 
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .admin-tabs {
-                flex-direction: column;
-            }
-
-            .tab-btn {
-                min-width: 100%;
-            }
-
             .data-table th,
             .data-table td {
                 padding: 10px;
                 font-size: 11px;
             }
-
-            .action-buttons {
-                flex-direction: column;
-            }
         }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <!-- Notification -->
     <div class="notification" id="notification">
@@ -762,33 +462,18 @@
         <div class="notification-message"></div>
     </div>
 
-    <!-- Login Section -->
-    <div class="admin-login" id="loginSection">
-        <h2>GLX Galaxy Admin Panel</h2>
-        <div class="form-group">
-            <label class="form-label">Admin Email</label>
-            <input type="email" class="form-control" id="adminEmail" placeholder="admin@example.com">
-        </div>
-        <div class="form-group">
-            <label class="form-label">Password</label>
-            <input type="password" class="form-control" id="adminPassword" placeholder="••••••••">
-        </div>
-        <div class="login-error" id="loginError"></div>
-        <button class="btn btn-primary" style="width: 100%;" onclick="adminLogin()">Login</button>
-    </div>
-
-    <!-- Admin Panel (Hidden until login) -->
-    <div class="admin-container" id="adminPanel" style="display: none;">
+    <!-- Admin Panel -->
+    <div class="admin-container">
         <!-- Header -->
         <div class="admin-header">
-            <h1 class="admin-title">GLX Galaxy Admin Panel</h1>
-            <p class="admin-subtitle">Complete Control Dashboard</p>
-            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
-                <button class="btn btn-danger" onclick="adminLogout()">
-                    <i class="fas fa-sign-out-alt"></i> Logout
+            <h1 class="admin-title">GLX Galaxy Direct Admin</h1>
+            <p class="admin-subtitle">Connected to Firebase Directly</p>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="loadAllData()">
+                    <i class="fas fa-sync-alt"></i> Refresh Data
                 </button>
-                <button class="btn btn-info" onclick="refreshAllData()">
-                    <i class="fas fa-sync-alt"></i> Refresh
+                <button class="btn btn-danger" onclick="clearAllData()" style="margin-left: 10px;">
+                    <i class="fas fa-trash"></i> Clear Cache
                 </button>
             </div>
         </div>
@@ -796,34 +481,24 @@
         <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card">
+                <h3>Firebase Status</h3>
+                <div class="stat-value" id="firebaseStatus">Checking...</div>
+                <div id="firebaseMessage" style="font-size: 12px; color: var(--text-muted); margin-top: 5px;"></div>
+            </div>
+            <div class="stat-card">
                 <h3>Total Users</h3>
                 <div class="stat-value" id="totalUsers">0</div>
-                <div class="stat-change positive">+0 today</div>
+                <div style="font-size: 12px; color: var(--text-muted);">From Firestore</div>
             </div>
             <div class="stat-card">
-                <h3>Total GLX</h3>
-                <div class="stat-value" id="totalGLX">0</div>
-                <div class="stat-change positive">+0 today</div>
+                <h3>Total Withdrawals</h3>
+                <div class="stat-value" id="totalWithdrawals">0</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Pending: <span id="pendingWithdrawals">0</span></div>
             </div>
             <div class="stat-card">
-                <h3>Total TON</h3>
-                <div class="stat-value" id="totalTON">0</div>
-                <div class="stat-change positive">+0 today</div>
-            </div>
-            <div class="stat-card">
-                <h3>Pending Withdrawals</h3>
-                <div class="stat-value" id="pendingWithdrawals">0</div>
-                <div class="stat-change warning">Requires attention</div>
-            </div>
-            <div class="stat-card">
-                <h3>Active Tasks</h3>
-                <div class="stat-value" id="activeTasks">0</div>
-                <div class="stat-change positive">Active</div>
-            </div>
-            <div class="stat-card">
-                <h3>Today's Revenue</h3>
-                <div class="stat-value" id="todayRevenue">0 TON</div>
-                <div class="stat-change positive">+0%</div>
+                <h3>Live Data</h3>
+                <div class="stat-value" id="liveData">0</div>
+                <div style="font-size: 12px; color: var(--text-muted);">Updates real-time</div>
             </div>
         </div>
 
@@ -838,34 +513,11 @@
             <div class="tab-btn" onclick="switchTab('tasks')">
                 <i class="fas fa-tasks"></i> Tasks
             </div>
-            <div class="tab-btn" onclick="switchTab('settings')">
-                <i class="fas fa-cog"></i> Settings
+            <div class="tab-btn" onclick="switchTab('edit')">
+                <i class="fas fa-edit"></i> Edit Any Value
             </div>
-            <div class="tab-btn" onclick="switchTab('competitions')">
-                <i class="fas fa-trophy"></i> Competitions
-            </div>
-            <div class="tab-btn" onclick="switchTab('logs')">
-                <i class="fas fa-history"></i> Logs
-            </div>
-        </div>
-
-        <!-- Quick Stats -->
-        <div class="quick-stats">
-            <div class="quick-stat">
-                <div class="quick-stat-value" id="onlineUsers">0</div>
-                <div class="quick-stat-label">Online Now</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-value" id="totalDeposits">0 TON</div>
-                <div class="quick-stat-label">Total Deposits</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-value" id="totalWithdrawn">0 TON</div>
-                <div class="quick-stat-label">Total Withdrawn</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-value" id="referralCount">0</div>
-                <div class="quick-stat-label">Referrals</div>
+            <div class="tab-btn" onclick="switchTab('firebase')">
+                <i class="fas fa-database"></i> Firebase Tools
             </div>
         </div>
 
@@ -873,9 +525,9 @@
         <div id="usersTab" class="content-section active">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-users"></i> User Management</h3>
+                    <h3 class="card-title"><i class="fas fa-users"></i> All Users</h3>
                     <div>
-                        <input type="text" class="search-box" id="userSearch" placeholder="Search users by ID, name, or email..." onkeyup="searchUsers()">
+                        <input type="text" class="search-box" id="userSearch" placeholder="Search users..." onkeyup="searchUsers()">
                     </div>
                 </div>
                 <div class="table-container">
@@ -883,20 +535,16 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>User</th>
-                                <th>Balance</th>
-                                <th>Status</th>
-                                <th>Joined</th>
+                                <th>Name</th>
+                                <th>GLX</th>
+                                <th>TON</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="usersTableBody">
-                            <!-- Users will be loaded here -->
+                            <!-- Users will load here -->
                         </tbody>
                     </table>
-                </div>
-                <div class="pagination" id="usersPagination">
-                    <!-- Pagination will be loaded here -->
                 </div>
             </div>
         </div>
@@ -905,26 +553,15 @@
         <div id="withdrawalsTab" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-money-bill-wave"></i> Withdrawal Management</h3>
-                    <div class="filter-bar">
-                        <select class="filter-select" id="withdrawalStatusFilter" onchange="filterWithdrawals()">
-                            <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="completed">Completed</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                        <select class="filter-select" id="withdrawalMethodFilter" onchange="filterWithdrawals()">
-                            <option value="all">All Methods</option>
-                            <option value="faucetpay">FaucetPay</option>
-                            <option value="ton">TON Wallet</option>
-                        </select>
-                    </div>
+                    <h3 class="card-title"><i class="fas fa-money-bill-wave"></i> All Withdrawals</h3>
+                    <button class="btn btn-success" onclick="approveAllPending()">
+                        <i class="fas fa-check"></i> Approve All Pending
+                    </button>
                 </div>
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>User</th>
                                 <th>Amount</th>
                                 <th>Method</th>
@@ -934,12 +571,9 @@
                             </tr>
                         </thead>
                         <tbody id="withdrawalsTableBody">
-                            <!-- Withdrawals will be loaded here -->
+                            <!-- Withdrawals will load here -->
                         </tbody>
                     </table>
-                </div>
-                <div class="pagination" id="withdrawalsPagination">
-                    <!-- Pagination will be loaded here -->
                 </div>
             </div>
         </div>
@@ -948,18 +582,16 @@
         <div id="tasksTab" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-tasks"></i> Task Management</h3>
-                    <button class="btn btn-primary" onclick="showAddTaskModal()">
-                        <i class="fas fa-plus"></i> Add New Task
+                    <h3 class="card-title"><i class="fas fa-tasks"></i> All Tasks</h3>
+                    <button class="btn btn-primary" onclick="addNewTask()">
+                        <i class="fas fa-plus"></i> Add Task
                     </button>
                 </div>
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>Title</th>
-                                <th>Category</th>
                                 <th>Reward</th>
                                 <th>Completions</th>
                                 <th>Status</th>
@@ -967,282 +599,145 @@
                             </tr>
                         </thead>
                         <tbody id="tasksTableBody">
-                            <!-- Tasks will be loaded here -->
+                            <!-- Tasks will load here -->
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Settings Tab -->
-        <div id="settingsTab" class="content-section">
+        <!-- Edit Any Value Tab -->
+        <div id="editTab" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-cog"></i> Application Settings</h3>
+                    <h3 class="card-title"><i class="fas fa-edit"></i> Edit Any Value in Firebase</h3>
                 </div>
-                <form id="settingsForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">GLX to TON Rate</label>
-                            <input type="number" class="form-control" id="glxToTonRate" step="0.0000001" value="0.0000001">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Ticket Price (GLX)</label>
-                            <input type="number" class="form-control" id="ticketPrice" value="10000">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Min TON Withdrawal</label>
-                            <input type="number" class="form-control" id="minTonWithdrawal" step="0.001" value="0.05">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Min FaucetPay Withdrawal</label>
-                            <input type="number" class="form-control" id="minFaucetPayWithdrawal" step="0.0001" value="0.0001">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Referral Reward (GLX)</label>
-                            <input type="number" class="form-control" id="referralReward" value="10000">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Daily Ad Limit</label>
-                            <input type="number" class="form-control" id="dailyAdLimit" value="650">
-                        </div>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-success" onclick="saveSettings()">
-                            <i class="fas fa-save"></i> Save Settings
+                
+                <div class="form-group">
+                    <label class="form-label">Collection Name</label>
+                    <input type="text" class="form-control" id="collectionName" value="users" placeholder="users, withdrawals, tasks, etc.">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Document ID</label>
+                    <input type="text" class="form-control" id="documentId" placeholder="Enter document ID or leave empty for new">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Field Name</label>
+                    <input type="text" class="form-control" id="fieldName" placeholder="dogsBalance, tonBalance, status, etc.">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">New Value</label>
+                    <input type="text" class="form-control" id="fieldValue" placeholder="Enter new value">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Value Type</label>
+                    <select class="form-control" id="valueType">
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                        <option value="boolean">Boolean</option>
+                        <option value="json">JSON Object</option>
+                    </select>
+                </div>
+
+                <button class="btn btn-primary" onclick="updateFirebaseValue()" style="width: 100%;">
+                    <i class="fas fa-save"></i> Update Value in Firebase
+                </button>
+
+                <div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px;">
+                    <h4 style="color: var(--gold); margin-bottom: 10px;">Quick Actions:</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                        <button class="btn" onclick="setQuickAction('users', 'dogsBalance', '1000000')">
+                            Give 1M GLX to All Users
+                        </button>
+                        <button class="btn" onclick="setQuickAction('users', 'tonBalance', '0.1')">
+                            Give 0.1 TON to All
+                        </button>
+                        <button class="btn btn-success" onclick="approveAllWithdrawals()">
+                            Approve All Withdrawals
+                        </button>
+                        <button class="btn btn-danger" onclick="resetAllBalances()">
+                            Reset All Balances
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Competitions Tab -->
-        <div id="competitionsTab" class="content-section">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-trophy"></i> Competition Management</h3>
-                    <button class="btn btn-primary" onclick="createNewCompetition()">
-                        <i class="fas fa-plus"></i> New Competition
-                    </button>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Prize Pool</th>
-                                <th>Tickets</th>
-                                <th>Status</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Winner</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="competitionsTableBody">
-                            <!-- Competitions will be loaded here -->
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Logs Tab -->
-        <div id="logsTab" class="content-section">
+        <!-- Firebase Tools Tab -->
+        <div id="firebaseTab" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-history"></i> System Logs</h3>
-                    <div class="filter-bar">
-                        <select class="filter-select" id="logTypeFilter" onchange="filterLogs()">
-                            <option value="all">All Types</option>
-                            <option value="user">User Actions</option>
-                            <option value="system">System</option>
-                            <option value="error">Errors</option>
-                            <option value="transaction">Transactions</option>
-                        </select>
-                        <div class="date-range">
-                            <input type="date" class="date-input" id="logDateFrom" onchange="filterLogs()">
-                            <span>to</span>
-                            <input type="date" class="date-input" id="logDateTo" onchange="filterLogs()">
-                        </div>
+                    <h3 class="card-title"><i class="fas fa-database"></i> Firebase Management Tools</h3>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <h3>Backup Data</h3>
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Download all Firebase data as JSON</p>
+                        <button class="btn" onclick="backupFirebaseData()" style="width: 100%;">
+                            <i class="fas fa-download"></i> Backup Now
+                        </button>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Delete Collection</h3>
+                        <input type="text" class="form-control" id="deleteCollectionName" placeholder="Collection name" style="margin-bottom: 10px;">
+                        <button class="btn btn-danger" onclick="deleteCollection()" style="width: 100%;">
+                            <i class="fas fa-trash"></i> Delete Collection
+                        </button>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3>Import Data</h3>
+                        <input type="file" id="importFile" accept=".json" style="margin-bottom: 10px; color: white;">
+                        <button class="btn btn-success" onclick="importFirebaseData()" style="width: 100%;">
+                            <i class="fas fa-upload"></i> Import JSON
+                        </button>
                     </div>
                 </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Type</th>
-                                <th>User</th>
-                                <th>Action</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logsTableBody">
-                            <!-- Logs will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="pagination" id="logsPagination">
-                    <!-- Pagination will be loaded here -->
+
+                <div class="form-group">
+                    <label class="form-label">Run Custom Firebase Query</label>
+                    <textarea class="form-control" id="firebaseQuery" rows="4" placeholder='Example: db.collection("users").where("dogsBalance", ">", 1000).get()'></textarea>
+                    <button class="btn" onclick="runFirebaseQuery()" style="margin-top: 10px; width: 100%;">
+                        <i class="fas fa-play"></i> Run Query
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
     <!-- Edit User Modal -->
-    <div class="modal-overlay" id="editUserModal">
+    <div class="modal-overlay" id="editModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">Edit User</h3>
-                <button class="modal-close" onclick="closeModal('editUserModal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
             </div>
-            <form id="editUserForm">
-                <input type="hidden" id="editUserId">
-                <div class="form-group">
-                    <label class="form-label">GLX Balance</label>
-                    <input type="number" class="form-control" id="editUserGLX" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">TON Balance</label>
-                    <input type="number" class="form-control" id="editUserTON" step="0.000001" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select class="form-control" id="editUserStatus">
-                        <option value="active">Active</option>
-                        <option value="blocked">Blocked</option>
-                        <option value="suspended">Suspended</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-danger" onclick="deleteUser()">
-                        <i class="fas fa-trash"></i> Delete User
-                    </button>
-                    <button type="button" class="btn btn-warning" onclick="blockUser()">
-                        <i class="fas fa-ban"></i> Block User
-                    </button>
-                    <button type="button" class="btn btn-success" onclick="saveUserChanges()">
-                        <i class="fas fa-save"></i> Save Changes
-                    </button>
-                </div>
-            </form>
+            <div class="form-group">
+                <label class="form-label">GLX Balance</label>
+                <input type="number" class="form-control" id="editGlxBalance">
+            </div>
+            <div class="form-group">
+                <label class="form-label">TON Balance</label>
+                <input type="number" step="0.000001" class="form-control" id="editTonBalance">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select class="form-control" id="editUserStatus">
+                    <option value="active">Active</option>
+                    <option value="blocked">Blocked</option>
+                </select>
+            </div>
+            <button class="btn btn-success" onclick="saveUserEdit()" style="width: 100%;">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
         </div>
     </div>
-
-    <!-- Withdrawal Action Modal -->
-    <div class="modal-overlay" id="withdrawalActionModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Process Withdrawal</h3>
-                <button class="modal-close" onclick="closeModal('withdrawalActionModal')">&times;</button>
-            </div>
-            <form id="withdrawalActionForm">
-                <input type="hidden" id="actionWithdrawalId">
-                <input type="hidden" id="actionWithdrawalAmount">
-                <input type="hidden" id="actionWithdrawalMethod">
-                <input type="hidden" id="actionWithdrawalAccount">
-                
-                <div class="form-group">
-                    <label class="form-label">Amount (TON)</label>
-                    <input type="text" class="form-control" id="displayWithdrawalAmount" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Method</label>
-                    <input type="text" class="form-control" id="displayWithdrawalMethod" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Account</label>
-                    <input type="text" class="form-control" id="displayWithdrawalAccount" readonly>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Transaction ID (Optional)</label>
-                    <input type="text" class="form-control" id="withdrawalTxId" placeholder="Enter transaction ID if completed">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Status</label>
-                    <select class="form-control" id="withdrawalActionStatus">
-                        <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-success" onclick="completeWithdrawal()">
-                        <i class="fas fa-check"></i> Complete
-                    </button>
-                    <button type="button" class="btn btn-danger" onclick="rejectWithdrawal()">
-                        <i class="fas fa-times"></i> Reject
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Add Task Modal -->
-    <div class="modal-overlay" id="addTaskModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Add New Task</h3>
-                <button class="modal-close" onclick="closeModal('addTaskModal')">&times;</button>
-            </div>
-            <form id="addTaskForm">
-                <div class="form-group">
-                    <label class="form-label">Task Title</label>
-                    <input type="text" class="form-control" id="taskTitle" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Task Link</label>
-                    <input type="url" class="form-control" id="taskLink" required placeholder="https://t.me/...">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Category</label>
-                    <select class="form-control" id="taskCategory">
-                        <option value="partner">Partner</option>
-                        <option value="community">Community</option>
-                        <option value="social">Social Media</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Reward (GLX)</label>
-                    <input type="number" class="form-control" id="taskReward" value="1000" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Max Completions</label>
-                    <input type="number" class="form-control" id="taskMaxCompletions" value="100" required>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-primary" onclick="addNewTask()">
-                        <i class="fas fa-plus"></i> Add Task
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Competition Details Modal -->
-    <div class="modal-overlay" id="competitionDetailsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Competition Details</h3>
-                <button class="modal-close" onclick="closeModal('competitionDetailsModal')">&times;</button>
-            </div>
-            <div id="competitionDetailsContent">
-                <!-- Competition details will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase Configuration -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
         // Firebase Configuration
@@ -1258,299 +753,124 @@
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-        const rtdb = firebase.database();
-
-        // Admin credentials (in production, use Firebase Auth with proper admin users)
-        const ADMIN_EMAIL = "admin@glxgalaxy.com"; // Change this
-        const ADMIN_PASSWORD = "Admin123!"; // Change this
+        let db;
+        let rtdb;
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            rtdb = firebase.database();
+            showNotification('✅ Firebase connected successfully!', 'success');
+            document.getElementById('firebaseStatus').textContent = 'Connected';
+            document.getElementById('firebaseStatus').style.color = '#27ae60';
+            document.getElementById('firebaseMessage').textContent = 'Ready to manage data';
+            
+            // Load data immediately
+            setTimeout(() => {
+                loadAllData();
+                startRealtimeUpdates();
+            }, 1000);
+        } catch (error) {
+            showNotification('❌ Firebase connection failed: ' + error.message, 'error');
+            document.getElementById('firebaseStatus').textContent = 'Failed';
+            document.getElementById('firebaseStatus').style.color = '#e74c3c';
+            document.getElementById('firebaseMessage').textContent = error.message;
+        }
 
         // Global variables
-        let currentUser = null;
-        let users = [];
-        let withdrawals = [];
-        let tasks = [];
-        let competitions = [];
-        let logs = [];
-        let settings = {};
-        let currentPage = {
-            users: 1,
-            withdrawals: 1,
-            logs: 1
-        };
-        const itemsPerPage = 10;
-
-        // Initialize admin panel
-        document.addEventListener('DOMContentLoaded', function() {
-            checkAdminAuth();
-        });
-
-        // Check if admin is already logged in
-        function checkAdminAuth() {
-            const adminToken = localStorage.getItem('adminToken');
-            if (adminToken) {
-                try {
-                    const adminData = JSON.parse(atob(adminToken));
-                    if (adminData.expires > Date.now()) {
-                        currentUser = adminData;
-                        showAdminPanel();
-                        loadAllData();
-                    } else {
-                        localStorage.removeItem('adminToken');
-                    }
-                } catch (e) {
-                    localStorage.removeItem('adminToken');
-                }
-            }
-        }
-
-        // Admin login
-        function adminLogin() {
-            const email = document.getElementById('adminEmail').value;
-            const password = document.getElementById('adminPassword').value;
-            const errorElement = document.getElementById('loginError');
-
-            // Simple validation (in production, use Firebase Auth)
-            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-                showLoading();
-                
-                // Create admin session token
-                const adminData = {
-                    email: email,
-                    expires: Date.now() + (8 * 60 * 60 * 1000) // 8 hours
-                };
-                
-                const token = btoa(JSON.stringify(adminData));
-                localStorage.setItem('adminToken', token);
-                currentUser = adminData;
-                
-                setTimeout(() => {
-                    hideLoading();
-                    showAdminPanel();
-                    loadAllData();
-                    showNotification('Login successful!', 'success');
-                }, 1000);
-            } else {
-                errorElement.textContent = 'Invalid email or password';
-                errorElement.style.display = 'block';
-                setTimeout(() => {
-                    errorElement.style.display = 'none';
-                }, 3000);
-            }
-        }
-
-        // Admin logout
-        function adminLogout() {
-            if (confirm('Are you sure you want to logout?')) {
-                localStorage.removeItem('adminToken');
-                currentUser = null;
-                document.getElementById('adminPanel').style.display = 'none';
-                document.getElementById('loginSection').style.display = 'block';
-                showNotification('Logged out successfully', 'info');
-            }
-        }
-
-        // Show admin panel
-        function showAdminPanel() {
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('adminPanel').style.display = 'block';
-        }
+        let allUsers = [];
+        let allWithdrawals = [];
+        let allTasks = [];
+        let currentEditingUserId = '';
 
         // Load all data
         async function loadAllData() {
-            showLoading();
-            
             try {
-                // Load all data in parallel
-                await Promise.all([
-                    loadUsers(),
-                    loadWithdrawals(),
-                    loadTasks(),
-                    loadCompetitions(),
-                    loadLogs(),
-                    loadSettings(),
-                    loadStats()
-                ]);
+                // Load users
+                const usersSnapshot = await db.collection('users').limit(100).get();
+                allUsers = [];
+                usersSnapshot.forEach(doc => {
+                    const user = doc.data();
+                    user.id = doc.id;
+                    allUsers.push(user);
+                });
+                updateUsersTable();
+                document.getElementById('totalUsers').textContent = allUsers.length;
+
+                // Load withdrawals
+                const withdrawalsSnapshot = await db.collection('withdrawals').orderBy('timestamp', 'desc').limit(100).get();
+                allWithdrawals = [];
+                withdrawalsSnapshot.forEach(doc => {
+                    const withdrawal = doc.data();
+                    withdrawal.id = doc.id;
+                    allWithdrawals.push(withdrawal);
+                });
+                updateWithdrawalsTable();
+                document.getElementById('totalWithdrawals').textContent = allWithdrawals.length;
                 
-                hideLoading();
-                showNotification('Data loaded successfully', 'success');
+                const pending = allWithdrawals.filter(w => w.status === 'pending').length;
+                document.getElementById('pendingWithdrawals').textContent = pending;
+
+                // Load tasks
+                const tasksSnapshot = await db.collection('tasks').limit(50).get();
+                allTasks = [];
+                tasksSnapshot.forEach(doc => {
+                    const task = doc.data();
+                    task.id = doc.id;
+                    allTasks.push(task);
+                });
+                updateTasksTable();
+
+                showNotification('Data loaded successfully!', 'success');
             } catch (error) {
-                hideLoading();
                 showNotification('Error loading data: ' + error.message, 'error');
             }
         }
 
-        // Load users
-        async function loadUsers() {
-            try {
-                const snapshot = await db.collection('users').get();
-                users = [];
+        // Real-time updates
+        function startRealtimeUpdates() {
+            let updateCount = 0;
+            
+            // Listen for user changes
+            db.collection('users').onSnapshot(snapshot => {
+                updateCount++;
+                document.getElementById('liveData').textContent = updateCount;
+                
+                allUsers = [];
                 snapshot.forEach(doc => {
                     const user = doc.data();
                     user.id = doc.id;
-                    users.push(user);
+                    allUsers.push(user);
                 });
                 
-                updateUsersTable();
-                updateStats();
-            } catch (error) {
-                console.error('Error loading users:', error);
-                showNotification('Error loading users', 'error');
-            }
-        }
+                if (document.getElementById('usersTab').classList.contains('active')) {
+                    updateUsersTable();
+                }
+            });
 
-        // Load withdrawals
-        async function loadWithdrawals() {
-            try {
-                const snapshot = await db.collection('withdrawals').get();
-                withdrawals = [];
+            // Listen for withdrawal changes
+            db.collection('withdrawals').onSnapshot(snapshot => {
+                allWithdrawals = [];
                 snapshot.forEach(doc => {
                     const withdrawal = doc.data();
                     withdrawal.id = doc.id;
-                    withdrawals.push(withdrawal);
+                    allWithdrawals.push(withdrawal);
                 });
                 
-                updateWithdrawalsTable();
-                updateStats();
-            } catch (error) {
-                console.error('Error loading withdrawals:', error);
-                showNotification('Error loading withdrawals', 'error');
-            }
-        }
-
-        // Load tasks
-        async function loadTasks() {
-            try {
-                const snapshot = await db.collection('tasks').get();
-                tasks = [];
-                snapshot.forEach(doc => {
-                    const task = doc.data();
-                    task.id = doc.id;
-                    tasks.push(task);
-                });
-                
-                updateTasksTable();
-                updateStats();
-            } catch (error) {
-                console.error('Error loading tasks:', error);
-                showNotification('Error loading tasks', 'error');
-            }
-        }
-
-        // Load competitions
-        async function loadCompetitions() {
-            try {
-                const snapshot = await db.collection('competitions').get();
-                competitions = [];
-                snapshot.forEach(doc => {
-                    const competition = doc.data();
-                    competition.id = doc.id;
-                    competitions.push(competition);
-                });
-                
-                updateCompetitionsTable();
-                updateStats();
-            } catch (error) {
-                console.error('Error loading competitions:', error);
-                showNotification('Error loading competitions', 'error');
-            }
-        }
-
-        // Load logs
-        async function loadLogs() {
-            try {
-                const snapshot = await db.collection('logs').orderBy('timestamp', 'desc').limit(100).get();
-                logs = [];
-                snapshot.forEach(doc => {
-                    const log = doc.data();
-                    log.id = doc.id;
-                    logs.push(log);
-                });
-                
-                updateLogsTable();
-            } catch (error) {
-                console.error('Error loading logs:', error);
-                showNotification('Error loading logs', 'error');
-            }
-        }
-
-        // Load settings
-        async function loadSettings() {
-            try {
-                const doc = await db.collection('settings').doc('appSettings').get();
-                if (doc.exists) {
-                    settings = doc.data();
-                    updateSettingsForm();
+                if (document.getElementById('withdrawalsTab').classList.contains('active')) {
+                    updateWithdrawalsTable();
                 }
-            } catch (error) {
-                console.error('Error loading settings:', error);
-            }
-        }
-
-        // Load stats
-        async function loadStats() {
-            updateStats();
-        }
-
-        // Update stats
-        function updateStats() {
-            // Total users
-            document.getElementById('totalUsers').textContent = users.length.toLocaleString();
-            
-            // Total GLX
-            const totalGLX = users.reduce((sum, user) => sum + (user.dogsBalance || 0), 0);
-            document.getElementById('totalGLX').textContent = Math.floor(totalGLX).toLocaleString();
-            
-            // Total TON
-            const totalTON = users.reduce((sum, user) => sum + (user.tonBalance || 0), 0);
-            document.getElementById('totalTON').textContent = totalTON.toFixed(4);
-            
-            // Pending withdrawals
-            const pending = withdrawals.filter(w => w.status === 'pending').length;
-            document.getElementById('pendingWithdrawals').textContent = pending;
-            
-            // Active tasks
-            const active = tasks.filter(t => t.status === 'active').length;
-            document.getElementById('activeTasks').textContent = active;
-            
-            // Today's revenue (example calculation)
-            const todayRevenue = withdrawals
-                .filter(w => w.status === 'completed')
-                .reduce((sum, w) => sum + (w.amount || 0), 0);
-            document.getElementById('todayRevenue').textContent = todayRevenue.toFixed(4) + ' TON';
-            
-            // Online users (simulated)
-            document.getElementById('onlineUsers').textContent = Math.floor(users.length * 0.1);
-            
-            // Total deposits
-            document.getElementById('totalDeposits').textContent = (totalTON * 0.5).toFixed(2) + ' TON';
-            
-            // Total withdrawn
-            const totalWithdrawn = withdrawals
-                .filter(w => w.status === 'completed')
-                .reduce((sum, w) => sum + (w.amount || 0), 0);
-            document.getElementById('totalWithdrawn').textContent = totalWithdrawn.toFixed(4) + ' TON';
-            
-            // Referral count
-            const totalReferrals = users.reduce((sum, user) => sum + (user.referrals || 0), 0);
-            document.getElementById('referralCount').textContent = totalReferrals;
+            });
         }
 
         // Update users table
-        function updateUsersTable(filteredUsers = users) {
+        function updateUsersTable() {
             const tbody = document.getElementById('usersTableBody');
-            const start = (currentPage.users - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const paginatedUsers = filteredUsers.slice(start, end);
-            
             tbody.innerHTML = '';
-            
-            if (paginatedUsers.length === 0) {
+
+            if (allUsers.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="empty-state">
+                        <td colspan="5" class="empty-state">
                             <i class="fas fa-users"></i>
                             <p>No users found</p>
                         </td>
@@ -1558,65 +878,49 @@
                 `;
                 return;
             }
-            
-            paginatedUsers.forEach(user => {
+
+            allUsers.forEach(user => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${user.id.substring(0, 8)}...</td>
+                    <td style="font-family: monospace; font-size: 11px;">${user.id.substring(0, 12)}...</td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="user-avatar" alt="${user.name}">
+                            <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
+                                 style="width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--primary-green);">
                             <div>
                                 <div style="font-weight: 600;">${user.name || 'Anonymous'}</div>
-                                <div style="font-size: 11px; color: var(--text-muted);">${user.username || 'No username'}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${user.username || ''}</div>
                             </div>
                         </div>
                     </td>
-                    <td>
-                        <div style="font-weight: 700;">${Math.floor(user.dogsBalance || 0).toLocaleString()} GLX</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">${(user.tonBalance || 0).toFixed(4)} TON</div>
+                    <td style="font-weight: 700; color: var(--primary-green);">
+                        ${Math.floor(user.dogsBalance || 0).toLocaleString()} GLX
+                    </td>
+                    <td style="font-weight: 700; color: #3498db;">
+                        ${(user.tonBalance || 0).toFixed(4)} TON
                     </td>
                     <td>
-                        <span class="status-badge ${user.blocked ? 'status-blocked' : 'status-active'}">
-                            ${user.blocked ? 'Blocked' : 'Active'}
-                        </span>
-                    </td>
-                    <td>${new Date(user.joinedDate || Date.now()).toLocaleDateString()}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="action-btn edit" onclick="editUser('${user.id}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-btn ${user.blocked ? 'approve' : 'block'}" 
-                                    onclick="${user.blocked ? 'unblockUser' : 'blockUserFromTable'}('${user.id}')" 
-                                    title="${user.blocked ? 'Unblock' : 'Block'}">
-                                <i class="fas ${user.blocked ? 'fa-check' : 'fa-ban'}"></i>
-                            </button>
-                            <button class="action-btn delete" onclick="deleteUserFromTable('${user.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button class="action-btn edit" onclick="editUser('${user.id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="deleteUser('${user.id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
-            
-            updatePagination('users', filteredUsers.length);
         }
 
         // Update withdrawals table
-        function updateWithdrawalsTable(filteredWithdrawals = withdrawals) {
+        function updateWithdrawalsTable() {
             const tbody = document.getElementById('withdrawalsTableBody');
-            const start = (currentPage.withdrawals - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const paginatedWithdrawals = filteredWithdrawals.slice(start, end);
-            
             tbody.innerHTML = '';
-            
-            if (paginatedWithdrawals.length === 0) {
+
+            if (allWithdrawals.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="empty-state">
+                        <td colspan="6" class="empty-state">
                             <i class="fas fa-money-bill-wave"></i>
                             <p>No withdrawals found</p>
                         </td>
@@ -1624,39 +928,23 @@
                 `;
                 return;
             }
-            
-            paginatedWithdrawals.forEach(withdrawal => {
+
+            allWithdrawals.forEach(withdrawal => {
                 const statusClass = `status-${withdrawal.status || 'pending'}`;
-                const statusText = (withdrawal.status || 'pending').charAt(0).toUpperCase() + (withdrawal.status || 'pending').slice(1);
-                
-                let maskedAccount = withdrawal.account || '';
-                if (withdrawal.method === 'faucetpay' && maskedAccount.includes('@')) {
-                    const [localPart, domain] = maskedAccount.split('@');
-                    if (localPart.length > 3) {
-                        maskedAccount = localPart.charAt(0) + '*'.repeat(Math.max(3, localPart.length - 2)) + localPart.charAt(localPart.length - 1) + '@' + domain;
-                    }
-                } else if (withdrawal.method === 'ton') {
-                    if (maskedAccount.length > 16) {
-                        maskedAccount = maskedAccount.substring(0, 8) + '...' + maskedAccount.substring(maskedAccount.length - 4);
-                    }
-                }
+                const statusText = (withdrawal.status || 'pending').toUpperCase();
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${withdrawal.id.substring(0, 8)}...</td>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="${withdrawal.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="user-avatar" alt="${withdrawal.name}">
-                            <div>
-                                <div style="font-weight: 600;">${withdrawal.name || 'Anonymous'}</div>
-                                <div style="font-size: 11px; color: var(--text-muted);">${withdrawal.userId || ''}</div>
-                            </div>
-                        </div>
+                        <div style="font-weight: 600;">${withdrawal.name || 'Anonymous'}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${withdrawal.userId?.substring(0, 8) || ''}</div>
                     </td>
-                    <td style="font-weight: 700; color: var(--primary-green);">${(withdrawal.amount || 0).toFixed(6)} TON</td>
+                    <td style="font-weight: 700; color: var(--primary-green);">
+                        ${(withdrawal.amount || 0).toFixed(6)} TON
+                    </td>
                     <td>
                         <span style="font-size: 11px; padding: 4px 8px; background: rgba(168, 85, 247, 0.2); border-radius: 6px;">
-                            ${withdrawal.method === 'faucetpay' ? 'FaucetPay' : 'TON Wallet'}
+                            ${withdrawal.method || 'unknown'}
                         </span>
                     </td>
                     <td>
@@ -1664,31 +952,27 @@
                     </td>
                     <td>${new Date(withdrawal.timestamp || Date.now()).toLocaleDateString()}</td>
                     <td>
-                        <div class="action-buttons">
-                            <button class="action-btn approve" onclick="processWithdrawal('${withdrawal.id}')" title="Process">
-                                <i class="fas fa-cog"></i>
-                            </button>
-                            <button class="action-btn delete" onclick="deleteWithdrawal('${withdrawal.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button class="action-btn edit" onclick="processWithdrawal('${withdrawal.id}', 'completed')" title="Approve">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="processWithdrawal('${withdrawal.id}', 'rejected')" title="Reject">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
-            
-            updatePagination('withdrawals', filteredWithdrawals.length);
         }
 
         // Update tasks table
         function updateTasksTable() {
             const tbody = document.getElementById('tasksTableBody');
             tbody.innerHTML = '';
-            
-            if (tasks.length === 0) {
+
+            if (allTasks.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="empty-state">
+                        <td colspan="5" class="empty-state">
                             <i class="fas fa-tasks"></i>
                             <p>No tasks found</p>
                         </td>
@@ -1696,21 +980,16 @@
                 `;
                 return;
             }
-            
-            tasks.forEach(task => {
+
+            allTasks.forEach(task => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${task.id.substring(0, 8)}...</td>
-                    <td style="font-weight: 600;">${task.title || 'Untitled Task'}</td>
-                    <td>
-                        <span style="font-size: 11px; padding: 4px 8px; background: rgba(52, 152, 219, 0.2); border-radius: 6px;">
-                            ${task.category || 'community'}
-                        </span>
+                    <td style="font-weight: 600;">${task.title || 'Untitled'}</td>
+                    <td style="font-weight: 700; color: var(--primary-green);">
+                        ${task.reward || 0} GLX
                     </td>
-                    <td style="font-weight: 700; color: var(--primary-green);">${task.reward || 0} GLX</td>
                     <td>
-                        <div>${task.completions || 0} / ${task.maxCompletions || 100}</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">${((task.completions || 0) / (task.maxCompletions || 100) * 100).toFixed(1)}%</div>
+                        <div>${task.completions || 0} / ${task.maxCompletions || '∞'}</div>
                     </td>
                     <td>
                         <span class="status-badge ${task.status === 'active' ? 'status-active' : 'status-blocked'}">
@@ -1718,260 +997,433 @@
                         </span>
                     </td>
                     <td>
-                        <div class="action-buttons">
-                            <button class="action-btn edit" onclick="editTask('${task.id}')" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="action-btn ${task.status === 'active' ? 'block' : 'approve'}" 
-                                    onclick="${task.status === 'active' ? 'deactivateTask' : 'activateTask'}('${task.id}')" 
-                                    title="${task.status === 'active' ? 'Deactivate' : 'Activate'}">
-                                <i class="fas ${task.status === 'active' ? 'fa-pause' : 'fa-play'}"></i>
-                            </button>
-                            <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <button class="action-btn edit" onclick="editTask('${task.id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="deleteTask('${task.id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        // Update competitions table
-        function updateCompetitionsTable() {
-            const tbody = document.getElementById('competitionsTableBody');
-            tbody.innerHTML = '';
+        // Edit user
+        function editUser(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            currentEditingUserId = userId;
+            document.getElementById('editGlxBalance').value = user.dogsBalance || 0;
+            document.getElementById('editTonBalance').value = user.tonBalance || 0;
+            document.getElementById('editUserStatus').value = user.blocked ? 'blocked' : 'active';
             
-            if (competitions.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="empty-state">
-                            <i class="fas fa-trophy"></i>
-                            <p>No competitions found</p>
-                        </td>
-                    </tr>
-                `;
+            showModal('editModal');
+        }
+
+        // Save user edit
+        async function saveUserEdit() {
+            const glxBalance = parseFloat(document.getElementById('editGlxBalance').value);
+            const tonBalance = parseFloat(document.getElementById('editTonBalance').value);
+            const status = document.getElementById('editUserStatus').value;
+
+            try {
+                await db.collection('users').doc(currentEditingUserId).update({
+                    dogsBalance: glxBalance,
+                    tonBalance: tonBalance,
+                    blocked: status === 'blocked'
+                });
+
+                showNotification('✅ User updated successfully!', 'success');
+                closeModal('editModal');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error updating user: ' + error.message, 'error');
+            }
+        }
+
+        // Delete user
+        async function deleteUser(userId) {
+            if (!confirm('Are you sure you want to delete this user?')) return;
+
+            try {
+                await db.collection('users').doc(userId).delete();
+                showNotification('✅ User deleted successfully!', 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error deleting user: ' + error.message, 'error');
+            }
+        }
+
+        // Process withdrawal
+        async function processWithdrawal(withdrawalId, status) {
+            try {
+                await db.collection('withdrawals').doc(withdrawalId).update({
+                    status: status,
+                    processedAt: Date.now()
+                });
+
+                showNotification(`✅ Withdrawal ${status} successfully!`, 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error processing withdrawal: ' + error.message, 'error');
+            }
+        }
+
+        // Add new task
+        async function addNewTask() {
+            const title = prompt('Enter task title:');
+            if (!title) return;
+
+            const reward = prompt('Enter reward amount (GLX):', '1000');
+            const link = prompt('Enter task link (optional):', 'https://t.me/example');
+
+            try {
+                await db.collection('tasks').add({
+                    title: title,
+                    reward: parseInt(reward) || 1000,
+                    link: link || '',
+                    status: 'active',
+                    completions: 0,
+                    maxCompletions: 100,
+                    createdAt: Date.now()
+                });
+
+                showNotification('✅ Task added successfully!', 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error adding task: ' + error.message, 'error');
+            }
+        }
+
+        // Edit task
+        async function editTask(taskId) {
+            const task = allTasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const newReward = prompt('Enter new reward amount (GLX):', task.reward);
+            if (!newReward) return;
+
+            try {
+                await db.collection('tasks').doc(taskId).update({
+                    reward: parseInt(newReward)
+                });
+
+                showNotification('✅ Task updated successfully!', 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error updating task: ' + error.message, 'error');
+            }
+        }
+
+        // Delete task
+        async function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task?')) return;
+
+            try {
+                await db.collection('tasks').doc(taskId).delete();
+                showNotification('✅ Task deleted successfully!', 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error deleting task: ' + error.message, 'error');
+            }
+        }
+
+        // Update any Firebase value
+        async function updateFirebaseValue() {
+            const collection = document.getElementById('collectionName').value;
+            const docId = document.getElementById('documentId').value;
+            const field = document.getElementById('fieldName').value;
+            let value = document.getElementById('fieldValue').value;
+            const type = document.getElementById('valueType').value;
+
+            if (!collection || !field) {
+                showNotification('Please fill collection and field names', 'error');
                 return;
             }
-            
-            competitions.forEach(competition => {
-                const isActive = competition.endTime > Date.now();
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${competition.id.substring(0, 8)}...</td>
-                    <td style="font-weight: 700; color: #FFD700;">${(competition.prizePool || 0).toFixed(3)} TON</td>
-                    <td>${competition.totalTickets || 0}</td>
-                    <td>
-                        <span class="status-badge ${isActive ? 'status-active' : 'status-completed'}">
-                            ${isActive ? 'Active' : 'Ended'}
-                        </span>
-                    </td>
-                    <td>${new Date(competition.startTime || Date.now()).toLocaleDateString()}</td>
-                    <td>${new Date(competition.endTime || Date.now()).toLocaleDateString()}</td>
-                    <td>${competition.winnerName || 'No winner yet'}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="action-btn info" onclick="viewCompetitionDetails('${competition.id}')" title="View Details">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            <button class="action-btn delete" onclick="deleteCompetition('${competition.id}')" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
 
-        // Update logs table
-        function updateLogsTable(filteredLogs = logs) {
-            const tbody = document.getElementById('logsTableBody');
-            const start = (currentPage.logs - 1) * itemsPerPage;
-            const end = start + itemsPerPage;
-            const paginatedLogs = filteredLogs.slice(start, end);
-            
-            tbody.innerHTML = '';
-            
-            if (paginatedLogs.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="empty-state">
-                            <i class="fas fa-history"></i>
-                            <p>No logs found</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            paginatedLogs.forEach(log => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${new Date(log.timestamp || Date.now()).toLocaleString()}</td>
-                    <td>
-                        <span style="font-size: 11px; padding: 4px 8px; background: ${
-                            log.type === 'error' ? 'rgba(231, 76, 60, 0.2)' :
-                            log.type === 'user' ? 'rgba(52, 152, 219, 0.2)' :
-                            log.type === 'transaction' ? 'rgba(39, 174, 96, 0.2)' : 'rgba(243, 156, 18, 0.2)'
-                        }; border-radius: 6px; color: ${
-                            log.type === 'error' ? '#e74c3c' :
-                            log.type === 'user' ? '#3498db' :
-                            log.type === 'transaction' ? '#27ae60' : '#f39c12'
-                        };">
-                            ${log.type || 'system'}
-                        </span>
-                    </td>
-                    <td>${log.userName || 'System'}</td>
-                    <td style="font-weight: 600;">${log.action || 'Unknown action'}</td>
-                    <td style="font-size: 12px; color: var(--text-muted);">${log.details || 'No details'}</td>
-                `;
-                tbody.appendChild(row);
-            });
-            
-            updatePagination('logs', filteredLogs.length);
-        }
-
-        // Update settings form
-        function updateSettingsForm() {
-            if (settings) {
-                document.getElementById('glxToTonRate').value = settings.glxToTonRate || 0.0000001;
-                document.getElementById('ticketPrice').value = settings.ticketPrice || 10000;
-                document.getElementById('minTonWithdrawal').value = settings.minTonWithdrawal || 0.05;
-                document.getElementById('minFaucetPayWithdrawal').value = settings.minFaucetPayWithdrawal || 0.0001;
-                document.getElementById('referralReward').value = settings.referralReward || 10000;
-                document.getElementById('dailyAdLimit').value = settings.dailyAdLimit || 650;
-            }
-        }
-
-        // Update pagination
-        function updatePagination(type, totalItems) {
-            const totalPages = Math.ceil(totalItems / itemsPerPage);
-            const paginationDiv = document.getElementById(`${type}Pagination`);
-            
-            if (!paginationDiv) return;
-            
-            paginationDiv.innerHTML = '';
-            
-            if (totalPages <= 1) return;
-            
-            // Previous button
-            const prevButton = document.createElement('button');
-            prevButton.className = 'page-btn';
-            prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
-            prevButton.disabled = currentPage[type] === 1;
-            prevButton.onclick = () => {
-                if (currentPage[type] > 1) {
-                    currentPage[type]--;
-                    updateTable(type);
-                }
-            };
-            paginationDiv.appendChild(prevButton);
-            
-            // Page numbers
-            for (let i = 1; i <= totalPages; i++) {
-                const pageButton = document.createElement('button');
-                pageButton.className = `page-btn ${i === currentPage[type] ? 'active' : ''}`;
-                pageButton.textContent = i;
-                pageButton.onclick = () => {
-                    currentPage[type] = i;
-                    updateTable(type);
-                };
-                paginationDiv.appendChild(pageButton);
-            }
-            
-            // Next button
-            const nextButton = document.createElement('button');
-            nextButton.className = 'page-btn';
-            nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
-            nextButton.disabled = currentPage[type] === totalPages;
-            nextButton.onclick = () => {
-                if (currentPage[type] < totalPages) {
-                    currentPage[type]++;
-                    updateTable(type);
-                }
-            };
-            paginationDiv.appendChild(nextButton);
-        }
-
-        // Update table based on type
-        function updateTable(type) {
+            // Convert value based on type
             switch (type) {
-                case 'users':
-                    updateUsersTable();
+                case 'number':
+                    value = parseFloat(value);
                     break;
-                case 'withdrawals':
-                    updateWithdrawalsTable();
+                case 'boolean':
+                    value = value.toLowerCase() === 'true';
                     break;
-                case 'logs':
-                    updateLogsTable();
+                case 'json':
+                    try {
+                        value = JSON.parse(value);
+                    } catch {
+                        showNotification('Invalid JSON format', 'error');
+                        return;
+                    }
                     break;
+                // string is default
+            }
+
+            try {
+                if (docId) {
+                    // Update specific document
+                    await db.collection(collection).doc(docId).update({
+                        [field]: value
+                    });
+                    showNotification(`✅ Updated ${field} in ${collection}/${docId}`, 'success');
+                } else {
+                    // Update all documents in collection
+                    const snapshot = await db.collection(collection).get();
+                    const promises = [];
+                    
+                    snapshot.forEach(doc => {
+                        promises.push(
+                            db.collection(collection).doc(doc.id).update({
+                                [field]: value
+                            })
+                        );
+                    });
+
+                    await Promise.all(promises);
+                    showNotification(`✅ Updated ${field} in all ${collection} documents`, 'success');
+                }
+
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error updating: ' + error.message, 'error');
+            }
+        }
+
+        // Quick actions
+        async function setQuickAction(collection, field, value) {
+            if (!confirm(`Set ${field} = ${value} for ALL documents in ${collection}?`)) return;
+
+            try {
+                const snapshot = await db.collection(collection).get();
+                const promises = [];
+                
+                snapshot.forEach(doc => {
+                    const updateData = {};
+                    updateData[field] = field.includes('Balance') ? parseFloat(value) : value;
+                    
+                    promises.push(
+                        db.collection(collection).doc(doc.id).update(updateData)
+                    );
+                });
+
+                await Promise.all(promises);
+                showNotification(`✅ Updated all ${collection} successfully!`, 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Approve all withdrawals
+        async function approveAllWithdrawals() {
+            if (!confirm('Approve ALL pending withdrawals?')) return;
+
+            try {
+                const snapshot = await db.collection('withdrawals').where('status', '==', 'pending').get();
+                const promises = [];
+                
+                snapshot.forEach(doc => {
+                    promises.push(
+                        db.collection('withdrawals').doc(doc.id).update({
+                            status: 'completed',
+                            processedAt: Date.now()
+                        })
+                    );
+                });
+
+                await Promise.all(promises);
+                showNotification(`✅ Approved ${snapshot.size} withdrawals!`, 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Reset all balances
+        async function resetAllBalances() {
+            if (!confirm('Reset ALL user balances to zero? This cannot be undone!')) return;
+
+            try {
+                const snapshot = await db.collection('users').get();
+                const promises = [];
+                
+                snapshot.forEach(doc => {
+                    promises.push(
+                        db.collection('users').doc(doc.id).update({
+                            dogsBalance: 0,
+                            tonBalance: 0
+                        })
+                    );
+                });
+
+                await Promise.all(promises);
+                showNotification(`✅ Reset ${snapshot.size} user balances!`, 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Backup Firebase data
+        async function backupFirebaseData() {
+            try {
+                const collections = ['users', 'withdrawals', 'tasks', 'settings', 'competitions'];
+                const backupData = {};
+
+                for (const collection of collections) {
+                    const snapshot = await db.collection(collection).get();
+                    backupData[collection] = {};
+                    
+                    snapshot.forEach(doc => {
+                        backupData[collection][doc.id] = doc.data();
+                    });
+                }
+
+                // Create download link
+                const dataStr = JSON.stringify(backupData, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const exportFileDefaultName = `glx-backup-${Date.now()}.json`;
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+
+                showNotification('✅ Backup downloaded successfully!', 'success');
+            } catch (error) {
+                showNotification('❌ Backup failed: ' + error.message, 'error');
+            }
+        }
+
+        // Delete collection
+        async function deleteCollection() {
+            const collection = document.getElementById('deleteCollectionName').value;
+            if (!collection) {
+                showNotification('Please enter collection name', 'error');
+                return;
+            }
+
+            if (!confirm(`DELETE ALL documents in "${collection}"? This cannot be undone!`)) return;
+
+            try {
+                const snapshot = await db.collection(collection).get();
+                const promises = [];
+                
+                snapshot.forEach(doc => {
+                    promises.push(db.collection(collection).doc(doc.id).delete());
+                });
+
+                await Promise.all(promises);
+                showNotification(`✅ Deleted ${snapshot.size} documents from ${collection}!`, 'success');
+                loadAllData();
+            } catch (error) {
+                showNotification('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Import Firebase data
+        async function importFirebaseData() {
+            const fileInput = document.getElementById('importFile');
+            if (!fileInput.files.length) {
+                showNotification('Please select a JSON file', 'error');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    for (const collection in data) {
+                        for (const docId in data[collection]) {
+                            await db.collection(collection).doc(docId).set(data[collection][docId]);
+                        }
+                    }
+
+                    showNotification('✅ Data imported successfully!', 'success');
+                    loadAllData();
+                } catch (error) {
+                    showNotification('❌ Import failed: ' + error.message, 'error');
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Run custom Firebase query
+        async function runFirebaseQuery() {
+            const queryCode = document.getElementById('firebaseQuery').value;
+            if (!queryCode) {
+                showNotification('Please enter a query', 'error');
+                return;
+            }
+
+            try {
+                // WARNING: Using eval is dangerous! This is for admin panel only.
+                const result = await eval(queryCode);
+                console.log('Query result:', result);
+                
+                if (result.docs) {
+                    alert(`Query returned ${result.docs.length} documents`);
+                } else {
+                    alert('Query executed successfully. Check console for details.');
+                }
+                
+                showNotification('✅ Query executed successfully', 'success');
+            } catch (error) {
+                showNotification('❌ Query error: ' + error.message, 'error');
             }
         }
 
         // Search users
         function searchUsers() {
             const searchTerm = document.getElementById('userSearch').value.toLowerCase();
-            if (!searchTerm) {
-                updateUsersTable(users);
-                return;
-            }
-            
-            const filteredUsers = users.filter(user => 
-                user.id.toLowerCase().includes(searchTerm) ||
-                (user.name && user.name.toLowerCase().includes(searchTerm)) ||
-                (user.username && user.username.toLowerCase().includes(searchTerm)) ||
-                (user.email && user.email.toLowerCase().includes(searchTerm))
+            const filteredUsers = allUsers.filter(user => 
+                user.name?.toLowerCase().includes(searchTerm) ||
+                user.username?.toLowerCase().includes(searchTerm) ||
+                user.id.toLowerCase().includes(searchTerm)
             );
-            
-            currentPage.users = 1;
-            updateUsersTable(filteredUsers);
-        }
 
-        // Filter withdrawals
-        function filterWithdrawals() {
-            const statusFilter = document.getElementById('withdrawalStatusFilter').value;
-            const methodFilter = document.getElementById('withdrawalMethodFilter').value;
-            
-            let filteredWithdrawals = withdrawals;
-            
-            if (statusFilter !== 'all') {
-                filteredWithdrawals = filteredWithdrawals.filter(w => w.status === statusFilter);
-            }
-            
-            if (methodFilter !== 'all') {
-                filteredWithdrawals = filteredWithdrawals.filter(w => w.method === methodFilter);
-            }
-            
-            currentPage.withdrawals = 1;
-            updateWithdrawalsTable(filteredWithdrawals);
-        }
+            // Temporarily show filtered users
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = '';
 
-        // Filter logs
-        function filterLogs() {
-            const typeFilter = document.getElementById('logTypeFilter').value;
-            const dateFrom = document.getElementById('logDateFrom').value;
-            const dateTo = document.getElementById('logDateTo').value;
-            
-            let filteredLogs = logs;
-            
-            if (typeFilter !== 'all') {
-                filteredLogs = filteredLogs.filter(log => log.type === typeFilter);
-            }
-            
-            if (dateFrom) {
-                const fromDate = new Date(dateFrom);
-                filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) >= fromDate);
-            }
-            
-            if (dateTo) {
-                const toDate = new Date(dateTo);
-                toDate.setHours(23, 59, 59, 999);
-                filteredLogs = filteredLogs.filter(log => new Date(log.timestamp) <= toDate);
-            }
-            
-            currentPage.logs = 1;
-            updateLogsTable(filteredLogs);
+            filteredUsers.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td style="font-family: monospace; font-size: 11px;">${user.id.substring(0, 12)}...</td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
+                                 style="width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--primary-green);">
+                            <div>
+                                <div style="font-weight: 600;">${user.name || 'Anonymous'}</div>
+                                <div style="font-size: 11px; color: var(--text-muted);">${user.username || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style="font-weight: 700; color: var(--primary-green);">
+                        ${Math.floor(user.dogsBalance || 0).toLocaleString()} GLX
+                    </td>
+                    <td style="font-weight: 700; color: #3498db;">
+                        ${(user.tonBalance || 0).toFixed(4)} TON
+                    </td>
+                    <td>
+                        <button class="action-btn edit" onclick="editUser('${user.id}')" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="deleteUser('${user.id}')" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
         }
 
         // Switch tabs
@@ -1997,459 +1449,9 @@
             });
             
             // Load data if needed
-            if (tabName === 'logs' && logs.length === 0) {
-                loadLogs();
+            if (tabName === 'users' && allUsers.length === 0) {
+                loadAllData();
             }
-        }
-
-        // Edit user
-        async function editUser(userId) {
-            const user = users.find(u => u.id === userId);
-            if (!user) return;
-            
-            document.getElementById('editUserId').value = userId;
-            document.getElementById('editUserGLX').value = user.dogsBalance || 0;
-            document.getElementById('editUserTON').value = user.tonBalance || 0;
-            document.getElementById('editUserStatus').value = user.blocked ? 'blocked' : 'active';
-            
-            showModal('editUserModal');
-        }
-
-        // Save user changes
-        async function saveUserChanges() {
-            const userId = document.getElementById('editUserId').value;
-            const glxBalance = parseFloat(document.getElementById('editUserGLX').value);
-            const tonBalance = parseFloat(document.getElementById('editUserTON').value);
-            const status = document.getElementById('editUserStatus').value;
-            
-            try {
-                await db.collection('users').doc(userId).update({
-                    dogsBalance: glxBalance,
-                    tonBalance: tonBalance,
-                    blocked: status === 'blocked' || status === 'suspended',
-                    status: status
-                });
-                
-                // Add log
-                await addLog('user', 'User Updated', `Updated user ${userId} balance to ${glxBalance} GLX, ${tonBalance} TON`);
-                
-                closeModal('editUserModal');
-                loadUsers();
-                showNotification('User updated successfully', 'success');
-            } catch (error) {
-                showNotification('Error updating user: ' + error.message, 'error');
-            }
-        }
-
-        // Block user from table
-        async function blockUserFromTable(userId) {
-            if (!confirm('Are you sure you want to block this user?')) return;
-            
-            try {
-                await db.collection('users').doc(userId).update({
-                    blocked: true,
-                    status: 'blocked'
-                });
-                
-                // Add log
-                await addLog('user', 'User Blocked', `Blocked user ${userId}`);
-                
-                loadUsers();
-                showNotification('User blocked successfully', 'success');
-            } catch (error) {
-                showNotification('Error blocking user: ' + error.message, 'error');
-            }
-        }
-
-        // Unblock user
-        async function unblockUser(userId) {
-            try {
-                await db.collection('users').doc(userId).update({
-                    blocked: false,
-                    status: 'active'
-                });
-                
-                // Add log
-                await addLog('user', 'User Unblocked', `Unblocked user ${userId}`);
-                
-                loadUsers();
-                showNotification('User unblocked successfully', 'success');
-            } catch (error) {
-                showNotification('Error unblocking user: ' + error.message, 'error');
-            }
-        }
-
-        // Delete user from table
-        async function deleteUserFromTable(userId) {
-            if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) return;
-            
-            try {
-                await db.collection('users').doc(userId).delete();
-                
-                // Add log
-                await addLog('user', 'User Deleted', `Deleted user ${userId}`);
-                
-                loadUsers();
-                showNotification('User deleted successfully', 'success');
-            } catch (error) {
-                showNotification('Error deleting user: ' + error.message, 'error');
-            }
-        }
-
-        // Process withdrawal
-        async function processWithdrawal(withdrawalId) {
-            const withdrawal = withdrawals.find(w => w.id === withdrawalId);
-            if (!withdrawal) return;
-            
-            document.getElementById('actionWithdrawalId').value = withdrawalId;
-            document.getElementById('actionWithdrawalAmount').value = withdrawal.amount || 0;
-            document.getElementById('actionWithdrawalMethod').value = withdrawal.method || '';
-            document.getElementById('actionWithdrawalAccount').value = withdrawal.account || '';
-            
-            document.getElementById('displayWithdrawalAmount').value = (withdrawal.amount || 0).toFixed(6) + ' TON';
-            document.getElementById('displayWithdrawalMethod').value = withdrawal.method === 'faucetpay' ? 'FaucetPay' : 'TON Wallet';
-            document.getElementById('displayWithdrawalAccount').value = withdrawal.account || '';
-            document.getElementById('withdrawalActionStatus').value = withdrawal.status || 'pending';
-            
-            showModal('withdrawalActionModal');
-        }
-
-        // Complete withdrawal
-        async function completeWithdrawal() {
-            const withdrawalId = document.getElementById('actionWithdrawalId').value;
-            const txId = document.getElementById('withdrawalTxId').value;
-            
-            try {
-                await db.collection('withdrawals').doc(withdrawalId).update({
-                    status: 'completed',
-                    transactionId: txId,
-                    processedAt: Date.now(),
-                    processedBy: currentUser.email
-                });
-                
-                // Add log
-                await addLog('transaction', 'Withdrawal Completed', `Completed withdrawal ${withdrawalId} with TX: ${txId}`);
-                
-                closeModal('withdrawalActionModal');
-                loadWithdrawals();
-                showNotification('Withdrawal marked as completed', 'success');
-            } catch (error) {
-                showNotification('Error completing withdrawal: ' + error.message, 'error');
-            }
-        }
-
-        // Reject withdrawal
-        async function rejectWithdrawal() {
-            const withdrawalId = document.getElementById('actionWithdrawalId').value;
-            const reason = prompt('Enter reason for rejection:');
-            
-            if (!reason) return;
-            
-            try {
-                const withdrawal = withdrawals.find(w => w.id === withdrawalId);
-                if (withdrawal) {
-                    // Refund user's balance
-                    await db.collection('users').doc(withdrawal.userId).update({
-                        tonBalance: firebase.firestore.FieldValue.increment(withdrawal.amount || 0)
-                    });
-                }
-                
-                await db.collection('withdrawals').doc(withdrawalId).update({
-                    status: 'rejected',
-                    rejectionReason: reason,
-                    processedAt: Date.now(),
-                    processedBy: currentUser.email
-                });
-                
-                // Add log
-                await addLog('transaction', 'Withdrawal Rejected', `Rejected withdrawal ${withdrawalId}: ${reason}`);
-                
-                closeModal('withdrawalActionModal');
-                loadWithdrawals();
-                showNotification('Withdrawal rejected and user refunded', 'success');
-            } catch (error) {
-                showNotification('Error rejecting withdrawal: ' + error.message, 'error');
-            }
-        }
-
-        // Delete withdrawal
-        async function deleteWithdrawal(withdrawalId) {
-            if (!confirm('Are you sure you want to delete this withdrawal record?')) return;
-            
-            try {
-                await db.collection('withdrawals').doc(withdrawalId).delete();
-                
-                // Add log
-                await addLog('transaction', 'Withdrawal Deleted', `Deleted withdrawal record ${withdrawalId}`);
-                
-                loadWithdrawals();
-                showNotification('Withdrawal deleted successfully', 'success');
-            } catch (error) {
-                showNotification('Error deleting withdrawal: ' + error.message, 'error');
-            }
-        }
-
-        // Show add task modal
-        function showAddTaskModal() {
-            showModal('addTaskModal');
-        }
-
-        // Add new task
-        async function addNewTask() {
-            const title = document.getElementById('taskTitle').value;
-            const link = document.getElementById('taskLink').value;
-            const category = document.getElementById('taskCategory').value;
-            const reward = parseInt(document.getElementById('taskReward').value);
-            const maxCompletions = parseInt(document.getElementById('taskMaxCompletions').value);
-            
-            if (!title || !link || !reward) {
-                showNotification('Please fill all required fields', 'error');
-                return;
-            }
-            
-            const taskId = 'task_' + Date.now();
-            
-            try {
-                await db.collection('tasks').doc(taskId).set({
-                    id: taskId,
-                    title: title,
-                    link: link,
-                    category: category,
-                    reward: reward,
-                    maxCompletions: maxCompletions,
-                    completions: 0,
-                    status: 'active',
-                    createdAt: Date.now(),
-                    createdBy: currentUser.email
-                });
-                
-                // Add log
-                await addLog('system', 'Task Added', `Added task: ${title}`);
-                
-                closeModal('addTaskModal');
-                document.getElementById('addTaskForm').reset();
-                loadTasks();
-                showNotification('Task added successfully', 'success');
-            } catch (error) {
-                showNotification('Error adding task: ' + error.message, 'error');
-            }
-        }
-
-        // Edit task
-        async function editTask(taskId) {
-            const task = tasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            const newReward = prompt('Enter new reward amount (GLX):', task.reward);
-            if (!newReward) return;
-            
-            try {
-                await db.collection('tasks').doc(taskId).update({
-                    reward: parseInt(newReward)
-                });
-                
-                // Add log
-                await addLog('system', 'Task Updated', `Updated task ${taskId} reward to ${newReward} GLX`);
-                
-                loadTasks();
-                showNotification('Task updated successfully', 'success');
-            } catch (error) {
-                showNotification('Error updating task: ' + error.message, 'error');
-            }
-        }
-
-        // Deactivate task
-        async function deactivateTask(taskId) {
-            try {
-                await db.collection('tasks').doc(taskId).update({
-                    status: 'inactive'
-                });
-                
-                // Add log
-                await addLog('system', 'Task Deactivated', `Deactivated task ${taskId}`);
-                
-                loadTasks();
-                showNotification('Task deactivated', 'success');
-            } catch (error) {
-                showNotification('Error deactivating task: ' + error.message, 'error');
-            }
-        }
-
-        // Activate task
-        async function activateTask(taskId) {
-            try {
-                await db.collection('tasks').doc(taskId).update({
-                    status: 'active'
-                });
-                
-                // Add log
-                await addLog('system', 'Task Activated', `Activated task ${taskId}`);
-                
-                loadTasks();
-                showNotification('Task activated', 'success');
-            } catch (error) {
-                showNotification('Error activating task: ' + error.message, 'error');
-            }
-        }
-
-        // Delete task
-        async function deleteTask(taskId) {
-            if (!confirm('Are you sure you want to delete this task?')) return;
-            
-            try {
-                await db.collection('tasks').doc(taskId).delete();
-                
-                // Add log
-                await addLog('system', 'Task Deleted', `Deleted task ${taskId}`);
-                
-                loadTasks();
-                showNotification('Task deleted successfully', 'success');
-            } catch (error) {
-                showNotification('Error deleting task: ' + error.message, 'error');
-            }
-        }
-
-        // Save settings
-        async function saveSettings() {
-            const newSettings = {
-                glxToTonRate: parseFloat(document.getElementById('glxToTonRate').value),
-                ticketPrice: parseInt(document.getElementById('ticketPrice').value),
-                minTonWithdrawal: parseFloat(document.getElementById('minTonWithdrawal').value),
-                minFaucetPayWithdrawal: parseFloat(document.getElementById('minFaucetPayWithdrawal').value),
-                referralReward: parseInt(document.getElementById('referralReward').value),
-                dailyAdLimit: parseInt(document.getElementById('dailyAdLimit').value),
-                updatedAt: Date.now(),
-                updatedBy: currentUser.email
-            };
-            
-            try {
-                await db.collection('settings').doc('appSettings').set(newSettings, { merge: true });
-                
-                // Add log
-                await addLog('system', 'Settings Updated', 'Updated application settings');
-                
-                settings = newSettings;
-                showNotification('Settings saved successfully', 'success');
-            } catch (error) {
-                showNotification('Error saving settings: ' + error.message, 'error');
-            }
-        }
-
-        // Create new competition
-        async function createNewCompetition() {
-            const duration = prompt('Enter competition duration in hours:', '24');
-            if (!duration) return;
-            
-            const competitionId = 'comp_' + Date.now();
-            const startTime = Date.now();
-            const endTime = startTime + (parseInt(duration) * 60 * 60 * 1000);
-            
-            try {
-                await db.collection('competitions').doc(competitionId).set({
-                    id: competitionId,
-                    startTime: startTime,
-                    endTime: endTime,
-                    totalTickets: 0,
-                    prizePool: 0,
-                    isActive: true,
-                    participants: {},
-                    createdAt: Date.now(),
-                    createdBy: currentUser.email
-                });
-                
-                // Add log
-                await addLog('system', 'Competition Created', `Created competition ${competitionId} for ${duration} hours`);
-                
-                loadCompetitions();
-                showNotification('Competition created successfully', 'success');
-            } catch (error) {
-                showNotification('Error creating competition: ' + error.message, 'error');
-            }
-        }
-
-        // View competition details
-        async function viewCompetitionDetails(competitionId) {
-            const competition = competitions.find(c => c.id === competitionId);
-            if (!competition) return;
-            
-            const detailsContent = document.getElementById('competitionDetailsContent');
-            detailsContent.innerHTML = `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="color: var(--gold); margin-bottom: 10px;">Competition Details</h4>
-                    <p><strong>ID:</strong> ${competition.id}</p>
-                    <p><strong>Status:</strong> ${competition.endTime > Date.now() ? 'Active' : 'Ended'}</p>
-                    <p><strong>Prize Pool:</strong> ${(competition.prizePool || 0).toFixed(3)} TON</p>
-                    <p><strong>Total Tickets:</strong> ${competition.totalTickets || 0}</p>
-                    <p><strong>Start Time:</strong> ${new Date(competition.startTime).toLocaleString()}</p>
-                    <p><strong>End Time:</strong> ${new Date(competition.endTime).toLocaleString()}</p>
-                    <p><strong>Winner:</strong> ${competition.winnerName || 'Not determined yet'}</p>
-                </div>
-                <div class="form-actions">
-                    <button class="btn btn-danger" onclick="endCompetition('${competitionId}')">
-                        <i class="fas fa-stop"></i> End Competition
-                    </button>
-                </div>
-            `;
-            
-            showModal('competitionDetailsModal');
-        }
-
-        // End competition
-        async function endCompetition(competitionId) {
-            if (!confirm('Are you sure you want to end this competition?')) return;
-            
-            try {
-                await db.collection('competitions').doc(competitionId).update({
-                    endTime: Date.now(),
-                    isActive: false
-                });
-                
-                // Add log
-                await addLog('system', 'Competition Ended', `Ended competition ${competitionId}`);
-                
-                closeModal('competitionDetailsModal');
-                loadCompetitions();
-                showNotification('Competition ended successfully', 'success');
-            } catch (error) {
-                showNotification('Error ending competition: ' + error.message, 'error');
-            }
-        }
-
-        // Delete competition
-        async function deleteCompetition(competitionId) {
-            if (!confirm('Are you sure you want to delete this competition?')) return;
-            
-            try {
-                await db.collection('competitions').doc(competitionId).delete();
-                
-                // Add log
-                await addLog('system', 'Competition Deleted', `Deleted competition ${competitionId}`);
-                
-                loadCompetitions();
-                showNotification('Competition deleted successfully', 'success');
-            } catch (error) {
-                showNotification('Error deleting competition: ' + error.message, 'error');
-            }
-        }
-
-        // Add log
-        async function addLog(type, action, details) {
-            try {
-                await db.collection('logs').add({
-                    type: type,
-                    action: action,
-                    details: details,
-                    userName: currentUser.email,
-                    timestamp: Date.now()
-                });
-            } catch (error) {
-                console.error('Error adding log:', error);
-            }
-        }
-
-        // Refresh all data
-        function refreshAllData() {
-            loadAllData();
         }
 
         // Show modal
@@ -2469,9 +1471,7 @@
             const messageEl = notification.querySelector('.notification-message');
             
             notification.className = `notification ${type}`;
-            icon.innerHTML = type === 'success' ? '✅' : 
-                           type === 'error' ? '❌' : 
-                           type === 'warning' ? '⚠️' : 'ℹ️';
+            icon.innerHTML = type === 'success' ? '✅' : '❌';
             messageEl.textContent = message;
             
             notification.style.display = 'flex';
@@ -2481,14 +1481,15 @@
             }, 5000);
         }
 
-        // Show loading
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
-
-        // Hide loading
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
+        // Clear cache
+        function clearAllData() {
+            if (confirm('Clear all cached data? This will reload from Firebase.')) {
+                allUsers = [];
+                allWithdrawals = [];
+                allTasks = [];
+                showNotification('Cache cleared. Reloading from Firebase...', 'success');
+                loadAllData();
+            }
         }
 
         // Close modal on overlay click
@@ -2499,6 +1500,9 @@
                 }
             });
         });
+
+        // Load data on startup
+        window.onload = loadAllData;
     </script>
 </body>
 </html>
