@@ -58,7 +58,7 @@ export default {
                 });
             }
             
-            // ==================== نظام التحقق من بصمة الجهاز ====================
+            // ==================== نظام التحقق من بصمة الجهاز مع الحظر الشامل ====================
             // التحقق من بصمة الجهاز فقط لإجراء initializeUser
             if (action === 'initializeUser') {
                 // جلب بيانات المستخدم أولاً للتحقق مما إذا كان جديدًا
@@ -71,14 +71,27 @@ export default {
                     const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
                     
                     if (fingerprintCheck.deviceAlreadyUsed) {
+                        // حظر الحساب الحالي فورًا
+                        await applyBlock(env, userId, {
+                            reason: 'Device multi-account violation - New account detected',
+                            violation: 'DEVICE_MULTI_ACCOUNT',
+                            action: 'initializeUser',
+                            details: `Device fingerprint ${deviceFingerprint} already used by ${fingerprintCheck.existingAccounts.length} other accounts`,
+                            timestamp: Date.now(),
+                            permanent: true,
+                            clientIp: clientIp,
+                            deviceFingerprint: deviceFingerprint
+                        });
+                        
                         return new Response(JSON.stringify({
                             success: false,
-                            error: 'Device already registered with another account',
+                            error: 'Device already registered with multiple accounts - All accounts have been blocked',
                             data: {
                                 deviceAlreadyUsed: true,
-                                existingUserId: fingerprintCheck.existingUserId,
-                                existingUserName: fingerprintCheck.existingUserName,
-                                existingUserPhoto: fingerprintCheck.existingUserPhoto
+                                existingAccounts: fingerprintCheck.existingAccounts,
+                                violationType: 'DEVICE_MULTI_ACCOUNT',
+                                accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
+                                currentAccountBlocked: true
                             }
                         }), {
                             status: 403,
@@ -382,9 +395,9 @@ export default {
     }
 };
 
-// ==================== نظام بصمة الجهاز المحسن ====================
+// ==================== نظام بصمة الجهاز المحسن مع الحظر الشامل ====================
 
-// التحقق مما إذا كانت بصمة الجهاز مستخدمة مسبقًا
+// التحقق مما إذا كانت بصمة الجهاز مستخدمة مسبقًا مع تطبيق الحظر الفوري
 async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = null) {
     try {
         if (!deviceFingerprint) {
@@ -395,19 +408,42 @@ async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = nu
         const usersResult = await handleDbGet(env, 'users');
         const usersData = usersResult.data || {};
         
+        let existingAccounts = [];
+        
         for (const [userId, userData] of Object.entries(usersData)) {
             // تخطي المستخدم الحالي إذا كان موجودًا
             if (currentUserId && userId === currentUserId) continue;
             
             if (userData.deviceFingerprint === deviceFingerprint) {
-                return {
-                    deviceAlreadyUsed: true,
-                    existingUserId: userId,
-                    existingUserName: userData.name || 'Anonymous User',
-                    existingUserPhoto: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                    violationType: 'DEVICE_MULTI_ACCOUNT'
-                };
+                existingAccounts.push({
+                    userId: userId,
+                    name: userData.name || 'Anonymous User',
+                    photoUrl: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
+                    joinDate: userData.joinDate,
+                    lastLogin: userData.lastLogin
+                });
+                
+                // تطبيق الحظر الفوري على الحساب الموجود
+                await applyBlock(env, userId, {
+                    reason: 'Device multi-account violation - Existing account detected',
+                    violation: 'DEVICE_MULTI_ACCOUNT',
+                    action: 'deviceFingerprintCheck',
+                    details: `Device fingerprint ${deviceFingerprint} already used by new account ${currentUserId || 'unknown'}`,
+                    timestamp: Date.now(),
+                    permanent: true,
+                    clientIp: 'System Detection',
+                    deviceFingerprint: deviceFingerprint
+                });
             }
+        }
+        
+        if (existingAccounts.length > 0) {
+            return {
+                deviceAlreadyUsed: true,
+                existingAccounts: existingAccounts,
+                violationType: 'DEVICE_MULTI_ACCOUNT',
+                accountsCount: existingAccounts.length
+            };
         }
         
         return { deviceAlreadyUsed: false };
@@ -417,7 +453,7 @@ async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = nu
     }
 }
 
-// معالجة التحقق من بصمة الجهاز
+// معالجة التحقق من بصمة الجهاز مع الحظر الفوري
 async function handleCheckDeviceFingerprint(env, userId, data) {
     try {
         const { deviceFingerprint } = data;
@@ -431,6 +467,32 @@ async function handleCheckDeviceFingerprint(env, userId, data) {
         
         const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
         
+        // إذا كان الجهاز مستخدمًا، تطبيق الحظر على الحساب الحالي أيضًا
+        if (fingerprintCheck.deviceAlreadyUsed && userId) {
+            await applyBlock(env, userId, {
+                reason: 'Device multi-account violation - New account detected',
+                violation: 'DEVICE_MULTI_ACCOUNT',
+                action: 'checkDeviceFingerprint',
+                details: `Device fingerprint ${deviceFingerprint} already used by ${fingerprintCheck.existingAccounts.length} other accounts`,
+                timestamp: Date.now(),
+                permanent: true,
+                clientIp: 'System Detection',
+                deviceFingerprint: deviceFingerprint
+            });
+            
+            return {
+                success: false,
+                error: 'Device already registered with multiple accounts - All accounts have been blocked',
+                data: {
+                    deviceAlreadyUsed: true,
+                    existingAccounts: fingerprintCheck.existingAccounts,
+                    violationType: 'DEVICE_MULTI_ACCOUNT',
+                    accountsBlocked: fingerprintCheck.existingAccounts.length + 1, // +1 للحساب الحالي
+                    currentAccountBlocked: true
+                }
+            };
+        }
+        
         return {
             success: true,
             data: fingerprintCheck
@@ -443,7 +505,7 @@ async function handleCheckDeviceFingerprint(env, userId, data) {
     }
 }
 
-// معالجة حفظ بصمة الجهاز
+// معالجة حفظ بصمة الجهاز مع الحظر الشامل
 async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
     try {
         const { deviceFingerprint } = data;
@@ -458,7 +520,11 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
         // التحقق من الحظر
         const isBlocked = await checkUserBlocked(env, userId);
         if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
+            return { 
+                success: false, 
+                error: 'Your account has been blocked for violating system rules',
+                data: { isBlocked: true }
+            };
         }
         
         // التحقق من أن المستخدم موجود
@@ -471,17 +537,7 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
         const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
         
         if (fingerprintCheck.deviceAlreadyUsed) {
-            // تسجيل المخالفة
-            await recordViolation(env, userId, {
-                action: 'saveDeviceFingerprint',
-                violation: 'DEVICE_MULTI_ACCOUNT_ATTEMPT',
-                details: 'Attempt to use device registered with another account',
-                timestamp: Date.now(),
-                clientIp: clientIp,
-                deviceFingerprint: deviceFingerprint
-            });
-            
-            // تطبيق الحظر
+            // حظر الحساب الحالي فورًا
             await applyBlock(env, userId, {
                 reason: 'Device multi-account violation',
                 violation: 'DEVICE_MULTI_ACCOUNT',
@@ -495,13 +551,13 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
             
             return {
                 success: false,
-                error: 'Device already registered with another account - Account has been blocked',
+                error: 'Device already registered with multiple accounts - All accounts have been blocked',
                 data: {
                     deviceAlreadyUsed: true,
-                    existingUserId: fingerprintCheck.existingUserId,
-                    existingUserName: fingerprintCheck.existingUserName,
-                    existingUserPhoto: fingerprintCheck.existingUserPhoto,
-                    violationType: 'DEVICE_MULTI_ACCOUNT'
+                    existingAccounts: fingerprintCheck.existingAccounts,
+                    violationType: 'DEVICE_MULTI_ACCOUNT',
+                    accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
+                    currentAccountBlocked: true
                 }
             };
         }
@@ -571,16 +627,7 @@ async function handlePeriodicDeviceCheck(env, userId, data) {
         const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
         
         if (fingerprintCheck.deviceAlreadyUsed) {
-            // تسجيل المخالفة
-            await recordViolation(env, userId, {
-                action: 'periodicDeviceCheck',
-                violation: 'PERIODIC_DEVICE_MULTI_ACCOUNT_DETECTED',
-                details: 'Multiple accounts detected from same device during session',
-                timestamp: Date.now(),
-                deviceFingerprint: deviceFingerprint
-            });
-            
-            // تطبيق الحظر
+            // حظر الحساب الحالي فورًا
             await applyBlock(env, userId, {
                 reason: 'Session multi-account violation',
                 violation: 'PERIODIC_DEVICE_MULTI_ACCOUNT',
@@ -596,8 +643,10 @@ async function handlePeriodicDeviceCheck(env, userId, data) {
                 data: {
                     securityViolation: true,
                     deviceAlreadyUsed: true,
+                    existingAccounts: fingerprintCheck.existingAccounts,
                     violationType: 'SESSION_MULTI_ACCOUNT_DETECTED',
-                    actionRequired: 'SESSION_TERMINATION'
+                    actionRequired: 'SESSION_TERMINATION',
+                    currentAccountBlocked: true
                 }
             };
         }
@@ -1729,17 +1778,7 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
             const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
             
             if (fingerprintCheck.deviceAlreadyUsed) {
-                // تسجيل المخالفة
-                await recordViolation(env, userId, {
-                    action: 'initializeUser',
-                    violation: 'INITIALIZE_DEVICE_MULTI_ACCOUNT',
-                    details: 'Attempt to create new account with device registered to another account',
-                    timestamp: Date.now(),
-                    clientIp: clientIp,
-                    deviceFingerprint: deviceFingerprint
-                });
-                
-                // تطبيق الحظر
+                // حظر الحساب الحالي فورًا
                 await applyBlock(env, userId, {
                     reason: 'Device multi-account violation during initialization',
                     violation: 'DEVICE_MULTI_ACCOUNT',
@@ -1753,14 +1792,13 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
                 
                 return {
                     success: false,
-                    error: 'Device already registered with another account - Account creation blocked',
+                    error: 'Device already registered with multiple accounts - All accounts have been blocked',
                     data: {
                         deviceAlreadyUsed: true,
-                        existingUserId: fingerprintCheck.existingUserId,
-                        existingUserName: fingerprintCheck.existingUserName,
-                        existingUserPhoto: fingerprintCheck.existingUserPhoto,
+                        existingAccounts: fingerprintCheck.existingAccounts,
                         violationType: 'DEVICE_MULTI_ACCOUNT',
-                        isBlocked: true
+                        accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
+                        currentAccountBlocked: true
                     }
                 };
             }
@@ -2035,7 +2073,9 @@ async function handleGetConfig() {
             // إعدادات الأمان
             periodicDeviceCheckInterval: 30000, // فحص دوري كل 30 ثانية
             enableIpTracking: true, // تتبع عناوين IP
-            multiAccountDetection: true // كشف الحسابات المتعددة
+            multiAccountDetection: true, // كشف الحسابات المتعددة
+            multiAccountAutoBlock: true, // حظر تلقائي للحسابات المتعددة
+            blockAllLinkedAccounts: true // حظر جميع الحسابات المرتبطة بنفس الجهاز
         };
         
         return {
