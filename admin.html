@@ -1,3789 +1,1073 @@
-// Cloudflare Worker لـ GLX Galaxy
-export default {
-    async fetch(request, env, ctx) {
-        // إعداد CORS
-        if (request.method === 'OPTIONS') {
-            return new Response(null, {
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint, X-Client-IP',
-                }
-            });
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم GLX Galaxy</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --warning-color: #f8961e;
+            --dark-color: #1a1a2e;
+            --light-color: #f8f9fa;
         }
         
-        const url = new URL(request.url);
-        const path = url.pathname;
-        
-        // التحقق من المسار
-        if (path !== '/api') {
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Invalid endpoint'
-            }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
         }
         
-        try {
-            // استخراج البيانات من الطلب
-            const requestData = await request.json();
-            const action = request.headers.get('X-Action') || requestData.action;
-            const data = requestData.data || {};
-            const userId = request.headers.get('X-User-ID');
-            const telegramData = request.headers.get('X-Telegram-Data');
-            const deviceFingerprint = request.headers.get('X-Device-Fingerprint') || data.deviceFingerprint;
-            const clientIp = request.headers.get('X-Client-IP') || request.headers.get('CF-Connecting-IP') || 'Unknown';
-            
-            // التحقق من المصادقة
-            if (!userId || !telegramData) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Authentication required'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            height: 100vh;
+            position: fixed;
+            width: 250px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link {
+            color: rgba(255,255,255,.8);
+            padding: 12px 20px;
+            margin: 5px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background-color: rgba(255,255,255,.1);
+            color: white;
+        }
+        
+        .sidebar .nav-link i {
+            margin-left: 10px;
+        }
+        
+        .main-content {
+            margin-right: 250px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            border: none;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .btn-admin {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .btn-admin:hover {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-admin-danger {
+            background: var(--danger-color);
+        }
+        
+        .btn-admin-success {
+            background: var(--success-color);
+        }
+        
+        .modal-admin {
+            border-radius: 12px;
+            border: none;
+        }
+        
+        .modal-admin .modal-header {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
             }
             
-            // التحقق من بيانات Telegram
-            if (!isValidTelegramData(telegramData, userId)) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Invalid Telegram data'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
+            .sidebar .nav-link span {
+                display: none;
             }
             
-            // ==================== نظام التحقق من بصمة الجهاز مع الحظر الشامل ====================
-            // التحقق من بصمة الجهاز فقط لإجراء initializeUser
-            if (action === 'initializeUser') {
-                // جلب بيانات المستخدم أولاً للتحقق مما إذا كان جديدًا
-                const userResult = await handleDbGet(env, `users/${userId}`);
-                const userData = userResult.data;
+            .main-content {
+                margin-right: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- شريط التنقل الجانبي -->
+    <nav class="sidebar">
+        <div class="p-3">
+            <h4 class="text-center mb-4">
+                <i class="bi bi-stars"></i>
+                <span class="d-none d-md-inline">GLX Galaxy</span>
+            </h4>
+        </div>
+        
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" onclick="showDashboard()">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>لوحة التحكم</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showUsers()">
+                    <i class="bi bi-people"></i>
+                    <span>المستخدمين</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showWithdrawals()">
+                    <i class="bi bi-cash-coin"></i>
+                    <span>السحوبات</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showTasks()">
+                    <i class="bi bi-list-task"></i>
+                    <span>المهام</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showSettings()">
+                    <i class="bi bi-gear"></i>
+                    <span>الإعدادات</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="showLogs()">
+                    <i class="bi bi-clock-history"></i>
+                    <span>سجلات النظام</span>
+                </a>
+            </li>
+            <li class="nav-item mt-4">
+                <a class="nav-link text-danger" href="#" onclick="logout()">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>تسجيل الخروج</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <!-- شريط العنوان -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 id="pageTitle">لوحة التحكم</h3>
+            <div class="d-flex align-items-center">
+                <span class="me-3" id="adminName">المشرف</span>
+                <div class="badge bg-success" id="onlineStatus">
+                    <i class="bi bi-circle-fill"></i> متصل
+                </div>
+            </div>
+        </div>
+        
+        <!-- قسم لوحة التحكم -->
+        <div id="dashboardSection">
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <h3 class="stat-number" id="totalUsers">0</h3>
+                        <p class="stat-label">إجمالي المستخدمين</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <h3 class="stat-number" id="pendingWithdrawals">0</h3>
+                        <p class="stat-label">سحوبات معلقة</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-ticket-perforated"></i>
+                        </div>
+                        <h3 class="stat-number" id="totalTickets">0</h3>
+                        <p class="stat-label">تذاكر المسابقة</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-eye"></i>
+                        </div>
+                        <h3 class="stat-number" id="totalAds">0</h3>
+                        <p class="stat-label">نقرات إعلانية</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- الرسوم البيانية -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="table-container">
+                        <h5>آخر المستخدمين المسجلين</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="recentUsersTable">
+                                <thead>
+                                    <tr>
+                                        <th>المستخدم</th>
+                                        <th>التاريخ</th>
+                                        <th>الرصيد</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- سيتم ملؤها بالجافاسكريبت -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="table-container">
+                        <h5>السحوبات الأخيرة</h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="recentWithdrawalsTable">
+                                <thead>
+                                    <tr>
+                                        <th>المبلغ</th>
+                                        <th>الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- سيتم ملؤها بالجافاسكريبت -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- قسم المستخدمين -->
+        <div id="usersSection" style="display: none;">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>إدارة المستخدمين</h5>
+                    <div class="d-flex">
+                        <input type="text" class="form-control me-2" id="userSearch" placeholder="بحث عن مستخدم...">
+                        <button class="btn btn-admin" onclick="searchUsers()">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </div>
                 
-                // إذا كان المستخدم جديدًا (لا توجد بيانات) أو ليس لديه بصمة جهاز
-                if ((!userResult.success || !userData || !userData.deviceFingerprint) && deviceFingerprint) {
-                    // التحقق مما إذا كانت بصمة الجهاز مستخدمة بالفعل
-                    const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
+                <div class="table-responsive">
+                    <table class="table table-hover" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>الاسم</th>
+                                <th>تاريخ التسجيل</th>
+                                <th>رصيد GLX</th>
+                                <th>رصيد TON</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- سيتم ملؤها بالجافاسكريبت -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <div id="paginationInfo"></div>
+                    <div>
+                        <button class="btn btn-admin" onclick="prevPage()">
+                            <i class="bi bi-chevron-right"></i> السابق
+                        </button>
+                        <button class="btn btn-admin ms-2" onclick="nextPage()">
+                            التالي <i class="bi bi-chevron-left"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- قسم السحوبات -->
+        <div id="withdrawalsSection" style="display: none;">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>إدارة السحوبات</h5>
+                    <div class="btn-group">
+                        <button class="btn btn-admin" onclick="filterWithdrawals('pending')">
+                            المعلقة
+                        </button>
+                        <button class="btn btn-admin" onclick="filterWithdrawals('completed')">
+                            المكتملة
+                        </button>
+                        <button class="btn btn-admin" onclick="filterWithdrawals('all')">
+                            الكل
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="withdrawalsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>المستخدم</th>
+                                <th>المبلغ</th>
+                                <th>الطريقة</th>
+                                <th>التاريخ</th>
+                                <th>الحالة</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- سيتم ملؤها بالجافاسكريبت -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- قسم المهام -->
+        <div id="tasksSection" style="display: none;">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>إدارة المهام</h5>
+                    <button class="btn btn-admin" onclick="showAddTaskModal()">
+                        <i class="bi bi-plus-circle"></i> إضافة مهمة
+                    </button>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="tasksTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>العنوان</th>
+                                <th>المكافأة</th>
+                                <th>المتبقي</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- سيتم ملؤها بالجافاسكريبت -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- قسم الإعدادات -->
+        <div id="settingsSection" style="display: none;">
+            <div class="table-container">
+                <h5 class="mb-4">إعدادات النظام</h5>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0">إعدادات المسابقة</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">مدة المسابقة (ساعات)</label>
+                                    <input type="number" class="form-control" id="competitionDuration" value="24">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">سعر التذكرة (GLX)</label>
+                                    <input type="number" class="form-control" id="ticketPrice" value="10000">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    if (fingerprintCheck.deviceAlreadyUsed) {
-                        // حظر الحساب الحالي فورًا
-                        await applyBlock(env, userId, {
-                            reason: 'Device multi-account violation - New account detected',
-                            violation: 'DEVICE_MULTI_ACCOUNT',
-                            action: 'initializeUser',
-                            details: `Device fingerprint ${deviceFingerprint} already used by ${fingerprintCheck.existingAccounts.length} other accounts`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            clientIp: clientIp,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'Device already registered with multiple accounts - All accounts have been blocked',
-                            data: {
-                                deviceAlreadyUsed: true,
-                                existingAccounts: fingerprintCheck.existingAccounts,
-                                violationType: 'DEVICE_MULTI_ACCOUNT',
-                                accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                                currentAccountBlocked: true
-                            }
-                        }), {
-                            status: 403,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
+                    <div class="col-md-6">
+                        <div class="card mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0">إعدادات المكافآت</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">مكافأة الإحالة (GLX)</label>
+                                    <input type="number" class="form-control" id="referralReward" value="500">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">مكافأة الإعلان (GLX)</label>
+                                    <input type="number" class="form-control" id="adReward" value="1000">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-admin" onclick="saveSettings()">
+                    <i class="bi bi-save"></i> حفظ الإعدادات
+                </button>
+            </div>
+        </div>
+        
+        <!-- قسم سجلات النظام -->
+        <div id="logsSection" style="display: none;">
+            <div class="table-container">
+                <h5 class="mb-4">سجلات النظام</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="logsTable">
+                        <thead>
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>النوع</th>
+                                <th>المستخدم</th>
+                                <th>الإجراء</th>
+                                <th>التفاصيل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- سيتم ملؤها بالجافاسكريبت -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال تسجيل الدخول -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-admin">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">تسجيل الدخول</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">اسم المستخدم</label>
+                        <input type="text" class="form-control" id="adminUsername">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">كلمة المرور</label>
+                        <input type="password" class="form-control" id="adminPassword">
+                    </div>
+                    <div class="alert alert-danger d-none" id="loginError"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-admin" onclick="adminLogin()">
+                        <i class="bi bi-box-arrow-in-right"></i> تسجيل الدخول
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال إضافة مهمة -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog modal-admin">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">إضافة مهمة جديدة</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">عنوان المهمة</label>
+                        <input type="text" class="form-control" id="taskTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">وصف المهمة</label>
+                        <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الرابط</label>
+                        <input type="url" class="form-control" id="taskLink">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">المكافأة (GLX)</label>
+                                <input type="number" class="form-control" id="taskReward" value="2000">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">العدد الإجمالي</label>
+                                <input type="number" class="form-control" id="taskTotal" value="100">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">الفئة</label>
+                        <select class="form-control" id="taskCategory">
+                            <option value="telegram">Telegram</option>
+                            <option value="website">Website</option>
+                            <option value="social">Social Media</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-admin" onclick="createTask()">
+                        <i class="bi bi-plus-circle"></i> إنشاء المهمة
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- مودال إدارة المستخدم -->
+    <div class="modal fade" id="userManageModal" tabindex="-1">
+        <div class="modal-dialog modal-admin">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalTitle">إدارة المستخدم</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="userInfo">
+                        <!-- سيتم ملؤها بالجافاسكريبت -->
+                    </div>
                     
-                    // إذا لم تكن البصمة مستخدمة، سنقوم بحفظها لاحقًا في handleInitializeUser
-                    data.deviceFingerprint = deviceFingerprint;
-                    data.clientIp = clientIp;
-                }
+                    <div class="mb-3">
+                        <label class="form-label">الإجراء</label>
+                        <select class="form-control" id="userAction">
+                            <option value="block">حظر</option>
+                            <option value="unblock">فك الحظر</option>
+                            <option value="add_balance">إضافة رصيد</option>
+                            <option value="subtract_balance">خصم رصيد</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">السبب (اختياري)</label>
+                        <textarea class="form-control" id="userActionReason" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="mb-3 d-none" id="balanceAmountSection">
+                        <label class="form-label">المبلغ (GLX)</label>
+                        <input type="number" class="form-control" id="balanceAmount" value="0">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-admin-danger" onclick="executeUserAction()">
+                        تنفيذ الإجراء
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // بيانات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
+            authDomain: "earnmoney124553.firebaseapp.com",
+            databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
+            projectId: "earnmoney124553",
+            storageBucket: "earnmoney124553.firebasestorage.app",
+            messagingSenderId: "325528918523",
+            appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
+            measurementId: "G-G1H96Q5XCJ"
+        };
+
+        // بيانات لوحة التحكم
+        let currentAdmin = null;
+        let currentPage = 1;
+        let currentUserId = null;
+
+        // استدعاء API
+        async function callAPI(action, data = {}) {
+            try {
+                const response = await fetch('/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Action': action
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            ...data,
+                            adminId: currentAdmin?.id,
+                            adminToken: currentAdmin?.token
+                        }
+                    })
+                });
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                return { success: false, error: 'فشل الاتصال بالسيرفر' };
             }
-            // ==================== نهاية نظام التحقق من بصمة الجهاز ====================
+        }
+
+        // تسجيل دخول المشرف
+        async function adminLogin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
             
-            // ==================== نظام الحظر التلقائي ====================
-            // التحقق من الحظر قبل معالجة أي طلب
-            const isBlocked = await checkUserBlocked(env, userId);
-            if (isBlocked) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Your account has been blocked for violating system rules'
-                }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
+            const result = await callAPI('adminLogin', {
+                username,
+                password
+            });
+            
+            if (result.success) {
+                currentAdmin = result.data.admin;
+                localStorage.setItem('glx_admin', JSON.stringify(currentAdmin));
+                
+                document.getElementById('adminName').textContent = currentAdmin.name;
+                document.getElementById('loginModal').classList.remove('show');
+                document.querySelector('.modal-backdrop').remove();
+                
+                loadDashboard();
+            } else {
+                document.getElementById('loginError').textContent = result.error;
+                document.getElementById('loginError').classList.remove('d-none');
+            }
+        }
+
+        // تحميل لوحة التحكم
+        async function loadDashboard() {
+            const stats = await callAPI('getAdminStats');
+            
+            if (stats.success) {
+                const data = stats.data;
+                
+                document.getElementById('totalUsers').textContent = data.users.total;
+                document.getElementById('pendingWithdrawals').textContent = data.withdrawals.pending;
+                document.getElementById('totalTickets').textContent = data.competition.totalTickets;
+                document.getElementById('totalAds').textContent = data.ads.totalClicks;
+                
+                // تحميل المستخدمين الجدد
+                loadRecentUsers();
+                loadRecentWithdrawals();
+            }
+        }
+
+        // تحميل المستخدمين الجدد
+        async function loadRecentUsers() {
+            const result = await callAPI('getUsersList', {
+                page: 1,
+                limit: 5,
+                sortBy: 'joinDate',
+                sortOrder: 'desc'
+            });
+            
+            if (result.success) {
+                const tbody = document.getElementById('recentUsersTable').querySelector('tbody');
+                tbody.innerHTML = '';
+                
+                result.data.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
+                                     class="rounded-circle me-2" width="30" height="30">
+                                <span>${user.name || 'مجهول'}</span>
+                            </div>
+                        </td>
+                        <td>${formatDate(user.joinDate)}</td>
+                        <td>${user.dogsBalance || 0} GLX</td>
+                        <td>
+                            ${user.isBlocked ? 
+                                '<span class="badge bg-danger">محظور</span>' : 
+                                '<span class="badge bg-success">نشط</span>'}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
                 });
             }
+        }
+
+        // تحميل السحوبات الأخيرة
+        async function loadRecentWithdrawals() {
+            // هذه تحتاج إلى API خاص للسحوبات
+            // سأضيفها لاحقاً
+        }
+
+        // عرض قسم المستخدمين
+        async function showUsers() {
+            hideAllSections();
+            document.getElementById('usersSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'إدارة المستخدمين';
             
-            // التحقق من صحة الطلب
-            const validationResult = await validateRequest(env, userId, action, data, requestData.timestamp);
-            if (!validationResult.valid) {
-                // تسجيل المخالفة وتطبيق الحظر الفوري بعد مخالفة واحدة
-                await recordViolation(env, userId, {
+            await loadUsers();
+        }
+
+        // تحميل المستخدمين
+        async function loadUsers() {
+            const result = await callAPI('getUsersList', {
+                page: currentPage,
+                limit: 20,
+                search: document.getElementById('userSearch').value
+            });
+            
+            if (result.success) {
+                const tbody = document.getElementById('usersTable').querySelector('tbody');
+                tbody.innerHTML = '';
+                
+                result.data.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.userId.substring(0, 8)}...</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
+                                     class="rounded-circle me-2" width="30" height="30">
+                                <span>${user.name || 'مجهول'}</span>
+                            </div>
+                        </td>
+                        <td>${formatDate(user.joinDate)}</td>
+                        <td>${user.dogsBalance || 0}</td>
+                        <td>${user.tonBalance || 0}</td>
+                        <td>
+                            ${user.isBlocked ? 
+                                '<span class="badge bg-danger">محظور</span>' : 
+                                '<span class="badge bg-success">نشط</span>'}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-admin" onclick="manageUser('${user.userId}')">
+                                <i class="bi bi-gear"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                // تحديث معلومات التصفح
+                document.getElementById('paginationInfo').textContent = 
+                    `الصفحة ${currentPage} من ${result.data.pagination.totalPages}`;
+            }
+        }
+
+        // إدارة مستخدم
+        async function manageUser(userId) {
+            currentUserId = userId;
+            
+            const result = await callAPI('dbGet', {
+                path: `users/${userId}`
+            });
+            
+            if (result.success) {
+                const user = result.data;
+                document.getElementById('userModalTitle').textContent = `إدارة المستخدم: ${user.name || userId}`;
+                
+                document.getElementById('userInfo').innerHTML = `
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
+                                 class="img-fluid rounded-circle">
+                        </div>
+                        <div class="col-md-8">
+                            <p><strong>الاسم:</strong> ${user.name || 'مجهول'}</p>
+                            <p><strong>ID:</strong> ${userId}</p>
+                            <p><strong>رصيد GLX:</strong> ${user.dogsBalance || 0}</p>
+                            <p><strong>رصيد TON:</strong> ${user.tonBalance || 0}</p>
+                            <p><strong>الحالة:</strong> ${user.isBlocked ? 'محظور' : 'نشط'}</p>
+                        </div>
+                    </div>
+                `;
+                
+                const modal = new bootstrap.Modal(document.getElementById('userManageModal'));
+                modal.show();
+            }
+        }
+
+        // تنفيذ إجراء على مستخدم
+        async function executeUserAction() {
+            const action = document.getElementById('userAction').value;
+            const reason = document.getElementById('userActionReason').value;
+            
+            if (action === 'block' || action === 'unblock') {
+                const result = await callAPI('manageUserBlock', {
+                    userId: currentUserId,
                     action: action,
-                    violation: validationResult.violation,
-                    details: validationResult.details,
-                    timestamp: Date.now(),
-                    clientIp: clientIp,
-                    deviceFingerprint: deviceFingerprint
+                    reason: reason
                 });
                 
-                // تطبيق الحظر الفوري بعد مخالفة واحدة
-                await applyBlock(env, userId, {
-                    reason: 'System violation detected',
-                    violation: validationResult.violation,
-                    action: action,
-                    details: validationResult.details,
-                    timestamp: Date.now(),
-                    permanent: true, // حظر دائم
-                    clientIp: clientIp,
-                    deviceFingerprint: deviceFingerprint
-                });
+                if (result.success) {
+                    alert('تم تنفيذ الإجراء بنجاح');
+                    bootstrap.Modal.getInstance(document.getElementById('userManageModal')).hide();
+                    loadUsers();
+                }
+            }
+        }
+
+        // البحث عن مستخدمين
+        async function searchUsers() {
+            currentPage = 1;
+            await loadUsers();
+        }
+
+        // الصفحة التالية
+        async function nextPage() {
+            currentPage++;
+            await loadUsers();
+        }
+
+        // الصفحة السابقة
+        async function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                await loadUsers();
+            }
+        }
+
+        // عرض قسم السحوبات
+        async function showWithdrawals() {
+            hideAllSections();
+            document.getElementById('withdrawalsSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'إدارة السحوبات';
+            
+            await loadWithdrawals();
+        }
+
+        // تحميل السحوبات
+        async function loadWithdrawals() {
+            // تحتاج إلى API خاص بالسحوبات
+        }
+
+        // عرض قسم المهام
+        async function showTasks() {
+            hideAllSections();
+            document.getElementById('tasksSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'إدارة المهام';
+            
+            await loadTasks();
+        }
+
+        // تحميل المهام
+        async function loadTasks() {
+            const result = await callAPI('dbGet', {
+                path: 'tasks'
+            });
+            
+            if (result.success) {
+                const tasks = result.data || {};
+                const tbody = document.getElementById('tasksTable').querySelector('tbody');
+                tbody.innerHTML = '';
                 
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Invalid request detected - Account has been blocked'
-                }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
+                Object.entries(tasks).forEach(([taskId, task]) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${taskId.substring(0, 8)}...</td>
+                        <td>${task.title || 'بدون عنوان'}</td>
+                        <td>${task.reward || 0} GLX</td>
+                        <td>${task.remaining || 0} / ${task.total || 0}</td>
+                        <td>
+                            ${task.status === 'active' ? 
+                                '<span class="badge bg-success">نشط</span>' : 
+                                '<span class="badge bg-warning">معلق</span>'}
+                        </td>
+                        <td>${formatDate(task.createdAt)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-admin me-1">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-admin-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
                 });
             }
+        }
+
+        // عرض مودال إضافة مهمة
+        function showAddTaskModal() {
+            const modal = new bootstrap.Modal(document.getElementById('addTaskModal'));
+            modal.show();
+        }
+
+        // إنشاء مهمة جديدة
+        async function createTask() {
+            const taskData = {
+                title: document.getElementById('taskTitle').value,
+                description: document.getElementById('taskDescription').value,
+                link: document.getElementById('taskLink').value,
+                reward: parseInt(document.getElementById('taskReward').value),
+                total: parseInt(document.getElementById('taskTotal').value),
+                category: document.getElementById('taskCategory').value,
+                status: 'active'
+            };
             
-            // ==================== نهاية نظام الحظر ====================
+            const result = await callAPI('manageTasks', {
+                action: 'create',
+                taskData: taskData
+            });
             
-            // معالجة الإجراءات
-            let result;
-            switch (action) {
-                case 'initializeUser':
-                    result = await handleInitializeUser(env, userId, data, telegramData, clientIp);
-                    break;
-                    
-                case 'getCompetitionData':
-                    result = await handleGetCompetitionData(env, userId);
-                    break;
-                    
-                case 'dbSet':
-                    result = await handleDbSet(env, data.path, data.data);
-                    break;
-                    
-                case 'dbGet':
-                    result = await handleDbGet(env, data.path);
-                    break;
-                    
-                case 'dbUpdate':
-                    result = await handleDbUpdate(env, data.path, data.updates);
-                    break;
-                    
-                case 'dbPush':
-                    result = await handleDbPush(env, data.path, data.data);
-                    break;
-                    
-                case 'dbTransaction':
-                    result = await handleDbTransaction(env, data.path, data.transactionFunction);
-                    break;
-                    
-                case 'dbIncrement':
-                    result = await handleDbIncrement(env, data.path, data.key, data.amount);
-                    break;
-                    
-                case 'getConfig':
-                    result = await handleGetConfig();
-                    break;
-                    
-                case 'executeSwap':
-                    result = await handleExecuteSwap(env, userId, data);
-                    break;
-                    
-                case 'verifyDeposit':
-                    result = await handleVerifyDeposit(env, userId, data);
-                    break;
-                    
-                case 'buyTickets':
-                    result = await handleBuyTickets(env, userId, data);
-                    break;
-                    
-                case 'getCompetitionLeaderboard':
-                    result = await handleGetCompetitionLeaderboard(env);
-                    break;
-                    
-                case 'getPreviousWinners':
-                    result = await handleGetPreviousWinners(env);
-                    break;
-                    
-                case 'flipCoin':
-                    result = await handleFlipCoin(env, userId, data);
-                    break;
-                    
-                case 'redeemPromoCode':
-                    result = await handleRedeemPromoCode(env, userId, data);
-                    break;
-                    
-                case 'createTask':
-                    result = await handleCreateTask(env, userId, data);
-                    break;
-                    
-                case 'verifyTaskPayment':
-                    result = await handleVerifyTaskPayment(env, data.taskId);
-                    break;
-                    
-                case 'verifyTaskChannel':
-                    result = await handleVerifyTaskChannel(env, userId, data);
-                    break;
-                    
-                case 'spinSlots':
-                    result = await handleSpinSlots(env, userId);
-                    break;
-                    
-                case 'addExtraSpin':
-                    result = await handleAddExtraSpin(env, userId);
-                    break;
-                    
-                case 'claimDailyBonus':
-                    result = await handleClaimDailyBonus(env, userId);
-                    break;
-                    
-                case 'getTransactionHistory':
-                    result = await handleGetTransactionHistory(env, userId, data.limit);
-                    break;
-                    
-                case 'getUserWithdrawals':
-                    result = await handleGetUserWithdrawals(env, userId);
-                    break;
-                    
-                case 'getWithdrawalHistory':
-                    result = await handleGetWithdrawalHistory(env);
-                    break;
-                    
-                case 'getWithdrawalStats':
-                    result = await handleGetWithdrawalStats(env);
-                    break;
-                    
-                case 'getReferredUsers':
-                    result = await handleGetReferredUsers(env, userId);
-                    break;
-                    
-                case 'getTasks':
-                    result = await handleGetTasks(env, userId);
-                    break;
-                    
-                case 'verifyTaskCompletion':
-                    result = await handleVerifyTaskCompletion(env, userId, data);
-                    break;
-                    
-                case 'handleReferral':
-                    result = await handleReferral(env, data.userId, data.referrerId);
-                    break;
-                    
-                case 'handleAdClick':
-                    // التحقق من الحظر قبل معالجة طلب الإعلان
-                    const adBlockCheck = await checkUserBlocked(env, userId);
-                    if (adBlockCheck) {
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'Your account has been blocked for violating system rules'
-                        }), {
-                            status: 403,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // التحقق من صحة طلب الإعلان
-                    const adValidation = await validateAdRequest(env, userId, data);
-                    if (!adValidation.valid) {
-                        // حظر فوري لطلب إعلان غير صالح - مخالفة واحدة
-                        await applyBlock(env, userId, {
-                            reason: 'Invalid ad request - System violation',
-                            violation: adValidation.violation,
-                            action: 'handleAdClick',
-                            details: adValidation.details,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            clientIp: clientIp,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'Invalid ad request detected - Account has been blocked'
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    result = await handleAdClick(env, userId, data.adType, data.reward);
-                    break;
-                    
-                case 'submitWithdrawal':
-                    result = await handleSubmitWithdrawal(env, userId, data);
-                    break;
-                    
-                case 'getLeaderboard':
-                    result = await handleGetLeaderboard(env);
-                    break;
-                    
-                case 'testFirebase':
-                    result = await handleTestFirebase(env);
-                    break;
-                    
-                case 'getUserData':
-                    result = await handleGetUserData(env, userId);
-                    break;
-                    
-                case 'refreshCompetition':
-                    result = await handleRefreshCompetition(env);
-                    break;
-                    
-                case 'verifyTelegramMembership':
-                    result = await handleVerifyTelegramMembership(env, userId, data);
-                    break;
-                    
-                case 'syncUserCompetitionTickets':
-                    result = await handleSyncUserCompetitionTickets(env, userId);
-                    break;
-                    
-                case 'checkDeviceFingerprint':
-                    result = await handleCheckDeviceFingerprint(env, userId, data);
-                    break;
-                    
-                case 'saveDeviceFingerprint':
-                    result = await handleSaveDeviceFingerprint(env, userId, data, clientIp);
-                    break;
-                    
-                case 'periodicDeviceCheck':
-                    result = await handlePeriodicDeviceCheck(env, userId, data);
-                    break;
-                    
-                case 'getClientIP':
-                    result = await handleGetClientIP(clientIp);
-                    break;
-                    
-                default:
-                    result = {
-                        success: false,
-                        error: 'Unknown action'
-                    };
+            if (result.success) {
+                alert('تم إنشاء المهمة بنجاح');
+                bootstrap.Modal.getInstance(document.getElementById('addTaskModal')).hide();
+                loadTasks();
             }
+        }
+
+        // عرض قسم الإعدادات
+        function showSettings() {
+            hideAllSections();
+            document.getElementById('settingsSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'إعدادات النظام';
+        }
+
+        // حفظ الإعدادات
+        async function saveSettings() {
+            const settings = {
+                competitionDuration: document.getElementById('competitionDuration').value,
+                ticketPrice: document.getElementById('ticketPrice').value,
+                referralReward: document.getElementById('referralReward').value,
+                adReward: document.getElementById('adReward').value
+            };
             
-            // إرجاع النتيجة
-            return new Response(JSON.stringify(result), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+            const result = await callAPI('updateSettings', {
+                settings: settings
             });
             
-        } catch (error) {
-            console.error('Worker error:', error);
+            if (result.success) {
+                alert('تم حفظ الإعدادات بنجاح');
+            }
+        }
+
+        // عرض قسم السجلات
+        async function showLogs() {
+            hideAllSections();
+            document.getElementById('logsSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'سجلات النظام';
             
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Internal server error',
-                details: error.message
-            }), {
-                status: 500,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+            await loadLogs();
+        }
+
+        // تحميل السجلات
+        async function loadLogs() {
+            const result = await callAPI('getAdminLogs', {
+                type: 'all',
+                limit: 50
             });
-        }
-    }
-};
-
-// ==================== نظام بصمة الجهاز المحسن مع الحظر الشامل ====================
-
-// التحقق مما إذا كانت بصمة الجهاز مستخدمة مسبقًا مع تطبيق الحظر الفوري
-async function checkDeviceFingerprint(env, deviceFingerprint, currentUserId = null) {
-    try {
-        if (!deviceFingerprint) {
-            return { deviceAlreadyUsed: false };
-        }
-        
-        // البحث في جميع المستخدمين عن بصمة الجهاز
-        const usersResult = await handleDbGet(env, 'users');
-        const usersData = usersResult.data || {};
-        
-        let existingAccounts = [];
-        
-        for (const [userId, userData] of Object.entries(usersData)) {
-            // تخطي المستخدم الحالي إذا كان موجودًا
-            if (currentUserId && userId === currentUserId) continue;
             
-            if (userData.deviceFingerprint === deviceFingerprint) {
-                existingAccounts.push({
-                    userId: userId,
-                    name: userData.name || 'Anonymous User',
-                    photoUrl: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                    joinDate: userData.joinDate,
-                    lastLogin: userData.lastLogin
-                });
+            if (result.success) {
+                const tbody = document.getElementById('logsTable').querySelector('tbody');
+                tbody.innerHTML = '';
                 
-                // تطبيق الحظر الفوري على الحساب الموجود
-                await applyBlock(env, userId, {
-                    reason: 'Device multi-account violation - Existing account detected',
-                    violation: 'DEVICE_MULTI_ACCOUNT',
-                    action: 'deviceFingerprintCheck',
-                    details: `Device fingerprint ${deviceFingerprint} already used by new account ${currentUserId || 'unknown'}`,
-                    timestamp: Date.now(),
-                    permanent: true,
-                    clientIp: 'System Detection',
-                    deviceFingerprint: deviceFingerprint
+                result.data.logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${formatDate(log.timestamp)}</td>
+                        <td>${log.type || 'عام'}</td>
+                        <td>${log.userId || 'النظام'}</td>
+                        <td>${log.action || 'إجراء'}</td>
+                        <td>${log.notes || 'لا توجد تفاصيل'}</td>
+                    `;
+                    tbody.appendChild(row);
                 });
             }
         }
-        
-        if (existingAccounts.length > 0) {
-            return {
-                deviceAlreadyUsed: true,
-                existingAccounts: existingAccounts,
-                violationType: 'DEVICE_MULTI_ACCOUNT',
-                accountsCount: existingAccounts.length
-            };
-        }
-        
-        return { deviceAlreadyUsed: false };
-    } catch (error) {
-        console.error('Error checking device fingerprint:', error);
-        return { deviceAlreadyUsed: false };
-    }
-}
 
-// معالجة التحقق من بصمة الجهاز مع الحظر الفوري
-async function handleCheckDeviceFingerprint(env, userId, data) {
-    try {
-        const { deviceFingerprint } = data;
-        
-        if (!deviceFingerprint) {
-            return {
-                success: false,
-                error: 'Device fingerprint is required'
-            };
-        }
-        
-        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
-        
-        // إذا كان الجهاز مستخدمًا، تطبيق الحظر على الحساب الحالي أيضًا
-        if (fingerprintCheck.deviceAlreadyUsed && userId) {
-            await applyBlock(env, userId, {
-                reason: 'Device multi-account violation - New account detected',
-                violation: 'DEVICE_MULTI_ACCOUNT',
-                action: 'checkDeviceFingerprint',
-                details: `Device fingerprint ${deviceFingerprint} already used by ${fingerprintCheck.existingAccounts.length} other accounts`,
-                timestamp: Date.now(),
-                permanent: true,
-                clientIp: 'System Detection',
-                deviceFingerprint: deviceFingerprint
-            });
+        // عرض لوحة التحكم
+        function showDashboard() {
+            hideAllSections();
+            document.getElementById('dashboardSection').style.display = 'block';
+            document.getElementById('pageTitle').textContent = 'لوحة التحكم';
             
-            return {
-                success: false,
-                error: 'Device already registered with multiple accounts - All accounts have been blocked',
-                data: {
-                    deviceAlreadyUsed: true,
-                    existingAccounts: fingerprintCheck.existingAccounts,
-                    violationType: 'DEVICE_MULTI_ACCOUNT',
-                    accountsBlocked: fingerprintCheck.existingAccounts.length + 1, // +1 للحساب الحالي
-                    currentAccountBlocked: true
-                }
-            };
+            loadDashboard();
         }
-        
-        return {
-            success: true,
-            data: fingerprintCheck
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
 
-// معالجة حفظ بصمة الجهاز مع الحظر الشامل
-async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
-    try {
-        const { deviceFingerprint } = data;
-        
-        if (!deviceFingerprint) {
-            return {
-                success: false,
-                error: 'Device fingerprint is required'
-            };
+        // إخفاء جميع الأقسام
+        function hideAllSections() {
+            document.getElementById('dashboardSection').style.display = 'none';
+            document.getElementById('usersSection').style.display = 'none';
+            document.getElementById('withdrawalsSection').style.display = 'none';
+            document.getElementById('tasksSection').style.display = 'none';
+            document.getElementById('settingsSection').style.display = 'none';
+            document.getElementById('logsSection').style.display = 'none';
         }
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { 
-                success: false, 
-                error: 'Your account has been blocked for violating system rules',
-                data: { isBlocked: true }
-            };
-        }
-        
-        // التحقق من أن المستخدم موجود
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        // التحقق مما إذا كانت البصمة مستخدمة بالفعل من قبل مستخدم آخر
-        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
-        
-        if (fingerprintCheck.deviceAlreadyUsed) {
-            // حظر الحساب الحالي فورًا
-            await applyBlock(env, userId, {
-                reason: 'Device multi-account violation',
-                violation: 'DEVICE_MULTI_ACCOUNT',
-                action: 'saveDeviceFingerprint',
-                details: 'Attempt to use device registered with another account',
-                timestamp: Date.now(),
-                permanent: true,
-                clientIp: clientIp,
-                deviceFingerprint: deviceFingerprint
-            });
+
+        // تنسيق التاريخ
+        function formatDate(timestamp) {
+            if (!timestamp) return 'غير محدد';
             
-            return {
-                success: false,
-                error: 'Device already registered with multiple accounts - All accounts have been blocked',
-                data: {
-                    deviceAlreadyUsed: true,
-                    existingAccounts: fingerprintCheck.existingAccounts,
-                    violationType: 'DEVICE_MULTI_ACCOUNT',
-                    accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                    currentAccountBlocked: true
-                }
-            };
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('ar-EG') + ' ' + date.toLocaleTimeString('ar-EG');
         }
-        
-        // تحديث المستخدم بإضافة بصمة الجهاز وعنوان IP
-        const userData = userResult.data;
-        let ipAddresses = userData.ipAddresses || [];
-        
-        if (clientIp && clientIp !== 'Unknown' && !ipAddresses.includes(clientIp)) {
-            ipAddresses.push(clientIp);
-            if (ipAddresses.length > 3) {
-                ipAddresses = ipAddresses.slice(-3); // حفظ آخر 3 عناوين IP فقط
-            }
-        }
-        
-        const updateData = {
-            deviceFingerprint: deviceFingerprint,
-            deviceRegisteredAt: Date.now(),
-            lastDeviceCheck: Date.now(),
-            deviceInfo: data.deviceInfo || {},
-            lastIpAddress: clientIp,
-            ipAddresses: ipAddresses,
-            deviceLoginCount: (userData.deviceLoginCount || 0) + 1
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updateData);
-        
-        return {
-            success: true,
-            data: {
-                message: 'Device fingerprint saved successfully',
-                deviceRegisteredAt: Date.now(),
-                ipAddressesCount: ipAddresses.length
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
 
-// معالجة الفحص الدوري للجهاز
-async function handlePeriodicDeviceCheck(env, userId, data) {
-    try {
-        const { deviceFingerprint } = data;
-        
-        if (!deviceFingerprint) {
-            return {
-                success: false,
-                error: 'Device fingerprint is required'
-            };
-        }
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { 
-                success: false, 
-                error: 'Your account has been blocked for violating system rules',
-                data: { isBlocked: true }
-            };
-        }
-        
-        // التحقق من بصمة الجهاز
-        const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
-        
-        if (fingerprintCheck.deviceAlreadyUsed) {
-            // حظر الحساب الحالي فورًا
-            await applyBlock(env, userId, {
-                reason: 'Session multi-account violation',
-                violation: 'PERIODIC_DEVICE_MULTI_ACCOUNT',
-                action: 'periodicDeviceCheck',
-                details: 'Multiple accounts detected from same device during session',
-                timestamp: Date.now(),
-                permanent: true,
-                deviceFingerprint: deviceFingerprint
-            });
+        // تسجيل الخروج
+        function logout() {
+            localStorage.removeItem('glx_admin');
+            currentAdmin = null;
             
-            return {
-                success: true,
-                data: {
-                    securityViolation: true,
-                    deviceAlreadyUsed: true,
-                    existingAccounts: fingerprintCheck.existingAccounts,
-                    violationType: 'SESSION_MULTI_ACCOUNT_DETECTED',
-                    actionRequired: 'SESSION_TERMINATION',
-                    currentAccountBlocked: true
-                }
-            };
+            const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+            modal.show();
         }
-        
-        // تحديث وقت آخر فحص
-        await handleDbUpdate(env, `users/${userId}`, {
-            lastPeriodicCheck: Date.now(),
-            deviceCheckCount: (data.deviceCheckCount || 0) + 1
-        });
-        
-        return {
-            success: true,
-            data: {
-                securityViolation: false,
-                lastCheck: Date.now()
+
+        // تحقق من حالة تسجيل الدخول عند التحميل
+        window.onload = function() {
+            const savedAdmin = localStorage.getItem('glx_admin');
+            if (savedAdmin) {
+                currentAdmin = JSON.parse(savedAdmin);
+                document.getElementById('adminName').textContent = currentAdmin.name;
+                showDashboard();
+            } else {
+                const modal = new bootstrap.Modal(document.getElementById('loginModal'));
+                modal.show();
             }
         };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// معالجة الحصول على IP العميل
-async function handleGetClientIP(clientIp) {
-    return {
-        success: true,
-        data: {
-            clientIp: clientIp,
-            timestamp: Date.now()
-        }
-    };
-}
-
-// ==================== نظام الحظر التلقائي المحسن ====================
-
-// التحقق من صحة الطلب
-async function validateRequest(env, userId, action, data, requestTimestamp) {
-    const now = Date.now();
-    const MAX_TIME_DIFF = 30000; // 30 ثانية كحد أقصى للفرق الزمني
-    
-    // 1. التحقق من الطابع الزمني
-    if (requestTimestamp) {
-        const timeDiff = Math.abs(now - parseInt(requestTimestamp));
-        
-        if (timeDiff > MAX_TIME_DIFF) {
-            return {
-                valid: false,
-                violation: 'TIMESTAMP_MANIPULATION',
-                details: `Timestamp difference too large: ${timeDiff}ms`
-            };
-        }
-        
-        // التحقق من استخدام نفس الطابع الزمني مسبقًا
-        const isDuplicate = await checkDuplicateTimestamp(env, userId, requestTimestamp);
-        if (isDuplicate) {
-            return {
-                valid: false,
-                violation: 'DUPLICATE_TIMESTAMP',
-                details: 'Timestamp already used'
-            };
-        }
-    }
-    
-    // 2. التحقق من قيم المكافآت بناءً على نوع الإجراء
-    if (action === 'handleAdClick') {
-        return await validateAdRequest(env, userId, data);
-    }
-    
-    if (action === 'redeemPromoCode') {
-        return await validatePromoCodeRequest(env, userId, data);
-    }
-    
-    if (action === 'verifyTaskCompletion') {
-        return await validateTaskRequest(env, userId, data);
-    }
-    
-    if (action === 'buyTickets') {
-        return await validateTicketPurchase(env, userId, data);
-    }
-    
-    if (action === 'flipCoin') {
-        return await validateCoinFlip(env, userId, data);
-    }
-    
-    if (action === 'spinSlots') {
-        return await validateSlotSpin(env, userId);
-    }
-    
-    if (action === 'claimDailyBonus') {
-        return await validateDailyBonus(env, userId);
-    }
-    
-    // 3. التحقق من صحة المهام والمكافآت
-    if (action === 'verifyTaskCompletion' || action === 'verifyTaskChannel') {
-        return await validateTaskReward(env, userId, data, action);
-    }
-    
-    // 4. التحقق من متطلبات الإجراءات الحساسة
-    if (action === 'submitWithdrawal') {
-        return await validateWithdrawalRequest(env, userId, data);
-    }
-    
-    if (action === 'executeSwap') {
-        return await validateSwapRequest(env, userId, data);
-    }
-    
-    if (action === 'verifyDeposit') {
-        return await validateDepositRequest(env, userId, data);
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب الإعلان
-async function validateAdRequest(env, userId, data) {
-    const { adType, reward } = data;
-    
-    // جلب الإعدادات للتحقق من القيم الصحيحة
-    const configResult = await handleGetConfig();
-    const settings = configResult.data?.settings || {};
-    
-    // القيم المسموح بها لكل نوع إعلان (من الإعدادات)
-    const allowedRewards = {
-        'monetag': settings.adRewardMonetag || 1000,
-        'giga': settings.adRewardGiga || 2000,
-        'adsgram': settings.adRewardAdsgram || 2000
-    };
-    
-    // التحقق من وجود نوع الإعلان
-    if (!allowedRewards[adType]) {
-        return {
-            valid: false,
-            violation: 'INVALID_AD_TYPE',
-            details: `Invalid ad type: ${adType}`
-        };
-    }
-    
-    // التحقق من قيمة المكافأة (يجب أن تطابق القيمة في الإعدادات بالضبط)
-    const allowedReward = allowedRewards[adType];
-    const requestedReward = parseInt(reward);
-    
-    if (requestedReward !== allowedReward) {
-        return {
-            valid: false,
-            violation: 'REWARD_MANIPULATION',
-            details: `Ad reward manipulation: Expected ${allowedReward}, got ${requestedReward}`
-        };
-    }
-    
-    // التحقق من الحد الأقصى للإعلانات اليومية
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        const adCountField = `ads${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
-        
-        // جلب الحد الأقصى من الإعدادات
-        const adLimitField = `limit${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
-        const limit = settings[adLimitField] || 50;
-        
-        if (userData[adCountField] >= limit) {
-            return {
-                valid: false,
-                violation: 'AD_LIMIT_EXCEEDED',
-                details: `Ad limit exceeded for ${adType}`
-            };
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب البرومو كود
-async function validatePromoCodeRequest(env, userId, data) {
-    const { code } = data;
-    
-    // البرومو كودات المسموح بها
-    const validCodes = {
-        'WELCOME100': 100,
-        'GALAXY500': 500,
-        'STAR1000': 1000,
-        'BONUS2000': 2000,
-        'VIP5000': 5000
-    };
-    
-    // التحقق من قيمة المكافأة إذا كانت زائدة عن الحد المسموح
-    const expectedReward = validCodes[code] || 0;
-    if (expectedReward > 10000) { // الحد الأقصى للمكافأة لبرومو كود
-        return {
-            valid: false,
-            violation: 'EXCESSIVE_PROMO_REWARD',
-            details: `Promo code reward too high: ${expectedReward} (max 10000)`
-        };
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب المهمة
-async function validateTaskRequest(env, userId, data) {
-    const { taskId, reward, title } = data;
-    
-    // الحد الأقصى لمكافأة المهمة
-    const MAX_TASK_REWARD = 10000;
-    
-    if (parseInt(reward) > MAX_TASK_REWARD) {
-        return {
-            valid: false,
-            violation: 'EXCESSIVE_TASK_REWARD',
-            details: `Task reward too high: ${reward}`
-        };
-    }
-    
-    // التحقق من عدم إكمال المهمة مسبقًا
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        const completedTasks = userData.completedTasks || {};
-        
-        if (completedTasks[taskId]) {
-            return {
-                valid: false,
-                violation: 'TASK_ALREADY_COMPLETED',
-                details: `Task already completed: ${taskId}`
-            };
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة شراء التذاكر
-async function validateTicketPurchase(env, userId, data) {
-    const { tickets, totalCost } = data;
-    
-    // سعر التذكرة الواحدة
-    const TICKET_PRICE = 10000; // سعر التذكرة = 10,000 GLX
-    
-    // الحد الأقصى للتذاكر في كل عملية
-    const MAX_TICKETS_PER_PURCHASE = 100;
-    
-    // الحد الأدنى للتذاكر
-    const MIN_TICKETS_PER_PURCHASE = 1;
-    
-    const ticketsCount = parseInt(tickets);
-    const costAmount = parseInt(totalCost);
-    
-    // التحقق من عدد التذاكر
-    if (ticketsCount < MIN_TICKETS_PER_PURCHASE) {
-        return {
-            valid: false,
-            violation: 'INSUFFICIENT_TICKETS',
-            details: `Too few tickets: ${ticketsCount}`
-        };
-    }
-    
-    if (ticketsCount > MAX_TICKETS_PER_PURCHASE) {
-        return {
-            valid: false,
-            violation: 'EXCESSIVE_TICKET_PURCHASE',
-            details: `Too many tickets: ${ticketsCount} (max ${MAX_TICKETS_PER_PURCHASE})`
-        };
-    }
-    
-    // التحقق من أن التكلفة متناسبة مع عدد التذاكر
-    const expectedCost = ticketsCount * TICKET_PRICE;
-    
-    if (costAmount !== expectedCost) {
-        return {
-            valid: false,
-            violation: 'COST_MANIPULATION',
-            details: `Ticket cost manipulation: Expected ${expectedCost}, got ${costAmount}`
-        };
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة لعبة قلب العملة
-async function validateCoinFlip(env, userId, data) {
-    const { betAmount } = data;
-    
-    // الحد الأقصى للرهان
-    const MAX_BET_AMOUNT = 100000; // 100,000 GLX كحد أقصى
-    
-    // الحد الأدنى للرهان
-    const MIN_BET_AMOUNT = 1000; // 1,000 GLX كحد أدنى
-    
-    const betAmountNum = parseInt(betAmount);
-    
-    if (betAmountNum > MAX_BET_AMOUNT) {
-        return {
-            valid: false,
-            violation: 'EXCESSIVE_BET_AMOUNT',
-            details: `Bet amount too high: ${betAmountNum} (max ${MAX_BET_AMOUNT})`
-        };
-    }
-    
-    if (betAmountNum < MIN_BET_AMOUNT) {
-        return {
-            valid: false,
-            violation: 'INSUFFICIENT_BET_AMOUNT',
-            details: `Bet amount too low: ${betAmountNum} (min ${MIN_BET_AMOUNT})`
-        };
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة مكافأة المهمة
-async function validateTaskReward(env, userId, data, action) {
-    let reward;
-    let taskId;
-    
-    if (action === 'verifyTaskCompletion') {
-        reward = data.reward;
-        taskId = data.taskId;
-    } else if (action === 'verifyTaskChannel') {
-        reward = 2000; // مكافأة ثابتة للانضمام للقناة
-    } else {
-        return { valid: true };
-    }
-    
-    // جلب بيانات المهمة للتحقق
-    if (taskId) {
-        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
-        if (taskResult.success && taskResult.data) {
-            const task = taskResult.data;
-            const taskReward = task.reward || 0;
-            
-            // إذا كانت المهمة لها مكافأة محددة، التحقق منها
-            if (taskReward > 0 && parseInt(reward) !== taskReward) {
-                return {
-                    valid: false,
-                    violation: 'TASK_REWARD_MANIPULATION',
-                    details: `Task reward manipulation: Expected ${taskReward}, got ${reward}`
-                };
-            }
-        }
-    }
-    
-    // الحد الأقصى لمكافأة المهمة
-    const MAX_TASK_REWARD = 20000;
-    
-    if (parseInt(reward) > MAX_TASK_REWARD) {
-        return {
-            valid: false,
-            violation: 'EXCESSIVE_TASK_REWARD',
-            details: `Task reward too high: ${reward}`
-        };
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة لعبة السلوتس
-async function validateSlotSpin(env, userId) {
-    // التحقق من وجود محاولات دوران كافية
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        
-        if ((userData.extraSpins || 0) <= 0) {
-            return {
-                valid: false,
-                violation: 'NO_SPINS_AVAILABLE',
-                details: 'No spins available'
-            };
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة المكافأة اليومية
-async function validateDailyBonus(env, userId) {
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        const now = Date.now();
-        const lastClaim = userData.lastDailyClaim || 0;
-        const msInDay = 86400000;
-        
-        // التحقق من أنه لم يحصل على المكافأة اليوم
-        if (now - lastClaim < msInDay) {
-            return {
-                valid: false,
-                violation: 'DAILY_BONUS_ALREADY_CLAIMED',
-                details: 'Daily bonus already claimed today'
-            };
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب السحب
-async function validateWithdrawalRequest(env, userId, data) {
-    const { amount, method } = data;
-    
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        
-        // التحقق من الحد الأدنى للسحب
-        const configResult = await handleGetConfig();
-        const settings = configResult.data?.settings || {};
-        
-        let minAmount = 0.05; // الحد الأدنى الافتراضي
-        if (method === 'ton') {
-            minAmount = settings.minTonWithdrawal || 0.05;
-        } else if (method === 'faucetpay') {
-            minAmount = settings.minFaucetPayWithdrawal || 0.0001;
-        }
-        
-        if (parseFloat(amount) < minAmount) {
-            return {
-                valid: false,
-                violation: 'INSUFFICIENT_WITHDRAWAL_AMOUNT',
-                details: `Withdrawal amount too low: ${amount} (min ${minAmount})`
-            };
-        }
-        
-        // التحقق من الرصيد الكافي
-        if ((userData.tonBalance || 0) < parseFloat(amount)) {
-            return {
-                valid: false,
-                violation: 'INSUFFICIENT_BALANCE_FOR_WITHDRAWAL',
-                details: 'Insufficient TON balance for withdrawal'
-            };
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب التحويل
-async function validateSwapRequest(env, userId, data) {
-    const { type, amount, tonValue, glxValue } = data;
-    
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        
-        if (type === 'glx_to_ton') {
-            if (userData.dogsBalance < amount) {
-                return {
-                    valid: false,
-                    violation: 'INSUFFICIENT_GLX_FOR_SWAP',
-                    details: 'Insufficient GLX balance for swap'
-                };
-            }
-        } else if (type === 'ton_to_glx') {
-            if ((userData.tonBalance || 0) < amount) {
-                return {
-                    valid: false,
-                    violation: 'INSUFFICIENT_TON_FOR_SWAP',
-                    details: 'Insufficient TON balance for swap'
-                };
-            }
-        }
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من صحة طلب الإيداع
-async function validateDepositRequest(env, userId, data) {
-    const { memo, amount } = data;
-    
-    // التحقق من صحة تنسيق memo
-    if (!memo || typeof memo !== 'string') {
-        return {
-            valid: false,
-            violation: 'INVALID_DEPOSIT_MEMO',
-            details: 'Invalid deposit memo format'
-        };
-    }
-    
-    // التحقق من أن المبلغ إيجابي
-    if (parseFloat(amount) <= 0) {
-        return {
-            valid: false,
-            violation: 'INVALID_DEPOSIT_AMOUNT',
-            details: 'Deposit amount must be positive'
-        };
-    }
-    
-    return { valid: true };
-}
-
-// التحقق من استخدام نفس الطابع الزمني مسبقًا
-async function checkDuplicateTimestamp(env, userId, timestamp) {
-    try {
-        const timestampsResult = await handleDbGet(env, `users/${userId}/requestTimestamps`);
-        const timestamps = timestampsResult.data || {};
-        
-        // البحث عن طابع زمني مطابق
-        for (const [key, tsData] of Object.entries(timestamps)) {
-            if (tsData.timestamp === timestamp) {
-                return true;
-            }
-        }
-        
-        // حفظ الطابع الزمني الجديد
-        await handleDbPush(env, `users/${userId}/requestTimestamps`, {
-            timestamp: timestamp,
-            recordedAt: Date.now()
-        });
-        
-        // تنظيف الطوابع الزمنية القديمة (أقدم من 5 دقائق)
-        const cleanTimestamps = {};
-        const fiveMinutesAgo = Date.now() - 300000;
-        
-        for (const [key, tsData] of Object.entries(timestamps)) {
-            if (tsData.recordedAt > fiveMinutesAgo) {
-                cleanTimestamps[key] = tsData;
-            }
-        }
-        
-        await handleDbSet(env, `users/${userId}/requestTimestamps`, cleanTimestamps);
-        
-        return false;
-    } catch (error) {
-        console.error('Error checking duplicate timestamp:', error);
-        return false;
-    }
-}
-
-// التحقق من حظر المستخدم
-async function checkUserBlocked(env, userId) {
-    try {
-        const blockResult = await handleDbGet(env, `blocks/${userId}`);
-        if (blockResult.success && blockResult.data) {
-            const blockData = blockResult.data;
-            
-            // التحقق من انتهاء مدة الحظر
-            if (blockData.expiresAt && blockData.expiresAt > Date.now()) {
-                return true;
-            } else if (blockData.permanent) {
-                return true;
-            }
-            
-            // إذا انتهت مدة الحظر المؤقت، إزالته
-            if (blockData.expiresAt && blockData.expiresAt <= Date.now()) {
-                await handleDbSet(env, `blocks/${userId}`, null);
-                await handleDbUpdate(env, `users/${userId}`, {
-                    isBlocked: false,
-                    blockReason: null,
-                    blockedAt: null
-                });
-                return false;
-            }
-        }
-        
-        return false;
-    } catch (error) {
-        console.error('Error checking user block:', error);
-        return false;
-    }
-}
-
-// تسجيل مخالفة
-async function recordViolation(env, userId, violationData) {
-    try {
-        // تسجيل المخالفة
-        await handleDbPush(env, `violations/${userId}`, violationData);
-        
-        // زيادة عداد المخالفات
-        const violationsResult = await handleDbGet(env, `violationCounts/${userId}`);
-        const currentCount = violationsResult.data?.count || 0;
-        const newCount = currentCount + 1;
-        
-        await handleDbSet(env, `violationCounts/${userId}`, {
-            count: newCount,
-            lastViolation: Date.now(),
-            userId: userId,
-            violationDetails: violationData
-        });
-        
-        console.log(`Violation recorded for user ${userId}: ${violationData.violation}`);
-        
-        return true;
-    } catch (error) {
-        console.error('Error recording violation:', error);
-        return false;
-    }
-}
-
-// تطبيق الحظر
-async function applyBlock(env, userId, blockData) {
-    try {
-        const blockInfo = {
-            userId: userId,
-            reason: blockData.reason || 'System violation detected',
-            violation: blockData.violation || 'UNKNOWN',
-            appliedAt: Date.now(),
-            expiresAt: null, // حظر دائم بعد مخالفة واحدة
-            permanent: true, // حظر دائم
-            blockData: blockData,
-            action: blockData.action || 'UNKNOWN',
-            details: blockData.details || 'No details',
-            clientIp: blockData.clientIp || 'Unknown',
-            deviceFingerprint: blockData.deviceFingerprint || 'Unknown'
-        };
-        
-        // حفظ معلومات الحظر
-        await handleDbSet(env, `blocks/${userId}`, blockInfo);
-        
-        // تحديث حالة المستخدم
-        await handleDbUpdate(env, `users/${userId}`, {
-            isBlocked: true,
-            blockReason: blockInfo.reason,
-            blockedAt: Date.now(),
-            violationCount: 1,
-            lastViolation: Date.now()
-        });
-        
-        // تسجيل الحظر في سجل الحظر العام
-        await handleDbPush(env, 'system/blocks', {
-            userId: userId,
-            reason: blockInfo.reason,
-            violation: blockInfo.violation,
-            appliedAt: Date.now(),
-            permanent: true,
-            action: blockData.action,
-            details: blockData.details,
-            clientIp: blockData.clientIp,
-            deviceFingerprint: blockData.deviceFingerprint
-        });
-        
-        console.log(`User ${userId} permanently blocked after 1 violation: ${blockInfo.reason}`);
-        
-        return true;
-    } catch (error) {
-        console.error('Error applying block:', error);
-        return false;
-    }
-}
-
-// ==================== نهاية نظام الحظر ====================
-
-// التحقق من بيانات Telegram
-function isValidTelegramData(telegramData, userId) {
-    try {
-        const params = new URLSearchParams(telegramData);
-        const userParam = params.get('user');
-        
-        if (!userParam) return false;
-        
-        const userData = JSON.parse(decodeURIComponent(userParam));
-        return userData.id.toString() === userId;
-        
-    } catch (error) {
-        console.error('Telegram data validation error:', error);
-        return false;
-    }
-}
-
-// دالة مساعدة لإنشاء رابط Firebase
-async function getFirebaseUrl(env, path) {
-    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-    const cleanPath = path.replace(/^\//, '');
-    const apiKey = env.FIREBASE_API_KEY;
-    
-    if (!apiKey) {
-        throw new Error('FIREBASE_API_KEY is not configured');
-    }
-    
-    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
-}
-
-// دالة مساعدة لضمان وجود مسابقة نشطة وجلب بياناتها
-async function ensureAndGetCompetition(env, userId = null) {
-    try {
-        // جلب المسابقة الحالية
-        const competitionResult = await handleDbGet(env, 'competition/current');
-        let competitionData = competitionResult.data || {};
-        
-        const now = Date.now();
-        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-        
-        // التحقق مما إذا كان يجب إنشاء مسابقة جديدة
-        const shouldCreateNew = 
-            !competitionData ||
-            Object.keys(competitionData).length === 0 ||
-            !competitionData.isActive || 
-            !competitionData.endTime || 
-            now > competitionData.endTime;
-        
-        if (shouldCreateNew) {
-            console.log('Creating new competition... Current time:', now);
-            
-            // إذا كانت هناك مسابقة قديمة، حفظ الفائزين
-            if (competitionData && competitionData.userTickets && Object.keys(competitionData.userTickets).length > 0) {
-                await saveCompetitionWinners(env, competitionData);
-            }
-            
-            // إنشاء مسابقة جديدة
-            competitionData = {
-                isActive: true,
-                startTime: now,
-                endTime: now + ONE_DAY_MS, // 24 ساعة من الآن
-                totalTickets: 0,
-                prizePool: 0,
-                userTickets: {},
-                winners: [],
-                lastUpdated: now
-            };
-            
-            // حفظ المسابقة الجديدة
-            await handleDbSet(env, 'competition/current', competitionData);
-            console.log('New competition created. End time:', new Date(competitionData.endTime).toISOString());
-        } else {
-            console.log('Existing competition found. End time:', new Date(competitionData.endTime).toISOString());
-        }
-        
-        // حساب الوقت المتبقي
-        competitionData.timeRemaining = Math.max(0, competitionData.endTime - now);
-        competitionData.isActiveNow = competitionData.isActive && competitionData.timeRemaining > 0;
-        
-        // إذا انتهت المسابقة، إنشاء مسابقة جديدة
-        if (competitionData.timeRemaining <= 0 && competitionData.isActive) {
-            console.log('Competition ended, creating new one...');
-            competitionData.isActive = false;
-            await handleDbSet(env, 'competition/current', competitionData);
-            return await ensureAndGetCompetition(env, userId);
-        }
-        
-        // إذا تم تمرير userId، حساب تذاكره بشكل صحيح
-        if (userId) {
-            competitionData.userTickets = competitionData.userTickets || {};
-            competitionData.userTicketCount = competitionData.userTickets[userId] || 0;
-            console.log(`User ${userId} tickets in competition:`, competitionData.userTicketCount);
-            
-            // تحديث تذاكر المستخدم في قاعدة البيانات
-            await syncUserCompetitionTickets(env, userId, competitionData.userTicketCount);
-        }
-        
-        // إضافة التنسيق الزمني للوقت المتبقي
-        competitionData.timeRemainingFormatted = formatTimeRemaining(competitionData.timeRemaining);
-        
-        return competitionData;
-    } catch (error) {
-        console.error('Error ensuring competition:', error);
-        return null;
-    }
-}
-
-// دالة لتنسيق الوقت المتبقي
-function formatTimeRemaining(ms) {
-    if (ms <= 0) return '00:00:00';
-    
-    const hours = Math.floor(ms / (1000 * 60 * 60));
-    const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-// دالة لحفظ الفائزين في المسابقة القديمة
-async function saveCompetitionWinners(env, competitionData) {
-    try {
-        if (!competitionData.userTickets || Object.keys(competitionData.userTickets).length === 0) {
-            return;
-        }
-        
-        const userIds = Object.keys(competitionData.userTickets);
-        const totalTickets = competitionData.totalTickets || 0;
-        
-        if (totalTickets > 0) {
-            // اختيار الفائز (الذي لديه أكبر عدد تذاكر)
-            let winnerId = userIds[0];
-            let maxTickets = competitionData.userTickets[winnerId] || 0;
-            
-            for (const userId of userIds) {
-                const tickets = competitionData.userTickets[userId] || 0;
-                if (tickets > maxTickets) {
-                    maxTickets = tickets;
-                    winnerId = userId;
-                }
-            }
-            
-            // حفظ بيانات الفائز
-            const winnerData = {
-                userId: winnerId,
-                tickets: maxTickets,
-                prize: competitionData.prizePool || 0,
-                timestamp: Date.now(),
-                competitionEndTime: competitionData.endTime
-            };
-            
-            await handleDbPush(env, 'competition/winners', winnerData);
-            
-            // منح الجائزة للمستخدم الفائز
-            const userResult = await handleDbGet(env, `users/${winnerId}`);
-            if (userResult.success && userResult.data) {
-                const userData = userResult.data;
-                const newBalance = (userData.tonBalance || 0) + (competitionData.prizePool || 0);
-                await handleDbUpdate(env, `users/${winnerId}`, { 
-                    tonBalance: newBalance 
-                });
-                
-                await handleDbPush(env, `users/${winnerId}/history`, {
-                    type: 'earn',
-                    description: 'Competition Prize',
-                    amount: competitionData.prizePool || 0,
-                    currency: 'TON',
-                    date: new Date().toISOString()
-                });
-                
-                console.log(`Prize awarded to user ${winnerId}: ${competitionData.prizePool} TON`);
-            }
-        }
-    } catch (error) {
-        console.error('Error saving competition winners:', error);
-    }
-}
-
-// دالة لتحديث تذاكر المسابقة للمستخدم في قاعدة البيانات
-async function syncUserCompetitionTickets(env, userId, ticketCount) {
-    try {
-        // جلب بيانات المستخدم أولاً
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            console.log(`User ${userId} not found for ticket sync`);
-            return false;
-        }
-        
-        const userData = userResult.data;
-        const currentTickets = userData.competitionTickets || 0;
-        
-        // تحديث فقط إذا كانت القيمة مختلفة
-        if (currentTickets !== ticketCount) {
-            console.log(`Syncing tickets for user ${userId}: ${currentTickets} -> ${ticketCount}`);
-            await handleDbUpdate(env, `users/${userId}`, {
-                competitionTickets: ticketCount,
-                lastTicketSync: Date.now()
-            });
-            return true;
-        }
-        
-        return false;
-    } catch (error) {
-        console.error('Error syncing user competition tickets:', error);
-        return false;
-    }
-}
-
-// وظائف إدارة قاعدة البيانات
-async function handleDbSet(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database SET error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleDbGet(env, path) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        
-        return {
-            success: true,
-            data: data
-        };
-    } catch (error) {
-        console.error('Database GET error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleDbUpdate(env, path, updates) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database UPDATE error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleDbPush(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: { name: result.name }
-        };
-    } catch (error) {
-        console.error('Database PUSH error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleDbTransaction(env, path, transactionFunction) {
-    try {
-        const currentData = await handleDbGet(env, path);
-        
-        if (!currentData.success) {
-            return currentData;
-        }
-        
-        const func = new Function('currentValue', `return ${transactionFunction}(currentValue)`);
-        const newValue = func(currentData.data || null);
-        
-        const updateResult = await handleDbSet(env, path, newValue);
-        
-        return updateResult;
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleDbIncrement(env, path, key, amount) {
-    try {
-        const currentData = await handleDbGet(env, path);
-        
-        if (!currentData.success) {
-            return currentData;
-        }
-        
-        const currentValue = currentData.data[key] || 0;
-        const newValue = currentValue + amount;
-        
-        const updates = { [key]: newValue };
-        const updateResult = await handleDbUpdate(env, path, updates);
-        
-        return updateResult;
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// وظيفة اختبار Firebase
-async function handleTestFirebase(env) {
-    try {
-        console.log('Testing Firebase connection...');
-        console.log('API Key:', env.FIREBASE_API_KEY ? 'Present' : 'Missing');
-        console.log('DB URL:', env.FIREBASE_DATABASE_URL);
-        
-        // اختبار الاتصال
-        const testPath = 'connection_test';
-        const timestamp = Date.now();
-        
-        // محاولة الكتابة
-        const writeUrl = await getFirebaseUrl(env, testPath);
-        console.log('Write URL:', writeUrl);
-        
-        const writeResponse = await fetch(writeUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                test: true, 
-                timestamp: timestamp,
-                message: 'Firebase connection test'
-            })
-        });
-        
-        console.log('Write status:', writeResponse.status);
-        
-        if (!writeResponse.ok) {
-            const errorText = await writeResponse.text();
-            console.error('Write error:', errorText);
-            throw new Error(`Write failed: ${writeResponse.status} - ${errorText}`);
-        }
-        
-        const writeResult = await writeResponse.json();
-        console.log('Write result:', writeResult);
-        
-        // محاولة القراءة
-        const readResponse = await fetch(writeUrl);
-        console.log('Read status:', readResponse.status);
-        
-        if (!readResponse.ok) {
-            const errorText = await readResponse.text();
-            throw new Error(`Read failed: ${writeResponse.status} - ${errorText}`);
-        }
-        
-        const readData = await readResponse.json();
-        console.log('Read data:', readData);
-        
-        return {
-            success: true,
-            message: 'Firebase connection successful',
-            data: {
-                writeStatus: writeResponse.status,
-                readStatus: readResponse.status,
-                testData: readData,
-                apiKeyLength: env.FIREBASE_API_KEY ? env.FIREBASE_API_KEY.length : 0,
-                databaseUrl: env.FIREBASE_DATABASE_URL
-            }
-        };
-    } catch (error) {
-        console.error('Firebase test error:', error);
-        return {
-            success: false,
-            error: error.message,
-            debug: {
-                apiKey: env.FIREBASE_API_KEY ? 'Present' : 'Missing',
-                apiKeyFirst10: env.FIREBASE_API_KEY ? env.FIREBASE_API_KEY.substring(0, 10) + '...' : 'None',
-                dbUrl: env.FIREBASE_DATABASE_URL,
-                fullUrl: env.FIREBASE_DATABASE_URL ? `${env.FIREBASE_DATABASE_URL}/test.json` : 'No URL'
-            }
-        };
-    }
-}
-
-// وظائف التطبيق الرئيسية المحسنة
-async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
-    try {
-        const { user } = data;
-        const deviceFingerprint = data.deviceFingerprint;
-        const fullName = `${user.first_name} ${user.last_name || ''}`.trim();
-        
-        // استخراج صورة المستخدم من بيانات Telegram
-        let photoUrl = 'https://i.ibb.co/tTkJX1Qy/logo.png'; // صورة افتراضية
-        
-        try {
-            const params = new URLSearchParams(telegramData);
-            const userParam = params.get('user');
-            
-            if (userParam) {
-                const telegramUserData = JSON.parse(decodeURIComponent(userParam));
-                // صورة المستخدم من Telegram
-                if (telegramUserData.photo_url) {
-                    photoUrl = telegramUserData.photo_url;
-                } else if (telegramUserData.username) {
-                    // أو استخدام صورة افتراضية بناءً على اسم المستخدم
-                    photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(telegramUserData.username)}&background=random&color=fff`;
-                }
-            }
-        } catch (photoError) {
-            console.log('Could not extract user photo:', photoError);
-        }
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return {
-                success: false,
-                error: 'Your account has been blocked for violating system rules',
-                data: { isBlocked: true }
-            };
-        }
-        
-        // ==================== التحقق من بصمة الجهاز ====================
-        if (deviceFingerprint) {
-            // التحقق مما إذا كانت بصمة الجهاز مستخدمة بالفعل من قبل مستخدم آخر
-            const fingerprintCheck = await checkDeviceFingerprint(env, deviceFingerprint, userId);
-            
-            if (fingerprintCheck.deviceAlreadyUsed) {
-                // حظر الحساب الحالي فورًا
-                await applyBlock(env, userId, {
-                    reason: 'Device multi-account violation during initialization',
-                    violation: 'DEVICE_MULTI_ACCOUNT',
-                    action: 'initializeUser',
-                    details: 'Attempt to create new account with device registered to another account',
-                    timestamp: Date.now(),
-                    permanent: true,
-                    clientIp: clientIp,
-                    deviceFingerprint: deviceFingerprint
-                });
-                
-                return {
-                    success: false,
-                    error: 'Device already registered with multiple accounts - All accounts have been blocked',
-                    data: {
-                        deviceAlreadyUsed: true,
-                        existingAccounts: fingerprintCheck.existingAccounts,
-                        violationType: 'DEVICE_MULTI_ACCOUNT',
-                        accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                        currentAccountBlocked: true
-                    }
-                };
-            }
-        }
-        // ==================== نهاية التحقق من بصمة الجهاز ====================
-        
-        // 1. أولاً: ضمان وجود مسابقة نشطة وجلب بياناتها
-        const competitionData = await ensureAndGetCompetition(env, userId);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'Failed to initialize competition'
-            };
-        }
-        
-        // 2. جلب بيانات المستخدم
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        let userData = userResult.data;
-        
-        // احصل على عدد التذاكر الحقيقي من المسابقة
-        const realTicketCount = competitionData.userTicketCount || 0;
-        
-        // إعداد مصفوفة عناوين IP
-        let ipAddresses = [];
-        if (clientIp && clientIp !== 'Unknown') {
-            ipAddresses.push(clientIp);
-        }
-        
-        if (!userData) {
-            // إنشاء مستخدم جديد
-            userData = {
-                id: userId,
-                name: fullName,
-                photoUrl: photoUrl,
-                dogsBalance: 500,
-                tonBalance: 0.00,
-                adsWatched: 0,
-                adsMonetag: 0,
-                adsGiga: 0,
-                adsAdsgram: 0,
-                completedTasks: {},
-                history: {},
-                referrals: 0,
-                dailyStreak: 0,
-                lastDailyClaim: 0,
-                extraSpins: 1,
-                referredUsers: [],
-                usedPromoCodes: [],
-                joinDate: Date.now(),
-                lastLogin: Date.now(),
-                lastAdDate: new Date().toDateString(),
-                competitionTickets: realTicketCount,
-                lastTicketSync: Date.now(),
-                isBlocked: false,
-                blockReason: null,
-                blockedAt: null,
-                violationCount: 0,
-                // بيانات الأمان
-                ...(deviceFingerprint && {
-                    deviceFingerprint: deviceFingerprint,
-                    deviceRegisteredAt: Date.now(),
-                    lastDeviceCheck: Date.now(),
-                    deviceInfo: data.deviceInfo || {},
-                    deviceLoginCount: 1
-                }),
-                // بيانات IP
-                lastIpAddress: clientIp,
-                ipAddresses: ipAddresses
-            };
-            
-            await handleDbSet(env, `users/${userId}`, userData);
-            
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'earn',
-                description: 'Welcome Bonus',
-                amount: 500,
-                currency: 'GLX',
-                date: new Date().toISOString(),
-                securityCheck: 'initialized'
-            });
-            
-            console.log(`New user created: ${userId} with device fingerprint: ${deviceFingerprint ? 'Yes' : 'No'}`);
-        } else {
-            // تحديث بيانات المستخدم الموجود
-            const updates = {
-                name: fullName,
-                lastLogin: Date.now()
-            };
-            
-            // تحديث الصورة إذا كانت غير موجودة أو مختلفة
-            if (!userData.photoUrl || userData.photoUrl === 'https://i.ibb.co/tTkJX1Qy/logo.png') {
-                updates.photoUrl = photoUrl;
-            }
-            
-            // تحديث عدد تذاكر المسابقة من المسابقة الحالية
-            if (userData.competitionTickets !== realTicketCount) {
-                updates.competitionTickets = realTicketCount;
-                updates.lastTicketSync = Date.now();
-                console.log(`Updating user ${userId} tickets from ${userData.competitionTickets} to ${realTicketCount}`);
-            }
-            
-            // التحقق من الحظر في بيانات المستخدم
-            if (userData.isBlocked) {
-                const blockStatus = await checkUserBlocked(env, userId);
-                if (blockStatus) {
-                    return {
-                        success: false,
-                        error: 'Your account has been blocked for violating system rules',
-                        data: { isBlocked: true }
-                    };
-                } else {
-                    updates.isBlocked = false;
-                    updates.blockReason = null;
-                    updates.blockedAt = null;
-                }
-            }
-            
-            // تحديث بصمة الجهاز إذا لم تكن موجودة وكانت متوفرة
-            if (!userData.deviceFingerprint && deviceFingerprint) {
-                updates.deviceFingerprint = deviceFingerprint;
-                updates.deviceRegisteredAt = Date.now();
-                updates.lastDeviceCheck = Date.now();
-                updates.deviceInfo = data.deviceInfo || {};
-                updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
-            } else if (deviceFingerprint) {
-                // تحديث آخر فحص للجهاز
-                updates.lastDeviceCheck = Date.now();
-                updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
-            }
-            
-            // تحديث IP
-            if (clientIp && clientIp !== 'Unknown') {
-                updates.lastIpAddress = clientIp;
-                
-                // تحديث مصفوفة IPs
-                let existingIpAddresses = userData.ipAddresses || [];
-                if (!existingIpAddresses.includes(clientIp)) {
-                    existingIpAddresses.push(clientIp);
-                    if (existingIpAddresses.length > 3) {
-                        existingIpAddresses = existingIpAddresses.slice(-3);
-                    }
-                    updates.ipAddresses = existingIpAddresses;
-                }
-            }
-            
-            if (Object.keys(updates).length > 0) {
-                await handleDbUpdate(env, `users/${userId}`, updates);
-            }
-            
-            // إعادة تعيين عداد الإعلانات إذا تغير اليوم
-            const today = new Date().toDateString();
-            if (userData.lastAdDate !== today) {
-                const resetData = {
-                    adsWatched: 0,
-                    adsMonetag: 0,
-                    adsGiga: 0,
-                    adsAdsgram: 0,
-                    lastAdDate: today
-                };
-                
-                await handleDbUpdate(env, `users/${userId}`, resetData);
-            }
-            
-            // تحديث بيانات المستخدم بعد التغييرات
-            const updatedResult = await handleDbGet(env, `users/${userId}`);
-            userData = updatedResult.data || userData;
-            
-            console.log(`Existing user logged in: ${userId} with device fingerprint: ${deviceFingerprint ? 'Yes' : 'No'}`);
-        }
-        
-        // جلب الإعدادات
-        const settingsResult = await handleGetConfig();
-        const settings = settingsResult.data?.settings || {};
-        
-        // التأكد من أن عدد التذاكر يعكس القيمة الحقيقية
-        const userTickets = realTicketCount;
-        
-        return {
-            success: true,
-            data: {
-                userData: {
-                    ...userData,
-                    competitionTickets: userTickets,
-                    deviceFingerprint: deviceFingerprint || userData.deviceFingerprint,
-                    ipAddresses: userData.ipAddresses || ipAddresses,
-                    lastIpAddress: clientIp || userData.lastIpAddress
-                },
-                settings: settings,
-                contest: {
-                    yourTickets: userTickets,
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    isActive: competitionData.isActiveNow,
-                    endTime: competitionData.endTime,
-                    startTime: competitionData.startTime,
-                    timeRemaining: competitionData.timeRemaining,
-                    timeRemainingFormatted: competitionData.timeRemainingFormatted || '24:00:00'
-                },
-                securityInfo: {
-                    deviceVerified: !!deviceFingerprint,
-                    ipAddress: clientIp,
-                    multiAccountCheck: true
-                }
-            }
-        };
-    } catch (error) {
-        console.error('Initialize user error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetConfig() {
-    try {
-        const settings = {
-            // مكافآت الإعلانات
-            adRewardMonetag: 1000,
-            adRewardGiga: 2000,
-            adRewardAdsgram: 2000,
-            
-            // حدود الإعلانات اليومية
-            limitMonetag: 50,
-            limitGiga: 300,
-            limitAdsgram: 300,
-            
-            // سعر التذكرة
-            ticketPrice: 10000, // سعر التذكرة الواحدة = 10,000 GLX
-            maxTicketsPerPurchase: 100,
-            minTicketsPerPurchase: 1,
-            
-            // حدود السحب
-            minTonWithdrawal: 0.05,
-            minFaucetPayWithdrawal: 0.0001,
-            
-            // نظام الإحالة
-            referralReward: 500,
-            
-            // أسعار أخرى
-            pricePerClick: 0.0015,
-            
-            // معلومات البوت
-            botUsername: '@testtt1257bot',
-            botWallet: 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv',
-            botToken: '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI',
-            
-            // نظام الحظر
-            maxTimestampDiff: 30000,
-            maxViolations: 1, // مخالفة واحدة فقط للحظر
-            blockDuration: 0, // حظر دائم
-            instantBlock: true, // حظر فوري بعد مخالفة واحدة
-            
-            // Coin Flip limits
-            coinFlipMinBet: 1000, // الحد الأدنى للرهان
-            coinFlipMaxBet: 100000, // الحد الأقصى للرهان
-            
-            // مكافآت المهام
-            taskChannelReward: 2000, // مكافأة الانضمام للقناة
-            maxTaskReward: 20000, // الحد الأقصى لمكافأة المهمة
-            
-            // حدود البرومو كود
-            maxPromoReward: 10000, // الحد الأقصى لمكافأة البرومو كود
-            
-            // نظام بصمة الجهاز
-            enableDeviceFingerprint: true, // تفعيل نظام التحقق من بصمة الجهاز
-            allowMultipleDevices: false, // عدم السماح بأجهزة متعددة لنفس المستخدم
-            deviceCheckRequired: true, // التحقق من الجهاز مطلوب للمستخدمين الجدد
-            maxIpsPerUser: 3, // الحد الأقصى لعدد IPs المخزنة لكل مستخدم
-            
-            // إعدادات الأمان
-            periodicDeviceCheckInterval: 30000, // فحص دوري كل 30 ثانية
-            enableIpTracking: true, // تتبع عناوين IP
-            multiAccountDetection: true, // كشف الحسابات المتعددة
-            multiAccountAutoBlock: true, // حظر تلقائي للحسابات المتعددة
-            blockAllLinkedAccounts: true // حظر جميع الحسابات المرتبطة بنفس الجهاز
-        };
-        
-        return {
-            success: true,
-            data: { settings }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleExecuteSwap(env, userId, data) {
-    try {
-        const { type, amount, tonValue, glxValue } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        let updates = {};
-        let historyEntry = {};
-        
-        if (type === 'glx_to_ton') {
-            if (userData.dogsBalance < amount) {
-                return { success: false, error: 'Insufficient GLX balance' };
-            }
-            
-            updates.dogsBalance = userData.dogsBalance - amount;
-            updates.tonBalance = (userData.tonBalance || 0) + tonValue;
-            
-            historyEntry = {
-                type: 'swap_out',
-                description: 'Swap GLX to TON',
-                amount: amount,
-                currency: 'GLX',
-                date: new Date().toISOString()
-            };
-            
-            await handleDbPush(env, `users/${userId}/history`, historyEntry);
-            
-            historyEntry = {
-                type: 'swap_in',
-                description: 'Received from GLX Swap',
-                amount: tonValue,
-                currency: 'TON',
-                date: new Date().toISOString()
-            };
-            
-        } else if (type === 'ton_to_glx') {
-            if ((userData.tonBalance || 0) < amount) {
-                return { success: false, error: 'Insufficient TON balance' };
-            }
-            
-            updates.tonBalance = (userData.tonBalance || 0) - amount;
-            updates.dogsBalance = userData.dogsBalance + glxValue;
-            
-            historyEntry = {
-                type: 'swap_out',
-                description: 'Swap TON to GLX',
-                amount: amount,
-                currency: 'TON',
-                date: new Date().toISOString()
-            };
-            
-            await handleDbPush(env, `users/${userId}/history`, historyEntry);
-            
-            historyEntry = {
-                type: 'swap_in',
-                description: 'Received from TON Swap',
-                amount: glxValue,
-                currency: 'GLX',
-                date: new Date().toISOString()
-            };
-        } else {
-            return { success: false, error: 'Invalid swap type' };
-        }
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        await handleDbPush(env, `users/${userId}/history`, historyEntry);
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
-        
-        return {
-            success: true,
-            data: {
-                newGLXBalance: updatedUserData.dogsBalance,
-                newTONBalance: updatedUserData.tonBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleVerifyDeposit(env, userId, data) {
-    try {
-        const { memo, amount } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const currentTime = Date.now();
-        const memoTime = parseInt(memo.split('_').pop());
-        
-        if (currentTime - memoTime > 30000) {
-            const userResult = await handleDbGet(env, `users/${userId}`);
-            if (!userResult.success) {
-                return { success: false, error: 'User not found' };
-            }
-            
-            const userData = userResult.data;
-            const newBalance = (userData.tonBalance || 0) + amount;
-            
-            await handleDbUpdate(env, `users/${userId}`, { tonBalance: newBalance });
-            
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'deposit',
-                description: `TON Deposit #${memo.substring(0, 8)}`,
-                amount: amount,
-                currency: 'TON',
-                date: new Date().toISOString()
-            });
-            
-            return {
-                success: true,
-                data: {
-                    newBalance: newBalance,
-                    txHash: memo.substring(0, 12)
-                }
-            };
-        } else {
-            return { success: false, error: 'Deposit not confirmed yet' };
-        }
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleBuyTickets(env, userId, data) {
-    try {
-        const { tickets, totalCost } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        // جلب سعر التذكرة من الإعدادات
-        const configResult = await handleGetConfig();
-        const settings = configResult.data?.settings || {};
-        const TICKET_PRICE = settings.ticketPrice || 10000;
-        
-        // حساب التكلفة المتوقعة
-        const ticketsCount = parseInt(tickets);
-        const expectedCost = ticketsCount * TICKET_PRICE;
-        const costAmount = parseInt(totalCost);
-        
-        // التحقق من صحة التكلفة
-        if (costAmount !== expectedCost) {
-            return { 
-                success: false, 
-                error: `Invalid ticket cost: Expected ${expectedCost}, got ${costAmount}` 
-            };
-        }
-        
-        if (userData.dogsBalance < costAmount) {
-            return { success: false, error: 'Insufficient GLX balance' };
-        }
-        
-        const newBalance = userData.dogsBalance - costAmount;
-        
-        // تحديث رصيد المستخدم أولاً
-        await handleDbUpdate(env, `users/${userId}`, { 
-            dogsBalance: newBalance
-        });
-        
-        // تأكد من وجود مسابقة نشطة
-        const competitionData = await ensureAndGetCompetition(env, userId);
-        
-        if (!competitionData) {
-            return { success: false, error: 'No active competition found' };
-        }
-        
-        // تحديث تذاكر المستخدم في المسابقة
-        const currentUserTickets = competitionData.userTickets[userId] || 0;
-        competitionData.userTickets[userId] = currentUserTickets + ticketsCount;
-        
-        // تحديث الإحصائيات العامة
-        competitionData.totalTickets = (competitionData.totalTickets || 0) + ticketsCount;
-        competitionData.prizePool = competitionData.totalTickets * 0.001;
-        
-        // حفظ المسابقة المحدثة
-        await handleDbSet(env, 'competition/current', {
-            isActive: competitionData.isActive,
-            startTime: competitionData.startTime,
-            endTime: competitionData.endTime,
-            totalTickets: competitionData.totalTickets,
-            prizePool: competitionData.prizePool,
-            userTickets: competitionData.userTickets,
-            winners: competitionData.winners || [],
-            lastUpdated: Date.now()
-        });
-        
-        // تحديث عدد تذاكر المستخدم في بياناته الشخصية
-        const newTicketCount = competitionData.userTickets[userId];
-        await handleDbUpdate(env, `users/${userId}`, {
-            competitionTickets: newTicketCount,
-            lastTicketSync: Date.now()
-        });
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'spend',
-            description: `Bought ${ticketsCount} Competition Ticket${ticketsCount > 1 ? 's' : ''}`,
-            amount: costAmount,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || userData;
-        
-        // حساب الوقت المتبقي
-        const now = Date.now();
-        const timeRemaining = Math.max(0, competitionData.endTime - now);
-        const timeRemainingFormatted = formatTimeRemaining(timeRemaining);
-        
-        return {
-            success: true,
-            data: {
-                newBalance: updatedUserData.dogsBalance,
-                userTickets: competitionData.userTickets[userId],
-                totalTickets: competitionData.totalTickets,
-                prizePool: competitionData.prizePool,
-                contestEndTime: competitionData.endTime,
-                timeRemaining: timeRemaining,
-                timeRemainingFormatted: timeRemainingFormatted,
-                userCompetitionTickets: newTicketCount
-            }
-        };
-    } catch (error) {
-        console.error('Buy tickets error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetCompetitionLeaderboard(env) {
-    try {
-        // تأكد من وجود مسابقة نشطة
-        const competitionData = await ensureAndGetCompetition(env);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'No active competition found'
-            };
-        }
-        
-        const userTickets = competitionData.userTickets || {};
-        const leaderboard = [];
-        
-        for (const [userId, tickets] of Object.entries(userTickets)) {
-            if (tickets > 0) {
-                const userResult = await handleDbGet(env, `users/${userId}`);
-                if (userResult.success && userResult.data) {
-                    // تخطي المستخدمين المحظورين من المتصدرين
-                    if (userResult.data.isBlocked) continue;
-                    
-                    leaderboard.push({
-                        userId: userId,
-                        name: userResult.data.name || 'Anonymous',
-                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                        tickets: tickets
-                    });
-                }
-            }
-        }
-        
-        leaderboard.sort((a, b) => b.tickets - a.tickets);
-        
-        return {
-            success: true,
-            data: {
-                leaderboard: leaderboard.slice(0, 10),
-                contest: {
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    endTime: competitionData.endTime,
-                    startTime: competitionData.startTime,
-                    timeRemaining: competitionData.timeRemaining,
-                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
-                    isActive: competitionData.isActiveNow
-                }
-            }
-        };
-    } catch (error) {
-        console.error('Get competition leaderboard error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetPreviousWinners(env) {
-    try {
-        const winnersResult = await handleDbGet(env, 'competition/winners');
-        const winnersData = winnersResult.data || {};
-        
-        const winners = [];
-        
-        for (const [key, winner] of Object.entries(winnersData)) {
-            if (winner.userId) {
-                const userResult = await handleDbGet(env, `users/${winner.userId}`);
-                if (userResult.success && userResult.data) {
-                    // تخطي المستخدمين المحظورين
-                    if (userResult.data.isBlocked) continue;
-                    
-                    winners.push({
-                        userId: winner.userId,
-                        name: userResult.data.name || 'Anonymous',
-                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                        tickets: winner.tickets || 0,
-                        prize: winner.prize || 0,
-                        timestamp: winner.timestamp || Date.now()
-                    });
-                }
-            }
-        }
-        
-        winners.sort((a, b) => b.timestamp - a.timestamp);
-        
-        return {
-            success: true,
-            data: {
-                winners: winners.slice(0, 10)
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleFlipCoin(env, userId, data) {
-    try {
-        const { betAmount, chosenSide } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        const betAmountNum = parseInt(betAmount);
-        
-        if (userData.dogsBalance < betAmountNum) {
-            return { success: false, error: 'Insufficient GLX balance' };
-        }
-        
-        const newBalance = userData.dogsBalance - betAmountNum;
-        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'loss',
-            description: `Coin Flip Bet (${chosenSide.toUpperCase()})`,
-            amount: betAmountNum,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        const randomNum = Math.random() * 100;
-        const isWin = randomNum < 45;
-        const resultSide = isWin ? chosenSide : (chosenSide === 'glx' ? 'gold' : 'glx');
-        const winAmount = isWin ? betAmountNum * 2 : 0;
-        
-        if (isWin) {
-            const finalBalance = newBalance + winAmount;
-            await handleDbUpdate(env, `users/${userId}`, { dogsBalance: finalBalance });
-            
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'earn',
-                description: `Coin Flip Win (${chosenSide})`,
-                amount: winAmount,
-                currency: 'GLX',
-                date: new Date().toISOString()
-            });
-        }
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || userData;
-        
-        return {
-            success: true,
-            data: {
-                isWin: isWin,
-                resultSide: resultSide,
-                winAmount: winAmount,
-                newBalance: isWin ? newBalance + winAmount : newBalance,
-                currentBalance: updatedUserData.dogsBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleRedeemPromoCode(env, userId, data) {
-    try {
-        const { code } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const validCodes = {
-            'WELCOME100': 100,
-            'GALAXY500': 500,
-            'STAR1000': 1000,
-            'BONUS2000': 2000,
-            'VIP5000': 5000
-        };
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        const usedCodes = userData.usedPromoCodes || [];
-        
-        if (!validCodes[code]) {
-            // ليس خطأ - فقط كود غير صالح
-            return { success: false, error: 'Invalid or expired promo code' };
-        }
-        
-        if (usedCodes.includes(code)) {
-            // ليس خطأ - فقط كود مستخدم مسبقاً
-            return { success: false, error: 'This code has already been used' };
-        }
-        
-        const reward = validCodes[code];
-        
-        // جلب الحد الأقصى من الإعدادات
-        const configResult = await handleGetConfig();
-        const settings = configResult.data?.settings || {};
-        const MAX_PROMO_REWARD = settings.maxPromoReward || 10000;
-        
-        // التحقق من أن المكافأة لا تتجاوز الحد الأقصى
-        if (reward > MAX_PROMO_REWARD) {
-            return { success: false, error: 'Promo code reward exceeds maximum allowed' };
-        }
-        
-        const newBalance = userData.dogsBalance + reward;
-        await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
-        
-        usedCodes.push(code);
-        await handleDbUpdate(env, `users/${userId}`, { usedPromoCodes: usedCodes });
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `Promo Code: ${code}`,
-            amount: reward,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || userData;
-        
-        return {
-            success: true,
-            data: {
-                reward: reward,
-                newBalance: updatedUserData.dogsBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleCreateTask(env, userId, data) {
-    try {
-        const { taskId, name, link, category, count, cost } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const newTask = {
-            id: taskId,
-            title: name,
-            description: `Reward: ${category.toUpperCase()}`,
-            link: link,
-            reward: 2000,
-            category: 'community',
-            total: count,
-            remaining: count,
-            status: 'pending',
-            creator: userId,
-            cost: cost,
-            createdAt: Date.now()
-        };
-        
-        await handleDbSet(env, `tasks/${taskId}`, newTask);
-        
-        return {
-            success: true,
-            data: { taskId: taskId }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleVerifyTaskPayment(env, taskId) {
-    try {
-        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
-        if (!taskResult.success || !taskResult.data) {
-            return { success: false, error: 'Task not found' };
-        }
-        
-        const task = taskResult.data;
-        
-        if (task.status === 'pending') {
-            await handleDbUpdate(env, `tasks/${taskId}`, { status: 'active' });
-            
-            return {
-                success: true,
-                data: { verified: true }
-            };
-        } else if (task.status === 'active') {
-            return {
-                success: true,
-                data: { verified: true }
-            };
-        } else {
-            return { success: false, error: 'Payment not found' };
-        }
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// دالة جديدة للتحقق من الاشتراك في قناة Telegram
-async function handleVerifyTaskChannel(env, userId, data) {
-    try {
-        const { taskId, channelUsername } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        // جلب بيانات المستخدم
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        const completedTasks = userData.completedTasks || {};
-        
-        // التحقق مما إذا كانت المهمة مكتملة بالفعل
-        if (completedTasks[taskId]) {
-            return { success: false, error: 'Task already completed' };
-        }
-        
-        // جلب مكافأة المهمة من الإعدادات
-        const configResult = await handleGetConfig();
-        const settings = configResult.data?.settings || {};
-        const TASK_CHANNEL_REWARD = settings.taskChannelReward || 2000;
-        
-        // هنا يمكنك إضافة التحقق من الاشتراك في القناة باستخدام Telegram Bot API
-        // يتم إضافة token البوت في بيانات البيئة
-        const botToken = env.TELEGRAM_BOT_TOKEN || '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI';
-        
-        // استخدام Telegram Bot API للتحقق من عضوية المستخدم في القناة
-        const chatMemberUrl = `https://api.telegram.org/bot${botToken}/getChatMember`;
-        
-        const response = await fetch(chatMemberUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: channelUsername,
-                user_id: parseInt(userId)
-            })
-        });
-        
-        if (!response.ok) {
-            return { 
-                success: false, 
-                error: 'Failed to verify channel membership',
-                details: await response.text()
-            };
-        }
-        
-        const result = await response.json();
-        
-        // التحقق مما إذا كان المستخدم عضوًا في القناة
-        const isMember = result.ok && 
-            (result.result.status === 'member' || 
-             result.result.status === 'administrator' || 
-             result.result.status === 'creator');
-        
-        if (!isMember) {
-            return { success: false, error: 'You are not a member of this channel' };
-        }
-        
-        // إذا كان المستخدم عضوًا، تحديث بيانات المهمة
-        completedTasks[taskId] = true;
-        await handleDbUpdate(env, `users/${userId}`, { 
-            completedTasks: completedTasks,
-            dogsBalance: (userData.dogsBalance || 0) + TASK_CHANNEL_REWARD
-        });
-        
-        // تحديث المهمة في قاعدة البيانات
-        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
-        if (taskResult.success && taskResult.data) {
-            const task = taskResult.data;
-            if (task.remaining !== undefined && task.remaining > 0) {
-                await handleDbUpdate(env, `tasks/${taskId}`, { 
-                    remaining: task.remaining - 1 
-                });
-            }
-        }
-        
-        // إضافة إلى سجل المعاملات
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `Joined Telegram Channel: ${channelUsername}`,
-            amount: TASK_CHANNEL_REWARD,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        return {
-            success: true,
-            data: {
-                verified: true,
-                reward: TASK_CHANNEL_REWARD,
-                newBalance: (userData.dogsBalance || 0) + TASK_CHANNEL_REWARD
-            }
-        };
-        
-    } catch (error) {
-        console.error('Verify task channel error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// دالة للتحقق من عضوية Telegram بشكل عام
-async function handleVerifyTelegramMembership(env, userId, data) {
-    try {
-        const { channelUsername } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const botToken = env.TELEGRAM_BOT_TOKEN || '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI';
-        
-        const chatMemberUrl = `https://api.telegram.org/bot${botToken}/getChatMember`;
-        
-        const response = await fetch(chatMemberUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                chat_id: channelUsername,
-                user_id: parseInt(userId)
-            })
-        });
-        
-        if (!response.ok) {
-            return { 
-                success: false, 
-                error: 'Failed to verify membership',
-                details: await response.text()
-            };
-        }
-        
-        const result = await response.json();
-        
-        const isMember = result.ok && 
-            (result.result.status === 'member' || 
-             result.result.status === 'administrator' || 
-             result.result.status === 'creator');
-        
-        return {
-            success: true,
-            data: {
-                isMember: isMember,
-                channelUsername: channelUsername,
-                userId: userId,
-                status: isMember ? 'member' : 'not_member'
-            }
-        };
-        
-    } catch (error) {
-        console.error('Verify telegram membership error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleSpinSlots(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        if ((userData.extraSpins || 0) <= 0) {
-            return { success: false, error: 'No spins left' };
-        }
-        
-        const newSpins = (userData.extraSpins || 1) - 1;
-        await handleDbUpdate(env, `users/${userId}`, { extraSpins: newSpins });
-        
-        const symbols = ['🌟', '🪐', '💫', '⭐', '🚀', '🌌'];
-        const results = [
-            symbols[Math.floor(Math.random() * symbols.length)],
-            symbols[Math.floor(Math.random() * symbols.length)],
-            symbols[Math.floor(Math.random() * symbols.length)]
-        ];
-        
-        let winAmount = 0;
-        const resultString = results.join('');
-        
-        if (resultString === '🌟🌟🌟') winAmount = 10000;
-        else if (resultString === '🪐🪐🪐') winAmount = 5000;
-        else if (resultString === '💫💫💫') winAmount = 2500;
-        else if (resultString === '⭐⭐⭐') winAmount = 1200;
-        else if (results[0] === '🌟' && results[1] === '🌟') winAmount = 700;
-        else if (results[1] === '🌟' && results[2] === '🌟') winAmount = 700;
-        else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) winAmount = 500;
-        
-        if (winAmount > 0) {
-            const newBalance = userData.dogsBalance + winAmount;
-            await handleDbUpdate(env, `users/${userId}`, { dogsBalance: newBalance });
-            
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'earn',
-                description: `Galaxy Slots Win (${resultString})`,
-                amount: winAmount,
-                currency: 'GLX',
-                date: new Date().toISOString()
-            });
-            
-            // جلب بيانات المستخدم المحدثة
-            const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-            const updatedUserData = updatedUserResult.data || userData;
-            
-            return {
-                success: true,
-                data: {
-                    results: results,
-                    winAmount: winAmount,
-                    newBalance: updatedUserData.dogsBalance,
-                    newSpins: newSpins
-                }
-            };
-        } else {
-            // جلب بيانات المستخدم المحدثة
-            const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-            const updatedUserData = updatedUserResult.data || userData;
-            
-            return {
-                success: true,
-                data: {
-                    results: results,
-                    winAmount: 0,
-                    newBalance: updatedUserData.dogsBalance,
-                    newSpins: newSpins
-                }
-            };
-        }
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleAddExtraSpin(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        const newSpins = (userData.extraSpins || 0) + 1;
-        await handleDbUpdate(env, `users/${userId}`, { extraSpins: newSpins });
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: 'Extra Spin from Ad',
-            amount: 1,
-            currency: 'Spin',
-            date: new Date().toISOString()
-        });
-        
-        return {
-            success: true,
-            data: {
-                newSpins: newSpins
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleClaimDailyBonus(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        const now = Date.now();
-        const msInDay = 86400000;
-        
-        let streak = userData.dailyStreak || 0;
-        const lastClaim = userData.lastDailyClaim || 0;
-        
-        if (now - lastClaim > 172800000) {
-            streak = 0;
-        }
-        
-        const rewards = [2000, 3000, 5000, 7000, 9000, 12000, 15000];
-        const reward = rewards[Math.min(streak, rewards.length - 1)] || 100;
-        
-        const updates = {
-            lastDailyClaim: now,
-            dailyStreak: streak + 1,
-            dogsBalance: userData.dogsBalance + reward
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `Daily Login Day ${streak + 1}`,
-            amount: reward,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || userData;
-        
-        return {
-            success: true,
-            data: {
-                reward: reward,
-                lastDailyClaim: now,
-                dailyStreak: streak + 1,
-                newBalance: updatedUserData.dogsBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetTransactionHistory(env, userId, limit = 50) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const historyResult = await handleDbGet(env, `users/${userId}/history`);
-        const historyData = historyResult.data || {};
-        
-        const historyArray = Object.values(historyData)
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .slice(0, limit);
-        
-        return {
-            success: true,
-            data: {
-                history: historyArray
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetUserWithdrawals(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const withdrawalsResult = await handleDbGet(env, 'withdrawals');
-        const withdrawalsData = withdrawalsResult.data || {};
-        
-        const userWithdrawals = [];
-        
-        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
-            if (withdrawal.userId === userId) {
-                userWithdrawals.push({
-                    key: key,
-                    ...withdrawal
-                });
-            }
-        }
-        
-        userWithdrawals.sort((a, b) => b.timestamp - a.timestamp);
-        
-        return {
-            success: true,
-            data: {
-                withdrawals: userWithdrawals
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetWithdrawalHistory(env) {
-    try {
-        const withdrawalsResult = await handleDbGet(env, 'withdrawals/completed');
-        const withdrawalsData = withdrawalsResult.data || {};
-        
-        const withdrawals = [];
-        
-        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
-            if (withdrawal.status === 'completed' || withdrawal.processed === true) {
-                const userResult = await handleDbGet(env, `users/${withdrawal.userId}`);
-                if (userResult.success && userResult.data) {
-                    // تخطي المستخدمين المحظورين
-                    if (userResult.data.isBlocked) continue;
-                    
-                    withdrawals.push({
-                        ...withdrawal,
-                        key: key,
-                        name: userResult.data.name || 'Anonymous',
-                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'
-                    });
-                }
-            }
-        }
-        
-        withdrawals.sort((a, b) => b.timestamp - a.timestamp);
-        
-        return {
-            success: true,
-            data: {
-                withdrawals: withdrawals.slice(0, 50)
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetWithdrawalStats(env) {
-    try {
-        const withdrawalsResult = await handleDbGet(env, 'withdrawals');
-        const withdrawalsData = withdrawalsResult.data || {};
-        
-        let completedCount = 0;
-        let totalPaid = 0;
-        let pendingCount = 0;
-        
-        for (const [key, withdrawal] of Object.entries(withdrawalsData)) {
-            if (withdrawal.status === 'completed' || withdrawal.processed === true) {
-                completedCount++;
-                totalPaid += parseFloat(withdrawal.amount || 0);
-            } else if (withdrawal.status === 'pending') {
-                pendingCount++;
-            }
-        }
-        
-        return {
-            success: true,
-            data: {
-                completedCount: completedCount,
-                totalPaid: totalPaid.toFixed(4),
-                pendingCount: pendingCount,
-                totalWithdrawals: Object.keys(withdrawalsData).length
-            }
-        };
-    } catch (error) {
-        console.error('Get withdrawal stats error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetReferredUsers(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        const referredUsers = userData.referredUsers || [];
-        
-        const referredUsersData = [];
-        
-        for (const referredUserId of referredUsers) {
-            const referredUserResult = await handleDbGet(env, `users/${referredUserId}`);
-            if (referredUserResult.success && referredUserResult.data) {
-                referredUsersData.push({
-                    userId: referredUserId,
-                    name: referredUserResult.data.name || 'Anonymous User',
-                    photoUrl: referredUserResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                    joinDate: referredUserResult.data.joinDate,
-                    dogsBalance: referredUserResult.data.dogsBalance || 0
-                });
-            }
-        }
-        
-        return {
-            success: true,
-            data: {
-                referredUsers: referredUsersData
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetTasks(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const tasksResult = await handleDbGet(env, 'tasks');
-        const tasksData = tasksResult.data || {};
-        
-        const activeTasks = [];
-        
-        for (const [taskId, task] of Object.entries(tasksData)) {
-            if (task.status === 'active' && (task.remaining === undefined || task.remaining > 0)) {
-                activeTasks.push({
-                    id: taskId,
-                    ...task
-                });
-            }
-        }
-        
-        return {
-            success: true,
-            data: {
-                tasks: activeTasks
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleVerifyTaskCompletion(env, userId, data) {
-    try {
-        const { taskId, reward, title } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        const taskResult = await handleDbGet(env, `tasks/${taskId}`);
-        if (!taskResult.success || !taskResult.data) {
-            return { success: false, error: 'Task not found' };
-        }
-        
-        const task = taskResult.data;
-        
-        const completedTasks = userData.completedTasks || {};
-        if (completedTasks[taskId]) {
-            return { success: false, error: 'Task already completed' };
-        }
-        
-        if (task.remaining !== undefined && task.remaining <= 0) {
-            return { success: false, error: 'No rewards left for this task' };
-        }
-        
-        const rewardAmount = parseInt(reward);
-        
-        // التحقق من أن مكافأة المهمة تطابق القيمة المخزنة
-        if (task.reward && rewardAmount !== task.reward) {
-            return { 
-                success: false, 
-                error: `Invalid task reward: Expected ${task.reward}, got ${rewardAmount}` 
-            };
-        }
-        
-        const newBalance = userData.dogsBalance + rewardAmount;
-        
-        const updates = {};
-        if (task.remaining !== undefined) {
-            updates.remaining = task.remaining - 1;
-        }
-        
-        const userUpdates = {
-            dogsBalance: newBalance
-        };
-        
-        completedTasks[taskId] = true;
-        userUpdates.completedTasks = completedTasks;
-        
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        if (Object.keys(updates).length > 0) {
-            await handleDbUpdate(env, `tasks/${taskId}`, updates);
-        }
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `Mission: ${title}`,
-            amount: rewardAmount,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || userData;
-        
-        return {
-            success: true,
-            data: {
-                newBalance: updatedUserData.dogsBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleReferral(env, userId, referrerId) {
-    try {
-        if (!referrerId || referrerId === userId) {
-            return { success: false, error: 'Invalid referrer' };
-        }
-        
-        // التحقق من حظر المستخدمين
-        const isUserBlocked = await checkUserBlocked(env, userId);
-        const isReferrerBlocked = await checkUserBlocked(env, referrerId);
-        
-        if (isUserBlocked || isReferrerBlocked) {
-            return { success: false, error: 'Account blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (userResult.success && userResult.data && userResult.data.referrer) {
-            return { success: false, error: 'Already referred' };
-        }
-        
-        await handleDbUpdate(env, `users/${userId}`, { referrer: referrerId, joinDate: Date.now() });
-        
-        const referrerResult = await handleDbGet(env, `users/${referrerId}`);
-        if (!referrerResult.success || !referrerResult.data) {
-            return { success: true, data: { referred: true } };
-        }
-        
-        const referrerData = referrerResult.data;
-        
-        const referredUsers = referrerData.referredUsers || [];
-        if (!referredUsers.includes(userId)) {
-            referredUsers.push(userId);
-        }
-        
-        const updates = {
-            referredUsers: referredUsers,
-            referrals: (referrerData.referrals || 0) + 1,
-            dogsBalance: (referrerData.dogsBalance || 0) + 500
-        };
-        
-        await handleDbUpdate(env, `users/${referrerId}`, updates);
-        
-        await handleDbPush(env, `users/${referrerId}/history`, {
-            type: 'referral',
-            description: 'Friend Invited',
-            amount: 500,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        return {
-            success: true,
-            data: { referred: true }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleAdClick(env, userId, adType, reward) {
-    try {
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        const adCountField = `ads${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
-        const currentCount = userData[adCountField] || 0;
-        
-        const updates = {
-            [adCountField]: currentCount + 1,
-            adsWatched: (userData.adsWatched || 0) + 1,
-            dogsBalance: (userData.dogsBalance || 0) + reward
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `${adType} Ad Reward`,
-            amount: reward,
-            currency: 'GLX',
-            date: new Date().toISOString()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
-        
-        return {
-            success: true,
-            data: {
-                [adCountField]: currentCount + 1,
-                adsWatched: updates.adsWatched,
-                newBalance: updatedUserData.dogsBalance
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleSubmitWithdrawal(env, userId, data) {
-    try {
-        const { method, account, amount, maskedAccount, memo } = data;
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        const userData = userResult.data;
-        
-        if ((userData.tonBalance || 0) < amount) {
-            return { success: false, error: 'Insufficient TON balance' };
-        }
-        
-        const newBalance = (userData.tonBalance || 0) - amount;
-        await handleDbUpdate(env, `users/${userId}`, { tonBalance: newBalance });
-        
-        const withdrawalId = `withdrawal_${Date.now()}`;
-        const withdrawalData = {
-            userId: userId,
-            account: account,
-            maskedAccount: maskedAccount || account,
-            amount: amount,
-            method: method,
-            memo: memo || '',
-            status: 'pending',
-            timestamp: Date.now(),
-            processed: false
-        };
-        
-        await handleDbSet(env, `withdrawals/${withdrawalId}`, withdrawalData);
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'withdraw',
-            description: `${method === 'ton' ? 'TON Wallet' : 'FaucetPay'} Withdrawal`,
-            amount: amount,
-            currency: 'TON',
-            date: new Date().toISOString()
-        });
-        
-        return {
-            success: true,
-            data: {
-                newBalance: newBalance,
-                withdrawalId: withdrawalId
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-async function handleGetLeaderboard(env) {
-    try {
-        const usersResult = await handleDbGet(env, 'users');
-        const usersData = usersResult.data || {};
-        
-        const users = [];
-        
-        for (const [userId, userData] of Object.entries(usersData)) {
-            // تخطي المستخدمين المحظورين من المتصدرين
-            if (userData.isBlocked) continue;
-            
-            users.push({
-                userId: userId,
-                name: userData.name || 'Anonymous',
-                photoUrl: userData.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                dogsBalance: userData.dogsBalance || 0,
-                referrals: userData.referrals || 0
-            });
-        }
-        
-        const byInvites = [...users].sort((a, b) => b.referrals - a.referrals);
-        
-        const byGLX = [...users].sort((a, b) => b.dogsBalance - a.dogsBalance);
-        
-        return {
-            success: true,
-            data: {
-                byInvites: byInvites.slice(0, 50),
-                byGLX: byGLX.slice(0, 50)
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// وظيفة جديدة: جلب بيانات المسابقة فقط
-async function handleGetCompetitionData(env, userId = null) {
-    try {
-        // التحقق من الحظر إذا كان هناك معرف مستخدم
-        if (userId) {
-            const isBlocked = await checkUserBlocked(env, userId);
-            if (isBlocked) {
-                return { success: false, error: 'Your account has been blocked for violating system rules' };
-            }
-        }
-        
-        // أولاً: ضمان وجود مسابقة نشطة
-        const competitionData = await ensureAndGetCompetition(env, userId);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'Failed to load competition data'
-            };
-        }
-        
-        // جلب المتصدرين
-        const userTickets = competitionData.userTickets || {};
-        const leaderboard = [];
-        
-        for (const [uId, tickets] of Object.entries(userTickets)) {
-            if (tickets > 0) {
-                const userResult = await handleDbGet(env, `users/${uId}`);
-                if (userResult.success && userResult.data) {
-                    // تخطي المستخدمين المحظورين من المتصدرين
-                    if (userResult.data.isBlocked) continue;
-                    
-                    leaderboard.push({
-                        userId: uId,
-                        name: userResult.data.name || 'Anonymous',
-                        photoUrl: userResult.data.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png',
-                        tickets: tickets
-                    });
-                }
-            }
-        }
-        
-        leaderboard.sort((a, b) => b.tickets - a.tickets);
-        
-        return {
-            success: true,
-            data: {
-                competitionData: {
-                    isActive: competitionData.isActive,
-                    startTime: competitionData.startTime,
-                    endTime: competitionData.endTime,
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    timeRemaining: competitionData.timeRemaining,
-                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
-                    isActiveNow: competitionData.isActiveNow
-                },
-                userTickets: userId ? competitionData.userTicketCount || 0 : 0,
-                leaderboard: leaderboard.slice(0, 10)
-            }
-        };
-    } catch (error) {
-        console.error('Error getting competition data:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// وظيفة جديدة: جلب بيانات المستخدم المحدثة
-async function handleGetUserData(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { success: false, error: 'User not found' };
-        }
-        
-        // جلب بيانات المسابقة الحالية للمستخدم
-        const competitionData = await ensureAndGetCompetition(env, userId);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'Failed to load competition data'
-            };
-        }
-        
-        // التأكد من تحديث حقل competitionTickets في بيانات المستخدم
-        const currentUserTickets = competitionData.userTicketCount || 0;
-        if (userResult.data.competitionTickets !== currentUserTickets) {
-            await handleDbUpdate(env, `users/${userId}`, { 
-                competitionTickets: currentUserTickets,
-                lastTicketSync: Date.now()
-            });
-        }
-        
-        return {
-            success: true,
-            data: {
-                userData: {
-                    ...userResult.data,
-                    competitionTickets: currentUserTickets
-                },
-                contest: {
-                    yourTickets: currentUserTickets,
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    isActive: competitionData.isActiveNow,
-                    endTime: competitionData.endTime,
-                    startTime: competitionData.startTime,
-                    timeRemaining: competitionData.timeRemaining,
-                    timeRemainingFormatted: competitionData.timeRemainingFormatted
-                }
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// وظيفة جديدة: تحديث المسابقة يدويًا
-async function handleRefreshCompetition(env) {
-    try {
-        const competitionData = await ensureAndGetCompetition(env);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'Failed to refresh competition'
-            };
-        }
-        
-        return {
-            success: true,
-            data: {
-                competitionData: {
-                    isActive: competitionData.isActive,
-                    startTime: competitionData.startTime,
-                    endTime: competitionData.endTime,
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    timeRemaining: competitionData.timeRemaining,
-                    timeRemainingFormatted: competitionData.timeRemainingFormatted,
-                    isActiveNow: competitionData.isActiveNow
-                }
-            }
-        };
-    } catch (error) {
-        console.error('Error refreshing competition:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// وظيفة جديدة: مزامنة تذاكر المسابقة للمستخدم
-async function handleSyncUserCompetitionTickets(env, userId) {
-    try {
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return { success: false, error: 'Your account has been blocked for violating system rules' };
-        }
-        
-        // جلب بيانات المسابقة الحالية
-        const competitionData = await ensureAndGetCompetition(env, userId);
-        
-        if (!competitionData) {
-            return {
-                success: false,
-                error: 'Failed to load competition data'
-            };
-        }
-        
-        const currentTickets = competitionData.userTicketCount || 0;
-        
-        // تحديث بيانات المستخدم
-        await handleDbUpdate(env, `users/${userId}`, {
-            competitionTickets: currentTickets,
-            lastTicketSync: Date.now()
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        
-        return {
-            success: true,
-            data: {
-                competitionTickets: currentTickets,
-                userData: userResult.data,
-                contest: {
-                    yourTickets: currentTickets,
-                    totalTickets: competitionData.totalTickets || 0,
-                    prizePool: competitionData.prizePool || 0,
-                    isActive: competitionData.isActiveNow
-                }
-            }
-        };
-    } catch (error) {
-        console.error('Error syncing user competition tickets:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
+    </script>
+</body>
+</html>
