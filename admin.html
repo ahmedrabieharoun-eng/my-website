@@ -89,13 +89,15 @@ export default {
                         
                         return new Response(JSON.stringify({
                             success: false,
-                            error: 'Device already registered with multiple accounts - All accounts have been blocked',
+                            error: 'ACCOUNT_BLOCKED',
+                            errorCode: 'DEVICE_MULTI_ACCOUNT_BLOCKED',
                             data: {
                                 deviceAlreadyUsed: true,
                                 existingAccounts: fingerprintCheck.existingAccounts,
                                 violationType: 'DEVICE_MULTI_ACCOUNT',
                                 accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                                currentAccountBlocked: true
+                                currentAccountBlocked: true,
+                                blockedMessage: `🚫 Account Blocked\n\nReason: Device multi-account violation\nViolation: DEVICE_MULTI_ACCOUNT\n\nThis decision is final.`
                             }
                         }), {
                             status: 403,
@@ -116,7 +118,7 @@ export default {
             if (blockCheck && blockCheck.isBlocked) {
                 return new Response(JSON.stringify({
                     success: false,
-                    error: 'Your account has been blocked for violating system rules',
+                    error: 'ACCOUNT_BLOCKED',
                     errorCode: 'ACCOUNT_BLOCKED',
                     data: {
                         isBlocked: true,
@@ -125,8 +127,10 @@ export default {
                             violation: blockCheck.violation,
                             appliedAt: blockCheck.appliedAt,
                             permanent: blockCheck.permanent,
-                            details: blockCheck.details
-                        }
+                            details: blockCheck.details,
+                            blockType: blockCheck.permanent ? 'PERMANENT_BLOCK' : 'TEMPORARY_BLOCK'
+                        },
+                        blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\nDetails: ${blockCheck.details}\n\nThis decision is final.`
                     }
                 }), {
                     status: 403,
@@ -164,9 +168,18 @@ export default {
                 
                 return new Response(JSON.stringify({
                     success: false,
-                    error: 'Invalid request detected - Account has been blocked',
+                    error: 'ACCOUNT_BLOCKED',
                     errorCode: 'REQUEST_VALIDATION_FAILED',
-                    details: validationResult.details
+                    data: {
+                        isBlocked: true,
+                        blockDetails: {
+                            reason: 'System violation detected',
+                            violation: validationResult.violation,
+                            details: validationResult.details,
+                            permanent: true
+                        },
+                        blockedMessage: `🚫 Account Blocked\n\nReason: System violation detected\nViolation: ${validationResult.violation}\n\nThis decision is final.`
+                    }
                 }), {
                     status: 400,
                     headers: { 'Content-Type': 'application/json' }
@@ -304,11 +317,12 @@ export default {
                     if (adBlockCheck && adBlockCheck.isBlocked) {
                         return new Response(JSON.stringify({
                             success: false,
-                            error: 'Your account has been blocked for violating system rules',
+                            error: 'ACCOUNT_BLOCKED',
                             errorCode: 'ACCOUNT_BLOCKED',
                             data: {
                                 isBlocked: true,
-                                blockDetails: adBlockCheck
+                                blockDetails: adBlockCheck,
+                                blockedMessage: `🚫 Account Blocked\n\nReason: ${adBlockCheck.reason}\nViolation: ${adBlockCheck.violation}\n\nThis decision is final.`
                             }
                         }), {
                             status: 403,
@@ -333,8 +347,17 @@ export default {
                         
                         return new Response(JSON.stringify({
                             success: false,
-                            error: 'Invalid ad request detected - Account has been blocked',
-                            errorCode: 'AD_VALIDATION_FAILED'
+                            error: 'ACCOUNT_BLOCKED',
+                            errorCode: 'AD_VALIDATION_FAILED',
+                            data: {
+                                isBlocked: true,
+                                blockDetails: {
+                                    reason: 'Invalid ad request - System violation',
+                                    violation: adValidation.violation,
+                                    permanent: true
+                                },
+                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: ${adValidation.violation}\n\nThis decision is final.`
+                            }
                         }), {
                             status: 400,
                             headers: { 'Content-Type': 'application/json' }
@@ -516,14 +539,15 @@ async function handleCheckDeviceFingerprint(env, userId, data) {
             
             return {
                 success: false,
-                error: 'Device already registered with multiple accounts - All accounts have been blocked',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'DEVICE_MULTI_ACCOUNT_BLOCKED',
                 data: {
                     deviceAlreadyUsed: true,
                     existingAccounts: fingerprintCheck.existingAccounts,
                     violationType: 'DEVICE_MULTI_ACCOUNT',
                     accountsBlocked: fingerprintCheck.existingAccounts.length + 1, // +1 للحساب الحالي
-                    currentAccountBlocked: true
+                    currentAccountBlocked: true,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: Device multi-account violation\nViolation: DEVICE_MULTI_ACCOUNT\n\nThis decision is final.`
                 }
             };
         }
@@ -559,11 +583,12 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -598,14 +623,15 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
             
             return {
                 success: false,
-                error: 'Device already registered with multiple accounts - All accounts have been blocked',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'DEVICE_MULTI_ACCOUNT_BLOCKED',
                 data: {
                     deviceAlreadyUsed: true,
                     existingAccounts: fingerprintCheck.existingAccounts,
                     violationType: 'DEVICE_MULTI_ACCOUNT',
                     accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                    currentAccountBlocked: true
+                    currentAccountBlocked: true,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: Device multi-account violation\nViolation: DEVICE_MULTI_ACCOUNT\n\nThis decision is final.`
                 }
             };
         }
@@ -667,11 +693,12 @@ async function handlePeriodicDeviceCheck(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -699,7 +726,8 @@ async function handlePeriodicDeviceCheck(env, userId, data) {
                     existingAccounts: fingerprintCheck.existingAccounts,
                     violationType: 'SESSION_MULTI_ACCOUNT_DETECTED',
                     actionRequired: 'SESSION_TERMINATION',
-                    currentAccountBlocked: true
+                    currentAccountBlocked: true,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: Session multi-account violation\nViolation: PERIODIC_DEVICE_MULTI_ACCOUNT\n\nThis decision is final.`
                 }
             };
         }
@@ -1169,20 +1197,13 @@ async function validateSwapRequest(env, userId, data) {
     return { valid: true };
 }
 
-// التحقق من صحة طلب الإيداع
+// التحقق من صحة طلب الإيداع (تم إزالة التحقق من memo)
 async function validateDepositRequest(env, userId, data) {
     const { memo, amount } = data;
     
-    // التحقق من صحة تنسيق memo
-    if (!memo || typeof memo !== 'string') {
-        return {
-            valid: false,
-            violation: 'INVALID_DEPOSIT_MEMO',
-            details: 'Invalid deposit memo format'
-        };
-    }
+    // تم إزالة التحقق من صحة تنسيق memo بناءً على طلبك
     
-    // التحقق من أن المبلغ إيجابي
+    // التحقق من أن المبلغ إيجابي (يبقى كما هو)
     if (parseFloat(amount) <= 0) {
         return {
             valid: false,
@@ -1232,7 +1253,7 @@ async function checkDuplicateTimestamp(env, userId, timestamp) {
     }
 }
 
-// التحقق من حظر المستخدم
+// التحقق من حظر المستخدم (محسّن لإرجاع استجابة واضحة)
 async function checkUserBlocked(env, userId) {
     try {
         const blockResult = await handleDbGet(env, `blocks/${userId}`);
@@ -1248,7 +1269,8 @@ async function checkUserBlocked(env, userId) {
                     appliedAt: blockData.appliedAt,
                     expiresAt: blockData.expiresAt,
                     permanent: blockData.permanent || false,
-                    details: blockData.details || 'No details provided'
+                    details: blockData.details || 'No details provided',
+                    blockType: 'TEMPORARY_BLOCK'
                 };
             } else if (blockData.permanent) {
                 return {
@@ -1257,7 +1279,8 @@ async function checkUserBlocked(env, userId) {
                     violation: blockData.violation || 'UNKNOWN',
                     appliedAt: blockData.appliedAt,
                     permanent: true,
-                    details: blockData.details || 'Account permanently blocked'
+                    details: blockData.details || 'Account permanently blocked',
+                    blockType: 'PERMANENT_BLOCK'
                 };
             }
             
@@ -1822,7 +1845,7 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
         if (blockCheck && blockCheck.isBlocked) {
             return {
                 success: false,
-                error: `Your account has been blocked for violating system rules`,
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: {
                     isBlocked: true,
@@ -1831,9 +1854,10 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
                         violation: blockCheck.violation,
                         appliedAt: blockCheck.appliedAt,
                         permanent: blockCheck.permanent,
-                        details: blockCheck.details
+                        details: blockCheck.details,
+                        blockType: blockCheck.permanent ? 'PERMANENT_BLOCK' : 'TEMPORARY_BLOCK'
                     },
-                    message: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\nDetails: ${blockCheck.details}\n\nThis decision is final.`
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\nDetails: ${blockCheck.details}\n\nThis decision is final.`
                 }
             };
         }
@@ -1879,14 +1903,15 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
                 
                 return {
                     success: false,
-                    error: 'Device already registered with multiple accounts - All accounts have been blocked',
+                    error: 'ACCOUNT_BLOCKED',
                     errorCode: 'DEVICE_MULTI_ACCOUNT_BLOCKED',
                     data: {
                         deviceAlreadyUsed: true,
                         existingAccounts: fingerprintCheck.existingAccounts,
                         violationType: 'DEVICE_MULTI_ACCOUNT',
                         accountsBlocked: fingerprintCheck.existingAccounts.length + 1,
-                        currentAccountBlocked: true
+                        currentAccountBlocked: true,
+                        blockedMessage: `🚫 Account Blocked\n\nReason: Device multi-account violation\nViolation: DEVICE_MULTI_ACCOUNT\n\nThis decision is final.`
                     }
                 };
             }
@@ -1996,11 +2021,12 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
                 if (blockStatus && blockStatus.isBlocked) {
                     return {
                         success: false,
-                        error: 'Your account has been blocked for violating system rules',
+                        error: 'ACCOUNT_BLOCKED',
                         errorCode: 'ACCOUNT_BLOCKED',
                         data: { 
                             isBlocked: true,
-                            blockDetails: blockStatus
+                            blockDetails: blockStatus,
+                            blockedMessage: `🚫 Account Blocked\n\nReason: ${blockStatus.reason}\nViolation: ${blockStatus.violation}\n\nThis decision is final.`
                         }
                     };
                 } else {
@@ -2194,11 +2220,12 @@ async function handleExecuteSwap(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2316,11 +2343,12 @@ async function handleVerifyDeposit(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2383,11 +2411,12 @@ async function handleBuyTickets(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2627,11 +2656,12 @@ async function handleFlipCoin(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2718,11 +2748,12 @@ async function handleRedeemPromoCode(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2824,11 +2855,12 @@ async function handleCreateTask(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -2971,11 +3003,12 @@ async function handleVerifyTaskChannel(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3216,10 +3249,15 @@ async function handleVerifyTaskChannel(env, userId, data) {
                     newBalance: newBalance,
                     channel: cleanChannelUsername,
                     membershipStatus: memberStatus,
-                    message: 'Successfully verified channel membership! Task completed.',
+                    message: 'Channel membership verified successfully! Task completed.',
                     taskStatus: 'completed',
                     taskId: taskId,
-                    completionTime: Date.now()
+                    completionTime: Date.now(),
+                    updateData: {
+                        balance: newBalance,
+                        taskCompleted: true,
+                        taskId: taskId
+                    }
                 }
             };
             
@@ -3368,11 +3406,12 @@ async function handleVerifyTelegramMembership(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3454,11 +3493,12 @@ async function handleSpinSlots(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3559,11 +3599,12 @@ async function handleAddExtraSpin(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3612,11 +3653,12 @@ async function handleClaimDailyBonus(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3689,11 +3731,12 @@ async function handleGetTransactionHistory(env, userId, limit = 50) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3727,11 +3770,12 @@ async function handleGetUserWithdrawals(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3852,11 +3896,12 @@ async function handleGetReferredUsers(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3910,11 +3955,12 @@ async function handleGetTasks(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -3957,11 +4003,12 @@ async function handleVerifyTaskCompletion(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -4080,12 +4127,13 @@ async function handleReferral(env, userId, referrerId) {
         if ((userBlockCheck && userBlockCheck.isBlocked) || (referrerBlockCheck && referrerBlockCheck.isBlocked)) {
             return { 
                 success: false, 
-                error: 'Account blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
                     userBlocked: userBlockCheck ? userBlockCheck.isBlocked : false,
-                    referrerBlocked: referrerBlockCheck ? referrerBlockCheck.isBlocked : false
+                    referrerBlocked: referrerBlockCheck ? referrerBlockCheck.isBlocked : false,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${userBlockCheck?.reason || referrerBlockCheck?.reason}\nViolation: ${userBlockCheck?.violation || referrerBlockCheck?.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -4207,11 +4255,12 @@ async function handleSubmitWithdrawal(env, userId, data) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -4326,11 +4375,12 @@ async function handleGetCompetitionData(env, userId = null) {
             if (blockCheck && blockCheck.isBlocked) {
                 return { 
                     success: false, 
-                    error: 'Your account has been blocked for violating system rules',
+                    error: 'ACCOUNT_BLOCKED',
                     errorCode: 'ACCOUNT_BLOCKED',
                     data: { 
                         isBlocked: true,
-                        blockDetails: blockCheck 
+                        blockDetails: blockCheck,
+                        blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                     }
                 };
             }
@@ -4405,11 +4455,12 @@ async function handleGetUserData(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
@@ -4517,11 +4568,12 @@ async function handleSyncUserCompetitionTickets(env, userId) {
         if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
-                error: 'Your account has been blocked for violating system rules',
+                error: 'ACCOUNT_BLOCKED',
                 errorCode: 'ACCOUNT_BLOCKED',
                 data: { 
                     isBlocked: true,
-                    blockDetails: blockCheck 
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`
                 }
             };
         }
