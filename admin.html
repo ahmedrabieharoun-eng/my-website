@@ -112,15 +112,28 @@ export default {
             
             // ==================== نظام الحظر التلقائي ====================
             // التحقق من الحظر قبل معالجة أي طلب
-            const isBlocked = await checkUserBlocked(env, userId);
-            if (isBlocked) {
+            const blockCheck = await checkUserBlocked(env, userId);
+            if (blockCheck && blockCheck.isBlocked) {
                 return new Response(JSON.stringify({
                     success: false,
                     error: 'Your account has been blocked for violating system rules',
-                    errorCode: 'ACCOUNT_BLOCKED'
+                    errorCode: 'ACCOUNT_BLOCKED',
+                    data: {
+                        isBlocked: true,
+                        blockDetails: {
+                            reason: blockCheck.reason,
+                            violation: blockCheck.violation,
+                            appliedAt: blockCheck.appliedAt,
+                            permanent: blockCheck.permanent,
+                            details: blockCheck.details
+                        }
+                    }
                 }), {
                     status: 403,
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
                 });
             }
             
@@ -288,11 +301,15 @@ export default {
                 case 'handleAdClick':
                     // التحقق من الحظر قبل معالجة طلب الإعلان
                     const adBlockCheck = await checkUserBlocked(env, userId);
-                    if (adBlockCheck) {
+                    if (adBlockCheck && adBlockCheck.isBlocked) {
                         return new Response(JSON.stringify({
                             success: false,
                             error: 'Your account has been blocked for violating system rules',
-                            errorCode: 'ACCOUNT_BLOCKED'
+                            errorCode: 'ACCOUNT_BLOCKED',
+                            data: {
+                                isBlocked: true,
+                                blockDetails: adBlockCheck
+                            }
                         }), {
                             status: 403,
                             headers: { 'Content-Type': 'application/json' }
@@ -538,13 +555,16 @@ async function handleSaveDeviceFingerprint(env, userId, data, clientIp) {
         }
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
                 errorCode: 'ACCOUNT_BLOCKED',
-                data: { isBlocked: true }
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -643,13 +663,16 @@ async function handlePeriodicDeviceCheck(env, userId, data) {
         }
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
                 errorCode: 'ACCOUNT_BLOCKED',
-                data: { isBlocked: true }
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -1218,9 +1241,24 @@ async function checkUserBlocked(env, userId) {
             
             // التحقق من انتهاء مدة الحظر
             if (blockData.expiresAt && blockData.expiresAt > Date.now()) {
-                return true;
+                return {
+                    isBlocked: true,
+                    reason: blockData.reason || 'Account blocked',
+                    violation: blockData.violation || 'UNKNOWN',
+                    appliedAt: blockData.appliedAt,
+                    expiresAt: blockData.expiresAt,
+                    permanent: blockData.permanent || false,
+                    details: blockData.details || 'No details provided'
+                };
             } else if (blockData.permanent) {
-                return true;
+                return {
+                    isBlocked: true,
+                    reason: blockData.reason || 'Permanently blocked',
+                    violation: blockData.violation || 'UNKNOWN',
+                    appliedAt: blockData.appliedAt,
+                    permanent: true,
+                    details: blockData.details || 'Account permanently blocked'
+                };
             }
             
             // إذا انتهت مدة الحظر المؤقت، إزالته
@@ -1779,6 +1817,27 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
         const deviceFingerprint = data.deviceFingerprint;
         const fullName = `${user.first_name} ${user.last_name || ''}`.trim();
         
+        // التحقق من الحظر مع تفاصيل
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
+            return {
+                success: false,
+                error: `Your account has been blocked for violating system rules`,
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: {
+                    isBlocked: true,
+                    blockDetails: {
+                        reason: blockCheck.reason,
+                        violation: blockCheck.violation,
+                        appliedAt: blockCheck.appliedAt,
+                        permanent: blockCheck.permanent,
+                        details: blockCheck.details
+                    },
+                    message: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\nDetails: ${blockCheck.details}\n\nThis decision is final.`
+                }
+            };
+        }
+        
         // استخراج صورة المستخدم من بيانات Telegram
         let photoUrl = 'https://i.ibb.co/tTkJX1Qy/logo.png'; // صورة افتراضية
         
@@ -1798,17 +1857,6 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
             }
         } catch (photoError) {
             console.log('Could not extract user photo:', photoError);
-        }
-        
-        // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
-            return {
-                success: false,
-                error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED',
-                data: { isBlocked: true }
-            };
         }
         
         // ==================== التحقق من بصمة الجهاز ====================
@@ -1945,12 +1993,15 @@ async function handleInitializeUser(env, userId, data, telegramData, clientIp) {
             // التحقق من الحظر في بيانات المستخدم
             if (userData.isBlocked) {
                 const blockStatus = await checkUserBlocked(env, userId);
-                if (blockStatus) {
+                if (blockStatus && blockStatus.isBlocked) {
                     return {
                         success: false,
                         error: 'Your account has been blocked for violating system rules',
                         errorCode: 'ACCOUNT_BLOCKED',
-                        data: { isBlocked: true }
+                        data: { 
+                            isBlocked: true,
+                            blockDetails: blockStatus
+                        }
                     };
                 } else {
                     updates.isBlocked = false;
@@ -2139,12 +2190,16 @@ async function handleExecuteSwap(env, userId, data) {
         const { type, amount, tonValue, glxValue } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2257,12 +2312,16 @@ async function handleVerifyDeposit(env, userId, data) {
         const { memo, amount } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2320,12 +2379,16 @@ async function handleBuyTickets(env, userId, data) {
         const { tickets, totalCost } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2560,12 +2623,16 @@ async function handleFlipCoin(env, userId, data) {
         const { betAmount, chosenSide } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2647,12 +2714,16 @@ async function handleRedeemPromoCode(env, userId, data) {
         const { code } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2749,15 +2820,20 @@ async function handleCreateTask(env, userId, data) {
         const { taskId, name, link, category, count, cost } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
+        // إنشاء مهمة جديدة بحالة pending payment
         const newTask = {
             id: taskId,
             title: name,
@@ -2765,19 +2841,36 @@ async function handleCreateTask(env, userId, data) {
             link: link,
             reward: 2000,
             category: 'community',
-            total: count,
-            remaining: count,
-            status: 'pending',
+            total: parseInt(count),
+            remaining: parseInt(count),
+            status: 'pending_payment', // حالة جديدة للانتظار
             creator: userId,
-            cost: cost,
-            createdAt: Date.now()
+            cost: parseFloat(cost),
+            createdAt: Date.now(),
+            paymentVerified: false,
+            paymentCheckCount: 0,
+            lastPaymentCheck: null
         };
         
         await handleDbSet(env, `tasks/${taskId}`, newTask);
         
+        // تسجيل طلب إنشاء المهمة
+        await handleDbPush(env, `task_requests/${taskId}`, {
+            userId: userId,
+            taskData: newTask,
+            requestedAt: Date.now(),
+            status: 'awaiting_payment'
+        });
+        
         return {
             success: true,
-            data: { taskId: taskId }
+            data: { 
+                taskId: taskId,
+                status: 'pending_payment',
+                message: 'Task created successfully. Please wait 10 seconds for payment verification.',
+                nextStep: 'verifyPayment',
+                verifyAfter: 10000 // 10 ثوانٍ
+            }
         };
     } catch (error) {
         return {
@@ -2800,24 +2893,61 @@ async function handleVerifyTaskPayment(env, taskId) {
         }
         
         const task = taskResult.data;
+        const now = Date.now();
         
-        if (task.status === 'pending') {
-            await handleDbUpdate(env, `tasks/${taskId}`, { status: 'active' });
+        // تحديث عدد مرات التحقق
+        const checkCount = (task.paymentCheckCount || 0) + 1;
+        
+        await handleDbUpdate(env, `tasks/${taskId}`, { 
+            paymentCheckCount: checkCount,
+            lastPaymentCheck: now
+        });
+        
+        // التحقق اليدوي - في الإصدار الحقيقي، هنا ستتحقق من خدمة الدفع
+        // محاكاة: بعد 10 ثوانٍ من الإنشاء، يتم التحقق تلقائيًا
+        
+        const timeSinceCreation = now - (task.createdAt || 0);
+        
+        if (timeSinceCreation >= 10000) { // 10 ثوانٍ
+            // تم التحقق من الدفع (محاكاة)
+            await handleDbUpdate(env, `tasks/${taskId}`, { 
+                status: 'active',
+                paymentVerified: true,
+                verifiedAt: now,
+                activeSince: now
+            });
+            
+            // تحديث طلب المهمة
+            await handleDbUpdate(env, `task_requests/${taskId}`, {
+                status: 'payment_verified',
+                verifiedAt: now,
+                verifiedBy: 'system_auto'
+            });
             
             return {
                 success: true,
-                data: { verified: true }
-            };
-        } else if (task.status === 'active') {
-            return {
-                success: true,
-                data: { verified: true }
+                data: { 
+                    verified: true,
+                    status: 'active',
+                    message: 'Payment verified successfully. Task is now active.',
+                    taskId: taskId,
+                    verifiedAt: now
+                }
             };
         } else {
-            return { 
-                success: false, 
-                error: 'Payment not found',
-                errorCode: 'PAYMENT_NOT_FOUND'
+            // الانتظار لمزيد من الوقت
+            const timeRemaining = 10000 - timeSinceCreation;
+            
+            return {
+                success: true,
+                data: { 
+                    verified: false,
+                    status: 'pending_payment',
+                    message: 'Payment verification in progress. Please wait...',
+                    timeRemaining: Math.max(0, timeRemaining),
+                    checkCount: checkCount,
+                    nextCheckIn: Math.ceil(timeRemaining / 1000)
+                }
             };
         }
     } catch (error) {
@@ -2837,12 +2967,16 @@ async function handleVerifyTaskChannel(env, userId, data) {
         console.log(`Verifying channel membership for user ${userId} in channel ${channelUsername}`);
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -2863,12 +2997,13 @@ async function handleVerifyTaskChannel(env, userId, data) {
         if (completedTasks[taskId]) {
             return { 
                 success: true,
-                error: 'Task already completed',
-                errorCode: 'TASK_ALREADY_COMPLETED',
                 data: {
                     alreadyCompleted: true,
-                    message: 'You have already completed this task.',
-                    reward: completedTasks[taskId].reward || 0
+                    verified: true,
+                    message: 'Task already completed.',
+                    reward: completedTasks[taskId].reward || 0,
+                    newBalance: userData.dogsBalance,
+                    taskStatus: 'already_completed'
                 }
             };
         }
@@ -2876,12 +3011,10 @@ async function handleVerifyTaskChannel(env, userId, data) {
         // تنظيف اسم القناة
         let cleanChannelUsername = channelUsername;
         
-        // إزالة https://t.me/ إذا موجود
         if (cleanChannelUsername.includes('t.me/')) {
             cleanChannelUsername = cleanChannelUsername.split('t.me/')[1];
         }
         
-        // إزالة @ إذا موجود
         if (cleanChannelUsername.startsWith('@')) {
             cleanChannelUsername = cleanChannelUsername.substring(1);
         }
@@ -2965,12 +3098,15 @@ async function handleVerifyTaskChannel(env, userId, data) {
                     console.error('Fallback verification failed:', fallbackError);
                     return { 
                         success: false, 
-                        error: 'Failed to verify channel membership. Please make sure the bot is an admin in the channel.',
+                        error: 'Failed to verify channel membership. Please make sure you have joined the channel and try again.',
                         errorCode: 'TELEGRAM_API_ERROR',
-                        details: errorText,
-                        debug: {
-                            channelUsername: cleanChannelUsername,
-                            userId: userId
+                        data: {
+                            verificationStatus: 'failed',
+                            errorDetails: errorText,
+                            debug: {
+                                channelUsername: cleanChannelUsername,
+                                userId: userId
+                            }
                         }
                     };
                 }
@@ -2980,25 +3116,112 @@ async function handleVerifyTaskChannel(env, userId, data) {
             
             console.log(`Telegram API result: ${JSON.stringify(telegramResult)}`);
             
-            // معالجة النتيجة
-            const result = await processMembershipResult(
-                env, userId, taskId, cleanChannelUsername, 
-                telegramResult, userData, completedTasks
-            );
-            
-            // إضافة معلومات إضافية للنتيجة
-            if (result.success) {
+            if (!telegramResult.ok) {
                 return {
-                    ...result,
+                    success: false,
+                    error: 'Unable to verify membership. Please try again.',
+                    errorCode: 'TELEGRAM_API_FAILED',
                     data: {
-                        ...result.data,
-                        taskId: taskId,
-                        completedAt: Date.now()
+                        telegramResult: telegramResult,
+                        verificationStatus: 'api_failed'
                     }
                 };
             }
             
-            return result;
+            // التحقق من حالة العضوية بشكل دقيق
+            const memberStatus = telegramResult.result.status;
+            const isMember = memberStatus === 'member' || 
+                           memberStatus === 'administrator' || 
+                           memberStatus === 'creator';
+            
+            console.log(`User ${userId} membership status: ${memberStatus}, isMember: ${isMember}`);
+            
+            if (!isMember) {
+                return { 
+                    success: false, 
+                    error: 'You must join the channel first! Please join the channel and try again.',
+                    errorCode: 'NOT_CHANNEL_MEMBER',
+                    data: {
+                        verificationStatus: 'not_member',
+                        channelUsername: cleanChannelUsername,
+                        currentStatus: memberStatus,
+                        requiredStatus: ['member', 'administrator', 'creator']
+                    }
+                };
+            }
+            
+            // المكافأة من الإعدادات
+            const configResult = await handleGetConfig();
+            const settings = configResult.data?.settings || {};
+            const TASK_CHANNEL_REWARD = settings.taskChannelReward || 2000;
+            
+            // تحديث بيانات المهمة
+            completedTasks[taskId] = {
+                completedAt: Date.now(),
+                channel: cleanChannelUsername,
+                reward: TASK_CHANNEL_REWARD,
+                status: 'completed',
+                verifiedAt: Date.now()
+            };
+            
+            const newBalance = (userData.dogsBalance || 0) + TASK_CHANNEL_REWARD;
+            
+            // تحديث المستخدم
+            await handleDbUpdate(env, `users/${userId}`, { 
+                completedTasks: completedTasks,
+                dogsBalance: newBalance,
+                lastTaskCompletion: Date.now()
+            });
+            
+            // تحديث المهمة في قاعدة البيانات
+            const taskResult = await handleDbGet(env, `tasks/${taskId}`);
+            if (taskResult.success && taskResult.data) {
+                const task = taskResult.data;
+                if (task.remaining !== undefined && task.remaining > 0) {
+                    await handleDbUpdate(env, `tasks/${taskId}`, { 
+                        remaining: task.remaining - 1,
+                        lastCompleted: Date.now(),
+                        lastCompletedBy: userId,
+                        completedCount: (task.completedCount || 0) + 1
+                    });
+                }
+            }
+            
+            // تسجيل في السجل
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'earn',
+                description: `Joined Telegram Channel: ${cleanChannelUsername}`,
+                amount: TASK_CHANNEL_REWARD,
+                currency: 'GLX',
+                date: new Date().toISOString(),
+                taskId: taskId,
+                channel: cleanChannelUsername
+            });
+            
+            // حفظ تفاصيل الإكمال
+            await handleDbSet(env, `tasks/${taskId}/completions/${userId}`, {
+                completedAt: Date.now(),
+                reward: TASK_CHANNEL_REWARD,
+                verified: true,
+                channel: cleanChannelUsername,
+                status: 'completed',
+                userId: userId
+            });
+            
+            return {
+                success: true,
+                data: {
+                    verified: true,
+                    reward: TASK_CHANNEL_REWARD,
+                    newBalance: newBalance,
+                    channel: cleanChannelUsername,
+                    membershipStatus: memberStatus,
+                    message: 'Successfully verified channel membership! Task completed.',
+                    taskStatus: 'completed',
+                    taskId: taskId,
+                    completionTime: Date.now()
+                }
+            };
             
         } catch (apiError) {
             console.error('Telegram API call failed:', apiError);
@@ -3006,7 +3229,10 @@ async function handleVerifyTaskChannel(env, userId, data) {
                 success: false, 
                 error: 'Unable to verify channel membership at this time. Please try again later.',
                 errorCode: 'TELEGRAM_API_CALL_FAILED',
-                details: apiError.message
+                data: {
+                    errorDetails: apiError.message,
+                    verificationStatus: 'api_error'
+                }
             };
         }
         
@@ -3016,95 +3242,12 @@ async function handleVerifyTaskChannel(env, userId, data) {
             success: false,
             error: 'An unexpected error occurred. Please try again.',
             errorCode: 'VERIFY_TASK_CHANNEL_ERROR',
-            stack: error.stack
-        };
-    }
-}
-
-// دالة مساعدة لمعالجة نتيجة التحقق من العضوية
-async function processMembershipResult(env, userId, taskId, channelUsername, telegramResult, userData, completedTasks) {
-    // التحقق مما إذا كان المستخدم عضوًا في القناة - الإصلاح
-    const isMember = telegramResult.ok && 
-        (telegramResult.result.status === 'member' || 
-         telegramResult.result.status === 'administrator' || 
-         telegramResult.result.status === 'creator');
-    
-    console.log(`User ${userId} membership status in ${channelUsername}: ${telegramResult.result.status}, isMember: ${isMember}`);
-    
-    if (!isMember) {
-        return { 
-            success: false, 
-            error: 'You must join the channel first!',
-            errorCode: 'NOT_CHANNEL_MEMBER',
             data: {
-                channelUsername: channelUsername,
-                status: telegramResult.result.status,
-                requiredStatus: ['member', 'administrator', 'creator'],
-                telegramResult: telegramResult
+                errorDetails: error.message,
+                verificationStatus: 'error'
             }
         };
     }
-    
-    // جلب مكافأة المهمة من الإعدادات
-    const configResult = await handleGetConfig();
-    const settings = configResult.data?.settings || {};
-    const TASK_CHANNEL_REWARD = settings.taskChannelReward || 2000;
-    
-    // تحديث بيانات المهمة
-    completedTasks[taskId] = {
-        completedAt: Date.now(),
-        channel: channelUsername,
-        reward: TASK_CHANNEL_REWARD
-    };
-    
-    const newBalance = (userData.dogsBalance || 0) + TASK_CHANNEL_REWARD;
-    
-    await handleDbUpdate(env, `users/${userId}`, { 
-        completedTasks: completedTasks,
-        dogsBalance: newBalance
-    });
-    
-    // تحديث المهمة في قاعدة البيانات
-    const taskResult = await handleDbGet(env, `tasks/${taskId}`);
-    if (taskResult.success && taskResult.data) {
-        const task = taskResult.data;
-        if (task.remaining !== undefined && task.remaining > 0) {
-            await handleDbUpdate(env, `tasks/${taskId}`, { 
-                remaining: task.remaining - 1,
-                lastCompleted: Date.now(),
-                lastCompletedBy: userId
-            });
-        }
-    }
-    
-    // إضافة إلى سجل المعاملات
-    await handleDbPush(env, `users/${userId}/history`, {
-        type: 'earn',
-        description: `Joined Telegram Channel: ${channelUsername}`,
-        amount: TASK_CHANNEL_REWARD,
-        currency: 'GLX',
-        date: new Date().toISOString(),
-        taskId: taskId
-    });
-    
-    // تحديث حالة المهمة لتعكس أنها مكتملة
-    await handleDbUpdate(env, `tasks/${taskId}/completions/${userId}`, {
-        completedAt: Date.now(),
-        reward: TASK_CHANNEL_REWARD,
-        verified: true
-    });
-    
-    return {
-        success: true,
-        data: {
-            verified: true,
-            reward: TASK_CHANNEL_REWARD,
-            newBalance: newBalance,
-            channel: channelUsername,
-            membershipStatus: telegramResult.result.status,
-            message: 'Successfully verified channel membership!'
-        }
-    };
 }
 
 // دالة جديدة لاختبار Telegram API
@@ -3221,12 +3364,16 @@ async function handleVerifyTelegramMembership(env, userId, data) {
         const { channelUsername } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3303,12 +3450,16 @@ async function handleVerifyTelegramMembership(env, userId, data) {
 async function handleSpinSlots(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3404,12 +3555,16 @@ async function handleSpinSlots(env, userId) {
 async function handleAddExtraSpin(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3453,12 +3608,16 @@ async function handleAddExtraSpin(env, userId) {
 async function handleClaimDailyBonus(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3526,12 +3685,16 @@ async function handleClaimDailyBonus(env, userId) {
 async function handleGetTransactionHistory(env, userId, limit = 50) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3560,12 +3723,16 @@ async function handleGetTransactionHistory(env, userId, limit = 50) {
 async function handleGetUserWithdrawals(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3681,12 +3848,16 @@ async function handleGetWithdrawalStats(env) {
 async function handleGetReferredUsers(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3735,12 +3906,16 @@ async function handleGetReferredUsers(env, userId) {
 async function handleGetTasks(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3778,12 +3953,16 @@ async function handleVerifyTaskCompletion(env, userId, data) {
         const { taskId, reward, title } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -3895,14 +4074,19 @@ async function handleReferral(env, userId, referrerId) {
         }
         
         // التحقق من حظر المستخدمين
-        const isUserBlocked = await checkUserBlocked(env, userId);
-        const isReferrerBlocked = await checkUserBlocked(env, referrerId);
+        const userBlockCheck = await checkUserBlocked(env, userId);
+        const referrerBlockCheck = await checkUserBlocked(env, referrerId);
         
-        if (isUserBlocked || isReferrerBlocked) {
+        if ((userBlockCheck && userBlockCheck.isBlocked) || (referrerBlockCheck && referrerBlockCheck.isBlocked)) {
             return { 
                 success: false, 
                 error: 'Account blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    userBlocked: userBlockCheck ? userBlockCheck.isBlocked : false,
+                    referrerBlocked: referrerBlockCheck ? referrerBlockCheck.isBlocked : false
+                }
             };
         }
         
@@ -4019,12 +4203,16 @@ async function handleSubmitWithdrawal(env, userId, data) {
         const { method, account, amount, maskedAccount, memo } = data;
         
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -4134,12 +4322,16 @@ async function handleGetCompetitionData(env, userId = null) {
     try {
         // التحقق من الحظر إذا كان هناك معرف مستخدم
         if (userId) {
-            const isBlocked = await checkUserBlocked(env, userId);
-            if (isBlocked) {
+            const blockCheck = await checkUserBlocked(env, userId);
+            if (blockCheck && blockCheck.isBlocked) {
                 return { 
                     success: false, 
                     error: 'Your account has been blocked for violating system rules',
-                    errorCode: 'ACCOUNT_BLOCKED'
+                    errorCode: 'ACCOUNT_BLOCKED',
+                    data: { 
+                        isBlocked: true,
+                        blockDetails: blockCheck 
+                    }
                 };
             }
         }
@@ -4209,12 +4401,16 @@ async function handleGetCompetitionData(env, userId = null) {
 async function handleGetUserData(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
@@ -4317,12 +4513,16 @@ async function handleRefreshCompetition(env) {
 async function handleSyncUserCompetitionTickets(env, userId) {
     try {
         // التحقق من الحظر
-        const isBlocked = await checkUserBlocked(env, userId);
-        if (isBlocked) {
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
             return { 
                 success: false, 
                 error: 'Your account has been blocked for violating system rules',
-                errorCode: 'ACCOUNT_BLOCKED'
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck 
+                }
             };
         }
         
