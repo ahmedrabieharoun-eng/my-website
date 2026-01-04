@@ -944,20 +944,8 @@ async function validateTaskRequest(env, userId, data) {
         };
     }
     
-    // التحقق من عدم إكمال المهمة مسبقًا
-    const userResult = await handleDbGet(env, `users/${userId}`);
-    if (userResult.success && userResult.data) {
-        const userData = userResult.data;
-        const completedTasks = userData.completedTasks || {};
-        
-        if (completedTasks[taskId]) {
-            return {
-                valid: false,
-                violation: 'TASK_ALREADY_COMPLETED',
-                details: `Task already completed: ${taskId}`
-            };
-        }
-    }
+    // تم إزالة التحقق من إكمال المهمة مسبقًا للسماح بإكمال المهمة عدة مرات
+    // التحقق فقط من أن المكافأة لا تتجاوز الحد الأقصى
     
     return { valid: true };
 }
@@ -4036,13 +4024,7 @@ async function handleVerifyTaskCompletion(env, userId, data) {
         const task = taskResult.data;
         
         const completedTasks = userData.completedTasks || {};
-        if (completedTasks[taskId]) {
-            return { 
-                success: false, 
-                error: 'Task already completed',
-                errorCode: 'TASK_ALREADY_COMPLETED'
-            };
-        }
+        // تم إزالة التحقق من إكمال المهمة مسبقًا للسماح بإكمال المهمة عدة مرات
         
         if (task.remaining !== undefined && task.remaining <= 0) {
             return { 
@@ -4074,8 +4056,11 @@ async function handleVerifyTaskCompletion(env, userId, data) {
             dogsBalance: newBalance
         };
         
-        completedTasks[taskId] = true;
-        userUpdates.completedTasks = completedTasks;
+        // تحديث المهمة كمكتملة للمستخدم (يسمح بإكمالها عدة مرات)
+        if (!completedTasks[taskId]) {
+            completedTasks[taskId] = true;
+            userUpdates.completedTasks = completedTasks;
+        }
         
         await handleDbUpdate(env, `users/${userId}`, userUpdates);
         
