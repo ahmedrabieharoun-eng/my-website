@@ -213,7 +213,7 @@
         .winner-info{flex:1;}
         .winner-name{font-size:14px;font-weight:600;margin-bottom:2px;}
         .winner-date{font-size:10px;color:var(--text-muted);}
-        .winner-prize{font-size:14px;font-weight=700;color:var(--primary-green);}
+        .winner-prize{font-size:14px;font-weight:700;color:var(--primary-green);}
         .withdraw-max-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.5);border-radius:8px;padding:6px 12px;color:white;font-size:10px;cursor:pointer;font-weight:700;z-index:10;}
         .bet-btn.k-style{min-width:55px;padding:10px 12px;font-size:13px;flex:1;}
         .user-withdrawal-item{background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.1);}
@@ -755,7 +755,7 @@
 <div class="code-channel-card" style="background:linear-gradient(135deg,rgba(255,193,7,0.2),rgba(255,152,0,0.2));border-radius:20px;padding:20px;border:2px solid rgba(255,193,7,0.3);position:relative;overflow:hidden;cursor:pointer;" onclick="window.open('https://t.me/earnmoney1685','_blank')">
 <div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;background:rgba(255,193,7,0.1);border-radius:50%;"></div>
 <div style="position:relative;z-index:2;">
-<div style="display:flex;align-items:center;gap:15px;"><div style="width:60px;height=60px;background:linear-gradient(135deg,#FFC107,#FF9800);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:white;"><i class="fab fa-telegram"></i></div><div style="flex:1;"><div style="font-size:16px;font-weight:800;color:white;margin-bottom:5px;"><i class="fa-solid fa-bolt" style="color:#FFC107;"></i>Codes Channel</div><div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:8px;">Get exclusive promo codes & daily rewards</div><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:11px;color:#FFC107;font-weight=700;"><i class="fa-solid fa-users"></i>Join Now</span><span style="font-size:11px;color:rgba(255,255,255,0.6);">@earnmoney1685</span></div></div><div style="width:40px;height:40px;background:rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFC107;font-size:18px;"><i class="fa-solid fa-arrow-right"></i></div></div>
+<div style="display:flex;align-items:center;gap:15px;"><div style="width:60px;height:60px;background:linear-gradient(135deg,#FFC107,#FF9800);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:white;"><i class="fab fa-telegram"></i></div><div style="flex:1;"><div style="font-size:16px;font-weight:800;color:white;margin-bottom:5px;"><i class="fa-solid fa-bolt" style="color:#FFC107;"></i>Codes Channel</div><div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:8px;">Get exclusive promo codes & daily rewards</div><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:11px;color:#FFC107;font-weight=700;"><i class="fa-solid fa-users"></i>Join Now</span><span style="font-size:11px;color:rgba(255,255,255,0.6);">@earnmoney1685</span></div></div><div style="width:40px;height:40px;background:rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFC107;font-size:18px;"><i class="fa-solid fa-arrow-right"></i></div></div>
 </div>
 </div>
 </div>
@@ -1046,7 +1046,7 @@ async function simulateAccountCheck(userId) {
     // محاكاة تأخير الشبكة
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // محاكاة استجابة API مع التحقق من الحظر
+    // محاكاة استجابة API
     // في الواقع، هذا سيكون callAPI
     return {
         blocked: false, // معظم المستخدمين غير محظورين
@@ -1101,27 +1101,165 @@ function showAccountBlockedPage(reason = "Your account has been suspended due to
     console.log("✅ Account blocked page shown with reason:", reason);
 }
 
-// ✅ 4. إصلاح مشكلة المكافأة المزدوجة - متغير لتتبع المهام قيد المعالجة
-const verificationInProgress = {};
+// ✅ 4. دالة تعطيل الأزرار أثناء المعالجة
+function disableActionButtons(buttonIds) {
+    buttonIds.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = true;
+            button.classList.add('btn-processing');
+            button.style.opacity = '0.7';
+            button.style.cursor = 'not-allowed';
+        }
+    });
+}
 
-// ✅ 5. إصلاح دالة verifyMembership لمنع المكافأة المزدوجة
+function enableActionButtons(buttonIds) {
+    buttonIds.forEach(buttonId => {
+        const button = document.getElementById(buttonId);
+        if (button) {
+            button.disabled = false;
+            button.classList.remove('btn-processing');
+            button.style.opacity = '1';
+            button.style.cursor = 'pointer';
+        }
+    });
+}
+
+// ✅ 5. إصلاح زر لعبة Coin Flip
+async function flipCoin() {
+    if (coinGame.isFlipping) return;
+    
+    const betAmount = coinGame.betAmount;
+    const currentBalance = appData.dogsBalance || 0;
+    
+    if (betAmount < 1000) {
+        showNotification("Minimum bet is 1,000 GLX", "warning");
+        return;
+    }
+    
+    if (betAmount > currentBalance) {
+        showNotification("Insufficient GLX balance", "warning");
+        return;
+    }
+    
+    // تعطيل الزر أثناء المعالجة
+    const flipButton = document.getElementById('flip-coin-btn');
+    if (flipButton) {
+        flipButton.disabled = true;
+        flipButton.classList.add('coin-flip-btn-processing');
+        flipButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> FLIPPING...';
+    }
+    
+    coinGame.isFlipping = true;
+    
+    try {
+        // ✅ محاكاة نتيجة اللعبة
+        const isWin = Math.random() * 100 < coinGame.winChance;
+        const resultSide = isWin ? coinGame.chosenSide : (coinGame.chosenSide === 'glx' ? 'gold' : 'glx');
+        const winAmount = isWin ? betAmount * 2 : 0;
+        
+        // عرض الرسوم المتحركة للعملة
+        const coin = document.getElementById('coin');
+        if (coin) {
+            coin.classList.remove('coin-spinning', 'coin-final');
+            coin.style.transition = 'transform 2.5s cubic-bezier(0.4,2.4,0.8,0.9)';
+            
+            // حساب الدوران النهائي
+            const finalRotation = resultSide === 'glx' ? 720 : 900;
+            coin.style.setProperty('--final-rotation', finalRotation + 'deg');
+            coin.classList.add('coin-spinning');
+            
+            setTimeout(() => {
+                coin.classList.remove('coin-spinning');
+                coin.classList.add('coin-final');
+                coin.style.transform = `rotateY(${finalRotation}deg)`;
+                
+                // عرض النتيجة
+                showCoinFlipResult(isWin, resultSide, betAmount, winAmount, finalRotation);
+                
+                // تحديث الرصيد
+                if (isWin) {
+                    appData.dogsBalance = (appData.dogsBalance || 0) + winAmount;
+                } else {
+                    appData.dogsBalance = (appData.dogsBalance || 0) - betAmount;
+                }
+                
+                // تحديث واجهة المستخدم
+                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                
+                // تمكين الزر مرة أخرى
+                coinGame.isFlipping = false;
+                if (flipButton) {
+                    flipButton.disabled = false;
+                    flipButton.classList.remove('coin-flip-btn-processing');
+                    flipButton.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
+                }
+                
+            }, 2500);
+        }
+    } catch (error) {
+        console.error("Coin flip error:", error);
+        showNotification("Error flipping coin. Please try again.", "error");
+        
+        // تمكين الزر مرة أخرى في حالة الخطأ
+        coinGame.isFlipping = false;
+        if (flipButton) {
+            flipButton.disabled = false;
+            flipButton.classList.remove('coin-flip-btn-processing');
+            flipButton.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
+        }
+    }
+}
+
+// ✅ تعديل الدالة الأصلية لحماية الأزرار
+window.unprotectedFlipCoin = function() {
+    flipCoin();
+};
+
+// ✅ تعديل دالة claim daily لحماية الزر
+async function handleDailyClaim() {
+    const claimButton = document.getElementById('claim-daily-btn');
+    if (!claimButton) return;
+    
+    // تعطيل الزر
+    claimButton.disabled = true;
+    claimButton.classList.add('btn-processing');
+    claimButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> PROCESSING...';
+    
+    try {
+        const result = await callAPI('claimDailyBonus');
+        if (result.success) {
+            appData.lastDailyClaim = result.data.lastDailyClaim;
+            appData.dailyStreak = result.data.dailyStreak;
+            appData.dogsBalance = result.data.newBalance;
+            
+            showNotification(`🎉 Daily bonus claimed! +${result.data.reward} GLX`, "success");
+            renderDailyBonusUI();
+            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        } else {
+            showNotification("Error: " + result.error, "error");
+        }
+    } catch (error) {
+        console.error("Daily claim error:", error);
+        showNotification("Error claiming daily bonus", "error");
+    } finally {
+        // تمكين الزر بعد 2 ثانية
+        setTimeout(() => {
+            if (claimButton) {
+                claimButton.disabled = false;
+                claimButton.classList.remove('btn-processing');
+                claimButton.textContent = "Claim Bonus";
+            }
+        }, 2000);
+    }
+}
+
+// ✅ تعديل دالة verifyMembership لحماية الأزرار (الإصلاح الرئيسي)
 async function verifyMembership(element, link, taskId, reward, title) {
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) {
         showNotification("❌ User authentication error", "error");
-        element.classList.remove('waiting-verify');
-        return;
-    }
-    
-    // ✅ التحقق إذا كانت المهمة قيد المعالجة بالفعل
-    if (verificationInProgress[taskId]) {
-        showNotification("❌ Verification already in progress", "warning");
-        return;
-    }
-    
-    // ✅ التحقق أولاً إذا كانت المهمة مكتملة بالفعل
-    if (appData.completedTasks && appData.completedTasks[taskId]) {
-        showNotification("❌ You already completed this task!", "warning");
         element.classList.remove('waiting-verify');
         return;
     }
@@ -1136,9 +1274,6 @@ async function verifyMembership(element, link, taskId, reward, title) {
     const statusEl = document.getElementById(`status-${taskId}`);
     if (!statusEl) return;
     
-    // وضع علامة أن المهمة قيد المعالجة
-    verificationInProgress[taskId] = true;
-    
     // تعطيل العنصر أثناء المعالجة
     element.style.pointerEvents = 'none';
     element.classList.add('task-btn-disabled');
@@ -1148,28 +1283,36 @@ async function verifyMembership(element, link, taskId, reward, title) {
     try {
         const verificationResult = await verifyTaskChannel(taskId, channelUsername);
         
+        // ✅ FIXED: Check if verification was successful
         if (verificationResult.success) {
+            // ✅ FIXED: Properly check the verification data
             const isVerified = verificationResult.data?.verified;
             const taskStatus = verificationResult.data?.taskStatus;
             const isMember = verificationResult.data?.isMember;
             
             if ((isVerified === true || isMember === true) && taskStatus === "completed") {
-                // ✅ التحقق الإضافي: التأكد من أن المكافأة لم تُمنح من قبل
-                const doubleCheckResult = await callAPI('checkTaskCompletion', {
+                // ✅ FIXED: User is verified AND task is completed - process reward
+                const result = await callAPI('verifyTaskCompletion', {
                     taskId: taskId,
-                    userId: userId
+                    reward: reward,
+                    title: title,
+                    link: link,
+                    channelUsername: channelUsername,
+                    verified: true
                 });
                 
-                if (doubleCheckResult.success && doubleCheckResult.data.alreadyCompleted) {
-                    showNotification("❌ You already completed this task!", "warning");
+                if (result.success) {
+                    // ✅ تحديث البيانات
+                    appData.dogsBalance = result.data.newBalance;
                     appData.completedTasks = appData.completedTasks || {};
                     appData.completedTasks[taskId] = true;
                     
+                    // ✅ تحديث واجهة المستخدم
                     element.style.opacity = '0.5';
                     element.style.pointerEvents = 'none';
                     element.classList.remove('waiting-verify');
                     
-                    statusEl.textContent = "✅ Already Verified";
+                    statusEl.textContent = "✅ Verified ✓";
                     statusEl.style.color = "#27ae60";
                     
                     const rewardEl = document.getElementById(`reward-${taskId}`);
@@ -1177,45 +1320,14 @@ async function verifyMembership(element, link, taskId, reward, title) {
                         rewardEl.textContent = "Done";
                         rewardEl.style.color = "#27ae60";
                     }
-                } else {
-                    // ✅ منح المكافأة مرة واحدة فقط
-                    const result = await callAPI('verifyTaskCompletion', {
-                        taskId: taskId,
-                        reward: reward,
-                        title: title,
-                        link: link,
-                        channelUsername: channelUsername,
-                        verified: true
-                    });
                     
-                    if (result.success) {
-                        // ✅ تحديث البيانات
-                        appData.dogsBalance = result.data.newBalance;
-                        appData.completedTasks = appData.completedTasks || {};
-                        appData.completedTasks[taskId] = true;
-                        
-                        // ✅ تحديث واجهة المستخدم
-                        element.style.opacity = '0.5';
-                        element.style.pointerEvents = 'none';
-                        element.classList.remove('waiting-verify');
-                        
-                        statusEl.textContent = "✅ Verified ✓";
-                        statusEl.style.color = "#27ae60";
-                        
-                        const rewardEl = document.getElementById(`reward-${taskId}`);
-                        if (rewardEl) {
-                            rewardEl.textContent = "Done";
-                            rewardEl.style.color = "#27ae60";
-                        }
-                        
-                        showNotification(`✅ Channel Verified! +${reward} GLX`, "success");
-                        renderUI({ id: userId });
-                    } else {
-                        showNotification("❌ Failed to save verification", "warning");
-                        element.classList.remove('waiting-verify');
-                        statusEl.textContent = "Join First!";
-                        statusEl.style.color = "#ff4444";
-                    }
+                    showNotification(`✅ Channel Verified! +${reward} GLX`, "success");
+                    renderUI({ id: userId });
+                } else {
+                    showNotification("❌ Failed to save verification", "warning");
+                    element.classList.remove('waiting-verify');
+                    statusEl.textContent = "Join First!";
+                    statusEl.style.color = "#ff4444";
                 }
             } else {
                 showNotification("❌ You must join the channel first!", "warning");
@@ -1236,16 +1348,15 @@ async function verifyMembership(element, link, taskId, reward, title) {
         statusEl.textContent = "Error - Try Again";
         statusEl.style.color = "#ff4444";
     } finally {
-        // إزالة علامة المعالجة بعد 2 ثانية
+        // تمكين العنصر بعد 2 ثانية
         setTimeout(() => {
-            delete verificationInProgress[taskId];
             element.style.pointerEvents = 'auto';
             element.classList.remove('task-btn-disabled');
         }, 2000);
     }
 }
 
-// ✅ 6. تعديل document.addEventListener لبدء التحميل
+// ✅ تعديل document.addEventListener لبدء التحميل
 document.addEventListener('DOMContentLoaded', async function() {
     // بدء صفحة التحميل العالمية
     startGlobalLoading();
