@@ -3982,9 +3982,10 @@ async function handleGetTasks(env, userId) {
     }
 }
 
+// ==================== دالة verifyTaskCompletion المحسنة لحل مشكلة التكرار ====================
 async function handleVerifyTaskCompletion(env, userId, data) {
     try {
-        const { taskId, reward, title } = data;
+        const { taskId, reward, title, claimReward = false } = data;
         
         // التحقق من الحظر
         const blockCheck = await checkUserBlocked(env, userId);
@@ -4024,6 +4025,7 @@ async function handleVerifyTaskCompletion(env, userId, data) {
         const task = taskResult.data;
         
         const completedTasks = userData.completedTasks || {};
+        
         // تم إزالة التحقق من إكمال المهمة مسبقًا للسماح بإكمال المهمة عدة مرات
         
         if (task.remaining !== undefined && task.remaining <= 0) {
@@ -4045,6 +4047,23 @@ async function handleVerifyTaskCompletion(env, userId, data) {
             };
         }
         
+        // إذا كانت claimReward = false (تحقق فقط)، إرجاع معلومات المهمة فقط
+        if (!claimReward) {
+            return {
+                success: true,
+                data: {
+                    taskAvailable: true,
+                    taskId: taskId,
+                    reward: rewardAmount,
+                    title: title,
+                    message: 'Task is available for completion',
+                    userBalance: userData.dogsBalance,
+                    taskStatus: 'available'
+                }
+            };
+        }
+        
+        // إذا كانت claimReward = true (المطالبة بالمكافأة)
         const newBalance = userData.dogsBalance + rewardAmount;
         
         const updates = {};
@@ -4083,7 +4102,10 @@ async function handleVerifyTaskCompletion(env, userId, data) {
         return {
             success: true,
             data: {
-                newBalance: updatedUserData.dogsBalance
+                taskCompleted: true,
+                reward: rewardAmount,
+                newBalance: updatedUserData.dogsBalance,
+                message: 'Task completed successfully and reward claimed!'
             }
         };
     } catch (error) {
