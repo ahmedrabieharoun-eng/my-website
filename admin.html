@@ -2171,6 +2171,7 @@ async function handleGetConfig() {
             // Coin Flip limits
             coinFlipMinBet: 1000, // الحد الأدنى للرهان
             coinFlipMaxBet: 100000, // الحد الأقصى للرهان
+            coinFlipDailyLimit: 1000000, // الحد الأقصى اليومي للمكاسب
             
             // مكافآت المهام
             taskChannelReward: 2000, // مكافأة الانضمام للقناة
@@ -2656,11 +2657,12 @@ async function handleGetPreviousWinners(env) {
     }
 }
 
+// ==================== دالة handleFlipCoin المحسنة ====================
 async function handleFlipCoin(env, userId, data) {
     try {
         const { betAmount, chosenSide } = data;
         
-        // التحقق من الحظر
+        // ==================== التحقق من الحظر ====================
         const blockCheck = await checkUserBlocked(env, userId);
         if (blockCheck && blockCheck.isBlocked) {
             return { 
@@ -2675,6 +2677,34 @@ async function handleFlipCoin(env, userId, data) {
             };
         }
         
+        // ==================== التحقق من صحة البيانات ====================
+        if (!betAmount || !chosenSide) {
+            return { 
+                success: false, 
+                error: 'Missing required parameters',
+                errorCode: 'MISSING_PARAMETERS'
+            };
+        }
+        
+        const betAmountNum = parseInt(betAmount);
+        
+        if (isNaN(betAmountNum) || betAmountNum <= 0) {
+            return { 
+                success: false, 
+                error: 'Invalid bet amount',
+                errorCode: 'INVALID_BET_AMOUNT'
+            };
+        }
+        
+        if (chosenSide !== 'glx' && chosenSide !== 'gold') {
+            return { 
+                success: false, 
+                error: 'Invalid side chosen (must be glx or gold)',
+                errorCode: 'INVALID_SIDE'
+            };
+        }
+        
+        // ==================== جلب بيانات المستخدم ====================
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
             return { 
@@ -2686,71 +2716,238 @@ async function handleFlipCoin(env, userId, data) {
         
         const userData = userResult.data;
         
-        const betAmountNum = parseInt(betAmount);
+        // ==================== التحقق من الحدود ====================
+        const configResult = await handleGetConfig();
+        const settings = configResult.data?.settings || {};
         
+        const MIN_BET = settings.coinFlipMinBet || 1000;
+        const MAX_BET = settings.coinFlipMaxBet || 100000;
+        
+        if (betAmountNum < MIN_BET) {
+            return { 
+                success: false, 
+                error: `Minimum bet is ${MIN_BET.toLocaleString()} GLX`,
+                errorCode: 'MINIMUM_BET_REQUIRED'
+            };
+        }
+        
+        if (betAmountNum > MAX_BET) {
+            return { 
+                success: false, 
+                error: `Maximum bet is ${MAX_BET.toLocaleString()} GLX`,
+                errorCode: 'MAXIMUM_BET_EXCEEDED'
+            };
+        }
+        
+        // ==================== التحقق من الرصيد ====================
         if (userData.dogsBalance < betAmountNum) {
             return { 
                 success: false, 
                 error: 'Insufficient GLX balance',
-                errorCode: 'INSUFFICIENT_GLX_BALANCE'
+                errorCode: 'INSUFFICIENT_GLX_BALANCE',
+                data: {
+                    currentBalance: userData.dogsBalance,
+                    requiredAmount: betAmountNum,
+                    difference: betAmountNum - userData.dogsBalance
+                }
             };
         }
         
-        const newBalance = userData.dogsBalance - betAmountNum;
-        await handleDbUpdate(env, `users/${userId}`, { 
-            dogsBalance: newBalance,
-            lastUpdated: Date.now()
+        // ==================== التحقق من حد المكاسب اليومي ====================
+        const today = new Date().toDateString();
+        const dailyLimit = settings.coinFlipDailyLimit || 1000000; // 1,000,000 GLX كحد أقصى يومي
+        
+        // جلب إحصائيات اليوم
+        const dailyStatsKey = `coinFlipDaily_${today.replace(/\s+/g, '_')}`;
+        const dailyStats = userData[dailyStatsKey] || { totalWins: 0, totalProfit: 0 };
+        
+        // ==================== معالجة الرهان ====================
+        
+        // 1. خصم مبلغ الرهان أولاً
+        const balanceAfterBet = userData.dogsBalance - betAmountNum;
+        
+        // تحديث الرصيد بعد الخصم
+        await handleDbUpdate(env, `users/${userId}`, {
+            dogsBalance: balanceAfterBet,
+            lastUpdated: Date.now(),
+            lastCoinFlip: Date.now()
         });
         
+        // تسجيل عملية الخصم في السجل
         await handleDbPush(env, `users/${userId}/history`, {
-            type: 'loss',
+            type: 'coin_flip_bet',
             description: `Coin Flip Bet (${chosenSide.toUpperCase()})`,
             amount: betAmountNum,
             currency: 'GLX',
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            timestamp: Date.now(),
+            betType: 'deduction',
+            betSide: chosenSide,
+            status: 'pending'
         });
         
-        const randomNum = Math.random() * 100;
-        const isWin = randomNum < 45;
+        // 2. توليد النتيجة العشوائية
+        const randomNumber = Math.random() * 100;
+        const isWin = randomNumber < 45; // 45% فرصة للفوز
         const resultSide = isWin ? chosenSide : (chosenSide === 'glx' ? 'gold' : 'glx');
         const winAmount = isWin ? betAmountNum * 2 : 0;
+        const netProfit = isWin ? betAmountNum : -betAmountNum;
+        
+        let finalBalance = balanceAfterBet;
+        let transactionEntry = {};
         
         if (isWin) {
-            const finalBalance = newBalance + winAmount;
-            await handleDbUpdate(env, `users/${userId}`, { 
+            // 3. إذا فاز المستخدم، إضافة المكسب
+            finalBalance = balanceAfterBet + winAmount;
+            
+            // التحقق من عدم تجاوز الحد اليومي
+            const newDailyProfit = (dailyStats.totalProfit || 0) + betAmountNum;
+            if (newDailyProfit > dailyLimit) {
+                // إذا تجاوز الحد اليومي، إرجاع الرهان فقط بدون ربح
+                finalBalance = balanceAfterBet + betAmountNum; // فقط إرجاع الرهان
+                
+                // تحديث الرصيد
+                await handleDbUpdate(env, `users/${userId}`, {
+                    dogsBalance: finalBalance,
+                    lastUpdated: Date.now()
+                });
+                
+                // تسجيل الوصول للحد اليومي
+                transactionEntry = {
+                    type: 'coin_flip_daily_limit',
+                    description: `Coin Flip Daily Limit Reached`,
+                    amount: betAmountNum,
+                    currency: 'GLX',
+                    date: new Date().toISOString(),
+                    timestamp: Date.now(),
+                    betType: 'refund',
+                    betSide: chosenSide,
+                    status: 'daily_limit_reached',
+                    note: `Daily profit limit of ${dailyLimit.toLocaleString()} GLX reached`
+                };
+            } else {
+                // إذا لم يتجاوز الحد، إضافة المكسب الكامل
+                await handleDbUpdate(env, `users/${userId}`, {
+                    dogsBalance: finalBalance,
+                    lastUpdated: Date.now(),
+                    totalCoinFlipWins: (userData.totalCoinFlipWins || 0) + 1
+                });
+                
+                transactionEntry = {
+                    type: 'coin_flip_win',
+                    description: `Coin Flip Win (${chosenSide.toUpperCase()})`,
+                    amount: winAmount,
+                    currency: 'GLX',
+                    date: new Date().toISOString(),
+                    timestamp: Date.now(),
+                    betType: 'win',
+                    betSide: chosenSide,
+                    netProfit: betAmountNum,
+                    status: 'won'
+                };
+            }
+        } else {
+            // 4. إذا خسر المستخدم، فقط تحديث الرصيد (تم الخصم بالفعل)
+            await handleDbUpdate(env, `users/${userId}`, {
                 dogsBalance: finalBalance,
-                lastUpdated: Date.now()
+                lastUpdated: Date.now(),
+                totalCoinFlipLosses: (userData.totalCoinFlipLosses || 0) + 1
             });
             
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'earn',
-                description: `Coin Flip Win (${chosenSide})`,
-                amount: winAmount,
+            transactionEntry = {
+                type: 'coin_flip_loss',
+                description: `Coin Flip Loss (${chosenSide.toUpperCase()})`,
+                amount: 0,
                 currency: 'GLX',
-                date: new Date().toISOString()
-            });
+                date: new Date().toISOString(),
+                timestamp: Date.now(),
+                betType: 'loss',
+                betSide: chosenSide,
+                netProfit: -betAmountNum,
+                status: 'lost'
+            };
         }
         
-        // جلب بيانات المستخدم المحدثة
+        // تسجيل العملية في السجل
+        await handleDbPush(env, `users/${userId}/history`, transactionEntry);
+        
+        // ==================== تحديث الإحصائيات ====================
+        
+        // تحديث إحصائيات اللعبة
+        const gameStats = {
+            totalCoinFlipPlays: (userData.totalCoinFlipPlays || 0) + 1,
+            totalCoinFlipWins: isWin ? (userData.totalCoinFlipWins || 0) + 1 : (userData.totalCoinFlipWins || 0),
+            totalCoinFlipLosses: isWin ? (userData.totalCoinFlipLosses || 0) : (userData.totalCoinFlipLosses || 0) + 1,
+            totalCoinFlipProfit: (userData.totalCoinFlipProfit || 0) + netProfit,
+            lastCoinFlipResult: isWin ? 'win' : 'loss',
+            lastCoinFlipDate: Date.now()
+        };
+        
+        // تحديث إحصائيات اليوم
+        const updatedDailyStats = {
+            totalPlays: (dailyStats.totalPlays || 0) + 1,
+            totalWins: isWin ? (dailyStats.totalWins || 0) + 1 : (dailyStats.totalWins || 0),
+            totalProfit: isWin ? (dailyStats.totalProfit || 0) + betAmountNum : (dailyStats.totalProfit || 0),
+            lastPlayDate: Date.now()
+        };
+        
+        // تحديث جميع الإحصائيات في قاعدة البيانات
+        await handleDbUpdate(env, `users/${userId}`, {
+            ...gameStats,
+            [dailyStatsKey]: updatedDailyStats,
+            lastUpdated: Date.now()
+        });
+        
+        // ==================== جلب البيانات المحدثة ====================
         const updatedUserResult = await handleDbGet(env, `users/${userId}`);
         const updatedUserData = updatedUserResult.data || userData;
         
-        return {
-            success: true,
-            data: {
-                isWin: isWin,
-                resultSide: resultSide,
-                winAmount: winAmount,
-                newBalance: isWin ? newBalance + winAmount : newBalance,
-                currentBalance: updatedUserData.dogsBalance,
-                updatedUserData: updatedUserData
+        // ==================== إعداد البيانات للإرجاع ====================
+        const responseData = {
+            isWin: isWin,
+            resultSide: resultSide,
+            betAmount: betAmountNum,
+            winAmount: winAmount,
+            netProfit: netProfit,
+            newBalance: finalBalance,
+            currentBalance: updatedUserData.dogsBalance,
+            gameStats: {
+                totalPlays: gameStats.totalCoinFlipPlays,
+                totalWins: gameStats.totalCoinFlipWins,
+                totalLosses: gameStats.totalCoinFlipLosses,
+                totalProfit: gameStats.totalCoinFlipProfit,
+                winRate: gameStats.totalCoinFlipPlays > 0 
+                    ? ((gameStats.totalCoinFlipWins / gameStats.totalCoinFlipPlays) * 100).toFixed(2) 
+                    : '0.00'
+            },
+            dailyStats: updatedDailyStats,
+            dailyLimit: dailyLimit,
+            dailyLimitRemaining: Math.max(0, dailyLimit - updatedDailyStats.totalProfit),
+            transactionId: Date.now().toString(),
+            updatedUserData: {
+                ...updatedUserData,
+                dogsBalance: finalBalance
             }
         };
+        
+        // إذا تم الوصول للحد اليومي، إضافة تحذير
+        if (isWin && updatedDailyStats.totalProfit >= dailyLimit) {
+            responseData.dailyLimitReached = true;
+            responseData.warning = `Daily profit limit reached. Maximum daily profit is ${dailyLimit.toLocaleString()} GLX.`;
+        }
+        
+        return {
+            success: true,
+            data: responseData
+        };
+        
     } catch (error) {
+        console.error('Flip coin error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'FLIP_COIN_ERROR'
+            errorCode: 'FLIP_COIN_ERROR',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         };
     }
 }
