@@ -639,6 +639,30 @@
             color: #e74c3c;
             font-weight: bold;
         }
+        
+        /* ✅ أنماط جديد: الحد اليومي للسحوبات */
+        .daily-withdraw-limit {
+            background: rgba(255, 179, 0, 0.1);
+            border: 1px solid rgba(255, 179, 0, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+        
+        .limit-reached {
+            background: rgba(231, 76, 60, 0.1) !important;
+            border-color: rgba(231, 76, 60, 0.3) !important;
+            color: #e74c3c !important;
+            cursor: not-allowed !important;
+        }
+        
+        .withdraw-btn-disabled {
+            opacity: 0.5 !important;
+            pointer-events: none !important;
+            filter: grayscale(1) !important;
+        }
     </style>
 </head>
 <body>
@@ -812,14 +836,19 @@
     <div class="status-card"><div class="status-value" id="prize-pool">0.000 TON</div><div class="status-label">TOTAL PRIZE POOL</div></div>
     <div class="status-card" style="grid-column: span 2;"><div class="status-value" id="total-tickets" style="font-size:32px;">0</div><div class="status-label">TOTAL TICKETS SOLD</div></div>
 </div>
-<div class="ticket-price-note"><p>🎫 <strong>Each ticket = 100K GLX = 0.001 TON</strong></p><p style="font-size:11px;margin-top:5px;">Prize Pool = Total Tickets × 0.001 TON</p></div>
+<!-- ✅ التعديل: تغيير قيمة التذكرة من 100K إلى 10K -->
+<div class="ticket-price-note">
+    <p>🎫 <strong>Each ticket = 10K GLX = 0.0001 TON</strong></p>
+    <p style="font-size:11px;margin-top:5px;">Prize Pool = Total Tickets × 0.0001 TON</p>
+</div>
 <div class="competition-rules-card">
 <div class="rules-header"><i class="fa-solid fa-circle-info"></i><span>Competition Rules</span></div>
 <ul class="rules-list">
 <li><span class="winner-highlight">🏆 ONLY THE FIRST PLACE WINS!</span> - The user with the most tickets wins the entire prize pool.</li>
 <li><span class="loser-note">❌ ALL OTHER PARTICIPANTS LOSE</span> - Only #1 gets the prize, others get nothing.</li>
-<li>🎫 Each ticket costs <strong>100K GLX (0.001 TON)</strong></li>
-<li>💰 Prize Pool = Total Tickets × 0.001 TON</li>
+<!-- ✅ التعديل: تغيير قيمة التذكرة هنا أيضا -->
+<li>🎫 Each ticket costs <strong>10K GLX (0.0001 TON)</strong></li>
+<li>💰 Prize Pool = Total Tickets × 0.0001 TON</li>
 <li>⏰ Competition runs for 24 hours, followed by 1 hour break</li>
 <li>📊 Winner is automatically selected after competition ends</li>
 </ul>
@@ -1005,6 +1034,17 @@
 </main>
 <main id="withdraw" class="content-section">
 <div class="page-header"><h1>Withdraw</h1><p>GLX out to TON Wallet</p></div>
+<!-- ✅ إضافة قسم الحد اليومي للسحوبات -->
+<div id="daily-withdraw-limit-info" class="daily-withdraw-limit" style="display:none;">
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+        <div style="color:#FFC107;font-size:14px;"><i class="fa-solid fa-clock"></i></div>
+        <div style="font-size:11px;line-height:1.4;">
+            <strong>Daily Withdrawal Limit:</strong><br>
+            You have used <span id="used-withdrawals-count">0</span> of <span id="max-daily-withdrawals">2</span> withdrawals today.<br>
+            <span id="withdraw-reset-time">Resets at midnight UTC</span>
+        </div>
+    </div>
+</div>
 <div class="withdrawal-type-selector">
 <div class="withdrawal-type-btn active" data-type="faucetpay" onclick="selectWithdrawalType('faucetpay')"><i class="fa-solid fa-envelope"></i>FaucetPay</div>
 <div class="withdrawal-type-btn" data-type="tonwallet" onclick="selectWithdrawalType('tonwallet')"><i class="fa-solid fa-wallet"></i>TON Wallet</div>
@@ -1558,7 +1598,7 @@ const SECURITY_CONFIG = {
     }
 };
 
-// 🔄 التعديل: تحديث APP_CONFIG لتغيير قيمة مكافأة الإحالة إلى 100000
+// 🔄 التعديل: تحديث APP_CONFIG لتغيير قيمة التذاكر إلى 10K GLX
 const APP_CONFIG = {
     botUsername: 'testtt1257bot',
     botWallet: 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv',
@@ -1572,13 +1612,13 @@ const APP_CONFIG = {
         limitAdsgram: 300,
         minTonWithdrawal: 0.05,
         minFaucetPayWithdrawal: 0.0001,
-        // 🔄 التعديل: تغيير مكافأة الإحالة من 10000 إلى 100000
         referralReward: 100000,
         pricePerClick: 0.0015,
         glxToTonRate: 0.0000001,
         tonToGlxRate: 10000000,
+        // ✅ التعديل: تغيير قيمة التذكرة من 10000 إلى 10000 (10K GLX = 0.0001 TON)
         ticketPrice: 10000,
-        ticketTonValue: 0.001,
+        ticketTonValue: 0.0001,
         competitionDuration: 24 * 60 * 60 * 1000,
         breakDuration: 60 * 60 * 1000,
         dailyRewards: [2000, 3000, 5000, 7000, 9000, 12000, 15000],
@@ -1591,13 +1631,28 @@ const APP_CONFIG = {
             '🌟🌟': 700,
             'default': 500
         },
-        promoCodeRewards: 5000
+        promoCodeRewards: 5000,
+        // ✅ إضافة: الحد اليومي للسحوبات
+        dailyWithdrawalLimit: 2
     }
 };
 
 const BOT_USERNAME = APP_CONFIG.botUsername;
 const BOT_WALLET = APP_CONFIG.botWallet;
 const BOT_TOKEN = APP_CONFIG.botToken;
+
+// ✅ التعديل: تحديث ثوابت التذاكر لتتناسب مع 10K GLX
+const GLX_TO_TON_RATE = 0.0000001;
+const TON_TO_GLX_RATE = 10000000;
+// ✅ التعديل: تغيير قيمة التذكرة من 10000 إلى 10000 (نفس القيمة ولكن المعنى مختلف: 10K بدلاً من 100K)
+const TICKET_PRICE = 10000; // 10K GLX
+const TICKET_TON_VALUE = 0.0001; // 0.0001 TON لكل تذكرة
+const COMPETITION_DURATION = 24 * 60 * 60 * 1000;
+const BREAK_DURATION = 60 * 60 * 1000;
+const ADSGRAM_BLOCK_ID = 'int-18879';
+
+// ✅ إضافة: الحد اليومي للسحوبات
+const DAILY_WITHDRAWAL_LIMIT = 2; // سحبتين في اليوم
 
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY_HERE",
@@ -1827,14 +1882,6 @@ function showMainApp() {
     document.getElementById('app-container').style.display = 'block';
 }
 
-const GLX_TO_TON_RATE = 0.0000001;
-const TON_TO_GLX_RATE = 10000000;
-const TICKET_PRICE = 10000;
-const TICKET_TON_VALUE = 0.001;
-const COMPETITION_DURATION = 24 * 60 * 60 * 1000;
-const BREAK_DURATION = 60 * 60 * 1000;
-const ADSGRAM_BLOCK_ID = 'int-18879';
-
 let appData = {};
 let appSettings = { ...APP_CONFIG.defaultSettings };
 let isAdScriptLoaded = false;
@@ -1988,6 +2035,8 @@ async function initializeUser(user, deviceFingerprint) {
         renderUI(user);
         renderDailyBonusUI();
         updateAvailableSpins();
+        // ✅ تحديث عرض الحد اليومي للسحوبات
+        updateDailyWithdrawalLimitDisplay();
         // 🔄 التعديل: تغيير قيمة مكافأة الإحالة إلى 100000
         handleReferral(user);
     } else {
@@ -2030,6 +2079,48 @@ function initializeApp(user) {
     
     initializeCompetition();
     loadUserCompetitionData();
+}
+
+// ✅ دالة جديدة: تحديث عرض الحد اليومي للسحوبات
+async function updateDailyWithdrawalLimitDisplay() {
+    const limitInfo = document.getElementById('daily-withdraw-limit-info');
+    if (!limitInfo) return;
+    
+    // الحصول على بيانات السحوبات اليومية من السيرفر
+    const result = await callAPI('getDailyWithdrawalInfo');
+    if (result.success) {
+        const data = result.data;
+        const usedCount = data.todayWithdrawals || 0;
+        const maxLimit = data.dailyLimit || DAILY_WITHDRAWAL_LIMIT;
+        const resetTime = data.resetTime || "midnight UTC";
+        
+        document.getElementById('used-withdrawals-count').textContent = usedCount;
+        document.getElementById('max-daily-withdrawals').textContent = maxLimit;
+        document.getElementById('withdraw-reset-time').textContent = `Resets: ${resetTime}`;
+        
+        // إظهار/إخفاء رسالة التحذير
+        if (usedCount >= maxLimit) {
+            limitInfo.style.display = 'block';
+            limitInfo.classList.add('limit-reached');
+            
+            // تعطيل أزرار السحب
+            document.getElementById('withdraw-faucetpay-btn').classList.add('withdraw-btn-disabled');
+            document.getElementById('withdraw-ton-now-btn').classList.add('withdraw-btn-disabled');
+            document.getElementById('withdraw-faucetpay-btn').disabled = true;
+            document.getElementById('withdraw-ton-now-btn').disabled = true;
+        } else {
+            limitInfo.style.display = 'block';
+            limitInfo.classList.remove('limit-reached');
+            
+            // تمكين أزرار السحب
+            document.getElementById('withdraw-faucetpay-btn').classList.remove('withdraw-btn-disabled');
+            document.getElementById('withdraw-ton-now-btn').classList.remove('withdraw-btn-disabled');
+            document.getElementById('withdraw-faucetpay-btn').disabled = false;
+            document.getElementById('withdraw-ton-now-btn').disabled = false;
+        }
+    } else {
+        limitInfo.style.display = 'none';
+    }
 }
 
 // 🔄 التعديل: تحديث دالة handleReferral لتغيير قيمة المكافأة
@@ -2364,7 +2455,7 @@ function updateCompetitionUI() {
     document.getElementById('competition-status').textContent = competitionData.isActive ? 'ACTIVE' : 'ENDED';
     document.getElementById('competition-status').style.color = competitionData.isActive ? '#27ae60' : '#e74c3c';
     
-    document.getElementById('prize-pool').textContent = competitionData.prizePool ? competitionData.prizePool.toFixed(3) + ' TON' : '0.000 TON';
+    document.getElementById('prize-pool').textContent = competitionData.prizePool ? competitionData.prizePool.toFixed(4) + ' TON' : '0.0000 TON';
     document.getElementById('total-tickets').textContent = (competitionData.totalTickets || 0).toLocaleString();
     
     const ticketInput = document.getElementById('ticket-amount');
@@ -2510,7 +2601,7 @@ window.buyTickets = async function() {
     if (isConfirming) return;
     isConfirming = true;
     
-    const userConfirmed = confirm(`Buy ${tickets} ticket${tickets > 1 ? 's' : ''} for ${totalCost.toLocaleString()} GLX?\n\nEach ticket = 10,000 GLX = 0.001 TON\n\n🏆 Remember: Only #1 wins, all others lose!`);
+    const userConfirmed = confirm(`Buy ${tickets} ticket${tickets > 1 ? 's' : ''} for ${totalCost.toLocaleString()} GLX?\n\nEach ticket = 10,000 GLX = 0.0001 TON\n\n🏆 Remember: Only #1 wins, all others lose!`);
     if (!userConfirmed) {
         isConfirming = false;
         return;
@@ -2614,7 +2705,7 @@ async function loadPreviousWinners() {
         winnersContainer.innerHTML = '';
         winners.forEach(winner => {
             const winnerDate = new Date(winner.timestamp).toLocaleDateString();
-            const prizeAmount = winner.prize ? parseFloat(winner.prize).toFixed(3) : '0.000';
+            const prizeAmount = winner.prize ? parseFloat(winner.prize).toFixed(4) : '0.0000';
             const html = `<div class="winner-item">
                             <div class="winner-rank">🏆</div>
                             <img src="${winner.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="winner-avatar" alt="${winner.name}">
@@ -3074,6 +3165,7 @@ function initPromoCodes() {
     }
 }
 
+// ✅ دالة محسنة لدعم أنواع الكوبونات الثلاثة
 async function handlePromoCode() {
     // ✅ التحقق من الحظر أولاً
     const isAllowed = await checkBeforeAction("redeem promo code");
@@ -3098,10 +3190,42 @@ async function handlePromoCode() {
     
     if (result.success) {
         const reward = result.data.reward;
-        appData.dogsBalance = result.data.newBalance;
-        showPromoResult(`🎉 Success! You got +${reward} GLX`, 'success');
+        const rewardType = result.data.rewardType || 'glx'; // glx, ton, ticket
+        const rewardMessage = result.data.rewardMessage || '';
+        
+        // ✅ تحديث البيانات بناءً على نوع المكافأة
+        if (rewardType === 'glx') {
+            appData.dogsBalance = result.data.newGLXBalance || result.data.newBalance;
+            showPromoResult(`🎉 Success! You got +${reward.toLocaleString()} GLX`, 'success');
+        } else if (rewardType === 'ton') {
+            appData.tonBalance = result.data.newTONBalance;
+            showPromoResult(`🎉 Success! You got +${reward} TON`, 'success');
+        } else if (rewardType === 'ticket') {
+            appData.competitionTickets = (appData.competitionTickets || 0) + reward;
+            // ✅ تحديث بيانات المسابقة إذا كانت المكافأة تذاكر
+            if (competitionData.userTickets) {
+                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+                if (userId) {
+                    competitionData.userTickets[userId] = (competitionData.userTickets[userId] || 0) + reward;
+                    competitionData.totalTickets = (competitionData.totalTickets || 0) + reward;
+                    competitionData.prizePool = competitionData.totalTickets * TICKET_TON_VALUE;
+                }
+            }
+            showPromoResult(`🎉 Success! You got +${reward} competition ticket${reward > 1 ? 's' : ''}`, 'success');
+        }
+        
+        // ✅ استخدام رسالة مخصصة إذا كانت موجودة
+        if (rewardMessage) {
+            showPromoResult(rewardMessage, 'success');
+        }
+        
         codeInput.value = '';
         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        
+        // ✅ إذا كانت المكافأة تذاكر، تحديث واجهة المسابقة
+        if (rewardType === 'ticket') {
+            updateCompetitionUI();
+        }
     } else {
         if (result.error === 'ACCOUNT_BLOCKED') {
             showAccountBlockedPage(result.data.blockedMessage || "Your account has been blocked.");
@@ -3923,6 +4047,9 @@ window.selectWithdrawalType = function(type) {
         document.getElementById('faucetpay-form').style.display = 'none';
         document.getElementById('tonwallet-form').style.display = 'block';
     }
+    
+    // ✅ تحديث عرض الحد اليومي للسحوبات
+    updateDailyWithdrawalLimitDisplay();
 };
 
 async function handleFaucetPayWithdraw() {
@@ -3947,6 +4074,14 @@ async function handleFaucetPayWithdraw() {
     
     if (amount >= currentBalance) {
         showNotification(`Insufficient TON balance. You need at least ${(amount + 0.000001).toFixed(6)} TON.`, "warning");
+        return;
+    }
+    
+    // ✅ التحقق من الحد اليومي للسحوبات
+    const limitCheck = await callAPI('checkDailyWithdrawalLimit');
+    if (limitCheck.success && limitCheck.data && limitCheck.data.limitReached) {
+        showNotification(`❌ Daily withdrawal limit reached! You can only make ${DAILY_WITHDRAWAL_LIMIT} withdrawals per day.`, "error");
+        updateDailyWithdrawalLimitDisplay();
         return;
     }
     
@@ -3977,9 +4112,15 @@ async function handleFaucetPayWithdraw() {
         document.getElementById('email-preview').style.display = 'none';
         switchTab('home');
         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        
+        // ✅ تحديث عرض الحد اليومي للسحوبات
+        updateDailyWithdrawalLimitDisplay();
     } else {
         if (result.error === 'ACCOUNT_BLOCKED') {
             showAccountBlockedPage(result.data.blockedMessage || "Your account has been blocked.");
+        } else if (result.error === 'DAILY_WITHDRAWAL_LIMIT_REACHED') {
+            showNotification(`❌ Daily withdrawal limit reached! You can only make ${DAILY_WITHDRAWAL_LIMIT} withdrawals per day.`, "error");
+            updateDailyWithdrawalLimitDisplay();
         } else {
             showNotification("Error: " + result.error, "error");
         }
@@ -4012,6 +4153,14 @@ async function handleTonWalletWithdraw() {
         return;
     }
     
+    // ✅ التحقق من الحد اليومي للسحوبات
+    const limitCheck = await callAPI('checkDailyWithdrawalLimit');
+    if (limitCheck.success && limitCheck.data && limitCheck.data.limitReached) {
+        showNotification(`❌ Daily withdrawal limit reached! You can only make ${DAILY_WITHDRAWAL_LIMIT} withdrawals per day.`, "error");
+        updateDailyWithdrawalLimitDisplay();
+        return;
+    }
+    
     let shortAddress = address;
     if (address.length > 16) {
         shortAddress = address.substring(0, 8) + '...' + address.substring(address.length - 4);
@@ -4036,9 +4185,15 @@ async function handleTonWalletWithdraw() {
         document.getElementById('ton-withdraw-amount').value = minAmount;
         switchTab('home');
         renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        
+        // ✅ تحديث عرض الحد اليومي للسحوبات
+        updateDailyWithdrawalLimitDisplay();
     } else {
         if (result.error === 'ACCOUNT_BLOCKED') {
             showAccountBlockedPage(result.data.blockedMessage || "Your account has been blocked.");
+        } else if (result.error === 'DAILY_WITHDRAWAL_LIMIT_REACHED') {
+            showNotification(`❌ Daily withdrawal limit reached! You can only make ${DAILY_WITHDRAWAL_LIMIT} withdrawals per day.`, "error");
+            updateDailyWithdrawalLimitDisplay();
         } else {
             showNotification("Error: " + result.error, "error");
         }
@@ -4264,6 +4419,11 @@ function switchTab(targetId) {
     
     if (targetId === 'user-withdrawals') {
         updateUserWithdrawalsStats();
+    }
+    
+    if (targetId === 'withdraw') {
+        // ✅ تحديث عرض الحد اليومي للسحوبات عند فتح صفحة السحب
+        updateDailyWithdrawalLimitDisplay();
     }
     
     window.scrollTo(0, 0);
