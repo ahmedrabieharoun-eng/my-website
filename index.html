@@ -283,7 +283,7 @@
         .winner-avatar{width:40px;height:40px;border-radius:50%;margin-right:12px;border:2px solid var(--primary-green);}
         .winner-info{flex:1;}
         .winner-name{font-size:14px;font-weight:600;margin-bottom:2px;}
-        .winner-date{font-size=10px;color:var(--text-muted);}
+        .winner-date{font-size:10px;color:var(--text-muted);}
         .winner-prize{font-size:14px;font-weight:700;color:var(--primary-green);}
         .withdraw-max-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.5);border-radius:8px;padding:6px 12px;color:white;font-size:10px;cursor:pointer;font-weight:700;z-index:10;}
         .bet-btn.k-style{min-width:55px;padding:10px 12px;font-size:13px;flex:1;}
@@ -1066,12 +1066,12 @@
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
 <script>
-// ✅ 1. إضافة دالة صفحة التحميل العالمية
+// ✅ 1. إضافة دالة صفحة التحميل العالمية (10 ثوانٍ)
 let loadingProgress = 0;
 let loadingSeconds = 10;
 let loadingTimerInterval;
 
-async function startGlobalLoading() {
+function startGlobalLoading() {
     const loadingPage = document.getElementById('global-loading-page');
     const progressBar = document.getElementById('loading-progress-bar');
     const timerElement = document.getElementById('loading-timer');
@@ -1108,71 +1108,6 @@ async function startGlobalLoading() {
             finishLoading();
         }
     }, 1000);
-    
-    // ✅ بدء تنفيذ جميع طلبات التهيئة أثناء فترة الانتظار
-    await performInitialRequests();
-}
-
-// ✅ دالة جديدة لتنفيذ جميع طلبات التهيئة
-async function performInitialRequests() {
-    try {
-        // 1. فحص بيئة تليجرام
-        await checkTelegramEnvironment();
-        
-        // 2. فحص حالة الحظر من السيرفر
-        await checkUserBlockStatus();
-        
-        // 3. التحقق من مستخدم تليجرام
-        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-            
-            // 4. محاكاة فحص الحساب
-            await simulateAccountCheck(tgUser.id.toString());
-            
-            // 5. جلب إعدادات التطبيق
-            await fetchAppSettings();
-            
-            // 6. جلب بيانات المنافسة
-            await callAPI('getCompetitionData');
-            
-            // 7. جلب بيانات المستخدم إذا كان موجوداً
-            if (tgUser.id) {
-                const result = await callAPI('initializeUser', { 
-                    user: {
-                        id: tgUser.id.toString(),
-                        first_name: tgUser.first_name,
-                        last_name: tgUser.last_name || '',
-                        username: tgUser.username || ''
-                    }, 
-                    deviceFingerprint: await generateDeviceFingerprint() 
-                });
-                
-                if (result.success) {
-                    appData = result.data.userData || {};
-                }
-                
-                // 8. جلب المهام
-                await callAPI('getTasks');
-                
-                // 9. جلب سجل المعاملات
-                await callAPI('getTransactionHistory');
-                
-                // 10. جلب قائمة المتصدرين
-                await callAPI('getLeaderboard');
-            }
-        }
-    } catch (error) {
-        console.error("Error in initial requests:", error);
-    }
-}
-
-// ✅ دالة مساعدة لفحص بيئة تليجرام
-async function checkTelegramEnvironment() {
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isTelegramWebApp = window.Telegram && window.Telegram.WebApp;
-    const isTelegramWeb = userAgent.includes('web.telegram.org') || userAgent.includes('telegram.me') || userAgent.includes('t.me');
-    
-    return isTelegramWebApp || isTelegramWeb;
 }
 
 // ✅ 2. دالة التحقق من الحظر من السيرفر
@@ -1364,16 +1299,8 @@ async function callAPI(action, data = {}) {
         }
         
         if (!result.success && result.error && result.error.includes('Connection error')) {
-            // ✅ تعديل: عدم عرض صفحة الحظر في حالة كونيكشن ايرور في البداية
-            if (document.getElementById('global-loading-page').style.display === 'flex') {
-                // خلال التحميل: فقط تسجيل الخطأ
-                console.error("Connection error during loading:", result.error);
-                return { success: false, error: result.error };
-            } else {
-                // أثناء العمل: عرض صفحة الحظر
-                showAccountBlockedPage("Connection error. Please try again.");
-                return { success: false, error: result.error };
-            }
+            showAccountBlockedPage("Connection error. Please try again.");
+            return { success: false, error: result.error };
         }
         
         // ✅ معالجة خاصة لعملة Coin Flip
@@ -1397,16 +1324,7 @@ async function callAPI(action, data = {}) {
         // ✅ تصنيف أخطاء الاتصال
         if (error.message && error.message.includes('Connection error') || 
             error.message && error.message.includes('Failed to fetch')) {
-            // ✅ تعديل: عدم عرض صفحة الحظر في حالة كونيكشن ايرور في البداية
-            if (document.getElementById('global-loading-page').style.display === 'flex') {
-                // خلال التحميل: فقط تسجيل الخطأ
-                console.error("Connection error during loading:", error.message);
-                return { success: false, error: error.message };
-            } else {
-                // أثناء العمل: عرض صفحة الحظر
-                showAccountBlockedPage("Connection error. Please try again.");
-                return { success: false, error: error.message };
-            }
+            showAccountBlockedPage("Connection error. Please try again.");
         } else {
             showNotification("Connection error. Please try again.", "error");
         }
@@ -1476,10 +1394,6 @@ async function flipCoin() {
                 coin.style.setProperty('--final-rotation', finalRotation + 'deg');
                 coin.classList.add('coin-spinning');
                 
-                // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-                // ✅ التعديل: لا تظهر الإشعارات هنا، انتظر انتهاء الرسوم المتحركة
-                // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-                
                 setTimeout(() => {
                     coin.classList.remove('coin-spinning');
                     coin.classList.add('coin-final');
@@ -1488,18 +1402,16 @@ async function flipCoin() {
                     // ✅ عرض النتيجة مع صافي الربح/الخسارة
                     showCoinFlipResult(isWin, resultSide, betAmountNum, winAmount, finalRotation);
                     
-                    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
                     // ✅ الآن فقط يتم عرض الإشعار المناسب بعد انتهاء الرسوم المتحركة
-                    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
                     if (isWin) {
                         const netProfit = winAmount - betAmountNum;
                         setTimeout(() => {
                             showNotification(`🎉 You won ${winAmount.toLocaleString()} GLX! (Net Profit: +${netProfit.toLocaleString()} GLX)`, "success");
-                        }, 500); // تأخير بسيط بعد ظهور النتيجة
+                        }, 500);
                     } else {
                         setTimeout(() => {
                             showNotification(`😢 You lost ${betAmountNum.toLocaleString()} GLX`, "error");
-                        }, 500); // تأخير بسيط بعد ظهور النتيجة
+                        }, 500);
                     }
                     
                 }, 2500);
@@ -1524,7 +1436,7 @@ async function flipCoin() {
                 flipButton.classList.remove('coin-flip-btn-processing');
                 flipButton.innerHTML = '<i class="fa-solid fa-play"></i> FLIP COIN';
             }
-        }, 3000); // انتظر 3 ثوانٍ حتى تنتهي الرسوم المتحركة والإشعارات
+        }, 3000);
     }
 }
 
@@ -3679,21 +3591,21 @@ function extractChannelUsernameFromLink(link) {
 
 // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 // ✅ التعديل الرئيسي: فصل مهام Partners (ثابتة) و Community (من Firebase)
-// ✅ تعديل قيمة مكافأة المهام الثابتة من 5000 إلى 2000
+// ✅ تعديل أسماء القنوات البارتنر كما طلبت
 // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 async function fetchAndRenderTasks(user) {
     const result = await callAPI('getTasks');
     
-    // ✅ PARTNER TASKS - ثابتة من الكود
+    // ✅ PARTNER TASKS - ثابتة من الكود مع الأسماء الجديدة
     const pCont = document.getElementById('partner-tasks-list');
     const cCont = document.getElementById('community-tasks-list');
     
-    // ✅ تعريف المهام الثابتة للشركاء - تم تغيير المكافأة من 5000 إلى 2000
+    // ✅ تعريف المهام الثابتة للشركاء مع الأسماء الجديدة
     const partnerTasks = [
         {
             id: 'partner_telegram_1',
-            title: 'News Channel',
-            description: 'Get the latest updates',
+            title: 'News Channel',  // قناة الأخبار
+            description: 'Stay updated with latest news',
             link: 'https://t.me/earnmoney174688',
             reward: 2000,
             category: 'partner',
@@ -3701,8 +3613,8 @@ async function fetchAndRenderTasks(user) {
         },
         {
             id: 'partner_telegram_2',
-            title: 'Codes Channel',
-            description: 'Get daily promo codes',
+            title: 'Codes Channel',  // قناة الأكواد اليومية
+            description: 'Get daily promo codes & rewards',
             link: 'https://t.me/earnmoney1685',
             reward: 2000,
             category: 'partner',
@@ -3710,8 +3622,8 @@ async function fetchAndRenderTasks(user) {
         },
         {
             id: 'partner_telegram_3',
-            title: 'Payments Channel',
-            description: 'Withdrawals & transactions',
+            title: 'Payments Channel',  // قناة المدفوعات
+            description: 'Track payments & withdrawals',
             link: 'https://t.me/earnmoney139482',
             reward: 2000,
             category: 'partner',
@@ -3719,8 +3631,8 @@ async function fetchAndRenderTasks(user) {
         },
         {
             id: 'partner_telegram_4',
-            title: 'Partner Channel',
-            description: 'Earn together',
+            title: 'Partner Channel',  // قناة الشريك
+            description: 'Partner channel for the bot',
             link: 'https://t.me/EarnMoneyWithRedone',
             reward: 2000,
             category: 'partner',
@@ -4407,10 +4319,10 @@ function getLevel(balance) {
 
 // ✅ تعديل document.addEventListener لبدء التحميل
 document.addEventListener('DOMContentLoaded', async function() {
-    // بدء صفحة التحميل العالمية
+    // بدء صفحة التحميل العالمية (10 ثوانٍ)
     startGlobalLoading();
     
-    // استمرار في بقية التهيئة بعد 10 ثانية
+    // استمرار في بقية التهيئة بعد 10 ثوانٍ
     setTimeout(async () => {
         const verificationResult = await performSecurityVerification();
         if (!verificationResult) {
@@ -4438,7 +4350,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         await initializeUser(user, deviceFingerprint);
         initializeApp(user);
-    }, 10000);
+    }, 10000); // تغيير من 15000 إلى 10000 (10 ثوانٍ)
 });
 </script>
 </body>
