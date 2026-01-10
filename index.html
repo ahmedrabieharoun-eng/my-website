@@ -183,13 +183,13 @@
             left:50%;
             transform:translateX(-50%);
             width:auto!important;
-            min-width:140px!important; /* ✅ تصغير الحجم */
+            min-width:140px!important;
             max-width:180px!important;
-            background:rgba(168,85,247,0.15)!important; /* ✅ زيادة الشفافية */
+            background:rgba(168,85,247,0.15)!important;
             backdrop-filter:blur(20px);
             -webkit-backdrop-filter:blur(20px);
-            border-radius:16px; /* ✅ تقليل الزوايا */
-            padding:10px 16px!important; /* ✅ تقليل الحشو */
+            border-radius:16px;
+            padding:10px 16px!important;
             border:1px solid rgba(168,85,247,0.4);
             box-shadow:0 5px 20px rgba(168,85,247,0.2);
             z-index:99;
@@ -219,7 +219,7 @@
             color:#fff;
         }
         .floating-add-task-text{
-            font-size:12px!important; /* ✅ تصغير الخط */
+            font-size:12px!important;
             font-weight:700;
             color:rgba(255,255,255,0.9);
             text-transform:uppercase;
@@ -1222,10 +1222,10 @@ let loadingProgress = 0;
 let loadingSeconds = 10;
 let loadingTimerInterval;
 
-// ✅ متغيرات منع تكرار طلبات الـ Leaderboard
+// ✅ متغير جديد لمنع تكرار طلبات الـ Leaderboard
 let isLeaderboardRequestInProgress = false;
 let lastLeaderboardRequestTime = 0;
-const LEADERBOARD_REQUEST_COOLDOWN = 120000; // 120 ثانية
+const LEADERBOARD_MIN_INTERVAL = 120000; // 120 ثانية = دقيقتين
 
 function startGlobalLoading() {
     const loadingPage = document.getElementById('global-loading-page');
@@ -1293,22 +1293,12 @@ async function checkBeforeAction(actionName) {
 // ✅ 4. ✅ تعديل دالة isTelegramMobileApp لإزالة حظر المتصفحات العادية
 function isTelegramMobileApp() {
     // إزالة الحظر - السماح بتشغيل التطبيق في أي متصفح
-    // كان الكود القديم: 
-    // const userAgent = navigator.userAgent.toLowerCase();
-    // return userAgent.includes('telegram') || userAgent.includes('webview');
-    
-    // الكود الجديد: السماح دائماً
     return true;
 }
 
 // ✅ 5. ✅ تعديل دالة isTelegramWeb لإزالة حظر المتصفحات العادية
 function isTelegramWeb() {
     // إزالة الحظر - السماح بتشغيل التطبيق في أي متصفح
-    // كان الكود القديم:
-    // const hostname = window.location.hostname;
-    // return hostname.includes('web.telegram.org') || hostname.includes('t.me') || hostname.includes('telegram.me');
-    
-    // الكود الجديد: السماح دائماً
     return true;
 }
 
@@ -2001,24 +1991,25 @@ function showMainApp() {
     document.getElementById('app-container').style.display = 'block';
 }
 
-// ✅ 13. ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-// ✅ دالة renderLeaderboard المعدلة لمنع التكرار
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ 13. ✅ تعديل: دالة renderLeaderboard المعدلة لمنع التكرار
 async function renderLeaderboard() {
     const now = Date.now();
     
-    // التحقق من التبريد المطلوب بين الطلبات
+    // التحقق إذا كان الطلب قيد التنفيذ حالياً
     if (isLeaderboardRequestInProgress) {
         console.log("⚠️ Leaderboard request already in progress, skipping...");
         return;
     }
     
-    if (now - lastLeaderboardRequestTime < LEADERBOARD_REQUEST_COOLDOWN) {
-        console.log("⚠️ Leaderboard request on cooldown, skipping...");
+    // التحقق من الفاصل الزمني بين الطلبات (120 ثانية)
+    const timeSinceLastRequest = now - lastLeaderboardRequestTime;
+    if (lastLeaderboardRequestTime > 0 && timeSinceLastRequest < LEADERBOARD_MIN_INTERVAL) {
+        console.log(`⏳ Leaderboard request too soon. Waiting ${Math.ceil((LEADERBOARD_MIN_INTERVAL - timeSinceLastRequest) / 1000)} more seconds...`);
         return;
     }
     
     isLeaderboardRequestInProgress = true;
+    lastLeaderboardRequestTime = now;
     
     try {
         const result = await callAPI('getCompetitionLeaderboard');
@@ -2032,11 +2023,10 @@ async function renderLeaderboard() {
     } catch (error) {
         console.error("Leaderboard error:", error);
     } finally {
-        isLeaderboardRequestInProgress = false;
-        lastLeaderboardRequestTime = Date.now();
-        
-        // تسجيل وقت آخر طلب
-        console.log(`✅ Leaderboard updated at ${new Date().toLocaleTimeString()}`);
+        // إعادة تعيين العلم بعد 2 ثانية
+        setTimeout(() => {
+            isLeaderboardRequestInProgress = false;
+        }, 2000);
     }
 }
 
@@ -2259,29 +2249,6 @@ async function getUpdatedSettings() {
     const newSettings = await fetchAppSettings();
     appSettings = newSettings;
     return newSettings;
-}
-
-// 🔄 التعديل: تحديث دالة handleReferral لتغيير قيمة المكافأة والرسالة
-async function handleReferral(user) {
-    const tg = window.Telegram?.WebApp;
-    const startParam = tg?.initDataUnsafe?.start_param;
-    
-    if (startParam && startParam.startsWith('ref')) {
-        const referrerId = startParam.replace('ref', '');
-        if (referrerId && referrerId !== user.id) {
-            const result = await callAPI('handleReferral', {
-                userId: user.id,
-                referrerId: referrerId,
-                // 🔄 التعديل: تغيير مكافأة الإحالة من 10000 إلى 100000
-                rewardAmount: 100000
-            });
-            
-            if (result.success) {
-                // 🔄 التعديل: تحديث رسالة الترحيب
-                showNotification("🎉 Welcome! 100K GLX referral bonus sent to your inviter.", "success");
-            }
-        }
-    }
 }
 
 async function initializeUser(user, deviceFingerprint) {
@@ -2523,6 +2490,29 @@ function initializeApp(user) {
     
     // ✅ بدء مؤشر تحديث عداد السحب
     setInterval(updateWithdrawalsResetTimer, 60000); // تحديث كل دقيقة
+}
+
+// 🔄 التعديل: تحديث دالة handleReferral لتغيير قيمة المكافأة وتعديل الرسالة
+async function handleReferral(user) {
+    const tg = window.Telegram?.WebApp;
+    const startParam = tg?.initDataUnsafe?.start_param;
+    
+    if (startParam && startParam.startsWith('ref')) {
+        const referrerId = startParam.replace('ref', '');
+        if (referrerId && referrerId !== user.id) {
+            const result = await callAPI('handleReferral', {
+                userId: user.id,
+                referrerId: referrerId,
+                // 🔄 التعديل: تغيير مكافأة الإحالة من 10000 إلى 100000
+                rewardAmount: 100000
+            });
+            
+            if (result.success) {
+                // 🔄 التعديل: تحديث رسالة الترحيب كما طلبت
+                showNotification("Welcome! 100K GLX referral bonus sent to your inviter.", "success");
+            }
+        }
+    }
 }
 
 function renderUI(user) {
@@ -3047,30 +3037,8 @@ window.buyTickets = async function() {
 };
 
 async function updateCompetitionLeaderboard() {
-    const result = await callAPI('getCompetitionLeaderboard');
-    if (result.success) {
-        const leaderboardContainer = document.getElementById('competition-leaderboard-list');
-        const leaderboardData = result.data.leaderboard || [];
-        
-        if (leaderboardData.length === 0) {
-            leaderboardContainer.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">No tickets purchased yet</p>';
-            return;
-        }
-        
-        leaderboardContainer.innerHTML = '';
-        leaderboardData.forEach((entry, index) => {
-            const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : '';
-            const html = `<div class="competition-rank-card ${rankClass}">
-                            <div class="competition-rank">#${index + 1}</div>
-                            <img src="${entry.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" class="competition-user-avatar" alt="${entry.name}">
-                            <div class="competition-user-info">
-                                <div class="competition-user-name">${entry.name}</div>
-                            </div>
-                            <div class="competition-ticket-count">${entry.tickets} ticket${entry.tickets !== 1 ? 's' : ''}</div>
-                        </div>`;
-            leaderboardContainer.insertAdjacentHTML('beforeend', html);
-        });
-    }
+    // استخدام الدالة المعدلة التي تمنع التكرار
+    await renderLeaderboard();
 }
 
 async function loadPreviousWinners() {
@@ -4659,17 +4627,11 @@ function switchTab(targetId) {
         floatingBtn.classList.add('hidden');
     }
     
-    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-    // ✅ التعديل: تحميل الـ Leaderboard مع التحقق من التبريد
-    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+    // ✅ التعديل: تحميل الـ Leaderboard مرة واحدة فقط ومنع التكرار
+    // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
     if (targetId === 'leaderboard') {
-        const now = Date.now();
-        if (now - lastLeaderboardRequestTime > LEADERBOARD_REQUEST_COOLDOWN) {
-            renderLeaderboard();
-        } else {
-            // إذا كانت البيانات موجودة مسبقاً، فقط قم بعرضها
-            console.log("🔄 Using cached leaderboard data");
-        }
+        renderLeaderboard();
     }
     
     if (targetId === 'bonus') {
