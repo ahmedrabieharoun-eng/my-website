@@ -118,6 +118,10 @@
             background: linear-gradient(135deg, var(--warning), #ff9500);
         }
         
+        .btn-info-admin {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+        }
+        
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -204,6 +208,37 @@
             max-height: 300px;
             overflow-y: auto;
             margin-top: 20px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+            min-width: 120px;
+            font-size: 13px;
+        }
+        
+        .quick-actions {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .action-btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .action-btn-group .btn {
+            flex: 1;
+            min-width: 140px;
         }
     </style>
 </head>
@@ -332,6 +367,63 @@
         </div>
     </div>
     
+    <!-- Quick Actions Modal -->
+    <div class="modal fade modal-custom" id="quickActionsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-lightning-charge"></i>
+                        إجراءات سريعة
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">المستخدم</label>
+                        <input type="text" class="form-control" id="quickUserId" readonly>
+                        <small class="text-muted" id="quickUserName"></small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">اختر الإجراء</label>
+                        <select class="form-control" id="quickActionSelect" onchange="toggleQuickAmount()">
+                            <option value="">-- اختر إجراء --</option>
+                            <option value="block">حظر المستخدم</option>
+                            <option value="unblock">فك الحظر</option>
+                            <option value="add_balance">إضافة رصيد GLX</option>
+                            <option value="subtract_balance">خصم رصيد GLX</option>
+                            <option value="add_tickets">إضافة تذاكر</option>
+                            <option value="remove_tickets">خصم تذاكر</option>
+                            <option value="reset_ads">إعادة تعيين الإعلانات</option>
+                            <option value="add_ton">إضافة رصيد TON</option>
+                            <option value="subtract_ton">خصم رصيد TON</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="quickAmountContainer" style="display: none;">
+                        <label class="form-label" id="quickAmountLabel">المبلغ</label>
+                        <input type="number" class="form-control" id="quickAmount" value="0" min="0" step="0.001">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">السبب</label>
+                        <textarea class="form-control" id="quickReason" rows="3" placeholder="سبب الإجراء..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3" id="quickWarning" style="display: none;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span id="warningText"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" class="btn btn-danger-admin" onclick="executeQuickAction()">تنفيذ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -355,6 +447,7 @@
     let allUsers = {};
     let pendingWithdrawals = {};
     let currentUserId = null;
+    let currentWithdrawalId = null;
 
     // Setup Firebase Listeners
     function setupFirebaseListeners() {
@@ -426,6 +519,7 @@
         withdrawals.forEach(([withdrawalId, withdrawal], index) => {
             const user = allUsers[withdrawal.userId] || {};
             const amount = parseFloat(withdrawal.amount) || 0;
+            const isBlocked = user.isBlocked || false;
             
             html += `
                 <tr>
@@ -437,6 +531,7 @@
                             <div>
                                 <div class="fw-bold">${user.name || 'مجهول'}</div>
                                 <small class="text-muted d-block">${withdrawal.userId.substring(0, 10)}...</small>
+                                ${isBlocked ? '<small class="text-danger"><i class="bi bi-shield-lock"></i> محظور</small>' : ''}
                             </div>
                         </div>
                     </td>
@@ -454,15 +549,18 @@
                         <small class="text-muted">${formatTimeSince(withdrawal.timestamp)}</small>
                     </td>
                     <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-success-admin me-1" onclick="approveWithdrawal('${withdrawalId}')">
+                        <div class="action-buttons">
+                            <button class="btn btn-success-admin btn-sm" onclick="approveWithdrawal('${withdrawalId}')">
                                 <i class="bi bi-check"></i> قبول
                             </button>
-                            <button class="btn btn-danger-admin me-1" onclick="rejectWithdrawal('${withdrawalId}')">
+                            <button class="btn btn-danger-admin btn-sm" onclick="rejectWithdrawal('${withdrawalId}')">
                                 <i class="bi bi-x"></i> رفض
                             </button>
-                            <button class="btn btn-admin" onclick="showUserStats('${withdrawal.userId}', '${withdrawalId}')">
+                            <button class="btn btn-info-admin btn-sm" onclick="showUserStats('${withdrawal.userId}', '${withdrawalId}')">
                                 <i class="bi bi-graph-up"></i> إحصائيات
+                            </button>
+                            <button class="btn btn-warning-admin btn-sm" onclick="showQuickActions('${withdrawal.userId}', '${withdrawalId}')">
+                                <i class="bi bi-gear"></i> إجراءات
                             </button>
                         </div>
                     </td>
@@ -471,6 +569,258 @@
         });
         
         tbody.innerHTML = html;
+    }
+
+    // Show Quick Actions Modal
+    function showQuickActions(userId, withdrawalId = null) {
+        currentUserId = userId;
+        currentWithdrawalId = withdrawalId;
+        const user = allUsers[userId] || {};
+        
+        document.getElementById('quickUserId').value = userId;
+        document.getElementById('quickUserName').textContent = `الاسم: ${user.name || 'مجهول'}`;
+        document.getElementById('quickActionSelect').value = '';
+        document.getElementById('quickAmount').value = '0';
+        document.getElementById('quickReason').value = '';
+        document.getElementById('quickAmountContainer').style.display = 'none';
+        document.getElementById('quickWarning').style.display = 'none';
+        
+        // Set default values based on user status
+        if (user.isBlocked) {
+            document.getElementById('quickActionSelect').value = 'unblock';
+        }
+        
+        const modal = new bootstrap.Modal(document.getElementById('quickActionsModal'));
+        modal.show();
+    }
+
+    // Toggle Amount Field
+    function toggleQuickAmount() {
+        const action = document.getElementById('quickActionSelect').value;
+        const amountContainer = document.getElementById('quickAmountContainer');
+        const amountLabel = document.getElementById('quickAmountLabel');
+        const warningDiv = document.getElementById('quickWarning');
+        const warningText = document.getElementById('warningText');
+        
+        const amountActions = ['add_balance', 'subtract_balance', 'add_tickets', 'remove_tickets', 'add_ton', 'subtract_ton'];
+        
+        if (amountActions.includes(action)) {
+            amountContainer.style.display = 'block';
+            
+            // Set appropriate label
+            const labels = {
+                'add_balance': 'المبلغ (GLX)',
+                'subtract_balance': 'المبلغ (GLX)',
+                'add_tickets': 'عدد التذاكر',
+                'remove_tickets': 'عدد التذاكر',
+                'add_ton': 'المبلغ (TON)',
+                'subtract_ton': 'المبلغ (TON)'
+            };
+            amountLabel.textContent = labels[action] || 'المبلغ';
+            
+            // Set default values
+            const defaults = {
+                'add_balance': '1000',
+                'subtract_balance': '1000',
+                'add_tickets': '1',
+                'remove_tickets': '1',
+                'add_ton': '0.1',
+                'subtract_ton': '0.1'
+            };
+            document.getElementById('quickAmount').value = defaults[action] || '0';
+            
+            // Show warnings for destructive actions
+            if (action === 'subtract_balance' || action === 'remove_tickets' || action === 'subtract_ton') {
+                warningDiv.style.display = 'block';
+                warningText.textContent = 'تحذير: هذا الإجراء سيقوم بخصم من رصيد المستخدم!';
+            } else if (action === 'block') {
+                warningDiv.style.display = 'block';
+                warningText.textContent = 'تحذير: هذا الإجراء سيقوم بحظر المستخدم من النظام!';
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        } else {
+            amountContainer.style.display = 'none';
+            
+            // Show warnings for block/unblock
+            if (action === 'block') {
+                warningDiv.style.display = 'block';
+                warningText.textContent = 'تحذير: هذا الإجراء سيقوم بحظر المستخدم من النظام!';
+            } else if (action === 'unblock') {
+                warningDiv.style.display = 'block';
+                warningText.textContent = 'سيتم فك الحظر عن المستخدم وإعادته للنظام.';
+            } else if (action === 'reset_ads') {
+                warningDiv.style.display = 'block';
+                warningText.textContent = 'سيتم إعادة تعيين جميع إحصائيات الإعلانات للمستخدم.';
+            } else {
+                warningDiv.style.display = 'none';
+            }
+        }
+    }
+
+    // Execute Quick Action
+    function executeQuickAction() {
+        const action = document.getElementById('quickActionSelect').value;
+        const amount = parseFloat(document.getElementById('quickAmount').value) || 0;
+        const reason = document.getElementById('quickReason').value || 'إجراء من الإدارة';
+        
+        if (!action) {
+            alert('يرجى اختيار إجراء');
+            return;
+        }
+        
+        if (!currentUserId) {
+            alert('خطأ: لم يتم تحديد مستخدم');
+            return;
+        }
+        
+        const user = allUsers[currentUserId] || {};
+        
+        // Confirm destructive actions
+        const destructiveActions = ['block', 'subtract_balance', 'remove_tickets', 'subtract_ton', 'reset_ads'];
+        if (destructiveActions.includes(action)) {
+            let confirmMessage = '';
+            
+            switch(action) {
+                case 'block':
+                    confirmMessage = `هل تريد حظر المستخدم ${user.name || currentUserId}؟`;
+                    break;
+                case 'subtract_balance':
+                    confirmMessage = `هل تريد خصم ${amount} GLX من رصيد المستخدم؟`;
+                    break;
+                case 'remove_tickets':
+                    confirmMessage = `هل تريد خصم ${amount} تذكرة من المستخدم؟`;
+                    break;
+                case 'subtract_ton':
+                    confirmMessage = `هل تريد خصم ${amount} TON من رصيد المستخدم؟`;
+                    break;
+                case 'reset_ads':
+                    confirmMessage = 'هل تريد إعادة تعيين جميع إحصائيات الإعلانات للمستخدم؟';
+                    break;
+            }
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+        }
+        
+        const updates = {};
+        const timestamp = Date.now();
+        
+        switch(action) {
+            case 'block':
+                updates[`users/${currentUserId}/isBlocked`] = true;
+                updates[`users/${currentUserId}/blockReason`] = reason;
+                updates[`users/${currentUserId}/blockedAt`] = timestamp;
+                
+                // Add to blocks collection
+                updates[`blocks/${currentUserId}`] = {
+                    userId: currentUserId,
+                    reason: reason,
+                    appliedAt: timestamp,
+                    permanent: true,
+                    adminAction: true
+                };
+                break;
+                
+            case 'unblock':
+                updates[`users/${currentUserId}/isBlocked`] = false;
+                updates[`users/${currentUserId}/blockReason`] = null;
+                updates[`users/${currentUserId}/blockedAt`] = null;
+                updates[`blocks/${currentUserId}`] = null;
+                break;
+                
+            case 'add_balance':
+                if (amount > 0) {
+                    const currentBalance = user.dogsBalance || 0;
+                    updates[`users/${currentUserId}/dogsBalance`] = currentBalance + amount;
+                }
+                break;
+                
+            case 'subtract_balance':
+                if (amount > 0) {
+                    const currentBalance = user.dogsBalance || 0;
+                    updates[`users/${currentUserId}/dogsBalance`] = Math.max(0, currentBalance - amount);
+                }
+                break;
+                
+            case 'add_tickets':
+                if (amount > 0) {
+                    const currentTickets = user.competitionTickets || 0;
+                    updates[`users/${currentUserId}/competitionTickets`] = currentTickets + amount;
+                    
+                    // Update competition
+                    updates[`competition/current/userTickets/${currentUserId}`] = currentTickets + amount;
+                    
+                    // Update total tickets
+                    database.ref('competition/current/totalTickets').transaction(current => {
+                        return (current || 0) + amount;
+                    });
+                }
+                break;
+                
+            case 'remove_tickets':
+                if (amount > 0) {
+                    const currentTickets = user.competitionTickets || 0;
+                    updates[`users/${currentUserId}/competitionTickets`] = Math.max(0, currentTickets - amount);
+                    
+                    // Update competition
+                    updates[`competition/current/userTickets/${currentUserId}`] = Math.max(0, currentTickets - amount);
+                    
+                    // Update total tickets
+                    database.ref('competition/current/totalTickets').transaction(current => {
+                        return Math.max(0, (current || 0) - amount);
+                    });
+                }
+                break;
+                
+            case 'reset_ads':
+                updates[`users/${currentUserId}/adsWatched`] = 0;
+                updates[`users/${currentUserId}/adsMonetag`] = 0;
+                updates[`users/${currentUserId}/adsGiga`] = 0;
+                updates[`users/${currentUserId}/adsAdsgram`] = 0;
+                updates[`users/${currentUserId}/dailyAds`] = 0;
+                updates[`users/${currentUserId}/lastAdDate`] = null;
+                updates[`users/${currentUserId}/lastAdTime`] = null;
+                updates[`users/${currentUserId}/adsToday`] = 0;
+                break;
+                
+            case 'add_ton':
+                if (amount > 0) {
+                    const currentTON = parseFloat(user.tonBalance) || 0;
+                    updates[`users/${currentUserId}/tonBalance`] = (currentTON + amount).toFixed(4);
+                }
+                break;
+                
+            case 'subtract_ton':
+                if (amount > 0) {
+                    const currentTON = parseFloat(user.tonBalance) || 0;
+                    updates[`users/${currentUserId}/tonBalance`] = Math.max(0, currentTON - amount).toFixed(4);
+                }
+                break;
+        }
+        
+        // Add to user history
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: action,
+            amount: amount > 0 ? amount : undefined,
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert('تم تنفيذ الإجراء بنجاح');
+                bootstrap.Modal.getInstance(document.getElementById('quickActionsModal')).hide();
+                
+                // Refresh user data
+                refreshCurrentUser();
+            })
+            .catch(error => {
+                alert('حدث خطأ: ' + error.message);
+            });
     }
 
     // Show User Statistics
@@ -516,13 +866,34 @@
                             '<span class="badge bg-danger">محظور</span>' : 
                             '<span class="badge bg-success">نشط</span>'}
                     </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="quick-actions mt-3">
+                        <h6 class="mb-2">إجراءات سريعة</h6>
+                        <div class="action-btn-group">
+                            ${user.isBlocked ? 
+                                '<button class="btn btn-success-admin btn-sm" onclick="quickUnblock()"><i class="bi bi-unlock"></i> فك الحظر</button>' : 
+                                '<button class="btn btn-danger-admin btn-sm" onclick="quickBlock()"><i class="bi bi-shield-lock"></i> حظر</button>'}
+                            <button class="btn btn-warning-admin btn-sm" onclick="quickAddBalance()"><i class="bi bi-plus-circle"></i> إضافة GLX</button>
+                            <button class="btn btn-warning-admin btn-sm" onclick="quickSubtractBalance()"><i class="bi bi-dash-circle"></i> خصم GLX</button>
+                            <button class="btn btn-info-admin btn-sm" onclick="quickAddTickets()"><i class="bi bi-ticket-perforated"></i> إضافة تذاكر</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="col-md-8">
                     <!-- Financial Stats -->
                     <div class="card mb-3">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="bi bi-wallet2"></i> الإحصائيات المالية</h6>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-sm btn-success-admin" onclick="quickAddGLX(1000)">
+                                    +1K GLX
+                                </button>
+                                <button class="btn btn-sm btn-success-admin" onclick="quickAddTON(0.1)">
+                                    +0.1 TON
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="stats-grid">
@@ -579,8 +950,11 @@
                     
                     <!-- Ads Stats -->
                     <div class="card mb-3">
-                        <div class="card-header bg-light">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <h6 class="mb-0"><i class="bi bi-tv"></i> إحصائيات الإعلانات</h6>
+                            <button class="btn btn-sm btn-warning-admin" onclick="quickResetAds()">
+                                <i class="bi bi-arrow-repeat"></i> إعادة تعيين
+                            </button>
                         </div>
                         <div class="card-body">
                             <div class="stats-grid">
@@ -690,6 +1064,243 @@
         document.getElementById('userStatsContent').innerHTML = statsContent;
         const modal = new bootstrap.Modal(document.getElementById('userStatsModal'));
         modal.show();
+    }
+
+    // Quick Action Functions
+    function quickBlock() {
+        const reason = prompt('سبب الحظر:', 'حظر من الإدارة');
+        if (reason === null) return;
+        
+        const updates = {};
+        const timestamp = Date.now();
+        
+        updates[`users/${currentUserId}/isBlocked`] = true;
+        updates[`users/${currentUserId}/blockReason`] = reason;
+        updates[`users/${currentUserId}/blockedAt`] = timestamp;
+        
+        updates[`blocks/${currentUserId}`] = {
+            userId: currentUserId,
+            reason: reason,
+            appliedAt: timestamp,
+            permanent: true,
+            adminAction: true
+        };
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'block',
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert('تم حظر المستخدم');
+                refreshCurrentUser();
+            });
+    }
+
+    function quickUnblock() {
+        const timestamp = Date.now();
+        const updates = {};
+        
+        updates[`users/${currentUserId}/isBlocked`] = false;
+        updates[`users/${currentUserId}/blockReason`] = null;
+        updates[`users/${currentUserId}/blockedAt`] = null;
+        updates[`blocks/${currentUserId}`] = null;
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'unblock',
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert('تم فك حظر المستخدم');
+                refreshCurrentUser();
+            });
+    }
+
+    function quickAddBalance() {
+        const amount = prompt('المبلغ (GLX):', '1000');
+        if (!amount || isNaN(amount) || amount <= 0) return;
+        
+        const reason = prompt('السبب:', 'مكافأة من الإدارة');
+        if (reason === null) return;
+        
+        const timestamp = Date.now();
+        const user = allUsers[currentUserId] || {};
+        const currentBalance = user.dogsBalance || 0;
+        
+        const updates = {};
+        updates[`users/${currentUserId}/dogsBalance`] = currentBalance + parseFloat(amount);
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'add_balance',
+            amount: parseFloat(amount),
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert(`تم إضافة ${amount} GLX`);
+                refreshCurrentUser();
+            });
+    }
+
+    function quickSubtractBalance() {
+        const amount = prompt('المبلغ (GLX):', '1000');
+        if (!amount || isNaN(amount) || amount <= 0) return;
+        
+        const reason = prompt('السبب:', 'خصم من الإدارة');
+        if (reason === null) return;
+        
+        if (!confirm(`هل تريد خصم ${amount} GLX من رصيد المستخدم؟`)) return;
+        
+        const timestamp = Date.now();
+        const user = allUsers[currentUserId] || {};
+        const currentBalance = user.dogsBalance || 0;
+        
+        const updates = {};
+        updates[`users/${currentUserId}/dogsBalance`] = Math.max(0, currentBalance - parseFloat(amount));
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'subtract_balance',
+            amount: parseFloat(amount),
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert(`تم خصم ${amount} GLX`);
+                refreshCurrentUser();
+            });
+    }
+
+    function quickAddGLX(amount) {
+        const reason = 'مكافأة سريعة من الإدارة';
+        const timestamp = Date.now();
+        const user = allUsers[currentUserId] || {};
+        const currentBalance = user.dogsBalance || 0;
+        
+        const updates = {};
+        updates[`users/${currentUserId}/dogsBalance`] = currentBalance + amount;
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'add_balance',
+            amount: amount,
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert(`تم إضافة ${amount} GLX`);
+                refreshCurrentUser();
+            });
+    }
+
+    function quickAddTON(amount) {
+        const reason = 'مكافأة TON من الإدارة';
+        const timestamp = Date.now();
+        const user = allUsers[currentUserId] || {};
+        const currentTON = parseFloat(user.tonBalance) || 0;
+        
+        const updates = {};
+        updates[`users/${currentUserId}/tonBalance`] = (currentTON + amount).toFixed(4);
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'add_ton',
+            amount: amount,
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert(`تم إضافة ${amount} TON`);
+                refreshCurrentUser();
+            });
+    }
+
+    function quickAddTickets() {
+        const amount = prompt('عدد التذاكر:', '1');
+        if (!amount || isNaN(amount) || amount <= 0) return;
+        
+        const reason = prompt('السبب:', 'مكافأة تذاكر من الإدارة');
+        if (reason === null) return;
+        
+        const timestamp = Date.now();
+        const user = allUsers[currentUserId] || {};
+        const currentTickets = user.competitionTickets || 0;
+        
+        const updates = {};
+        updates[`users/${currentUserId}/competitionTickets`] = currentTickets + parseInt(amount);
+        updates[`competition/current/userTickets/${currentUserId}`] = currentTickets + parseInt(amount);
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'add_tickets',
+            amount: parseInt(amount),
+            reason: reason,
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                // Update total tickets
+                return database.ref('competition/current/totalTickets').transaction(current => {
+                    return (current || 0) + parseInt(amount);
+                });
+            })
+            .then(() => {
+                alert(`تم إضافة ${amount} تذكرة`);
+                refreshCurrentUser();
+            });
+    }
+
+    function quickResetAds() {
+        if (!confirm('هل تريد إعادة تعيين جميع إحصائيات الإعلانات للمستخدم؟')) return;
+        
+        const timestamp = Date.now();
+        const updates = {};
+        
+        updates[`users/${currentUserId}/adsWatched`] = 0;
+        updates[`users/${currentUserId}/adsMonetag`] = 0;
+        updates[`users/${currentUserId}/adsGiga`] = 0;
+        updates[`users/${currentUserId}/adsAdsgram`] = 0;
+        updates[`users/${currentUserId}/dailyAds`] = 0;
+        updates[`users/${currentUserId}/lastAdDate`] = null;
+        updates[`users/${currentUserId}/lastAdTime`] = null;
+        updates[`users/${currentUserId}/adsToday`] = 0;
+        
+        updates[`users/${currentUserId}/history/${timestamp}`] = {
+            type: 'admin_action',
+            action: 'reset_ads',
+            reason: 'إعادة تعيين الإعلانات من الإدارة',
+            admin: 'system',
+            timestamp: timestamp
+        };
+        
+        database.ref().update(updates)
+            .then(() => {
+                alert('تم إعادة تعيين إحصائيات الإعلانات');
+                refreshCurrentUser();
+            });
     }
 
     // Categorize History Logs
@@ -960,7 +1571,6 @@
                 if (user) {
                     allUsers[currentUserId] = user;
                     showUserStats(currentUserId);
-                    alert('تم تحديث بيانات المستخدم');
                 }
             })
             .catch(error => {
