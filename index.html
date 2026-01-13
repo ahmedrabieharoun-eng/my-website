@@ -851,17 +851,17 @@
 <div id="monetag-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">Monetag Ad</div><div class="lc-sub"><span id="monetag-count">0</span>/<span id="monetag-limit">50</span></div></div>
-<div class="lc-end"><div class="lc-val">+500</div></div>
+<div class="lc-end"><div class="lc-val">+1000</div></div>
 </div>
 <div id="gigapub-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">GigaPub Ad</div><div class="lc-sub"><span id="giga-count">0</span>/<span id="giga-limit">300</span></div></div>
-<div class="lc-end"><div class="lc-val">+500</div></div>
+<div class="lc-end"><div class="lc-val">+2000</div></div>
 </div>
 <div id="adsgram-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">AdsGram Ad</div><div class="lc-sub"><span id="adsgram-count">0</span>/<span id="adsgram-limit">300</span></div></div>
-<div class="lc-end"><div class="lc-val">+500</div></div>
+<div class="lc-end"><div class="lc-val">+2000</div></div>
 </div>
 </div>
 <h2>Partners</h2>
@@ -991,7 +991,7 @@
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
 <script>
-// ✅ 1. إضافة دالة صفحة التحميل العالمية (10 ثوانٍ)
+// ✅ 1. دالة صفحة التحميل العالمية (10 ثوانٍ)
 let loadingProgress = 0;
 let loadingSeconds = 10;
 let loadingTimerInterval;
@@ -1034,16 +1034,7 @@ function startGlobalLoading() {
     }, 1000);
 }
 
-// ✅ دالة التحقق من الاشتراك الإجباري
-async function checkMandatorySubscriptions() {
-    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    if (!userId) return false;
-    
-    const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
-    return result.success && result.data.subscribed === true;
-}
-
-// ✅ 2. دالة التحقق من الحظر من السيرفر
+// ✅ دالة التحقق من الحظر من السيرفر
 async function checkUserBlockStatus() {
     try {
         const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
@@ -1057,7 +1048,7 @@ async function checkUserBlockStatus() {
     }
 }
 
-// ✅ 3. دالة التحقق قبل أي إجراء
+// ✅ دالة التحقق قبل أي إجراء
 async function checkBeforeAction(actionName) {
     const blockCheck = await checkUserBlockStatus();
     if (blockCheck && blockCheck.success === false && blockCheck.error === 'ACCOUNT_BLOCKED') {
@@ -1068,60 +1059,178 @@ async function checkBeforeAction(actionName) {
     return true;
 }
 
-// ✅ 4. متغيرات إضافية لإصلاح التكرار
+// ✅ متغيرات إضافية لإصلاح التكرار
 let isCompetitionDataLoaded = false;
 let competitionUpdateInterval = null;
 let lastLeaderboardUpdate = 0;
 const LEADERBOARD_UPDATE_INTERVAL = 60000; // تحديث كل دقيقة
 let isCompetitionPageVisible = false;
 
+// ✅ دالة التحقق من الاشتراك الإجباري في القنوات
+async function checkMandatorySubscriptions() {
+    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!userId) return false;
+    
+    try {
+        const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
+        return result.success && result.data.subscribed === true;
+    } catch (error) {
+        console.error("Subscription check error:", error);
+        return false;
+    }
+}
+
+// ✅ دالة عرض واجهة الاشتراك الإجباري
+function showMandatorySubscriptionScreen() {
+    const requiredChannels = [
+        {
+            username: '@earnmoney174688',
+            link: 'https://t.me/earnmoney174688',
+            name: 'News Channel',
+            description: 'Latest updates & announcements'
+        },
+        {
+            username: '@earnmoney1685',
+            link: 'https://t.me/earnmoney1685',
+            name: 'Codes Channel',
+            description: 'Daily promo codes & rewards'
+        },
+        {
+            username: '@earnmoney139482',
+            link: 'https://t.me/earnmoney139482',
+            name: 'Payments Channel',
+            description: 'Track payments & withdrawals'
+        },
+        {
+            username: '@EarnMoneyWithRedone',
+            link: 'https://t.me/EarnMoneyWithRedone',
+            name: 'Partner Channel',
+            description: 'Bot partner channel'
+        }
+    ];
+    
+    let channelsHTML = '';
+    requiredChannels.forEach(channel => {
+        channelsHTML += `<div class="support-channel-card" onclick="window.open('${channel.link}','_blank')" style="margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:50px;height:50px;background:linear-gradient(135deg,#a855f7,#7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+                    <i class="fab fa-telegram"></i>
+                </div>
+                <div style="flex:1;">
+                    <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">${channel.name}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;">${channel.description}</div>
+                    <div style="font-size:10px;color:#FFC107;">
+                        <i class="fa-solid fa-users"></i> ${channel.username}
+                    </div>
+                </div>
+                <div style="color:var(--primary-green);font-size:18px;">
+                    <i class="fa-solid fa-external-link-alt"></i>
+                </div>
+            </div>
+        </div>`;
+    });
+    
+    const subscriptionHTML = `
+    <div style="padding:20px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;">
+        <div class="card" style="text-align:center;">
+            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" style="width:80px;height:80px;border-radius:50%;margin-bottom:15px;border:3px solid var(--primary-green);">
+            <h1 style="font-size:24px;margin-bottom:8px;color:#fff;">⚠️ Subscription Required</h1>
+            <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px;">
+                You must subscribe to all channels below to access GLX Galaxy
+            </p>
+            
+            <div style="background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:12px;padding:12px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="color:#e74c3c;font-size:18px;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div style="font-size:12px;color:#e74c3c;">
+                        <strong>Important:</strong> Join all channels and stay subscribed to use the bot
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align:left;margin-bottom:25px;">
+                <h2 style="font-size:16px;color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
+                    <i class="fa-solid fa-list-check"></i> Required Channels (4)
+                </h2>
+                ${channelsHTML}
+            </div>
+            
+            <button class="btn btn-primary" onclick="verifySubscriptions()" style="margin-bottom:10px;padding:15px;">
+                <i class="fa-solid fa-check-circle"></i> I'VE SUBSCRIBED TO ALL CHANNELS
+            </button>
+            
+            <p style="font-size:11px;color:var(--text-muted);margin-top:15px;">
+                After subscribing, click the button above to verify
+            </p>
+        </div>
+    </div>`;
+    
+    document.getElementById('app-container').innerHTML = subscriptionHTML;
+    document.getElementById('app-container').style.display = 'block';
+}
+
+// ✅ دالة التحقق من الاشتراكات
+async function verifySubscriptions() {
+    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+    if (!userId) return;
+    
+    const verifyBtn = document.querySelector('button[onclick="verifySubscriptions()"]');
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> VERIFYING...';
+    }
+    
+    showNotification("⏳ Verifying your subscriptions...", "info");
+    
+    try {
+        const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
+        
+        if (result.success && result.data.subscribed === true) {
+            showNotification("✅ All subscriptions verified! Loading app...", "success");
+            
+            // إخفاء شاشة الاشتراك وإظهار التطبيق
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+            
+        } else {
+            const unsubscribedChannels = result.data?.unsubscribedChannels || [];
+            let errorMessage = "You need to subscribe to all channels:";
+            
+            unsubscribedChannels.forEach(channel => {
+                errorMessage += `\n- ${channel}`;
+            });
+            
+            showNotification(errorMessage, "error");
+            
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> I\'VE SUBSCRIBED TO ALL CHANNELS';
+            }
+        }
+    } catch (error) {
+        console.error("Verification error:", error);
+        showNotification("Error verifying subscriptions. Please try again.", "error");
+        
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> I\'VE SUBSCRIBED TO ALL CHANNELS';
+        }
+    }
+}
+
 async function finishLoading() {
     const loadingPage = document.getElementById('global-loading-page');
     
     try {
-        // ✅ التحقق من الاشتراك الإجباري
+        // ✅ التحقق من اشتراكات القنوات أولاً
         const isSubscribed = await checkMandatorySubscriptions();
+        
         if (!isSubscribed) {
-            showNotification("⚠️ You must subscribe to all required channels first!", "warning");
-            
-            // عرض نافذة الاشتراك الإجباري
-            const requiredChannels = [
-                '@earnmoney174688',
-                '@earnmoney1685',
-                '@earnmoney139482',
-                '@EarnMoneyWithRedone'
-            ];
-            
-            let channelsHTML = '';
-            requiredChannels.forEach(channel => {
-                channelsHTML += `<div class="support-channel-card" onclick="window.open('https://t.me/${channel.replace('@', '')}','_blank')" style="margin-bottom:10px;">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <div style="width:50px;height:50px;background:linear-gradient(135deg,#a855f7,#7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
-                            <i class="fab fa-telegram"></i>
-                        </div>
-                        <div style="flex:1;">
-                            <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">${channel}</div>
-                            <div style="font-size:11px;color:var(--text-muted);">Required channel subscription</div>
-                        </div>
-                        <div style="color:var(--primary-green);font-size:18px;">
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            
-            const subscriptionHTML = `<div class="card" style="text-align:center; margin-top:20px; max-width:500px; margin-left:auto; margin-right:auto;">
-                <h2 style="color:#ffb300;"><i class="fa-solid fa-exclamation-triangle"></i> Mandatory Subscription Required</h2>
-                <p style="margin-bottom:15px; color:var(--text-muted);">You must subscribe to all channels below to continue:</p>
-                ${channelsHTML}
-                <button class="btn btn-primary" onclick="location.reload()" style="margin-top:15px;">
-                    <i class="fa-solid fa-rotate-right"></i> Refresh After Subscribing
-                </button>
-            </div>`;
-            
-            loadingPage.style.display = 'none';
-            document.getElementById('app-container').innerHTML = subscriptionHTML;
-            document.getElementById('app-container').style.display = 'block';
+            if (loadingPage) {
+                loadingPage.style.display = 'none';
+            }
+            showMandatorySubscriptionScreen();
             return;
         }
         
@@ -1180,7 +1289,7 @@ async function finishLoading() {
     }
 }
 
-// ✅ 5. دالة محاكاة فحص الحساب المحدثة
+// ✅ دالة محاكاة فحص الحساب المحدثة
 async function simulateAccountCheck(userId) {
     // محاكاة تأخير الشبكة
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1194,7 +1303,7 @@ async function simulateAccountCheck(userId) {
     };
 }
 
-// ✅ 6. تعديل دالة callAPI لمعالجة أخطاء الحظر
+// ✅ تعديل دالة callAPI لمعالجة أخطاء الحظر
 const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
 
 async function callAPI(action, data = {}) {
@@ -1266,7 +1375,7 @@ async function callAPI(action, data = {}) {
     }
 }
 
-// ✅ 7. إصلاح دالة لعبة Coin Flip (تم إصلاح مشكلة الإشعار المبكر)
+// ✅ إصلاح دالة لعبة Coin Flip (تم إصلاح مشكلة الإشعار المبكر)
 async function flipCoin() {
     if (coinGame.isFlipping) return;
     
@@ -1373,7 +1482,7 @@ async function flipCoin() {
     }
 }
 
-// ✅ 8. تعديل دالة عرض النتيجة لتعكس صافي الربح/الخسارة
+// ✅ تعديل دالة عرض النتيجة لتعكس صافي الربح/الخسارة
 function showCoinFlipResult(isWin, resultSide, betAmount, winAmount, finalRotation) {
     const resultElement = document.getElementById('coin-game-result');
     const resultText = document.getElementById('coin-result-text');
@@ -1409,7 +1518,7 @@ function showCoinFlipResult(isWin, resultSide, betAmount, winAmount, finalRotati
     resultElement.style.display = 'block';
 }
 
-// ✅ 9. تعديل جميع الدوال الحساسة للتحقق من الحظر أولاً
+// ✅ تعديل جميع الدوال الحساسة للتحقق من الحظر أولاً
 async function handleDailyClaim() {
     // ✅ التحقق من الحظر أولاً
     const isAllowed = await checkBeforeAction("claim daily bonus");
@@ -1497,9 +1606,9 @@ const APP_CONFIG = {
     botWallet: 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv',
     botToken: '7066931017:AAHwuXbgaKHNrHrbf6jaoC8LDk0lSCPimgI',
     defaultSettings: {
-        adRewardMonetag: 500, // ✅ تغيير من 1000 إلى 500
-        adRewardGiga: 500, // ✅ تغيير من 2000 إلى 500
-        adRewardAdsgram: 500, // ✅ تغيير من 2000 إلى 500
+        adRewardMonetag: 500, // تغيير من 1000 إلى 500
+        adRewardGiga: 500,    // تغيير من 2000 إلى 500
+        adRewardAdsgram: 500, // تغيير من 2000 إلى 500
         limitMonetag: 50,
         limitGiga: 300,
         limitAdsgram: 300,
@@ -3763,7 +3872,7 @@ async function fetchAndRenderTasks(user) {
             title: 'News Channel',  // قناة الأخبار
             description: 'Stay updated with latest news',
             link: 'https://t.me/earnmoney174688',
-            reward: 500, // ✅ تغيير من 2000 إلى 500
+            reward: 500, // تغيير من 2000 إلى 500
             category: 'partner',
             icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
         },
@@ -3772,7 +3881,7 @@ async function fetchAndRenderTasks(user) {
             title: 'Codes Channel',  // قناة الأكواد اليومية
             description: 'Get daily promo codes & rewards',
             link: 'https://t.me/earnmoney1685',
-            reward: 500, // ✅ تغيير من 2000 إلى 500
+            reward: 500, // تغيير من 2000 إلى 500
             category: 'partner',
             icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
         },
@@ -3781,7 +3890,7 @@ async function fetchAndRenderTasks(user) {
             title: 'Payments Channel',  // قناة المدفوعات
             description: 'Track payments & withdrawals',
             link: 'https://t.me/earnmoney139482',
-            reward: 500, // ✅ تغيير من 2000 إلى 500
+            reward: 500, // تغيير من 2000 إلى 500
             category: 'partner',
             icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
         },
@@ -3790,7 +3899,7 @@ async function fetchAndRenderTasks(user) {
             title: 'Partner Channel',  // قناة الشريك
             description: 'Partner channel for the bot',
             link: 'https://t.me/EarnMoneyWithRedone',
-            reward: 500, // ✅ تغيير من 2000 إلى 500
+            reward: 500, // تغيير من 2000 إلى 500
             category: 'partner',
             icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
         }
@@ -3964,7 +4073,7 @@ async function handleMonetagAd() {
         
         const result = await callAPI('handleAdClick', {
             adType: 'monetag',
-            reward: appSettings.adRewardMonetag || 500 // ✅ تغيير من 1000 إلى 500
+            reward: appSettings.adRewardMonetag || 500 // تغيير من 1000 إلى 500
         });
         
         if (result.success) {
@@ -3973,7 +4082,7 @@ async function handleMonetagAd() {
             appData.adsWatched = result.data.adsWatched || appData.adsWatched;
             appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
             
-            showNotification(`✅ +500 GLX added!`, "success"); // ✅ تغيير من 1000 إلى 500
+            showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success"); // تغيير من 1000 إلى 500
             renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
         }
     } catch (e) {
@@ -4006,7 +4115,7 @@ async function handleGigaAd() {
         
         const result = await callAPI('handleAdClick', {
             adType: 'giga',
-            reward: appSettings.adRewardGiga || 500 // ✅ تغيير من 2000 إلى 500
+            reward: appSettings.adRewardGiga || 500 // تغيير من 2000 إلى 500
         });
         
         if (result.success) {
@@ -4015,7 +4124,7 @@ async function handleGigaAd() {
             appData.adsWatched = result.data.adsWatched || appData.adsWatched;
             appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
             
-            showNotification(`✅ +500 GLX added!`, "success"); // ✅ تغيير من 2000 إلى 500
+            showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success"); // تغيير من 2000 إلى 500
             renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
         }
     } catch (e) {
@@ -4049,7 +4158,7 @@ async function handleAdsgramAd() {
         if (result.done) {
             const apiResult = await callAPI('handleAdClick', {
                 adType: 'adsgram',
-                reward: appSettings.adRewardAdsgram || 500 // ✅ تغيير من 2000 إلى 500
+                reward: appSettings.adRewardAdsgram || 500 // تغيير من 2000 إلى 500
             });
             
             if (apiResult.success) {
@@ -4057,7 +4166,7 @@ async function handleAdsgramAd() {
                 appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
                 appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
                 
-                showNotification(`✅ +500 GLX added!`, "success"); // ✅ تغيير من 2000 إلى 500
+                showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success"); // تغيير من 2000 إلى 500
                 renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
             }
         }
@@ -4089,7 +4198,7 @@ async function handleFaucetPayWithdraw() {
     // ✅ التحقق من حد السحب اليومي
     const canWithdraw = checkWithdrawalLimit();
     if (!canWithdraw) {
-        showNotification("⚠️ Daily withdrawal limit reached! Maximum 2 withdrawals per day. Try again tomorrow.", "warning");
+        showNotification("⚠️ Daily withdrawal limit reached! You can make only 2 withdrawals per day. Try again tomorrow.", "warning");
         return;
     }
     
@@ -4161,7 +4270,7 @@ async function handleTonWalletWithdraw() {
     // ✅ التحقق من حد السحب اليومي
     const canWithdraw = checkWithdrawalLimit();
     if (!canWithdraw) {
-        showNotification("⚠️ Daily withdrawal limit reached! Maximum 2 withdrawals per day. Try again tomorrow.", "warning");
+        showNotification("⚠️ Daily withdrawal limit reached! You can make only 2 withdrawals per day. Try again tomorrow.", "warning");
         return;
     }
     
