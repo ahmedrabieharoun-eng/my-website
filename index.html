@@ -851,21 +851,21 @@
 <div id="monetag-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">Monetag Ad</div><div class="lc-sub"><span id="monetag-count">0</span>/<span id="monetag-limit">50</span></div></div>
-<div class="lc-end"><div class="lc-val">+1000</div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
 </div>
 <div id="gigapub-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">GigaPub Ad</div><div class="lc-sub"><span id="giga-count">0</span>/<span id="giga-limit">300</span></div></div>
-<div class="lc-end"><div class="lc-val">+2000</div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
 </div>
 <div id="adsgram-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);">
 <div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
 <div class="lc-content"><div class="lc-title">AdsGram Ad</div><div class="lc-sub"><span id="adsgram-count">0</span>/<span id="adsgram-limit">300</span></div></div>
-<div class="lc-end"><div class="lc-val">+2000</div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
 </div>
 </div>
-<h2>Partners</h2>
-<div id="partner-tasks-card"><div id="partner-tasks-list"></div></div>
+
+<!-- 🔄 التعديل: حذف قسم Partners بالكامل -->
 <h2>Community</h2>
 <div id="community-tasks-card"><div id="community-tasks-list"></div></div>
 </main>
@@ -1066,15 +1066,43 @@ let lastLeaderboardUpdate = 0;
 const LEADERBOARD_UPDATE_INTERVAL = 60000; // تحديث كل دقيقة
 let isCompetitionPageVisible = false;
 
-// ✅ دالة التحقق من الاشتراك الإجباري في القنوات
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ الإصلاح الرئيسي: دالة التحقق من الاشتراك الإجباري في القنوات - الإصدار المصحح
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 async function checkMandatorySubscriptions() {
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) return false;
     
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
-        // ✅ التعديل: التحقق من result.data.allSubscribed بدلاً من result.data.subscribed
-        return result.success && result.data.allSubscribed === true;
+        
+        console.log("Subscription check result:", result); // للتصحيح
+        
+        if (result.success && result.data) {
+            // ✅ ✅ ✅ الإصلاح هنا: استخدام allSubscribed بدلاً من subscribed ✅ ✅ ✅
+            if (result.data.allSubscribed === true) {
+                console.log("User is subscribed to all channels");
+                return true;
+            }
+            
+            // ✅ ✅ ✅ التحقق أيضاً من subscriptionStatus إذا كان موجوداً
+            if (result.data.subscriptionStatus) {
+                const subscriptionStatus = result.data.subscriptionStatus;
+                const allSubscribed = Object.values(subscriptionStatus).every(status => status === true);
+                if (allSubscribed) {
+                    console.log("User is subscribed to all channels (via subscriptionStatus)");
+                    return true;
+                }
+            }
+            
+            console.log("User is NOT subscribed to all channels:", result.data);
+            return false;
+        } else if (result.success === false && result.error === 'MANDATORY_SUBSCRIPTION_REQUIRED') {
+            console.log("Mandatory subscription required, showing subscription screen");
+            return false;
+        }
+        
+        return false;
     } catch (error) {
         console.error("Subscription check error:", error);
         return false;
@@ -1186,24 +1214,33 @@ async function verifySubscriptions() {
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
         
-        // ✅ التعديل: التحقق من result.data.allSubscribed بدلاً من result.data.subscribed
-        if (result.success && result.data.allSubscribed === true) {
-            showNotification("✅ All subscriptions verified! Loading app...", "success");
-            
-            // إخفاء شاشة الاشتراك وإظهار التطبيق
-            setTimeout(() => {
-                location.reload();
-            }, 2000);
-            
+        if (result.success && result.data) {
+            // ✅ ✅ ✅ الإصلاح هنا أيضاً: استخدام allSubscribed بدلاً من subscribed ✅ ✅ ✅
+            if (result.data.allSubscribed === true) {
+                showNotification("✅ All subscriptions verified! Loading app...", "success");
+                
+                // إخفاء شاشة الاشتراك وإظهار التطبيق
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+                
+            } else {
+                const unsubscribedChannels = result.data?.missingChannels || [];
+                let errorMessage = "You need to subscribe to all channels:";
+                
+                unsubscribedChannels.forEach(channel => {
+                    errorMessage += `\n- ${channel}`;
+                });
+                
+                showNotification(errorMessage, "error");
+                
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> I\'VE SUBSCRIBED TO ALL CHANNELS';
+                }
+            }
         } else {
-            const unsubscribedChannels = result.data?.missingChannels || result.data?.unsubscribedChannels || [];
-            let errorMessage = "You need to subscribe to all channels:";
-            
-            unsubscribedChannels.forEach(channel => {
-                errorMessage += `\n- ${channel}`;
-            });
-            
-            showNotification(errorMessage, "error");
+            showNotification("Error verifying subscriptions. Please try again.", "error");
             
             if (verifyBtn) {
                 verifyBtn.disabled = false;
@@ -1664,15 +1701,19 @@ try {
     console.error("❌ Firebase initialization error:", error);
 }
 
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ دالة بصمة الجهاز المعدلة (بدون IP) - الإصدار المحسّن
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 async function generateDeviceFingerprint() {
     const components = [];
     try {
+        // ✅ معلمات الجهاز الثابتة (بدون IP)
         components.push(navigator.userAgent);
         components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
-        components.push(new Date().getTimezoneOffset());
-        components.push(navigator.language);
         components.push(navigator.platform);
+        components.push(navigator.language);
         
+        // ✅ خصائص WebGL الفريدة للجهاز
         if (window.WebGLRenderingContext) {
             const canvas = document.createElement('canvas');
             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
@@ -1685,22 +1726,41 @@ async function generateDeviceFingerprint() {
             }
         }
         
+        // ✅ ميزات الجهاز الإضافية
         components.push('ontouchstart' in window);
         components.push(navigator.hardwareConcurrency || 'unknown');
         components.push(navigator.deviceMemory || 'unknown');
         components.push(navigator.cookieEnabled);
         components.push(navigator.doNotTrack || 'unknown');
         
+        // ✅ تفاصيل إضافية لزيادة الدقة
+        components.push(navigator.maxTouchPoints || 0);
+        components.push('devicePixelRatio' in window ? window.devicePixelRatio : 'unknown');
+        components.push('orientation' in screen ? screen.orientation.type : 'unknown');
+        
+        // ✅ إنشاء بصمة فريدة باستخدام SHA-256
         const fingerprintString = components.join('|');
         const encoder = new TextEncoder();
         const data = encoder.encode(fingerprintString);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        console.log("✅ Generated device fingerprint (IP independent):", fingerprint.substring(0, 16) + "...");
         return fingerprint;
+        
     } catch (error) {
-        console.error("Error generating fingerprint:", error);
-        const fallbackFingerprint = btoa(components.join('|')).slice(0, 64);
+        console.error("❌ Error generating device fingerprint:", error);
+        // ✅ استخدام بصمة بديلة في حالة الخطأ
+        const fallbackComponents = [
+            navigator.userAgent,
+            screen.width,
+            screen.height,
+            navigator.platform,
+            navigator.language
+        ];
+        const fallbackFingerprint = btoa(fallbackComponents.join('|')).slice(0, 64);
+        console.log("⚠️ Using fallback fingerprint:", fallbackFingerprint);
         return fallbackFingerprint;
     }
 }
@@ -3857,86 +3917,19 @@ function extractChannelUsernameFromLink(link) {
 }
 
 // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-// ✅ التعديل الرئيسي: فصل مهام Partners (ثابتة) و Community (من Firebase)
-// ✅ تعديل أسماء القنوات البارتنر كما طلبت
+// ✅ التعديل الرئيسي: حذف مهام Partners بالكامل - إبقاء Community فقط
 // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 async function fetchAndRenderTasks(user) {
     const result = await callAPI('getTasks');
     
-    // ✅ PARTNER TASKS - ثابتة من الكود مع الأسماء الجديدة
-    const pCont = document.getElementById('partner-tasks-list');
     const cCont = document.getElementById('community-tasks-list');
     
-    // ✅ تعريف المهام الثابتة للشركاء مع الأسماء الجديدة
-    const partnerTasks = [
-        {
-            id: 'partner_telegram_1',
-            title: 'News Channel',  // قناة الأخبار
-            description: 'Stay updated with latest news',
-            link: 'https://t.me/earnmoney174688',
-            reward: 500, // تغيير من 2000 إلى 500
-            category: 'partner',
-            icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
-        },
-        {
-            id: 'partner_telegram_2',
-            title: 'Codes Channel',  // قناة الأكواد اليومية
-            description: 'Get daily promo codes & rewards',
-            link: 'https://t.me/earnmoney1685',
-            reward: 500, // تغيير من 2000 إلى 500
-            category: 'partner',
-            icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
-        },
-        {
-            id: 'partner_telegram_3',
-            title: 'Payments Channel',  // قناة المدفوعات
-            description: 'Track payments & withdrawals',
-            link: 'https://t.me/earnmoney139482',
-            reward: 500, // تغيير من 2000 إلى 500
-            category: 'partner',
-            icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
-        },
-        {
-            id: 'partner_telegram_4',
-            title: 'Partner Channel',  // قناة الشريك
-            description: 'Partner channel for the bot',
-            link: 'https://t.me/EarnMoneyWithRedone',
-            reward: 500, // تغيير من 2000 إلى 500
-            category: 'partner',
-            icon: 'https://i.ibb.co/5WZRG8fw/tele.png'
-        }
-    ];
-    
-    // ✅ تنظيف وعرض مهام Partners الثابتة
-    pCont.innerHTML = '';
-    const completedTasks = appData.completedTasks || {};
-    
-    partnerTasks.forEach(task => {
-        const isDone = completedTasks[task.id];
-        const html = `<div class="list-card dynamic-task ${isDone ? 'disabled' : ''}" 
-                        style="${isDone ? 'opacity:0.5;pointer-events:none;' : ''}" 
-                        data-id="${task.id}" 
-                        data-reward="${task.reward}" 
-                        data-title="${task.title}" 
-                        data-link="${task.link}" 
-                        onclick="handleDynamicTask(this)">
-                        <div class="lc-icon"><img src="${task.icon}"></div>
-                        <div class="lc-content">
-                            <div class="lc-title">${task.title}</div>
-                            <div class="lc-sub" id="status-${task.id}">${task.description}</div>
-                        </div>
-                        <div class="lc-end">
-                            <div class="lc-val" id="reward-${task.id}">+${task.reward}</div>
-                        </div>
-                    </div>`;
-        pCont.insertAdjacentHTML('beforeend', html);
-    });
-    
-    // ✅ COMMUNITY TASKS - من Firebase (السيرفر)
+    // ✅ COMMUNITY TASKS فقط - من Firebase (السيرفر)
     if (result.success) {
         cCont.innerHTML = '';
         
         const tasks = result.data.tasks || [];
+        const completedTasks = appData.completedTasks || {};
         
         tasks.forEach(task => {
             if (task.status !== 'active' || (task.remaining !== undefined && task.remaining <= 0)) return;
@@ -3970,12 +3963,10 @@ async function fetchAndRenderTasks(user) {
             }
         });
         
-        if (pCont.innerHTML === '') {
-            document.getElementById('partner-tasks-card').style.display = 'none';
-        }
-        
         if (cCont.innerHTML === '') {
             document.getElementById('community-tasks-card').style.display = 'none';
+        } else {
+            document.getElementById('community-tasks-card').style.display = 'block';
         }
     }
 }
