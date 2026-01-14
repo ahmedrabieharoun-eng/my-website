@@ -1066,43 +1066,15 @@ let lastLeaderboardUpdate = 0;
 const LEADERBOARD_UPDATE_INTERVAL = 60000; // تحديث كل دقيقة
 let isCompetitionPageVisible = false;
 
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-// ✅ الإصلاح الرئيسي: دالة التحقق من الاشتراك الإجباري في القنوات - الإصدار المصحح
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ دالة التحقق من الاشتراك الإجباري في القنوات
 async function checkMandatorySubscriptions() {
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) return false;
     
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
-        
-        console.log("Subscription check result:", result); // للتصحيح
-        
-        if (result.success && result.data) {
-            // ✅ ✅ ✅ الإصلاح هنا: استخدام allSubscribed بدلاً من subscribed ✅ ✅ ✅
-            if (result.data.allSubscribed === true) {
-                console.log("User is subscribed to all channels");
-                return true;
-            }
-            
-            // ✅ ✅ ✅ التحقق أيضاً من subscriptionStatus إذا كان موجوداً
-            if (result.data.subscriptionStatus) {
-                const subscriptionStatus = result.data.subscriptionStatus;
-                const allSubscribed = Object.values(subscriptionStatus).every(status => status === true);
-                if (allSubscribed) {
-                    console.log("User is subscribed to all channels (via subscriptionStatus)");
-                    return true;
-                }
-            }
-            
-            console.log("User is NOT subscribed to all channels:", result.data);
-            return false;
-        } else if (result.success === false && result.error === 'MANDATORY_SUBSCRIPTION_REQUIRED') {
-            console.log("Mandatory subscription required, showing subscription screen");
-            return false;
-        }
-        
-        return false;
+        // ✅ التعديل: التحقق من result.data.allSubscribed بدلاً من result.data.subscribed
+        return result.success && result.data.allSubscribed === true;
     } catch (error) {
         console.error("Subscription check error:", error);
         return false;
@@ -1214,33 +1186,24 @@ async function verifySubscriptions() {
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
         
-        if (result.success && result.data) {
-            // ✅ ✅ ✅ الإصلاح هنا أيضاً: استخدام allSubscribed بدلاً من subscribed ✅ ✅ ✅
-            if (result.data.allSubscribed === true) {
-                showNotification("✅ All subscriptions verified! Loading app...", "success");
-                
-                // إخفاء شاشة الاشتراك وإظهار التطبيق
-                setTimeout(() => {
-                    location.reload();
-                }, 2000);
-                
-            } else {
-                const unsubscribedChannels = result.data?.missingChannels || [];
-                let errorMessage = "You need to subscribe to all channels:";
-                
-                unsubscribedChannels.forEach(channel => {
-                    errorMessage += `\n- ${channel}`;
-                });
-                
-                showNotification(errorMessage, "error");
-                
-                if (verifyBtn) {
-                    verifyBtn.disabled = false;
-                    verifyBtn.innerHTML = '<i class="fa-solid fa-check-circle"></i> I\'VE SUBSCRIBED TO ALL CHANNELS';
-                }
-            }
+        // ✅ التعديل: التحقق من result.data.allSubscribed بدلاً من result.data.subscribed
+        if (result.success && result.data.allSubscribed === true) {
+            showNotification("✅ All subscriptions verified! Loading app...", "success");
+            
+            // إخفاء شاشة الاشتراك وإظهار التطبيق
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+            
         } else {
-            showNotification("Error verifying subscriptions. Please try again.", "error");
+            const unsubscribedChannels = result.data?.missingChannels || result.data?.unsubscribedChannels || [];
+            let errorMessage = "You need to subscribe to all channels:";
+            
+            unsubscribedChannels.forEach(channel => {
+                errorMessage += `\n- ${channel}`;
+            });
+            
+            showNotification(errorMessage, "error");
             
             if (verifyBtn) {
                 verifyBtn.disabled = false;
