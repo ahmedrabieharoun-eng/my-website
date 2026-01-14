@@ -1066,14 +1066,20 @@ let lastLeaderboardUpdate = 0;
 const LEADERBOARD_UPDATE_INTERVAL = 60000; // تحديث كل دقيقة
 let isCompetitionPageVisible = false;
 
-// ✅ دالة التحقق من الاشتراك الإجباري في القنوات
+// ✅ دالة التحقق من الاشتراك الإجباري في القنوات - الإصدار المصحح
 async function checkMandatorySubscriptions() {
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) return false;
     
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
-        return result.success && result.data.subscribed === true;
+        console.log("Subscription check result:", result); // للت Debug
+        
+        // ✅ الإصلاح: التحقق من القيمة الصحيحة
+        if (result.success && result.data.allSubscribed === true) {
+            return true;
+        }
+        return false;
     } catch (error) {
         console.error("Subscription check error:", error);
         return false;
@@ -1169,7 +1175,7 @@ function showMandatorySubscriptionScreen() {
     document.getElementById('app-container').style.display = 'block';
 }
 
-// ✅ دالة التحقق من الاشتراكات
+// ✅ دالة التحقق من الاشتراكات - الإصدار المصحح
 async function verifySubscriptions() {
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if (!userId) return;
@@ -1184,8 +1190,10 @@ async function verifySubscriptions() {
     
     try {
         const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
+        console.log("Verification result:", result); // للت Debug
         
-        if (result.success && result.data.subscribed === true) {
+        // ✅ الإصلاح: التحقق من allSubscribed بدلاً من subscribed
+        if (result.success && result.data.allSubscribed === true) {
             showNotification("✅ All subscriptions verified! Loading app...", "success");
             
             // إخفاء شاشة الاشتراك وإظهار التطبيق
@@ -1194,7 +1202,7 @@ async function verifySubscriptions() {
             }, 2000);
             
         } else {
-            const unsubscribedChannels = result.data?.unsubscribedChannels || [];
+            const unsubscribedChannels = result.data?.missingChannels || result.data?.unsubscribedChannels || [];
             let errorMessage = "You need to subscribe to all channels:";
             
             unsubscribedChannels.forEach(channel => {
@@ -1225,6 +1233,7 @@ async function finishLoading() {
     try {
         // ✅ التحقق من اشتراكات القنوات أولاً
         const isSubscribed = await checkMandatorySubscriptions();
+        console.log("Is subscribed after check:", isSubscribed); // للت Debug
         
         if (!isSubscribed) {
             if (loadingPage) {
