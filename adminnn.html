@@ -477,6 +477,10 @@ export default {
                     result = await handleVerifyMandatoryChannels(env, userId);
                     break;
                     
+                case 'checkMandatorySubscriptions':
+                    result = await handleCheckMandatorySubscriptions(env, userId);
+                    break;
+                    
                 default:
                     result = {
                         success: false,
@@ -1076,6 +1080,63 @@ async function handleVerifyMandatoryChannels(env, userId) {
             success: false,
             error: error.message,
             errorCode: 'VERIFY_MANDATORY_CHANNELS_ERROR'
+        };
+    }
+}
+
+// معالجة التحقق من الاشتراك الإجباري
+async function handleCheckMandatorySubscriptions(env, userId) {
+    try {
+        // التحقق من الحظر
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
+            return { 
+                success: false, 
+                error: 'ACCOUNT_BLOCKED',
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`,
+                    redirectToBlockPage: true
+                }
+            };
+        }
+        
+        const subscriptionCheck = await checkMandatorySubscriptions(env, userId);
+        
+        if (!subscriptionCheck.allSubscribed) {
+            return {
+                success: false,
+                error: 'MANDATORY_SUBSCRIPTION_REQUIRED',
+                errorCode: 'SUBSCRIPTION_REQUIRED',
+                data: {
+                    subscriptionRequired: true,
+                    missingChannels: subscriptionCheck.missingChannels,
+                    message: 'You must subscribe to all required channels first',
+                    requiredChannels: [
+                        { name: 'Earn Money', username: 'earnmoney174688' },
+                        { name: 'Earn Money 2', username: 'earnmoney1685' },
+                        { name: 'Earn Money 3', username: 'earnmoney139482' },
+                        { name: 'Earn Money Redone', username: 'EarnMoneyWithRedone' }
+                    ]
+                }
+            };
+        }
+        
+        return {
+            success: true,
+            data: {
+                allSubscribed: true,
+                message: 'You are subscribed to all required channels',
+                subscriptionStatus: subscriptionCheck.subscriptionStatus
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CHECK_MANDATORY_SUBSCRIPTIONS_ERROR'
         };
     }
 }
@@ -4301,7 +4362,7 @@ async function handleVerifyTaskChannel(env, userId, data) {
                 taskId: taskId,
                 channel: cleanChannelUsername
             });
-            
+        
             // حفظ تفاصيل الإكمال
             await handleDbSet(env, `tasks/${taskId}/completions/${userId}`, {
                 completedAt: Date.now(),
@@ -5805,8 +5866,8 @@ async function handleCreatePromoCode(env, userId, data) {
             if (promo.code === code) {
                 return { 
                     success: false, 
-                    error: 'Promo code already exists',
-                    errorCode: 'PROMO_CODE_EXISTS'
+                error: 'Promo code already exists',
+                errorCode: 'PROMO_CODE_EXISTS'
                 };
             }
         }
