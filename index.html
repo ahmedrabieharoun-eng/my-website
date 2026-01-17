@@ -12,7 +12,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        /* نفس الأنماط السابقة */
         :root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}
@@ -584,6 +583,18 @@
             font-size: 10px;
         }
     </style>
+
+<script>
+function getDeviceId() {
+    let deviceId = localStorage.getItem("device_id");
+    if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("device_id", deviceId);
+    }
+    return deviceId;
+}
+</script>
+
 </head>
 <body>
 <!-- ✅ صفحة التحميل العالمية (10 ثوانٍ) -->
@@ -992,274 +1003,6 @@
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
 <script>
-// ⚡ نظام البصمة المثبتة - FINAL SOLUTION ⚡
-class StableFingerprintSystem {
-    constructor() {
-        this.STORAGE_KEYS = {
-            DEVICE_ID: 'glx_device_id_v2',
-            FINGERPRINT_CACHE: 'glx_fp_cache',
-            INSTALL_TIME: 'glx_install_time'
-        };
-    }
-    
-    // ==================== الحل الأساسي ====================
-    async generateStableFingerprint() {
-        // ✅ المرحلة 1: الحصول على معرف الجهاز المخزن أو إنشائه
-        let deviceId = this.getStoredDeviceId();
-        
-        // ✅ المرحلة 2: توليد بصمة سياقية (للتتبع الحالي)
-        const contextFingerprint = await this.generateContextFingerprint();
-        
-        // ✅ المرحلة 3: الجمع بين المعرف والبصمة السياقية
-        const finalFingerprint = await this.hashString(
-            deviceId + '::' + contextFingerprint
-        );
-        
-        console.log('🔐 بصمة مستقرة:', finalFingerprint.substring(0, 20) + '...');
-        return finalFingerprint;
-    }
-    
-    // ==================== معرف الجهاز المخزن ====================
-    getStoredDeviceId() {
-        // ✅ محاولة 1: localStorage
-        let deviceId = localStorage.getItem(this.STORAGE_KEYS.DEVICE_ID);
-        
-        // ✅ محاولة 2: sessionStorage (أقل ثباتاً لكن جيد)
-        if (!deviceId) {
-            deviceId = sessionStorage.getItem(this.STORAGE_KEYS.DEVICE_ID);
-        }
-        
-        // ✅ محاولة 3: IndexedDB
-        if (!deviceId) {
-            deviceId = this.tryGetFromIndexedDB();
-        }
-        
-        // ✅ إذا لم يوجد، ننشئ معرف جديد
-        if (!deviceId) {
-            deviceId = this.createNewDeviceId();
-            this.saveDeviceIdEverywhere(deviceId);
-        }
-        
-        return deviceId;
-    }
-    
-    // ==================== إنشاء معرف جديد ====================
-    createNewDeviceId() {
-        // استخدام مزيج من الوقت + مكونات جهازية مستقرة
-        const stableComponents = [
-            'device_v2', // الإصدار
-            Date.now().toString(36), // الوقت
-            Math.floor(screen.width / 100) * 100, // دقة مقربة
-            Math.floor(screen.height / 100) * 100,
-            navigator.hardwareConcurrency || '2', // أنوية
-            navigator.deviceMemory || '4', // ذاكرة
-            (navigator.platform || '').substring(0, 3) // نظام تشغيل مختصر
-        ];
-        
-        return stableComponents.join('_');
-    }
-    
-    // ==================== حفظ المعرف في كل مكان ====================
-    saveDeviceIdEverywhere(deviceId) {
-        // 1. localStorage (الدائم)
-        localStorage.setItem(this.STORAGE_KEYS.DEVICE_ID, deviceId);
-        
-        // 2. sessionStorage (للهذه الجلسة)
-        sessionStorage.setItem(this.STORAGE_KEYS.DEVICE_ID, deviceId);
-        
-        // 3. IndexedDB (النسخ الاحتياطي)
-        this.saveToIndexedDB(deviceId);
-        
-        // 4. Cookies (للبصمة عبر النطاقات)
-        document.cookie = `glx_device_id=${deviceId}; max-age=31536000; path=/; samesite=strict`;
-        
-        console.log('💾 تم حفظ معرف الجهاز في 4 أماكن مختلفة');
-    }
-    
-    // ==================== بصمة السياق (VPN-safe) ====================
-    async generateContextFingerprint() {
-        // ✅ مكونات لا تتغير مع VPN
-        const vpnSafeComponents = [
-            // 1. إعدادات الجهاز الثابتة
-            navigator.hardwareConcurrency || 'unknown',
-            navigator.deviceMemory || 'unknown',
-            navigator.maxTouchPoints || '0',
-            
-            // 2. الشاشة (مقربة)
-            Math.floor(screen.width / 50) * 50, // تقريب لـ 50 بكسل
-            Math.floor(screen.height / 50) * 50,
-            
-            // 3. نظام التشغيل (مبسط)
-            this.getSimplifiedOS(),
-            
-            // 4. اللغة الأساسية فقط
-            (navigator.language || 'en').split('-')[0],
-            
-            // 5. إمكانيات المتصفح (ثابتة)
-            'cookieEnabled' in navigator ? '1' : '0',
-            'doNotTrack' in navigator ? '1' : '0',
-            'serviceWorker' in navigator ? 'sw1' : 'sw0',
-            
-            // 6. وقت التثبيت (مخزن محلياً)
-            this.getInstallationTime(),
-            
-            // 7. معرف الجلسة الحالية
-            sessionStorage.getItem('glx_session_id') || this.createSessionId()
-        ];
-        
-        // ✅ ترتيب ثابت وفلترة
-        const fingerprintString = vpnSafeComponents
-            .filter(c => c && c !== 'unknown')
-            .sort()
-            .join('|');
-        
-        return await this.hashString(fingerprintString);
-    }
-    
-    // ==================== وظائف مساعدة ====================
-    getSimplifiedOS() {
-        const ua = navigator.userAgent.toLowerCase();
-        if (ua.includes('windows')) return 'win';
-        if (ua.includes('mac')) return 'mac';
-        if (ua.includes('linux')) return 'linux';
-        if (ua.includes('android')) return 'android';
-        if (ua.includes('iphone') || ua.includes('ipad')) return 'ios';
-        return 'other';
-    }
-    
-    getInstallationTime() {
-        let installTime = localStorage.getItem(this.STORAGE_KEYS.INSTALL_TIME);
-        if (!installTime) {
-            installTime = Date.now().toString();
-            localStorage.setItem(this.STORAGE_KEYS.INSTALL_TIME, installTime);
-        }
-        return installTime;
-    }
-    
-    createSessionId() {
-        const sessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        sessionStorage.setItem('glx_session_id', sessionId);
-        return sessionId;
-    }
-    
-    async hashString(str) {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-    
-    // ==================== IndexedDB functions ====================
-    saveToIndexedDB(deviceId) {
-        try {
-            if (!window.indexedDB) return;
-            
-            const request = indexedDB.open('GLXDeviceDB', 1);
-            
-            request.onupgradeneeded = function(event) {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('device')) {
-                    db.createObjectStore('device', { keyPath: 'id' });
-                }
-            };
-            
-            request.onsuccess = function(event) {
-                const db = event.target.result;
-                const tx = db.transaction(['device'], 'readwrite');
-                const store = tx.objectStore('device');
-                store.put({ id: 'device_id', value: deviceId, updated: Date.now() });
-            };
-        } catch (e) {
-            console.log('⚠️ IndexedDB غير متاح');
-        }
-    }
-    
-    tryGetFromIndexedDB() {
-        // محاولة بسيطة للقراءة
-        return null; // لن نعتمد عليها كلياً
-    }
-    
-    // ==================== التحقق من VPN ====================
-    async detectVPNChanges(currentFingerprint) {
-        const previous = localStorage.getItem('glx_last_context_fp');
-        
-        if (previous && previous !== currentFingerprint) {
-            console.log('⚠️ تم اكتشاف تغيير (ربما VPN)');
-            
-            // لا نقوم بأي شيء - فقط نسجل
-            localStorage.setItem('glx_vpn_detected', Date.now().toString());
-            
-            return {
-                vpnDetected: true,
-                previous: previous.substring(0, 16),
-                current: currentFingerprint.substring(0, 16),
-                deviceId: localStorage.getItem(this.STORAGE_KEYS.DEVICE_ID)
-            };
-        }
-        
-        // حفظ البصمة الحالية
-        localStorage.setItem('glx_last_context_fp', currentFingerprint);
-        
-        return { vpnDetected: false };
-    }
-}
-
-// ✅ دالة بصمة الجهاز المعدلة
-async function generateDeviceFingerprint() {
-    try {
-        // استخدام النظام الجديد
-        const fpSystem = new StableFingerprintSystem();
-        const fingerprint = await fpSystem.generateStableFingerprint();
-        
-        // التحقق من VPN (للإعلام فقط)
-        const vpnCheck = await fpSystem.detectVPNChanges(fingerprint);
-        if (vpnCheck.vpnDetected) {
-            console.log('🔍 VPN detected but using stable device ID');
-        }
-        
-        return fingerprint;
-    } catch (error) {
-        console.error('❌ خطأ في البصمة:', error);
-        
-        // خطة احتياطية: استخدام المعرف المخزن فقط
-        const fallbackId = localStorage.getItem('glx_device_id_v2') || 
-                          'fallback_' + Math.random().toString(36).substr(2, 9);
-        return fallbackId;
-    }
-}
-
-// ✅ وظائف تسجيل الإحصائيات
-function logDeviceUsage(deviceId) {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `glx_usage_${today}`;
-    
-    const usage = JSON.parse(localStorage.getItem(key) || '{}');
-    usage[deviceId] = (usage[deviceId] || 0) + 1;
-    usage.lastAccess = Date.now();
-    
-    localStorage.setItem(key, JSON.stringify(usage));
-    
-    // تنظيف القديم (يحفظ 30 يوماً فقط)
-    cleanupOldLogs();
-}
-
-function cleanupOldLogs() {
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    
-    for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key.startsWith('glx_usage_')) {
-            const dateStr = key.replace('glx_usage_', '');
-            const date = new Date(dateStr);
-            
-            if (date.getTime() < thirtyDaysAgo) {
-                localStorage.removeItem(key);
-            }
-        }
-    }
-}
-
 // ✅ 1. دالة صفحة التحميل العالمية (10 ثوانٍ)
 let loadingProgress = 0;
 let loadingSeconds = 10;
@@ -1968,6 +1711,70 @@ try {
     }
 } catch (error) {
     console.error("❌ Firebase initialization error:", error);
+}
+
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ دالة بصمة الجهاز المعدلة (بدون IP) - الإصدار المحسّن
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+async function generateDeviceFingerprint() {
+    const components = [];
+    try {
+        // ✅ معلمات الجهاز الثابتة (بدون IP)
+        components.push(navigator.userAgent);
+        components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+        components.push(navigator.platform);
+        components.push(navigator.language);
+        
+        // ✅ خصائص WebGL الفريدة للجهاز
+        if (window.WebGLRenderingContext) {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
+                    components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+                }
+            }
+        }
+        
+        // ✅ ميزات الجهاز الإضافية
+        components.push('ontouchstart' in window);
+        components.push(navigator.hardwareConcurrency || 'unknown');
+        components.push(navigator.deviceMemory || 'unknown');
+        components.push(navigator.cookieEnabled);
+        components.push(navigator.doNotTrack || 'unknown');
+        
+        // ✅ تفاصيل إضافية لزيادة الدقة
+        components.push(navigator.maxTouchPoints || 0);
+        components.push('devicePixelRatio' in window ? window.devicePixelRatio : 'unknown');
+        components.push('orientation' in screen ? screen.orientation.type : 'unknown');
+        
+        // ✅ إنشاء بصمة فريدة باستخدام SHA-256
+        const fingerprintString = components.join('|');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(fingerprintString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        console.log("✅ Generated device fingerprint (IP independent):", fingerprint.substring(0, 16) + "...");
+        return fingerprint;
+        
+    } catch (error) {
+        console.error("❌ Error generating device fingerprint:", error);
+        // ✅ استخدام بصمة بديلة في حالة الخطأ
+        const fallbackComponents = [
+            navigator.userAgent,
+            screen.width,
+            screen.height,
+            navigator.platform,
+            navigator.language
+        ];
+        const fallbackFingerprint = btoa(fallbackComponents.join('|')).slice(0, 64);
+        console.log("⚠️ Using fallback fingerprint:", fallbackFingerprint);
+        return fallbackFingerprint;
+    }
 }
 
 function showNotification(message, type = 'info', duration = 5000) {
@@ -4831,21 +4638,6 @@ function getLevel(balance) {
 
 // ✅ تعديل document.addEventListener لبدء التحميل
 document.addEventListener('DOMContentLoaded', async function() {
-    // ⚡ تهيئة نظام البصمة فوراً
-    try {
-        const fpSystem = new StableFingerprintSystem();
-        
-        // ضمان وجود معرف جهاز
-        const deviceId = fpSystem.getStoredDeviceId();
-        console.log('✅ معرف الجهاز:', deviceId.substring(0, 20) + '...');
-        
-        // تسجيل إحصائية الاستخدام
-        logDeviceUsage(deviceId);
-        
-    } catch (e) {
-        console.warn('⚠️ نظام البصمة غير متاح:', e);
-    }
-    
     // بدء صفحة التحميل العالمية (10 ثوانٍ)
     startGlobalLoading();
     
