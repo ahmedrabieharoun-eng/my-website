@@ -18,6 +18,224 @@
 <script>
 function getDeviceId(){let deviceId=localStorage.getItem("device_id");if(!deviceId){deviceId=crypto.randomUUID();localStorage.setItem("device_id",deviceId);}return deviceId;}
 const API_URL="https://silent-block-bedf.ahmedrabieharoun.workers.dev";const isCryptoSupported=typeof crypto!=='undefined'&&crypto.subtle;let sessionSecret=null;let sessionSecretPromise=null;let SecuritySystem=null;async function generateSessionSecret(){if(!isCryptoSupported){console.error("Web Crypto API not supported");return null;}try{const timestamp=Date.now().toString();const randomBytes=new Uint8Array(32);crypto.getRandomValues(randomBytes);const combined=timestamp+Array.from(randomBytes).map(b=>b.toString(16).padStart(2,'0')).join('');const encoder=new TextEncoder();const data=encoder.encode(combined);const hashBuffer=await crypto.subtle.digest('SHA-256',data);const hashArray=Array.from(new Uint8Array(hashBuffer));const hashHex=hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');sessionSecret=hashHex.substring(0,64);console.log("✅ Session secret generated");return sessionSecret;}catch(error){console.error("Error generating session secret:",error);return null;}}async function generateAdToken(userId,deviceFingerprint,adNumber,clientTimestamp){if(!isCryptoSupported||!sessionSecret){console.error("Security prerequisites not met");return null;}try{const dataToSign={userId:userId,deviceFingerprint:deviceFingerprint,adNumber:adNumber,clientTimestamp:clientTimestamp,sessionSecret:sessionSecret,action:'handleAdClick'};const dataString=JSON.stringify(dataToSign);const encoder=new TextEncoder();const data=encoder.encode(dataString);const keyMaterial=await crypto.subtle.importKey('raw',encoder.encode(sessionSecret),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=await crypto.subtle.sign('HMAC',keyMaterial,data);const signatureArray=Array.from(new Uint8Array(signature));const signatureHex=signatureArray.map(b=>b.toString(16).padStart(2,'0')).join('');return signatureHex;}catch(error){console.error("Error generating ad token:",error);return null;}}async function sendSecureAdRequest(adType,reward){const userId=window.Telegram?.WebApp?.initDataUnsafe?.user?.id;if(!userId){console.error("No user ID found");showNotification("Please log in first.","error");return{success:false,error:'USER_NOT_FOUND'};}let deviceFingerprint=await getOrGenerateDeviceFingerprint();if(!deviceFingerprint){console.error("Device fingerprint required");showNotification("Security error: Device verification failed.","error");return{success:false,error:'DEVICE_FINGERPRINT_REQUIRED'};}const clientTimestamp=Date.now();if(!sessionSecretPromise){sessionSecretPromise=generateSessionSecret();}await sessionSecretPromise;if(!sessionSecret||!isCryptoSupported){console.error("Missing required values for ad request");showNotification("Security error. Please refresh the page.","error");return{success:false,error:'SECURITY_CHECK_FAILED'};}let adNumber=0;switch(adType){case'monetag':adNumber=(appData.adsMonetag||0)+1;break;case'giga':adNumber=(appData.adsGiga||0)+1;break;case'adsgram':adNumber=(appData.adsAdsgram||0)+1;break;default:adNumber=Date.now();}const adToken=await generateAdToken(userId.toString(),deviceFingerprint,adNumber,clientTimestamp);if(!adToken){showNotification("Security error. Please try again.","error");return{success:false,error:'TOKEN_GENERATION_FAILED'};}const requestData={action:'handleAdClick',data:{adType:adType,reward:reward,deviceFingerprint:deviceFingerprint,adNumber:adNumber,clientTimestamp:clientTimestamp}};try{const response=await fetch(`${API_URL}/api`,{method:'POST',headers:{'Content-Type':'application/json','X-Action':'handleAdClick','X-User-ID':userId.toString(),'X-Telegram-Data':window.Telegram?.WebApp?.initData||'','X-Device-Fingerprint':deviceFingerprint,'X-Ad-Token':adToken,'X-Client-Timestamp':clientTimestamp.toString(),'X-Ad-Number':adNumber.toString(),'X-Session-Key':sessionSecret},body:JSON.stringify(requestData)});if(!response.ok){throw new Error(`API Error: ${response.status}`);}const result=await response.json();return result;}catch(error){console.error("Secure ad request failed:",error);return{success:false,error:error.message};}}async function getOrGenerateDeviceFingerprint(){if(window.localStorage){const storedFingerprint=localStorage.getItem('deviceFingerprint');if(storedFingerprint){return storedFingerprint;}}return await generateDeviceFingerprint();}async function generateDeviceFingerprint(){try{const userAgent=navigator.userAgent;const platform=navigator.platform;const language=navigator.language;const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone;const screenInfo=`${screen.width}x${screen.height}x${screen.colorDepth}`;const hardwareConcurrency=navigator.hardwareConcurrency||'unknown';const deviceData={userAgent:userAgent,platform:platform,language:language,timezone:timezone,screenInfo:screenInfo,hardwareConcurrency:hardwareConcurrency,timestamp:Date.now(),random:Math.random().toString(36).substring(2)};const dataString=JSON.stringify(deviceData);const encoder=new TextEncoder();const data=encoder.encode(dataString);const hashBuffer=await crypto.subtle.digest('SHA-256',data);const hashArray=Array.from(new Uint8Array(hashBuffer));const hashHex=hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');if(window.localStorage){localStorage.setItem('deviceFingerprint',hashHex);}return hashHex;}catch(error){console.error('Error generating device fingerprint:',error);return`fallback_fingerprint_${Date.now()}_${Math.random().toString(36).substring(2,9)}`;}}function performInitialSecurityCheck(){if(!isCryptoSupported){return{success:false,error:'CRYPTO_NOT_SUPPORTED',message:'Web Crypto API is not supported in this browser'};}return{success:true,message:'Security checks passed'};}async function checkUserSecurityStatus(userId){try{const deviceFingerprint=await getOrGenerateDeviceFingerprint();const response=await callAPI('checkDeviceFingerprint',{deviceFingerprint:deviceFingerprint});return response;}catch(error){console.error('Security status check failed:',error);return{success:false,error:'SECURITY_CHECK_FAILED',message:error.message};}}function logSecurityEvent(eventType,details){const timestamp=new Date().toISOString();const event={type:eventType,timestamp:timestamp,userId:window.Telegram?.WebApp?.initDataUnsafe?.user?.id||'unknown',details:details};console.log(`🔒 Security Event [${eventType}]:`,event);}function blockDirectAdRequests(){const originalCallAPI=window.callAPI;window.callAPI=async function(action,data={}){if(action==='handleAdClick'){console.error("Direct handleAdClick calls are blocked.");logSecurityEvent('BLOCKED_DIRECT_AD_REQUEST',{action:action,data:data});return{success:false,error:'DIRECT_AD_CALL_BLOCKED',message:'Use secure ad request system'};}return originalCallAPI.call(this,action,data);};}async function initializeSecuritySystem(){console.log("🛡️ Initializing security system...");const securityCheck=performInitialSecurityCheck();if(!securityCheck.success){throw new Error(securityCheck.message);}sessionSecretPromise=generateSessionSecret();await sessionSecretPromise;blockDirectAdRequests();logSecurityEvent('SESSION_STARTED',{userAgent:navigator.userAgent,platform:navigator.platform,timestamp:new Date().toISOString()});console.log("✅ Security system initialized successfully");return true;}function isSessionValid(){return sessionSecret!==null&&isCryptoSupported;}function getSecurityStatus(){return{isCryptoSupported:isCryptoSupported,sessionSecretReady:sessionSecret!==null,securityInitialized:isSessionValid(),deviceFingerprintReady:true};}SecuritySystem={initialize:initializeSecuritySystem,sendSecureAdRequest:sendSecureAdRequest,getSecurityStatus:getSecurityStatus,logSecurityEvent:logSecurityEvent,generateDeviceFingerprint:generateDeviceFingerprint,isSessionValid:isSessionValid,getOrGenerateDeviceFingerprint:getOrGenerateDeviceFingerprint};function showSecurityStatus(){const modal=document.getElementById('security-status-modal');if(modal){modal.style.display='flex';updateSecurityStatusDisplay();}}function closeSecurityStatus(){const modal=document.getElementById('security-status-modal');if(modal){modal.style.display='none';}}async function updateSecurityStatusDisplay(){const cryptoStatus=document.getElementById('crypto-status');if(cryptoStatus){cryptoStatus.textContent=isCryptoSupported?'Supported ✅':'Not Supported ❌';cryptoStatus.className='security-value '+(isCryptoSupported?'valid':'invalid');}const sessionStatus=document.getElementById('session-status');if(sessionStatus){const isValid=SecuritySystem?SecuritySystem.isSessionValid():false;sessionStatus.textContent=isValid?'Active ✅':'Inactive ❌';sessionStatus.className='security-value '+(isValid?'valid':'invalid');}const deviceStatus=document.getElementById('device-status');if(deviceStatus){try{const fingerprint=await getDeviceFingerprint();deviceStatus.textContent=fingerprint&&fingerprint!=='unknown'?'Verified ✅':'Not Verified ❌';deviceStatus.className='security-value '+(fingerprint&&fingerprint!=='unknown'?'valid':'invalid');}catch(error){deviceStatus.textContent='Error ❌';deviceStatus.className='security-value invalid';}}const adSecurityStatus=document.getElementById('ad-security-status');if(adSecurityStatus){const allGood=isCryptoSupported&&(SecuritySystem?SecuritySystem.isSessionValid():false);adSecurityStatus.textContent=allGood?'Secure ✅':'At Risk ⚠️';adSecurityStatus.className='security-value '+(allGood?'valid':'invalid');}}function refreshSecurityStatus(){updateSecurityStatusDisplay();showNotification("Security status refreshed","info");}
+
+// ==================== الدوال الجديدة لنظام الإعلانات الآمن ====================
+
+// توليد adToken باستخدام SHA-256 الحقيقي
+async function generateAdTokenFrontend(userId, deviceFingerprint, adNumber, clientTimestamp, sessionSecret) {
+    try {
+        // تأكد من وجود SubtleCrypto
+        if (!crypto.subtle) {
+            throw new Error('Web Crypto API not supported');
+        }
+        
+        // دمج البيانات بنفس الترتيب المستخدم في الخلفية
+        const dataString = `${userId}:${deviceFingerprint}:${adNumber}:${clientTimestamp}:${sessionSecret}`;
+        
+        // استخدام SHA-256
+        const encoder = new TextEncoder();
+        const dataBuffer = encoder.encode(dataString);
+        
+        const hashBuffer = await crypto.subtle.digest('SHA-256', dataBuffer);
+        
+        // تحويل إلى hex string
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        console.log("✅ Ad token generated successfully:", hashHex.substring(0, 20) + "...");
+        return hashHex;
+        
+    } catch (error) {
+        console.error('Error generating ad token:', error);
+        
+        // نسخة بديلة للتجزئة
+        const dataString = `${userId}:${deviceFingerprint}:${adNumber}:${clientTimestamp}:${sessionSecret}`;
+        let hash = 0;
+        for (let i = 0; i < dataString.length; i++) {
+            const char = dataString.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        const fallbackToken = Math.abs(hash).toString(36) + Math.abs(userId.length * 31).toString(36);
+        console.warn('Using fallback token generation');
+        return fallbackToken;
+    }
+}
+
+// جلب sessionSecret من الخادم
+async function getSessionSecretFromServer(sessionKey) {
+    try {
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (!userId || !sessionKey) {
+            console.error('Missing userId or sessionKey');
+            return null;
+        }
+        
+        const response = await fetch(`${API_URL}/api`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Action': 'getSessionSecret',
+                'X-User-ID': userId.toString(),
+                'X-Session-Key': sessionKey,
+                'X-Client-Timestamp': Date.now().toString()
+            },
+            body: JSON.stringify({
+                action: 'getSessionSecret',
+                data: { sessionKey: sessionKey }
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            console.log("✅ Session secret retrieved from server");
+            return result.data.secret;
+        } else {
+            console.error('Failed to get session secret:', result.error);
+            return null;
+        }
+        
+    } catch (error) {
+        console.error('Error getting session secret:', error);
+        return null;
+    }
+}
+
+// إعداد وإرسال طلب الإعلان الآمن (الإصدار المحسن)
+async function sendSecureAdRequestEnhanced(adType, reward) {
+    try {
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (!userId) {
+            console.error("No user ID found");
+            showNotification("Please log in first.", "error");
+            return { success: false, error: 'USER_NOT_FOUND' };
+        }
+        
+        // 1. الحصول على بيانات المصادقة
+        const deviceFingerprint = await getOrGenerateDeviceFingerprint();
+        if (!deviceFingerprint) {
+            console.error("Device fingerprint required");
+            showNotification("Security error: Device verification failed.", "error");
+            return { success: false, error: 'DEVICE_FINGERPRINT_REQUIRED' };
+        }
+        
+        const sessionKey = localStorage.getItem('sessionKey');
+        if (!sessionKey) {
+            console.error("No session key found");
+            showNotification("Please initialize the app first.", "error");
+            return { success: false, error: 'NO_SESSION_KEY' };
+        }
+        
+        // 2. جلب sessionSecret
+        let sessionSecret = localStorage.getItem('sessionSecret');
+        if (!sessionSecret) {
+            console.log("Session secret not found in localStorage, fetching from server...");
+            sessionSecret = await getSessionSecretFromServer(sessionKey);
+            if (sessionSecret) {
+                localStorage.setItem('sessionSecret', sessionSecret);
+            } else {
+                showNotification("Security error: Failed to get session data.", "error");
+                return { success: false, error: 'NO_SESSION_SECRET' };
+            }
+        }
+        
+        // 3. تحضير بيانات الإعلان
+        const clientTimestamp = Date.now();
+        
+        // تحديد رقم الإعلان
+        let adNumber = 0;
+        switch(adType) {
+            case 'monetag':
+                adNumber = (appData.adsMonetag || 0) + 1;
+                break;
+            case 'giga':
+                adNumber = (appData.adsGiga || 0) + 1;
+                break;
+            case 'adsgram':
+                adNumber = (appData.adsAdsgram || 0) + 1;
+                break;
+            default:
+                adNumber = Date.now();
+        }
+        
+        // 4. توليد adToken
+        const adToken = await generateAdTokenFrontend(
+            userId.toString(),
+            deviceFingerprint,
+            adNumber,
+            clientTimestamp,
+            sessionSecret
+        );
+        
+        if (!adToken) {
+            showNotification("Security error: Failed to generate token.", "error");
+            return { success: false, error: 'TOKEN_GENERATION_FAILED' };
+        }
+        
+        // 5. إعداد طلب HTTP
+        const requestData = {
+            action: 'handleAdClick',
+            data: {
+                userId: userId,
+                deviceFingerprint: deviceFingerprint,
+                adType: adType,
+                reward: reward,
+                adNumber: adNumber,
+                clientTimestamp: clientTimestamp
+            }
+        };
+        
+        const telegramData = window.Telegram?.WebApp?.initData || '';
+        
+        console.log("Sending secure ad request with headers:", {
+            'X-Action': 'handleAdClick',
+            'X-User-ID': userId.toString(),
+            'X-Telegram-Data': telegramData.substring(0, 50) + '...',
+            'X-Device-Fingerprint': deviceFingerprint,
+            'X-Ad-Number': adNumber.toString(),
+            'X-Ad-Token': adToken.substring(0, 20) + '...',
+            'X-Client-Timestamp': clientTimestamp.toString(),
+            'X-Session-Key': sessionKey
+        });
+        
+        // 6. إرسال الطلب
+        const response = await fetch(`${API_URL}/api`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Action': 'handleAdClick',
+                'X-User-ID': userId.toString(),
+                'X-Telegram-Data': telegramData,
+                'X-Device-Fingerprint': deviceFingerprint,
+                'X-Ad-Number': adNumber.toString(),
+                'X-Ad-Token': adToken,
+                'X-Client-Timestamp': clientTimestamp.toString(),
+                'X-Session-Key': sessionKey
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        return result;
+        
+    } catch (error) {
+        console.error("Secure ad request failed:", error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ==================== نهاية الدوال الجديدة ====================
+
 </script>
 </head>
 <body>
@@ -494,7 +712,7 @@ async function executeTONtoGLXSwap(){const isAllowed=await checkBeforeAction("sw
 window.openGame=function(gameType){document.getElementById('coin-flip-section').style.display='none';document.getElementById('promo-codes-section').style.display='none';document.getElementById('daily-streak-section').style.display='none';document.getElementById('galaxy-slots-section').style.display='none';const grid=document.querySelector('.bonus-grid');grid.style.display='none';document.getElementById(gameType+'-section').style.display='block';if(gameType==='coin-flip'){resetCoinFlipGame();}else if(gameType==='galaxy-slots'){initSlotsGame();updateAvailableSpins();}else if(gameType==='daily-streak'){renderDailyBonusUI();}};
 window.closeGame=function(){document.getElementById('coin-flip-section').style.display='none';document.getElementById('promo-codes-section').style.display='none';document.getElementById('daily-streak-section').style.display='none';document.getElementById('galaxy-slots-section').style.display='none';const grid=document.querySelector('.bonus-grid');grid.style.display='grid';};
 function setupGalaxyLogButton(){const galaxyLogBtn=document.getElementById('galaxy-log-button');if(galaxyLogBtn){galaxyLogBtn.addEventListener('click',function(){switchTab('galaxy-log-page');});}}
-async function initializeCompetition(){if(isCompetitionDataLoaded)return;try{const result=await callAPI('getCompetitionData');if(result.success){competitionData=result.data.competitionData||competitionData;isCompetitionDataLoaded=true;if(!competitionData.isActive){await createNewCompetition();}else{startCountdown();updateCompetitionUI();loadPreviousWinners();}}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");return;}await createNewCompetition();}}catch(error){console.error("Error initializing competition:",error);await createNewCompetition();}}
+async function initializeCompetition(){if(isCompetitionDataLoaded)return;try{const result=await callAPI('getCompetitionData');if(result.success){competitionData=result.data.competitionData||competitionData;isCompetitionDataLoaded=true;if(!competitionData.isActive){await createNewCompetition();}else{startCountdown();updateCompetitionUI();}}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");return;}await createNewCompetition();}}catch(error){console.error("Error initializing competition:",error);await createNewCompetition();}}
 async function createNewCompetition(){const now=Date.now();competitionData={isActive:true,breakMode:false,startTime:now,endTime:now+COMPETITION_DURATION,totalTickets:0,prizePool:0,userTickets:{},winners:[]};await callAPI('createCompetition',{startTime:now,endTime:now+COMPETITION_DURATION});startCountdown();updateCompetitionUI();}
 function updateCompetitionUI(){const now=Date.now();const userId=window.Telegram?.WebApp?.initDataUnsafe?.user?.id;if(!userId){console.error("User ID not found");return;}document.getElementById('competition-status').textContent=competitionData.isActive?'ACTIVE':'ENDED';document.getElementById('competition-status').style.color=competitionData.isActive?'#27ae60':'#e74c3c';const prizePool=competitionData.totalTickets*TICKET_TON_VALUE;document.getElementById('prize-pool').textContent=prizePool.toFixed(4)+' TON';document.getElementById('total-tickets').textContent=(competitionData.totalTickets||0).toLocaleString();const ticketInput=document.getElementById('ticket-amount');if(ticketInput){updateTicketCostDisplay();}const buyBtn=document.getElementById('buy-tickets-btn');if(buyBtn){const isBreak=competitionData.breakMode||false;buyBtn.disabled=isBreak||!competitionData.isActive;buyBtn.style.opacity=isBreak||!competitionData.isActive?'0.5':'1';}if(isCompetitionPageVisible){updateCompetitionLeaderboard();}}
 async function loadUserCompetitionData(){const userId=window.Telegram?.WebApp?.initDataUnsafe?.user?.id;if(!userId){return;}const result=await callAPI('getUserCompetitionData',{userId:userId});if(result.success&&result.data){if(result.data.userTickets||result.data.competitionTickets){if(!competitionData.userTickets){competitionData.userTickets={};}const ticketsFromAPI=result.data.userTickets||result.data.competitionTickets||0;competitionData.userTickets[userId]=ticketsFromAPI;appData.competitionTickets=ticketsFromAPI;updateCompetitionUI();}}else{appData.competitionTickets=appData.competitionTickets||0;}}
@@ -540,9 +758,9 @@ function extractChannelUsernameFromLink(link){try{if(link.includes('t.me/')){con
 async function fetchAndRenderTasks(user){const result=await callAPI('getTasks');const cCont=document.getElementById('community-tasks-list');if(result.success){cCont.innerHTML='';const tasks=result.data.tasks||[];const completedTasks=appData.completedTasks||{};tasks.forEach(task=>{if(task.status!=='active'||(task.remaining!==undefined&&task.remaining<=0))return;const isDone=completedTasks[task.id];let iconImg='https://img.icons8.com/fluency/96/task.png';const lt=task.title.toLowerCase();const ll=(task.link||'').toLowerCase();if(lt.includes('bot')||ll.includes('bot')||ll.includes('start=')){iconImg='https://i.ibb.co/Myz4Gkmy/Picsart-25-12-10-04-34-59-799.png';}else if(lt.includes('telegram')||lt.includes('channel')||lt.includes('group')||lt.includes('join')||ll.includes('t.me')){iconImg='https://i.ibb.co/5WZRG8fw/tele.png';}else if(lt.includes('youtube')||lt.includes('subscribe'))iconImg='https://i.ibb.co/CSz6kg9/20251203-200546.png';else if(lt.includes('twitter')||lt.includes('retweet')||lt.includes('follow')||lt.includes('x '))iconImg='https://i.ibb.co/60jp6MsF/20251203-200516.png';else if(lt.includes('instagram'))iconImg='https://img.icons8.com/fluency/96/instagram-new.png';const html=`<div class="list-card dynamic-task ${isDone?'disabled':''}" style="${isDone?'opacity:0.5;pointer-events:none;':''}" data-id="${task.id}" data-reward="${task.reward}" data-title="${task.title}" data-link="${task.link}" onclick="handleDynamicTask(this)"><div class="lc-icon"><img src="${iconImg}"></div><div class="lc-content"><div class="lc-title">${task.title}</div><div class="lc-sub" id="status-${task.id}">${task.description}</div></div><div class="lc-end"><div class="lc-val" id="reward-${task.id}">+${task.reward}</div></div></div>`;if(task.category==='community'){cCont.insertAdjacentHTML('beforeend',html);}});if(cCont.innerHTML===''){document.getElementById('community-tasks-card').style.display='none';}else{document.getElementById('community-tasks-card').style.display='block';}}}
 function setupEventListeners(user){document.querySelectorAll('.nav-item').forEach(btn=>{btn.addEventListener('click',()=>switchTab(btn.dataset.target));});document.querySelectorAll('.nav-link').forEach(link=>{link.addEventListener('click',(e)=>{e.preventDefault();switchTab(link.dataset.target);});});document.getElementById('monetag-ad-task').addEventListener('click',handleMonetagAd);document.getElementById('gigapub-ad-task').addEventListener('click',handleGigaAd);document.getElementById('adsgram-ad-task').addEventListener('click',handleAdsgramAd);document.getElementById('share-referral-btn').addEventListener('click',()=>{const link=document.getElementById('referral-link-display').textContent;window.Telegram?.WebApp.openTelegramLink(`https://t.me/share/RealEarnBot_bot?RealEarnBot_bot=${link}&text=Join GLX Galaxy!`);});document.getElementById('copy-referral-btn').addEventListener('click',()=>{navigator.clipboard.writeText(document.getElementById('referral-link-display').textContent).then(()=>{showNotification("Copied!","success");});});document.querySelectorAll('.tab-btn').forEach(btn=>{btn.addEventListener('click',(e)=>{document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.podium-list').forEach(l=>l.classList.add('hidden'));e.target.classList.add('active');document.getElementById(e.target.dataset.target).classList.remove('hidden');});});document.getElementById('claim-daily-btn').addEventListener('click',protectedDailyClaim);document.getElementById('buy-tickets-btn').addEventListener('click',buyTickets);document.getElementById('flip-coin-btn').addEventListener('click',flipCoin);document.getElementById('coin-bet-amount').addEventListener('input',function(){const value=parseInt(this.value);if(value&&value>=1000){coinGame.betAmount=value;}});document.getElementById('floatingAddTask').addEventListener('click',function(){switchTab('create-task-page');});document.getElementById('faucetpay-email')?.addEventListener('input',maskEmail);document.querySelectorAll('.btn-filter').forEach(btn=>{if(!btn.hasAttribute('data-setup')){btn.addEventListener('click',function(){document.querySelectorAll('.btn-filter').forEach(b=>b.classList.remove('active'));this.classList.add('active');});btn.setAttribute('data-setup','true');}});}
 function canClickAd(){const now=Date.now();return(now-lastAdClickTime)>=AD_CLICK_DELAY;}
-async function handleMonetagAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitMonetag||50;if((appData.adsMonetag||0)>=limit)return;if(!isAdScriptLoaded){showNotification("Loading ad...","info");return;}try{await show_10058786({ymid:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});let result;if(SecuritySystem&&typeof SecuritySystem.sendSecureAdRequest==='function'){result=await SecuritySystem.sendSecureAdRequest('monetag',appSettings.adRewardMonetag||500);}else{result=await callAPI('handleAdClick',{adType:'monetag',reward:appSettings.adRewardMonetag||500});}if(result.success){appData.adsMonetag=result.data.adsMonetag||appData.adsMonetag;appData.adsWatched=result.data.adsWatched||appData.adsWatched;appData.dogsBalance=result.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'monetag',reward:appSettings.adRewardMonetag||500,success:true});}showNotification(`✅ +${appSettings.adRewardMonetag||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(result.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(result.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}else{showNotification("Error: "+result.error,"error");}}}catch(e){showNotification("Ad not ready","warning");}}
-async function handleGigaAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitGiga||300;if((appData.adsGiga||0)>=limit)return;if(typeof window.showGiga!=='function'){showNotification("Giga Ads loading...","info");return;}try{await window.showGiga();let result;if(SecuritySystem&&typeof SecuritySystem.sendSecureAdRequest==='function'){result=await SecuritySystem.sendSecureAdRequest('giga',appSettings.adRewardGiga||500);}else{result=await callAPI('handleAdClick',{adType:'giga',reward:appSettings.adRewardGiga||500});}if(result.success){appData.adsGiga=result.data.adsGiga||appData.adsGiga;appData.adsWatched=result.data.adsWatched||appData.adsWatched;appData.dogsBalance=result.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'giga',reward:appSettings.adRewardGiga||500,success:true});}showNotification(`✅ +${appSettings.adRewardGiga||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(result.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(result.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}else{showNotification("Error: "+result.error,"error");}}}catch(e){console.error(e);showNotification("Ad failed or closed.","warning");}}
-async function handleAdsgramAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitAdsgram||300;if((appData.adsAdsgram||0)>=limit)return;if(!AdController){showNotification("AdsGram not initialized","warning");return;}try{const result=await AdController.show();if(result.done){let apiResult;if(SecuritySystem&&typeof SecuritySystem.sendSecureAdRequest==='function'){apiResult=await SecuritySystem.sendSecureAdRequest('adsgram',appSettings.adRewardAdsgram||500);}else{apiResult=await callAPI('handleAdClick',{adType:'adsgram',reward:appSettings.adRewardAdsgram||500});}if(apiResult.success){appData.adsAdsgram=apiResult.data.adsAdsgram||appData.adsAdsgram;appData.dogsBalance=apiResult.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'adsgram',reward:appSettings.adRewardAdsgram||500,success:true});}showNotification(`✅ +${appSettings.adRewardAdsgram||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(apiResult.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(apiResult.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(apiResult.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}}}}catch(error){console.error("AdsGram error:",error);showNotification("Ad playback error.","error");}}
+async function handleMonetagAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitMonetag||50;if((appData.adsMonetag||0)>=limit)return;if(!isAdScriptLoaded){showNotification("Loading ad...","info");return;}try{await show_10058786({ymid:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});let result;// استخدام النظام الآمن الجديدresult=await sendSecureAdRequestEnhanced('monetag',appSettings.adRewardMonetag||500);if(result.success){appData.adsMonetag=result.data.adsMonetag||appData.adsMonetag;appData.adsWatched=result.data.adsWatched||appData.adsWatched;appData.dogsBalance=result.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'monetag',reward:appSettings.adRewardMonetag||500,success:true});}showNotification(`✅ +${appSettings.adRewardMonetag||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(result.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(result.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}else{showNotification("Error: "+result.error,"error");}}}catch(e){showNotification("Ad not ready","warning");}}
+async function handleGigaAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitGiga||300;if((appData.adsGiga||0)>=limit)return;if(typeof window.showGiga!=='function'){showNotification("Giga Ads loading...","info");return;}try{await window.showGiga();let result;// استخدام النظام الآمن الجديدresult=await sendSecureAdRequestEnhanced('giga',appSettings.adRewardGiga||500);if(result.success){appData.adsGiga=result.data.adsGiga||appData.adsGiga;appData.adsWatched=result.data.adsWatched||appData.adsWatched;appData.dogsBalance=result.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'giga',reward:appSettings.adRewardGiga||500,success:true});}showNotification(`✅ +${appSettings.adRewardGiga||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(result.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(result.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}else{showNotification("Error: "+result.error,"error");}}}catch(e){console.error(e);showNotification("Ad failed or closed.","warning");}}
+async function handleAdsgramAd(){if(!canClickAd()){showNotification("Please wait 3 seconds before clicking again.","warning");return;}const isAllowed=await checkBeforeAction("watch ad");if(!isAllowed)return;await getUpdatedSettings();lastAdClickTime=Date.now();const limit=appSettings.limitAdsgram||300;if((appData.adsAdsgram||0)>=limit)return;if(!AdController){showNotification("AdsGram not initialized","warning");return;}try{const result=await AdController.show();if(result.done){let apiResult;// استخدام النظام الآمن الجديدapiResult=await sendSecureAdRequestEnhanced('adsgram',appSettings.adRewardAdsgram||500);if(apiResult.success){appData.adsAdsgram=apiResult.data.adsAdsgram||appData.adsAdsgram;appData.dogsBalance=apiResult.data.newBalance||appData.dogsBalance;if(SecuritySystem){SecuritySystem.logSecurityEvent('AD_COMPLETED',{adType:'adsgram',reward:appSettings.adRewardAdsgram||500,success:true});}showNotification(`✅ +${appSettings.adRewardAdsgram||500} GLX added!`,"success");renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(apiResult.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else if(apiResult.error==='SECURITY_CHECK_FAILED'){showNotification("Security verification failed. Please refresh.","error");}else if(apiResult.error==='DIRECT_AD_CALL_BLOCKED'){showNotification("Please update the app to the latest version.","error");}}}}catch(error){console.error("AdsGram error:",error);showNotification("Ad playback error.","error");}}
 window.selectWithdrawalType=function(type){withdrawalType=type;document.querySelectorAll('.withdrawal-type-btn').forEach(btn=>btn.classList.remove('active'));document.querySelector(`.withdrawal-type-btn[data-type="${type}"]`).classList.add('active');if(type==='faucetpay'){document.getElementById('faucetpay-form').style.display='block';document.getElementById('tonwallet-form').style.display='none';}else{document.getElementById('faucetpay-form').style.display='none';document.getElementById('tonwallet-form').style.display='block';}};
 async function handleFaucetPayWithdraw(){const isAllowed=await checkBeforeAction("withdraw");if(!isAllowed)return;const canWithdraw=checkWithdrawalLimit();if(!canWithdraw){showNotification("⚠️ Daily withdrawal limit reached! You can make only 2 withdrawals per day. Try again tomorrow.","warning");return;}const email=document.getElementById('faucetpay-email').value.trim();const amount=parseFloat(document.getElementById('faucetpay-amount').value);const minAmount=appSettings.minFaucetPayWithdrawal||0.0001;const currentBalance=appData.tonBalance||0;if(!email||!email.includes('@')){showNotification("Please enter a valid email address.","warning");return;}if(amount<minAmount){showNotification(`Minimum withdrawal is ${minAmount} TON for FaucetPay.`,"warning");return;}if(amount>=currentBalance){showNotification(`Insufficient TON balance. You need at least ${(amount+0.000001).toFixed(6)} TON.`,"warning");return;}const[localPart,domain]=email.split('@');let maskedEmail='';if(localPart.length>3){maskedEmail=localPart.charAt(0)+'*'.repeat(Math.max(3,localPart.length-2))+localPart.charAt(localPart.length-1)+'@'+domain;}else{maskedEmail='*'.repeat(localPart.length)+'@'+domain;}if(!confirm(`Withdraw ${amount} TON to ${maskedEmail} via FaucetPay?\n\nEmail will be partially hidden for privacy.\n\nToday's withdrawals: ${dailyWithdrawals.count}/2`)){return;}const result=await callAPI('submitWithdrawal',{method:'faucetpay',account:email,amount:amount,maskedAccount:maskedEmail});if(result.success){appData.tonBalance=result.data.newBalance;await incrementDailyWithdrawals();showNotification(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to ${maskedEmail} within 1 minute.\n\nToday's withdrawals: ${dailyWithdrawals.count}/2`,"success");document.getElementById('faucetpay-email').value='';document.getElementById('faucetpay-amount').value=minAmount;document.getElementById('email-preview').style.display='none';switchTab('home');renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else{showNotification("Error: "+result.error,"error");}}}
 async function handleTonWalletWithdraw(){const isAllowed=await checkBeforeAction("withdraw");if(!isAllowed)return;const canWithdraw=checkWithdrawalLimit();if(!canWithdraw){showNotification("⚠️ Daily withdrawal limit reached! You can make only 2 withdrawals per day. Try again tomorrow.","warning");return;}const address=document.getElementById('ton-wallet-address').value.trim();const amount=parseFloat(document.getElementById('ton-withdraw-amount').value);const memo=document.getElementById('ton-memo').value.trim();const minAmount=appSettings.minTonWithdrawal||0.05;const currentBalance=appData.tonBalance||0;if(!address||address.length<5){showNotification("Please enter a valid TON wallet address.","warning");return;}if(amount<minAmount){showNotification(`Minimum withdrawal is ${minAmount} TON for TON Wallet.`,"warning");return;}if(amount>=currentBalance){showNotification(`Insufficient TON balance. You need at least ${(amount+0.0001).toFixed(4)} TON.`,"warning");return;}let shortAddress=address;if(address.length>16){shortAddress=address.substring(0,8)+'...'+address.substring(address.length-4);}if(!confirm(`Withdraw ${amount} TON to ${shortAddress}?\n\nAddress: ${shortAddress}\n${memo?'Memo: '+memo+'\n':''}\n\nToday's withdrawals: ${dailyWithdrawals.count}/2`)){return;}const result=await callAPI('submitWithdrawal',{method:'ton',account:address,amount:amount,memo:memo||''});if(result.success){appData.tonBalance=result.data.newBalance;await incrementDailyWithdrawals();showNotification(`✅ Withdrawal request submitted!\n\n${amount} TON will be sent to your wallet within 24 hours.\n\nAddress: ${shortAddress}\n\nToday's withdrawals: ${dailyWithdrawals.count}/2`,"success");document.getElementById('ton-wallet-address').value='';document.getElementById('ton-memo').value='';document.getElementById('ton-withdraw-amount').value=minAmount;switchTab('home');renderUI({id:window.Telegram?.WebApp?.initDataUnsafe?.user?.id});}else{if(result.error==='ACCOUNT_BLOCKED'){showNotification("Your account has been blocked.","error");}else{showNotification("Error: "+result.error,"error");}}}
