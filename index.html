@@ -149,7 +149,7 @@ async function sendSecureAdRequest(adType, reward){
         const requestData = {
             action: 'handleAdClick',
             data: {
-                userId: userId,
+                userId: userId.toString(), // تأكد أن userId هو نص (String)
                 deviceFingerprint: deviceFingerprint,
                 adType: adType,
                 reward: reward,
@@ -166,7 +166,7 @@ async function sendSecureAdRequest(adType, reward){
             headers: {
                 'Content-Type': 'application/json',
                 'X-Action': 'handleAdClick',
-                'X-User-ID': userId.toString(),
+                'X-User-ID': userId.toString(), // تأكد أن userId هو نص
                 'X-Telegram-Data': telegramData,
                 'X-Device-Fingerprint': deviceFingerprint,
                 'X-Ad-Number': adNumber.toString(),
@@ -817,7 +817,7 @@ Performing security checks & loading your data
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
 <script>
-// ===== باقي الكود بدون تغيير =====
+// ===== باقي الكود مع التعديلات =====
 let loadingProgress = 0;
 let loadingSeconds = 10;
 let loadingTimerInterval;
@@ -887,7 +887,7 @@ async function checkMandatorySubscriptions(){
     if(!userId) return false;
     
     try{
-        const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
+        const result = await callAPI('checkMandatorySubscriptions', { userId: userId.toString() });
         console.log("Subscription check result:", result);
         
         if(result.success && result.data){
@@ -999,7 +999,7 @@ async function verifySubscriptions(){
     showNotification("⏳ Verifying your subscriptions...", "info");
     
     try{
-        const result = await callAPI('checkMandatorySubscriptions', { userId: userId });
+        const result = await callAPI('checkMandatorySubscriptions', { userId: userId.toString() });
         
         if(result.success && result.data){
             if(result.data.allSubscribed === true){
@@ -1124,14 +1124,14 @@ async function callAPI(action, data = {}){
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-User-ID': userId || '',
+                'X-User-ID': userId ? userId.toString() : '', // تأكد أنه نص
                 'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
                 'X-Action': action
             },
             body: JSON.stringify({
                 action: action,
                 data: data,
-                userId: userId,
+                userId: userId ? userId.toString() : null, // تأكد أنه نص
                 timestamp: Date.now()
             })
         });
@@ -1837,11 +1837,11 @@ async function getUpdatedSettings(){
 }
 
 async function initializeUser(user, deviceFingerprint){
-    const isNewUser = await callAPI('checkIsNewUser', { userId: user.id });
+    const isNewUser = await callAPI('checkIsNewUser', { userId: user.id.toString() });
     
     if(isNewUser.success && isNewUser.data.isNew){
         const fingerprintCheck = await callAPI('checkDeviceFingerprint', { 
-            userId: user.id, 
+            userId: user.id.toString(), 
             deviceFingerprint: deviceFingerprint 
         });
         
@@ -1856,7 +1856,7 @@ async function initializeUser(user, deviceFingerprint){
         }
         
         const saveResult = await callAPI('saveDeviceFingerprint', { 
-            userId: user.id, 
+            userId: user.id.toString(), 
             deviceFingerprint: deviceFingerprint 
         });
         
@@ -1889,7 +1889,7 @@ async function loadDailyWithdrawalsData(){
     if(!userId) return;
     
     try{
-        const result = await callAPI('getDailyWithdrawals', { userId: userId });
+        const result = await callAPI('getDailyWithdrawals', { userId: userId.toString() });
         if(result.success){
             dailyWithdrawals = {
                 count: result.data.todayWithdrawals || 0,
@@ -1955,7 +1955,7 @@ async function resetDailyWithdrawals(){
     if(userId){
         try{
             await callAPI('resetDailyWithdrawals', { 
-                userId: userId, 
+                userId: userId.toString(), 
                 resetTime: dailyWithdrawals.lastReset 
             });
         }catch(error){
@@ -2010,7 +2010,7 @@ async function incrementDailyWithdrawals(){
     if(userId){
         try{
             await callAPI('incrementDailyWithdrawals', { 
-                userId: userId, 
+                userId: userId.toString(), 
                 count: dailyWithdrawals.count 
             });
         }catch(error){
@@ -2066,7 +2066,7 @@ function initializeApp(user){
     
     if(SecuritySystem){
         SecuritySystem.logSecurityEvent('APP_INITIALIZED', {
-            userId: user.id,
+            userId: user.id.toString(),
             userName: fullName,
             timestamp: new Date().toISOString()
         });
@@ -2081,7 +2081,7 @@ async function handleReferral(user){
         const referrerId = startParam.replace('ref', '');
         if(referrerId && referrerId !== user.id){
             const result = await callAPI('handleReferral', { 
-                userId: user.id, 
+                userId: user.id.toString(), 
                 referrerId: referrerId, 
                 rewardAmount: 100000 
             });
@@ -2431,7 +2431,7 @@ async function loadUserCompetitionData(){
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if(!userId){ return; }
     
-    const result = await callAPI('getUserCompetitionData', { userId: userId });
+    const result = await callAPI('getUserCompetitionData', { userId: userId.toString() });
     if(result.success && result.data){
         if(result.data.userTickets || result.data.competitionTickets){
             if(!competitionData.userTickets){
@@ -2568,7 +2568,7 @@ window.buyTickets = async function(){
     
     try{
         const result = await callAPI('buyTickets', {
-            userId: userId,
+            userId: userId.toString(),
             tickets: tickets,
             totalCost: totalCost
         });
@@ -3563,7 +3563,7 @@ async function verifyTelegramMembership(channelUsername, userId){
         const username = channelUsername.replace('@', '');
         const result = await callAPI('verifyTelegramMembership', { 
             channelUsername: username, 
-            userId: userId 
+            userId: userId.toString() 
         });
         return result.success && result.data.isMember === true;
     }catch(error){
