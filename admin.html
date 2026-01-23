@@ -1,1432 +1,168 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم السحوبات - GLX Galaxy</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #4361ee;
-            --secondary: #3a0ca3;
-            --success: #4cc9f0;
-            --danger: #f72585;
-            --warning: #f8961e;
-            --dark: #1a1a2e;
-            --light: #f8f9fa;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .dashboard-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-            max-height: 95vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, var(--dark), #16213e);
-            color: white;
-            padding: 25px 30px;
-            border-radius: 20px 20px 0 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .main-content {
-            padding: 25px;
-            overflow-y: auto;
-            flex: 1;
-        }
-        
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            border: none;
-            transition: transform 0.3s;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-        
-        .stat-number {
-            font-size: 32px;
-            font-weight: bold;
-            color: var(--dark);
-            margin: 10px 0;
-        }
-        
-        .stat-label {
-            font-size: 14px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .table-custom {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            margin-top: 20px;
-        }
-        
-        .btn-admin {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: 500;
-            transition: all 0.3s;
-        }
-        
-        .btn-admin:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.4);
-            color: white;
-        }
-        
-        .btn-success-admin {
-            background: linear-gradient(135deg, var(--success), #38b000);
-        }
-        
-        .btn-danger-admin {
-            background: linear-gradient(135deg, var(--danger), #b5179e);
-        }
-        
-        .btn-warning-admin {
-            background: linear-gradient(135deg, var(--warning), #ff9500);
-        }
-        
-        .btn-info-admin {
-            background: linear-gradient(135deg, #17a2b8, #138496);
-        }
-        
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #f0f0f0;
-        }
-        
-        .badge-custom {
-            padding: 8px 15px;
-            border-radius: 10px;
-            font-weight: 500;
-        }
-        
-        .loader {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Modal Styles */
-        .modal-custom .modal-content {
-            border-radius: 20px;
-            border: none;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        
-        .modal-custom .modal-header {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: white;
-            border-radius: 20px 20px 0 0;
-            padding: 25px 30px;
-            border-bottom: none;
-        }
-        
-        .modal-custom .modal-body {
-            padding: 30px;
-            max-height: 70vh;
-            overflow-y: auto;
-        }
-        
-        .modal-custom .modal-footer {
-            border-top: 1px solid #eee;
-            padding: 20px 30px;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        
-        .stat-item h6 {
-            color: #666;
-            margin-bottom: 5px;
-            font-size: 12px;
-            text-transform: uppercase;
-        }
-        
-        .stat-item .value {
-            font-size: 20px;
-            font-weight: bold;
-            color: var(--dark);
-        }
-        
-        .logs-table-container {
-            max-height: 300px;
-            overflow-y: auto;
-            margin-top: 20px;
-        }
-        
-        .action-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .action-buttons .btn {
-            flex: 1;
-            min-width: 100px;
-            font-size: 13px;
-        }
-        
-        .quick-actions {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .action-btn-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .action-btn-group .btn {
-            flex: 1;
-            min-width: 140px;
-        }
-        
-        .blocked-user {
-            background-color: #fff5f5 !important;
-        }
-        
-        .blocked-user td {
-            border-left: 4px solid #dc3545 !important;
-        }
-    </style>
-</head>
-<body>
-    <div class="container-fluid dashboard-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="mb-1">
-                        <i class="bi bi-cash-coin"></i>
-                        إدارة السحوبات المعلقة
-                    </h2>
-                    <p class="mb-0 opacity-75">
-                        <i class="bi bi-fire"></i>
-                        <span id="totalPending">0</span> سحب معلق | 
-                        <span id="totalAmount">0</span> TON
-                    </p>
-                </div>
-                <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <small id="connectionStatus">
-                            <div class="loader" style="width: 20px; height: 20px; border-width: 2px; display: inline-block;"></div>
-                            جاري الاتصال...
-                        </small>
-                    </div>
-                    <button class="btn btn-admin" onclick="refreshData()">
-                        <i class="bi bi-arrow-clockwise"></i> تحديث
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Stats Row -->
-        <div class="row px-3 pt-3">
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalUsersCount">0</div>
-                    <div class="stat-label">إجمالي المستخدمين</div>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalBalance">0</div>
-                    <div class="stat-label">إجمالي GLX</div>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-number" id="pendingWithdrawals">0</div>
-                    <div class="stat-label">سحوبات معلقة</div>
-                </div>
-            </div>
-            
-            <div class="col-lg-3 col-md-6">
-                <div class="stat-card">
-                    <div class="stat-number" id="totalTON">0</div>
-                    <div class="stat-label">إجمالي TON</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Main Content -->
-        <div class="main-content">
-            <div class="table-custom">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="mb-0">
-                        <i class="bi bi-clock-history"></i>
-                        السحوبات المعلقة
-                    </h4>
-                    <div id="statsInfo" class="text-muted">
-                        آخر تحديث: <span id="lastUpdate">الآن</span>
-                    </div>
-                </div>
-                
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>المستخدم</th>
-                                <th>المبلغ</th>
-                                <th>المحفظة</th>
-                                <th>التاريخ</th>
-                                <th>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody id="withdrawalsTable">
-                            <!-- السحوبات المعلقة ستظهر هنا -->
-                            <tr>
-                                <td colspan="6" class="text-center py-5">
-                                    <div class="loader mx-auto"></div>
-                                    <div class="mt-3">جاري تحميل السحوبات...</div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+
+<!doctype html>
+<html lang="ar">
+  <head>
+    <meta charset="UTF-8" />
     
-    <!-- User Stats Modal -->
-    <div class="modal fade modal-custom" id="userStatsModal" tabindex="-1">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-graph-up"></i>
-                        الإحصائيات الكاملة للمستخدم
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="userStatsContent">
-                    <!-- محتوى الإحصائيات سيتم تحميله هنا -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
-                    <button type="button" class="btn btn-admin" onclick="refreshCurrentUser()">
-                        <i class="bi bi-arrow-clockwise"></i> تحديث
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Content Security Policy - Security hardening -->
+    <!-- Note: URLs in CSP must be hardcoded as CSP is static HTML.
+         Update connect-src URLs if Supabase credentials are rotated. -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval'
+        https://telegram.org
+        https://*.telegram.org
+        https://sad.adsgram.ai
+        https://*.adsgram.ai
+        https://*.libtl.com
+        https://libtl.com
+        https://partner.adextra.io
+        https://*.adextra.io
+        https://imasdk.googleapis.com
+        https://*.doubleclick.net
+        https://*.googlesyndication.com
+        https://pagead2.googlesyndication.com
+        https://tpc.googlesyndication.com
+        https://googleads.g.doubleclick.net
+        https://ushoaglosee.com
+        https://*.ushoaglosee.com
+        https://ad.gigapub.tech
+        https://*.gigapub.tech
+        https://cdn.giga.pub
+        https://*.giga.pub;
+      style-src 'self' 'unsafe-inline'
+        https://fonts.googleapis.com
+        https://cdn-uicons.flaticon.com;
+      font-src 'self'
+        https://fonts.gstatic.com
+        https://cdn-uicons.flaticon.com;
+      img-src 'self' data: https: blob:;
+      connect-src 'self'
+        ws:
+        wss:
+        https://jtzwdmxflwymqzcelzyh.supabase.co
+        wss://jtzwdmxflwymqzcelzyh.supabase.co
+        https://telegram.org
+        https://*.telegram.org
+        https://sad.adsgram.ai
+        https://*.adsgram.ai
+        https://*.libtl.com
+        https://libtl.com
+        https://partner.adextra.io
+        https://*.adextra.io
+        https://imasdk.googleapis.com
+        https://*.doubleclick.net
+        https://*.googlesyndication.com
+        https://pagead2.googlesyndication.com
+        https://tpc.googlesyndication.com
+        https://googleads.g.doubleclick.net
+        https://ushoaglosee.com
+        https://*.ushoaglosee.com
+        https://ad.gigapub.tech
+        https://*.gigapub.tech
+        https://cdn.giga.pub
+        https://*.giga.pub
+        https://bridge.tonapi.io
+        https://bridge.ton.space
+        https://tonconnectbridge.mytonwallet.org
+        https://connect.tonhubapi.com
+        https://sse-bridge.delab.team
+        https://ton-bridge.safepal.com
+        https://bkcode.vip
+        https://connect.mytonwallet.org
+        https://storage.googleapis.com;
+      frame-src 'self'
+        https://telegram.org
+        https://*.telegram.org
+        https://sad.adsgram.ai
+        https://*.adsgram.ai
+        https://*.libtl.com
+        https://libtl.com
+        https://partner.adextra.io
+        https://*.adextra.io
+        https://imasdk.googleapis.com
+        https://*.doubleclick.net
+        https://*.googlesyndication.com
+        https://pagead2.googlesyndication.com
+        https://tpc.googlesyndication.com
+        https://googleads.g.doubleclick.net
+        https://ushoaglosee.com
+        https://*.ushoaglosee.com
+        https://ad.gigapub.tech
+        https://*.gigapub.tech
+        https://cdn.giga.pub
+        https://*.giga.pub;
+      frame-ancestors 'self'
+        https://web.telegram.org
+        https://telegram.org
+        https://*.telegram.org;
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+     ">
+
     <script>
-    // Firebase Configuration
-    const firebaseConfig = {
-        apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
-        authDomain: "earnmoney124553.firebaseapp.com",
-        databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
-        projectId: "earnmoney124553",
-        storageBucket: "earnmoney124553.firebasestorage.app",
-        messagingSenderId: "325528918523",
-        appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
-        measurementId: "G-G1H96Q5XCJ"
-    };
+      // Log CSP blocks to help debug ads + TonConnect issues.
+      // Also persist the last violation so we can surface it in the UI (e.g., Adextra failures).
+      window.__cspViolations = window.__cspViolations || [];
+      window.__lastCspViolation = null;
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-
-    // Global Variables
-    let allUsers = {};
-    let pendingWithdrawals = {};
-    let currentUserId = null;
-
-    // Setup Firebase Listeners
-    function setupFirebaseListeners() {
-        // Listen to users (minimal data only for withdrawals)
-        database.ref('users').on('value', (snapshot) => {
-            allUsers = snapshot.val() || {};
-            updateDashboardStats();
-            document.getElementById('connectionStatus').innerHTML = 
-                '<i class="bi bi-check-circle-fill text-success"></i> متصل';
-            updateLastUpdate();
-        });
-
-        // Listen to pending withdrawals only
-        database.ref('withdrawals/pending').on('value', (snapshot) => {
-            pendingWithdrawals = snapshot.val() || {};
-            updateWithdrawalsTable();
-            updateDashboardStats();
-        });
-    }
-
-    // Update Dashboard Statistics
-    function updateDashboardStats() {
-        const users = Object.values(allUsers);
-        
-        // Total Users
-        document.getElementById('totalUsersCount').textContent = users.length.toLocaleString();
-        
-        // Total GLX Balance
-        const totalGLX = users.reduce((sum, user) => sum + (user.dogsBalance || 0), 0);
-        document.getElementById('totalBalance').textContent = totalGLX.toLocaleString();
-        
-        // Total TON Balance
-        const totalTON = users.reduce((sum, user) => sum + (parseFloat(user.tonBalance) || 0), 0);
-        document.getElementById('totalTON').textContent = totalTON.toFixed(2);
-        
-        // Pending Withdrawals
-        const pending = Object.values(pendingWithdrawals);
-        const pendingAmount = pending.reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
-        document.getElementById('pendingWithdrawals').textContent = pending.length;
-        
-        // Update header stats
-        document.getElementById('totalPending').textContent = pending.length;
-        document.getElementById('totalAmount').textContent = pendingAmount.toFixed(4);
-    }
-
-    // Update Withdrawals Table
-    function updateWithdrawalsTable() {
-        const withdrawals = Object.entries(pendingWithdrawals);
-        
-        // Sort by timestamp (newest first)
-        withdrawals.sort(([,a], [,b]) => (b.timestamp || 0) - (a.timestamp || 0));
-        
-        const tbody = document.getElementById('withdrawalsTable');
-        
-        if (withdrawals.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-5 text-muted">
-                        <i class="bi bi-cash-coin" style="font-size: 40px; opacity: 0.3;"></i>
-                        <div class="mt-3">لا توجد سحوبات معلقة</div>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        let html = '';
-        
-        withdrawals.forEach(([withdrawalId, withdrawal], index) => {
-            const user = allUsers[withdrawal.userId] || {};
-            const amount = parseFloat(withdrawal.amount) || 0;
-            const isBlocked = user.isBlocked || false;
-            
-            html += `
-                <tr class="${isBlocked ? 'blocked-user' : ''}">
-                    <td>${index + 1}</td>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
-                                 class="user-avatar me-2">
-                            <div>
-                                <div class="fw-bold">${user.name || 'مجهول'}</div>
-                                <small class="text-muted d-block">${withdrawal.userId.substring(0, 10)}...</small>
-                                ${isBlocked ? '<small class="text-danger"><i class="bi bi-shield-lock"></i> محظور</small>' : ''}
-                            </div>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="fw-bold text-warning">${amount.toFixed(4)}</span>
-                        <small class="text-muted d-block">TON</small>
-                    </td>
-                    <td>
-                        <code class="d-block" style="font-size: 11px;">${withdrawal.account || withdrawal.maskedAccount || 'غير محدد'}</code>
-                        ${withdrawal.email ? `<small class="text-muted">${withdrawal.email}</small>` : ''}
-                    </td>
-                    <td>
-                        <small>${formatDate(withdrawal.timestamp)}</small>
-                        <br>
-                        <small class="text-muted">${formatTimeSince(withdrawal.timestamp)}</small>
-                    </td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn btn-success-admin btn-sm" onclick="approveWithdrawal('${withdrawalId}')">
-                                <i class="bi bi-check"></i> قبول
-                            </button>
-                            <button class="btn btn-danger-admin btn-sm" onclick="rejectWithdrawal('${withdrawalId}')">
-                                <i class="bi bi-x"></i> رفض
-                            </button>
-                            <button class="btn btn-info-admin btn-sm" onclick="showUserStats('${withdrawal.userId}', '${withdrawalId}')">
-                                <i class="bi bi-graph-up"></i> إحصائيات
-                            </button>
-                            ${isBlocked ? 
-                                `<button class="btn btn-success-admin btn-sm" onclick="unblockUser('${withdrawal.userId}')">
-                                    <i class="bi bi-unlock"></i> فك الحظر
-                                </button>` : 
-                                `<button class="btn btn-danger-admin btn-sm" onclick="blockUser('${withdrawal.userId}')">
-                                    <i class="bi bi-shield-lock"></i> حظر
-                                </button>`
-                            }
-                        </div>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
-    }
-
-    // Block User Function (مباشر)
-    function blockUser(userId) {
-        const user = allUsers[userId] || {};
-        const userName = user.name || 'مجهول';
-        
-        const reason = prompt(`سبب حظر المستخدم ${userName}:`, 'حظر من الإدارة');
-        if (reason === null) return;
-        
-        if (confirm(`هل تريد حظر المستخدم ${userName}؟`)) {
-            const updates = {};
-            const timestamp = Date.now();
-            
-            updates[`users/${userId}/isBlocked`] = true;
-            updates[`users/${userId}/blockReason`] = reason;
-            updates[`users/${userId}/blockedAt`] = timestamp;
-            
-            // Add to blocks collection
-            updates[`blocks/${userId}`] = {
-                userId: userId,
-                reason: reason,
-                appliedAt: timestamp,
-                permanent: true,
-                adminAction: true
-            };
-            
-            // Add to user history
-            updates[`users/${userId}/history/${timestamp}`] = {
-                type: 'admin_action',
-                action: 'block',
-                reason: reason,
-                admin: 'system',
-                timestamp: timestamp
-            };
-            
-            database.ref().update(updates)
-                .then(() => {
-                    alert(`تم حظر المستخدم ${userName} بنجاح`);
-                    // Refresh the table to show updated status
-                    updateWithdrawalsTable();
-                })
-                .catch(error => {
-                    alert('حدث خطأ: ' + error.message);
-                });
-        }
-    }
-
-    // Unblock User Function (مباشر)
-    function unblockUser(userId) {
-        const user = allUsers[userId] || {};
-        const userName = user.name || 'مجهول';
-        
-        if (confirm(`هل تريد فك حظر المستخدم ${userName}؟`)) {
-            const timestamp = Date.now();
-            const updates = {};
-            
-            updates[`users/${userId}/isBlocked`] = false;
-            updates[`users/${userId}/blockReason`] = null;
-            updates[`users/${userId}/blockedAt`] = null;
-            updates[`blocks/${userId}`] = null;
-            
-            // Add to user history
-            updates[`users/${userId}/history/${timestamp}`] = {
-                type: 'admin_action',
-                action: 'unblock',
-                admin: 'system',
-                timestamp: timestamp
-            };
-            
-            database.ref().update(updates)
-                .then(() => {
-                    alert(`تم فك حظر المستخدم ${userName} بنجاح`);
-                    // Refresh the table to show updated status
-                    updateWithdrawalsTable();
-                })
-                .catch(error => {
-                    alert('حدث خطأ: ' + error.message);
-                });
-        }
-    }
-
-    // Show User Statistics
-    function showUserStats(userId, withdrawalId = null) {
-        currentUserId = userId;
-        const user = allUsers[userId] || {};
-        const withdrawal = withdrawalId ? pendingWithdrawals[withdrawalId] : null;
-        
-        // Get user's withdrawal history from all statuses
-        const userPendingWithdrawals = Object.values(pendingWithdrawals).filter(w => w.userId === userId);
-        const userTotalWithdrawals = userPendingWithdrawals.length;
-        const userTotalAmount = userPendingWithdrawals.reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
-        
-        // Ads Statistics
-        const adsStats = {
-            total: user.adsWatched || 0,
-            monetag: user.adsMonetag || 0,
-            giga: user.adsGiga || 0,
-            adsgram: user.adsAdsgram || 0,
-            today: user.dailyAds || user.adsToday || 0,
-            lastDate: user.lastAdDate || 'لم يشاهد',
-            lastAdTime: user.lastAdTime ? formatDate(user.lastAdTime) : 'غير متوفر',
-            canWatchAds: user.canWatchAds !== false
+      window.addEventListener('securitypolicyviolation', function (e) {
+        const entry = {
+          time: Date.now(),
+          blockedURI: e.blockedURI,
+          violatedDirective: e.violatedDirective,
+          effectiveDirective: e.effectiveDirective,
+          sourceFile: e.sourceFile,
+          lineNumber: e.lineNumber,
+          columnNumber: e.columnNumber,
         };
-        
-        // User History
-        const userHistory = user.history || {};
-        const historyCount = Object.keys(userHistory).length;
-        
-        // Categorize history
-        const categorizedHistory = categorizeHistoryLogs(userHistory);
-        
-        // Build stats content
-        let statsContent = `
-            <div class="row">
-                <div class="col-md-4 text-center mb-4">
-                    <img src="${user.photoUrl || 'https://i.ibb.co/tTkJX1Qy/logo.png'}" 
-                         class="img-fluid rounded-circle mb-3" style="max-width: 120px; border: 5px solid #f0f0f0;">
-                    <h5>${user.name || 'مجهول'}</h5>
-                    <code class="text-muted d-block">${userId}</code>
-                    <div class="mt-2">
-                        ${user.isBlocked ? 
-                            '<span class="badge bg-danger">محظور</span>' : 
-                            '<span class="badge bg-success">نشط</span>'}
-                    </div>
-                    
-                    <!-- Quick Actions -->
-                    <div class="quick-actions mt-3">
-                        <h6 class="mb-2">إجراءات سريعة</h6>
-                        <div class="action-btn-group">
-                            ${user.isBlocked ? 
-                                '<button class="btn btn-success-admin btn-sm" onclick="quickUnblock()"><i class="bi bi-unlock"></i> فك الحظر</button>' : 
-                                '<button class="btn btn-danger-admin btn-sm" onclick="quickBlock()"><i class="bi bi-shield-lock"></i> حظر</button>'}
-                            <button class="btn btn-warning-admin btn-sm" onclick="quickAddBalance()"><i class="bi bi-plus-circle"></i> إضافة GLX</button>
-                            <button class="btn btn-warning-admin btn-sm" onclick="quickSubtractBalance()"><i class="bi bi-dash-circle"></i> خصم GLX</button>
-                            <button class="btn btn-info-admin btn-sm" onclick="quickAddTickets()"><i class="bi bi-ticket-perforated"></i> إضافة تذاكر</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-8">
-                    <!-- Financial Stats -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-wallet2"></i> الإحصائيات المالية</h6>
-                            <div class="btn-group btn-group-sm">
-                                <button class="btn btn-sm btn-success-admin" onclick="quickAddGLX(1000)">
-                                    +1K GLX
-                                </button>
-                                <button class="btn btn-sm btn-success-admin" onclick="quickAddTON(0.1)">
-                                    +0.1 TON
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <h6>رصيد GLX</h6>
-                                    <div class="value">${user.dogsBalance || 0}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>رصيد TON</h6>
-                                    <div class="value">${user.tonBalance || 0}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>التذاكر</h6>
-                                    <div class="value">${user.competitionTickets || 0}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>الإحالات</h6>
-                                    <div class="value">${user.referrals || 0}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Withdrawal Stats -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-light">
-                            <h6 class="mb-0"><i class="bi bi-cash-coin"></i> إحصائيات السحب</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <h6>السحوبات المعلقة</h6>
-                                    <div class="value">${userTotalWithdrawals}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>إجمالي المبلغ</h6>
-                                    <div class="value">${userTotalAmount.toFixed(4)} TON</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>متوسط السحب</h6>
-                                    <div class="value">${userTotalWithdrawals > 0 ? (userTotalAmount / userTotalWithdrawals).toFixed(4) : 0} TON</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>آخر سحب</h6>
-                                    <div class="value">
-                                        ${userTotalWithdrawals > 0 ? 
-                                            formatTimeSince(Math.max(...userPendingWithdrawals.map(w => w.timestamp))) : 
-                                            'لا يوجد'}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Ads Stats -->
-                    <div class="card mb-3">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-tv"></i> إحصائيات الإعلانات</h6>
-                            <button class="btn btn-sm btn-warning-admin" onclick="quickResetAds()">
-                                <i class="bi bi-arrow-repeat"></i> إعادة تعيين
-                            </button>
-                        </div>
-                        <div class="card-body">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <h6>إجمالي المشاهدات</h6>
-                                    <div class="value">${adsStats.total}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>اليوم</h6>
-                                    <div class="value">${adsStats.today}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>آخر مشاهدة</h6>
-                                    <div class="value">${adsStats.lastDate}</div>
-                                </div>
-                                <div class="stat-item">
-                                    <h6>الحالة</h6>
-                                    <div class="value">
-                                        ${adsStats.canWatchAds ? 
-                                            '<span class="badge bg-success">نشط</span>' : 
-                                            '<span class="badge bg-danger">معطل</span>'}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-4 text-center">
-                                    <small class="text-muted d-block">Monetag</small>
-                                    <div class="fw-bold">${adsStats.monetag}</div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <small class="text-muted d-block">Giga</small>
-                                    <div class="fw-bold">${adsStats.giga}</div>
-                                </div>
-                                <div class="col-4 text-center">
-                                    <small class="text-muted d-block">Adsgram</small>
-                                    <div class="fw-bold">${adsStats.adsgram}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Activity Logs -->
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="bi bi-clock-history"></i> سجل الأنشطة</h6>
-                            <small class="text-muted">إجمالي الأنشطة: ${historyCount}</small>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="logs-table-container">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>النوع</th>
-                                            <th>التفاصيل</th>
-                                            <th>المكافأة</th>
-                                            <th>التاريخ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${renderRecentLogs(categorizedHistory)}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Current Withdrawal Details -->
-            ${withdrawal ? `
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card border-warning">
-                            <div class="card-header bg-warning text-white">
-                                <h6 class="mb-0"><i class="bi bi-clock"></i> تفاصيل السحب الحالي</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">المبلغ</small>
-                                        <div class="fw-bold fs-5 text-warning">${withdrawal.amount} TON</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">طريقة السحب</small>
-                                        <div class="fw-bold">${withdrawal.method || 'TON'}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">تاريخ الطلب</small>
-                                        <div class="fw-bold">${formatDate(withdrawal.timestamp)}</div>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <small class="text-muted d-block">المحفظة</small>
-                                        <code class="d-block">${withdrawal.account || withdrawal.maskedAccount || ''}</code>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
-        `;
-        
-        document.getElementById('userStatsContent').innerHTML = statsContent;
-        const modal = new bootstrap.Modal(document.getElementById('userStatsModal'));
-        modal.show();
-    }
 
-    // Quick Action Functions (from user stats modal)
-    function quickBlock() {
-        const user = allUsers[currentUserId] || {};
-        const userName = user.name || 'مجهول';
-        
-        const reason = prompt(`سبب حظر المستخدم ${userName}:`, 'حظر من الإدارة');
-        if (reason === null) return;
-        
-        if (confirm(`هل تريد حظر المستخدم ${userName}؟`)) {
-            const updates = {};
-            const timestamp = Date.now();
-            
-            updates[`users/${currentUserId}/isBlocked`] = true;
-            updates[`users/${currentUserId}/blockReason`] = reason;
-            updates[`users/${currentUserId}/blockedAt`] = timestamp;
-            
-            // Add to blocks collection
-            updates[`blocks/${currentUserId}`] = {
-                userId: currentUserId,
-                reason: reason,
-                appliedAt: timestamp,
-                permanent: true,
-                adminAction: true
-            };
-            
-            // Add to user history
-            updates[`users/${currentUserId}/history/${timestamp}`] = {
-                type: 'admin_action',
-                action: 'block',
-                reason: reason,
-                admin: 'system',
-                timestamp: timestamp
-            };
-            
-            database.ref().update(updates)
-                .then(() => {
-                    alert(`تم حظر المستخدم ${userName}`);
-                    refreshCurrentUser();
-                })
-                .catch(error => {
-                    alert('حدث خطأ: ' + error.message);
-                });
-        }
-    }
+        window.__lastCspViolation = entry;
+        window.__cspViolations.push(entry);
+        if (window.__cspViolations.length > 20) window.__cspViolations.shift();
 
-    function quickUnblock() {
-        const user = allUsers[currentUserId] || {};
-        const userName = user.name || 'مجهول';
-        
-        if (confirm(`هل تريد فك حظر المستخدم ${userName}؟`)) {
-            const timestamp = Date.now();
-            const updates = {};
-            
-            updates[`users/${currentUserId}/isBlocked`] = false;
-            updates[`users/${currentUserId}/blockReason`] = null;
-            updates[`users/${currentUserId}/blockedAt`] = null;
-            updates[`blocks/${currentUserId}`] = null;
-            
-            // Add to user history
-            updates[`users/${currentUserId}/history/${timestamp}`] = {
-                type: 'admin_action',
-                action: 'unblock',
-                admin: 'system',
-                timestamp: timestamp
-            };
-            
-            database.ref().update(updates)
-                .then(() => {
-                    alert(`تم فك حظر المستخدم ${userName}`);
-                    refreshCurrentUser();
-                })
-                .catch(error => {
-                    alert('حدث خطأ: ' + error.message);
-                });
-        }
-    }
-
-    function quickAddBalance() {
-        const amount = prompt('المبلغ (GLX):', '1000');
-        if (!amount || isNaN(amount) || amount <= 0) return;
-        
-        const reason = prompt('السبب:', 'مكافأة من الإدارة');
-        if (reason === null) return;
-        
-        const timestamp = Date.now();
-        const user = allUsers[currentUserId] || {};
-        const currentBalance = user.dogsBalance || 0;
-        
-        const updates = {};
-        updates[`users/${currentUserId}/dogsBalance`] = currentBalance + parseFloat(amount);
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'add_balance',
-            amount: parseFloat(amount),
-            reason: reason,
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                alert(`تم إضافة ${amount} GLX`);
-                refreshCurrentUser();
-            });
-    }
-
-    function quickSubtractBalance() {
-        const amount = prompt('المبلغ (GLX):', '1000');
-        if (!amount || isNaN(amount) || amount <= 0) return;
-        
-        const reason = prompt('السبب:', 'خصم من الإدارة');
-        if (reason === null) return;
-        
-        if (!confirm(`هل تريد خصم ${amount} GLX من رصيد المستخدم؟`)) return;
-        
-        const timestamp = Date.now();
-        const user = allUsers[currentUserId] || {};
-        const currentBalance = user.dogsBalance || 0;
-        
-        const updates = {};
-        updates[`users/${currentUserId}/dogsBalance`] = Math.max(0, currentBalance - parseFloat(amount));
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'subtract_balance',
-            amount: parseFloat(amount),
-            reason: reason,
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                alert(`تم خصم ${amount} GLX`);
-                refreshCurrentUser();
-            });
-    }
-
-    function quickAddGLX(amount) {
-        const reason = 'مكافأة سريعة من الإدارة';
-        const timestamp = Date.now();
-        const user = allUsers[currentUserId] || {};
-        const currentBalance = user.dogsBalance || 0;
-        
-        const updates = {};
-        updates[`users/${currentUserId}/dogsBalance`] = currentBalance + amount;
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'add_balance',
-            amount: amount,
-            reason: reason,
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                alert(`تم إضافة ${amount} GLX`);
-                refreshCurrentUser();
-            });
-    }
-
-    function quickAddTON(amount) {
-        const reason = 'مكافأة TON من الإدارة';
-        const timestamp = Date.now();
-        const user = allUsers[currentUserId] || {};
-        const currentTON = parseFloat(user.tonBalance) || 0;
-        
-        const updates = {};
-        updates[`users/${currentUserId}/tonBalance`] = (currentTON + amount).toFixed(4);
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'add_ton',
-            amount: amount,
-            reason: reason,
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                alert(`تم إضافة ${amount} TON`);
-                refreshCurrentUser();
-            });
-    }
-
-    function quickAddTickets() {
-        const amount = prompt('عدد التذاكر:', '1');
-        if (!amount || isNaN(amount) || amount <= 0) return;
-        
-        const reason = prompt('السبب:', 'مكافأة تذاكر من الإدارة');
-        if (reason === null) return;
-        
-        const timestamp = Date.now();
-        const user = allUsers[currentUserId] || {};
-        const currentTickets = user.competitionTickets || 0;
-        
-        const updates = {};
-        updates[`users/${currentUserId}/competitionTickets`] = currentTickets + parseInt(amount);
-        updates[`competition/current/userTickets/${currentUserId}`] = currentTickets + parseInt(amount);
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'add_tickets',
-            amount: parseInt(amount),
-            reason: reason,
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                // Update total tickets
-                return database.ref('competition/current/totalTickets').transaction(current => {
-                    return (current || 0) + parseInt(amount);
-                });
-            })
-            .then(() => {
-                alert(`تم إضافة ${amount} تذكرة`);
-                refreshCurrentUser();
-            });
-    }
-
-    function quickResetAds() {
-        if (!confirm('هل تريد إعادة تعيين جميع إحصائيات الإعلانات للمستخدم؟')) return;
-        
-        const timestamp = Date.now();
-        const updates = {};
-        
-        updates[`users/${currentUserId}/adsWatched`] = 0;
-        updates[`users/${currentUserId}/adsMonetag`] = 0;
-        updates[`users/${currentUserId}/adsGiga`] = 0;
-        updates[`users/${currentUserId}/adsAdsgram`] = 0;
-        updates[`users/${currentUserId}/dailyAds`] = 0;
-        updates[`users/${currentUserId}/lastAdDate`] = null;
-        updates[`users/${currentUserId}/lastAdTime`] = null;
-        updates[`users/${currentUserId}/adsToday`] = 0;
-        
-        updates[`users/${currentUserId}/history/${timestamp}`] = {
-            type: 'admin_action',
-            action: 'reset_ads',
-            reason: 'إعادة تعيين الإعلانات من الإدارة',
-            admin: 'system',
-            timestamp: timestamp
-        };
-        
-        database.ref().update(updates)
-            .then(() => {
-                alert('تم إعادة تعيين إحصائيات الإعلانات');
-                refreshCurrentUser();
-            });
-    }
-
-    // Categorize History Logs
-    function categorizeHistoryLogs(history) {
-        const categorized = {
-            ads: [],
-            tasks: [],
-            referrals: [],
-            withdrawals: [],
-            other: []
-        };
-        
-        if (!history) return categorized;
-        
-        Object.entries(history).forEach(([timestamp, log]) => {
-            const logWithTimestamp = { ...log, timestamp: parseInt(timestamp) };
-            
-            if (log.type === 'ad_watch' || log.source === 'monetag' || 
-                log.source === 'giga' || log.source === 'adsgram') {
-                categorized.ads.push(logWithTimestamp);
-            } 
-            else if (log.type === 'task_complete' || log.type === 'task_reward') {
-                categorized.tasks.push(logWithTimestamp);
-            }
-            else if (log.type === 'referral_bonus' || log.type === 'referral_earned') {
-                categorized.referrals.push(logWithTimestamp);
-            }
-            else if (log.type === 'withdrawal' || log.type === 'withdrawal_request') {
-                categorized.withdrawals.push(logWithTimestamp);
-            }
-            else {
-                categorized.other.push(logWithTimestamp);
-            }
-        });
-        
-        // Sort by date (newest first)
-        Object.keys(categorized).forEach(key => {
-            categorized[key].sort((a, b) => b.timestamp - a.timestamp);
-        });
-        
-        return categorized;
-    }
-
-    // Render Recent Logs (last 20)
-    function renderRecentLogs(historyLogs) {
-        // Combine all logs
-        let allLogs = [];
-        Object.values(historyLogs).forEach(category => {
-            allLogs = allLogs.concat(category);
-        });
-        
-        // Sort by date and get last 20
-        allLogs.sort((a, b) => b.timestamp - a.timestamp);
-        const recentLogs = allLogs.slice(0, 20);
-        
-        if (recentLogs.length === 0) {
-            return `
-                <tr>
-                    <td colspan="4" class="text-center py-3 text-muted">
-                        <i class="bi bi-clock-history"></i>
-                        <div class="mt-1">لا توجد سجلات أنشطة</div>
-                    </td>
-                </tr>
-            `;
-        }
-        
-        let html = '';
-        
-        recentLogs.forEach(log => {
-            const typeIcon = getLogTypeIcon(log.type || log.source);
-            const typeLabel = getLogTypeLabel(log.type || log.source);
-            const details = getLogDetails(log);
-            const reward = log.reward || log.amount || log.bonus || 0;
-            const rewardText = reward > 0 ? `+${reward} ${log.currency || 'GLX'}` : '-';
-            
-            html += `
-                <tr>
-                    <td>
-                        <div class="d-flex align-items-center">
-                            <span class="badge ${getLogTypeBadge(log.type || log.source)} me-2">
-                                ${typeIcon}
-                            </span>
-                            <small>${typeLabel}</small>
-                        </div>
-                    </td>
-                    <td>
-                        <small>${details}</small>
-                    </td>
-                    <td>
-                        <small class="${reward > 0 ? 'text-success fw-bold' : 'text-muted'}">
-                            ${rewardText}
-                        </small>
-                    </td>
-                    <td>
-                        <small>${formatDate(log.timestamp)}</small>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        return html;
-    }
-
-    // Helper functions for logs
-    function getLogTypeIcon(type) {
-        const icons = {
-            'ad_watch': '📺',
-            'monetag': '💰',
-            'giga': '⚡',
-            'adsgram': '📱',
-            'task_complete': '✅',
-            'task_reward': '🎯',
-            'referral_bonus': '👥',
-            'referral_earned': '🤝',
-            'withdrawal': '💸',
-            'withdrawal_request': '🏦',
-            'default': '📝'
-        };
-        
-        return icons[type] || icons['default'];
-    }
-
-    function getLogTypeLabel(type) {
-        const labels = {
-            'ad_watch': 'إعلان',
-            'monetag': 'Monetag',
-            'giga': 'Giga',
-            'adsgram': 'Adsgram',
-            'task_complete': 'مهمة',
-            'task_reward': 'مكافأة',
-            'referral_bonus': 'إحالة',
-            'referral_earned': 'إحالة',
-            'withdrawal': 'سحب',
-            'withdrawal_request': 'طلب سحب',
-            'default': 'نشاط'
-        };
-        
-        return labels[type] || labels['default'];
-    }
-
-    function getLogTypeBadge(type) {
-        const badges = {
-            'ad_watch': 'bg-info',
-            'monetag': 'bg-primary',
-            'giga': 'bg-warning',
-            'adsgram': 'bg-success',
-            'task_complete': 'bg-success',
-            'task_reward': 'bg-success',
-            'referral_bonus': 'bg-info',
-            'referral_earned': 'bg-info',
-            'withdrawal': 'bg-danger',
-            'withdrawal_request': 'bg-warning',
-            'default': 'bg-secondary'
-        };
-        
-        return badges[type] || badges['default'];
-    }
-
-    function getLogDetails(log) {
-        if (log.type === 'ad_watch') {
-            return `مشاهدة إعلان - ${log.source || 'مصدر'}`;
-        } else if (log.type === 'task_complete') {
-            return `إكمال مهمة: ${log.taskTitle || 'مهمة'}`;
-        } else if (log.type === 'referral_bonus') {
-            return `مكافأة إحالة: ${log.referredUser || 'مستخدم'}`;
-        } else if (log.type === 'withdrawal_request') {
-            return `طلب سحب: ${log.amount || 0} ${log.currency || 'TON'}`;
-        } else if (log.description) {
-            return log.description;
-        } else {
-            return 'نشاط في النظام';
-        }
-    }
-
-    // Withdrawal Management
-    function approveWithdrawal(withdrawalId) {
-        const withdrawal = pendingWithdrawals[withdrawalId];
-        if (!withdrawal) return;
-        
-        if (confirm(`هل تريد الموافقة على سحب ${withdrawal.amount} TON؟`)) {
-            const updates = {};
-            const timestamp = Date.now();
-            
-            // Move from pending to completed
-            updates[`withdrawals/pending/${withdrawalId}`] = null;
-            updates[`withdrawals/completed/${withdrawalId}`] = {
-                ...withdrawal,
-                status: 'completed',
-                processedAt: timestamp
-            };
-            
-            // Add to user history
-            updates[`users/${withdrawal.userId}/history/${timestamp}`] = {
-                type: 'withdrawal_completed',
-                amount: withdrawal.amount,
-                currency: 'TON',
-                method: withdrawal.method,
-                status: 'completed',
-                withdrawalId: withdrawalId,
-                timestamp: timestamp
-            };
-            
-            database.ref().update(updates)
-                .then(() => {
-                    alert('تمت الموافقة على السحب');
-                })
-                .catch(error => {
-                    alert('حدث خطأ: ' + error.message);
-                });
-        }
-    }
-
-    function rejectWithdrawal(withdrawalId) {
-        const withdrawal = pendingWithdrawals[withdrawalId];
-        if (!withdrawal) return;
-        
-        const reason = prompt('يرجى إدخال سبب الرفض:', 'رفض من الإدارة');
-        if (reason === null) return;
-        
-        if (confirm(`هل تريد رفض سحب ${withdrawal.amount} TON؟ سيتم إعادة المبلغ للمستخدم.`)) {
-            const timestamp = Date.now();
-            const updates = {};
-            
-            // Return amount to user
-            database.ref(`users/${withdrawal.userId}/tonBalance`).transaction(currentBalance => {
-                return (parseFloat(currentBalance) || 0) + parseFloat(withdrawal.amount);
-            })
-            .then(() => {
-                // Move from pending to rejected
-                updates[`withdrawals/pending/${withdrawalId}`] = null;
-                updates[`withdrawals/rejected/${withdrawalId}`] = {
-                    ...withdrawal,
-                    status: 'rejected',
-                    rejectedAt: timestamp,
-                    reason: reason
-                };
-                
-                // Add to user history
-                updates[`users/${withdrawal.userId}/history/${timestamp}`] = {
-                    type: 'withdrawal_rejected',
-                    amount: withdrawal.amount,
-                    currency: 'TON',
-                    method: withdrawal.method,
-                    status: 'rejected',
-                    withdrawalId: withdrawalId,
-                    reason: reason,
-                    timestamp: timestamp
-                };
-                
-                return database.ref().update(updates);
-            })
-            .then(() => {
-                alert('تم رفض السحب وإعادة المبلغ للمستخدم');
-            })
-            .catch(error => {
-                alert('حدث خطأ: ' + error.message);
-            });
-        }
-    }
-
-    // Refresh Current User Data
-    function refreshCurrentUser() {
-        if (!currentUserId) return;
-        
-        database.ref(`users/${currentUserId}`).once('value')
-            .then(snapshot => {
-                const user = snapshot.val();
-                if (user) {
-                    allUsers[currentUserId] = user;
-                    showUserStats(currentUserId);
-                }
-            })
-            .catch(error => {
-                alert('حدث خطأ في التحديث: ' + error.message);
-            });
-    }
-
-    // Refresh All Data
-    function refreshData() {
-        document.getElementById('connectionStatus').innerHTML = 
-            '<div class="loader" style="width: 20px; height: 20px; border-width: 2px; display: inline-block;"></div> جاري التحديث...';
-        
-        setupFirebaseListeners();
-        updateLastUpdate();
-        
-        setTimeout(() => {
-            document.getElementById('connectionStatus').innerHTML = 
-                '<i class="bi bi-check-circle-fill text-success"></i> متصل';
-        }, 1000);
-    }
-
-    // Utility Functions
-    function formatDate(timestamp) {
-        if (!timestamp) return 'غير محدد';
-        const date = new Date(timestamp);
-        return date.toLocaleDateString('ar-EG') + ' ' + date.toLocaleTimeString('ar-EG').substring(0, 5);
-    }
-
-    function formatTimeSince(timestamp) {
-        if (!timestamp) return 'غير محدد';
-        const now = Date.now();
-        const diff = now - timestamp;
-        
-        if (diff < 60000) return 'الآن';
-        if (diff < 3600000) return `منذ ${Math.floor(diff / 60000)} دقيقة`;
-        if (diff < 86400000) return `منذ ${Math.floor(diff / 3600000)} ساعة`;
-        if (diff < 604800000) return `منذ ${Math.floor(diff / 86400000)} يوم`;
-        return `منذ ${Math.floor(diff / 604800000)} أسبوع`;
-    }
-
-    function updateLastUpdate() {
-        const now = new Date();
-        document.getElementById('lastUpdate').textContent = now.toLocaleTimeString('ar-EG');
-    }
-
-    // Initialize
-    window.onload = function() {
-        setupFirebaseListeners();
-        
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            updateLastUpdate();
-        }, 30000);
-    };
+        console.warn('[CSP] Blocked', entry);
+      });
     </script>
-</body>
+     
+    <!-- Additional Security Headers -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <link rel="icon" type="image/x-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/69ryW3IyM3S8KND4jtEM0d40Sgr2/uploads/1764103534841-photo_2025-11-10_18-49-58.jpg">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>RED COIN</title>
+    <meta name="description" content="اربح العملات الرقمية والتوكنز من خلال إتمام المهام" />
+    
+    <!-- Flaticon UIcons -->
+    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css">
+    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css">
+    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-chubby/css/uicons-solid-chubby.css">
+    
+    <meta property="og:description" content="اربح العملات الرقمية من خلال إتمام المهام" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Ad SDKs -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    
+  
+  <meta name="twitter:card" content="summary">
+  <meta property="og:title" content="RED COIN">
+  <meta name="twitter:title" content="RED COIN">
+  <script type="module" crossorigin src="/assets/index-C1_vMolt.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-DlVCVaFH.js">
+  <link rel="modulepreload" crossorigin href="/assets/radix-ui-CJceqnEg.js">
+  <link rel="modulepreload" crossorigin href="/assets/tanstack-DJOL_Zqx.js">
+  <link rel="modulepreload" crossorigin href="/assets/animations-fcx6_Qo8.js">
+  <link rel="modulepreload" crossorigin href="/assets/supabase-BY6u0z81.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-DJyANwe9.css">
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- TON Connect Modal Portal - Must be outside root for proper z-index -->
+    <div id="ton-connect-modal"></div>
+  </body>
 </html>
