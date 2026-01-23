@@ -1,7 +1,4 @@
-/* === DEVICE ID SINGLE-ACCOUNT ENFORCEMENT (ADDED) ===
-   Rule: One Telegram account per device_id (VPN/IP ignored)
-*/
-// Cloudflare Worker لـ GLX Galaxy
+// Cloudflare Worker لـ GLX Galaxy مع نظام Turnstile المدمج
 export default {
     async fetch(request, env, ctx) {
         // إعداد CORS
@@ -10,7 +7,7 @@ export default {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
                     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint, X-Client-IP, X-Ad-Token, X-Ad-Number, X-Client-Timestamp, X-Session-Key',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, X-Device-Fingerprint, X-Client-IP, X-Captcha-Token',
                 }
             });
         }
@@ -32,86 +29,26 @@ export default {
         try {
             // استخراج البيانات من الطلب
             const requestData = await request.json();
-            
-            // 🔒 1️⃣ تشديد نقطة الدخول - منع الاعتماد على body.action وحده
-            const action = request.headers.get('X-Action');
-            if (!action) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'X-Action header is required',
-                    errorCode: 'MISSING_X_ACTION'
-                }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            // 🔒 منع عدم تطابق header action مع body action
-            if (requestData.action && requestData.action !== action) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'X-Action header does not match body action',
-                    errorCode: 'ACTION_MISMATCH'
-                }), {
-                    status: 400,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
+            const action = request.headers.get('X-Action') || requestData.action;
             const data = requestData.data || {};
             const userId = request.headers.get('X-User-ID');
             const telegramData = request.headers.get('X-Telegram-Data');
             const deviceFingerprint = request.headers.get('X-Device-Fingerprint') || data.deviceFingerprint;
             const clientIp = request.headers.get('X-Client-IP') || request.headers.get('CF-Connecting-IP') || 'Unknown';
+            const captchaToken = request.headers.get('X-Captcha-Token') || data.captchaToken;
             
             console.log(`Request received: action=${action}, userId=${userId}, clientIp=${clientIp}`);
             
-            // 🔒 التحقق من البيانات الأساسية المطلوبة
-            if (!userId) {
+            // التحقق من المصادقة
+            if (!userId || !telegramData) {
                 return new Response(JSON.stringify({
                     success: false,
-                    error: 'X-User-ID header is required',
-                    errorCode: 'MISSING_X_USER_ID'
+                    error: 'Authentication required',
+                    errorCode: 'AUTH_REQUIRED'
                 }), {
                     status: 401,
                     headers: { 'Content-Type': 'application/json' }
                 });
-            }
-            
-            if (!telegramData) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'X-Telegram-Data header is required',
-                    errorCode: 'MISSING_TELEGRAM_DATA'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            // 🔒 للطلبات المتعلقة بالإعلانات، التحقق من بيانات إضافية
-            if (action === 'handleAdClick') {
-                const adToken = request.headers.get('X-Ad-Token');
-                const adNumber = request.headers.get('X-Ad-Number');
-                const clientTimestamp = request.headers.get('X-Client-Timestamp');
-                const sessionKey = request.headers.get('X-Session-Key');
-                
-                if (!adToken || !adNumber || !clientTimestamp || !sessionKey) {
-                    return new Response(JSON.stringify({
-                        success: false,
-                        error: 'Missing required ad verification headers',
-                        errorCode: 'MISSING_AD_HEADERS',
-                        details: {
-                            adToken: !!adToken,
-                            adNumber: !!adNumber,
-                            clientTimestamp: !!clientTimestamp,
-                            sessionKey: !!sessionKey
-                        }
-                    }), {
-                        status: 400,
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                }
             }
             
             // التحقق من بيانات Telegram
@@ -393,347 +330,7 @@ export default {
                     break;
                     
                 case 'handleAdClick':
-                    // 🔒 6️⃣ ترتيب التنفيذ الإجباري
-                    
-                    // 1. التحقق من الحظر
-                    const adBlockCheck = await checkUserBlocked(env, userId);
-                    if (adBlockCheck && adBlockCheck.isBlocked) {
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'ACCOUNT_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: adBlockCheck,
-                                blockedMessage: `🚫 Account Blocked\n\nReason: ${adBlockCheck.reason}\nViolation: ${adBlockCheck.violation}\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 403,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 2. 🔒 تطابق Header ↔ Body
-                    const headerUserId = request.headers.get('X-User-ID');
-                    const headerDeviceFingerprint = request.headers.get('X-Device-Fingerprint');
-                    const headerAction = request.headers.get('X-Action');
-                    
-                    if (!data.userId || !data.deviceFingerprint) {
-                        await applyBlock(env, userId, {
-                            reason: 'Missing required ad data in body',
-                            violation: 'AD_DATA_MISSING',
-                            action: 'handleAdClick',
-                            details: 'Required userId or deviceFingerprint missing in body',
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'AD_DATA_MISSING_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Missing required ad data in body',
-                                    violation: 'AD_DATA_MISSING',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: AD_DATA_MISSING\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 2أ) التحقق من تطابق البيانات
-                    if (headerUserId !== data.userId) {
-                        await applyBlock(env, userId, {
-                            reason: 'Header-Body user ID mismatch',
-                            violation: 'USER_ID_MISMATCH',
-                            action: 'handleAdClick',
-                            details: `Header: ${headerUserId}, Body: ${data.userId}`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'USER_ID_MISMATCH_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Header-Body user ID mismatch',
-                                    violation: 'USER_ID_MISMATCH',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: USER_ID_MISMATCH\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    if (headerDeviceFingerprint !== data.deviceFingerprint) {
-                        await applyBlock(env, userId, {
-                            reason: 'Header-Body device fingerprint mismatch',
-                            violation: 'DEVICE_FINGERPRINT_MISMATCH',
-                            action: 'handleAdClick',
-                            details: `Header: ${headerDeviceFingerprint}, Body: ${data.deviceFingerprint}`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'DEVICE_FINGERPRINT_MISMATCH_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Header-Body device fingerprint mismatch',
-                                    violation: 'DEVICE_FINGERPRINT_MISMATCH',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: DEVICE_FINGERPRINT_MISMATCH\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    if (headerAction !== 'handleAdClick') {
-                        await applyBlock(env, userId, {
-                            reason: 'Header action mismatch for ad click',
-                            violation: 'ACTION_MISMATCH',
-                            action: 'handleAdClick',
-                            details: `Header action: ${headerAction}, Expected: handleAdClick`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'ACTION_MISMATCH_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Header action mismatch for ad click',
-                                    violation: 'ACTION_MISMATCH',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: ACTION_MISMATCH\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 3. 🔒 التحقق من اكتمال البيانات
-                    const adToken = request.headers.get('X-Ad-Token');
-                    const adNumber = request.headers.get('X-Ad-Number');
-                    const clientTimestamp = request.headers.get('X-Client-Timestamp');
-                    const sessionKey = request.headers.get('X-Session-Key');
-                    
-                    if (!adToken || !adNumber || !clientTimestamp || !sessionKey) {
-                        await applyBlock(env, userId, {
-                            reason: 'Missing required ad verification headers',
-                            violation: 'MISSING_AD_HEADERS',
-                            action: 'handleAdClick',
-                            details: `Missing: ${!adToken ? 'X-Ad-Token, ' : ''}${!adNumber ? 'X-Ad-Number, ' : ''}${!clientTimestamp ? 'X-Client-Timestamp, ' : ''}${!sessionKey ? 'X-Session-Key' : ''}`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'MISSING_AD_HEADERS_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Missing required ad verification headers',
-                                    violation: 'MISSING_AD_HEADERS',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: MISSING_AD_HEADERS\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 4. 🔒 التحقق من sessionSecret
-                    const sessionSecret = await getSessionSecret(env, userId, sessionKey);
-                    if (!sessionSecret) {
-                        await applyBlock(env, userId, {
-                            reason: 'Invalid or expired session',
-                            violation: 'INVALID_SESSION',
-                            action: 'handleAdClick',
-                            details: `Session key: ${sessionKey} not found or expired`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'INVALID_SESSION_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Invalid or expired session',
-                                    violation: 'INVALID_SESSION',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid session\nViolation: INVALID_SESSION\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 5. 🔒 التحقق من صحة adToken
-                    const isValidToken = await validateAdToken(
-                        env, 
-                        userId, 
-                        data.deviceFingerprint, 
-                        adNumber, 
-                        clientTimestamp, 
-                        sessionSecret, 
-                        adToken
-                    );
-                    
-                    if (!isValidToken.valid) {
-                        await applyBlock(env, userId, {
-                            reason: 'Invalid ad token - potential fraud',
-                            violation: 'INVALID_AD_TOKEN',
-                            action: 'handleAdClick',
-                            details: isValidToken.details,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'INVALID_AD_TOKEN_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Invalid ad token - potential fraud',
-                                    violation: 'INVALID_AD_TOKEN',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Ad token validation failed\nViolation: INVALID_AD_TOKEN\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 6. 🔒 منع replay (One-time token)
-                    const isReplay = await checkAdTokenReplay(env, userId, adToken);
-                    if (isReplay) {
-                        await applyBlock(env, userId, {
-                            reason: 'Replay attack detected - ad token already used',
-                            violation: 'REPLAY_ATTACK',
-                            action: 'handleAdClick',
-                            details: `Ad token ${adToken} already used`,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: headerDeviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'REPLAY_ATTACK_BLOCKED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Replay attack detected',
-                                    violation: 'REPLAY_ATTACK',
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Replay attack detected\nViolation: REPLAY_ATTACK\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 7. 🔒 تسجيل استخدام التوكن لمنع إعادة الاستخدام
-                    await recordAdTokenUsage(env, userId, adToken, {
-                        adNumber: adNumber,
-                        clientTimestamp: clientTimestamp,
-                        deviceFingerprint: data.deviceFingerprint,
-                        timestamp: Date.now(),
-                        sessionKey: sessionKey
-                    });
-                    
-                    // 8. التحقق من صحة طلب الإعلان
-                    const adValidation = await validateAdRequest(env, userId, data);
-                    if (!adValidation.valid) {
-                        // حظر فوري لطلب إعلان غير صالح - مخالفة واحدة
-                        await applyBlock(env, userId, {
-                            reason: 'Invalid ad request - System violation',
-                            violation: adValidation.violation,
-                            action: 'handleAdClick',
-                            details: adValidation.details,
-                            timestamp: Date.now(),
-                            permanent: true,
-                            deviceFingerprint: deviceFingerprint
-                        });
-                        
-                        return new Response(JSON.stringify({
-                            success: false,
-                            error: 'ACCOUNT_BLOCKED',
-                            errorCode: 'AD_VALIDATION_FAILED',
-                            data: {
-                                isBlocked: true,
-                                blockDetails: {
-                                    reason: 'Invalid ad request - System violation',
-                                    violation: adValidation.violation,
-                                    permanent: true
-                                },
-                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: ${adValidation.violation}\n\nThis decision is final.`,
-                                redirectToBlockPage: true
-                            }
-                        }), {
-                            status: 400,
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                    }
-                    
-                    // 9. 🔒 فقط بعد كل التحققات، تنفيذ منطق الإعلان
-                    result = await handleAdClick(env, userId, data.adType, data.reward);
+                    result = await handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToken);
                     break;
                     
                 case 'submitWithdrawal':
@@ -868,164 +465,280 @@ export default {
     }
 };
 
-// 🔒 الوظائف الجديدة للأمان
-async function getSessionSecret(env, userId, sessionKey) {
-    try {
-        const sessionResult = await handleDbGet(env, `sessions/${userId}/${sessionKey}`);
-        if (!sessionResult.success || !sessionResult.data) {
-            return null;
-        }
-        
-        const sessionData = sessionResult.data;
-        const now = Date.now();
-        
-        // التحقق من انتهاء الصلاحية (30 دقيقة)
-        if (sessionData.expiresAt && sessionData.expiresAt < now) {
-            await handleDbSet(env, `sessions/${userId}/${sessionKey}`, null);
-            return null;
-        }
-        
-        return sessionData.secret;
-    } catch (error) {
-        console.error('Error getting session secret:', error);
-        return null;
-    }
-}
+// ==================== نظام Turnstile ====================
 
-async function validateAdToken(env, userId, deviceFingerprint, adNumber, clientTimestamp, sessionSecret, receivedToken) {
+// دالة التحقق من Cloudflare Turnstile
+async function verifyTurnstile(env, token, ip) {
     try {
-        // 🔒 4️⃣ ربط adToken بكل القيم
-        const expectedToken = generateAdToken(userId, deviceFingerprint, adNumber, clientTimestamp, sessionSecret);
-        
-        // التحقق من التوكن
-        if (expectedToken !== receivedToken) {
-            return {
-                valid: false,
-                details: 'Token mismatch - potential tampering detected',
-                expected: expectedToken.substring(0, 10) + '...',
-                received: receivedToken.substring(0, 10) + '...'
-            };
-        }
-        
-        // التحقق من الطابع الزمني (يجب أن يكون ضمن 5 دقائق)
-        const now = Date.now();
-        const timestamp = parseInt(clientTimestamp);
-        
-        if (isNaN(timestamp)) {
-            return {
-                valid: false,
-                details: 'Invalid timestamp format'
-            };
-        }
-        
-        const timeDiff = Math.abs(now - timestamp);
-        const MAX_TIME_DIFF = 5 * 60 * 1000; // 5 دقائق
-        
-        if (timeDiff > MAX_TIME_DIFF) {
-            return {
-                valid: false,
-                details: `Timestamp expired. Time difference: ${timeDiff}ms (max ${MAX_TIME_DIFF}ms)`
-            };
-        }
-        
-        return { valid: true };
-    } catch (error) {
-        return {
-            valid: false,
-            details: `Token validation error: ${error.message}`
-        };
-    }
-}
-
-function generateAdToken(userId, deviceFingerprint, adNumber, clientTimestamp, sessionSecret) {
-    // 🔒 توليد توكن آمن باستخدام جميع القيم
-    const data = `${userId}:${deviceFingerprint}:${adNumber}:${clientTimestamp}:${sessionSecret}`;
-    
-    // استخدام SHA-256 للتجزئة
-    const encoder = new TextEncoder();
-    const dataBuffer = encoder.encode(data);
-    
-    // في بيئة Cloudflare Workers، نستخدم SubtleCrypto
-    // Note: في الواقع، يجب استخدام SubtleCrypto لكن لتبسيط الأمثال سنستخدم تجزئة مبسطة
-    // في الإنتاج استخدم: await crypto.subtle.digest('SHA-256', dataBuffer)
-    
-    // تجزئة مبسطة للتوضيح (في الإنتاج استخدم SubtleCrypto)
-    let hash = 0;
-    for (let i = 0; i < data.length; i++) {
-        const char = data.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    
-    // إضافة بعض التعقيد الإضافي
-    const complexHash = Math.abs(hash).toString(36) + 
-                       Math.abs(userId.length * 31).toString(36) + 
-                       Math.abs(deviceFingerprint.length * 17).toString(36) + 
-                       Math.abs(adNumber * 13).toString(36);
-    
-    return complexHash;
-}
-
-async function checkAdTokenReplay(env, userId, adToken) {
-    try {
-        const tokenUsageResult = await handleDbGet(env, `adTokens/${userId}`);
-        if (!tokenUsageResult.success || !tokenUsageResult.data) {
+        if (!token) {
+            console.log('No Turnstile token provided');
             return false;
         }
         
-        const tokenUsage = tokenUsageResult.data;
-        
-        // البحث عن التوكن في السجل
-        for (const [key, usageData] of Object.entries(tokenUsage)) {
-            if (usageData.token === adToken) {
-                // تحقق من الطابع الزمني (قد يكون التوكن قديمًا جدًا)
-                const now = Date.now();
-                const tokenAge = now - (usageData.timestamp || 0);
-                const MAX_TOKEN_AGE = 24 * 60 * 60 * 1000; // 24 ساعة
-                
-                if (tokenAge < MAX_TOKEN_AGE) {
-                    return true; // إعادة استخدام في خلال 24 ساعة
-                }
-                break;
+        const res = await fetch(
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    secret: env.TURNSTILE_SECRET || "0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU",
+                    response: token,
+                    remoteip: ip || ""
+                })
             }
-        }
+        );
         
-        return false;
+        const data = await res.json();
+        console.log('Turnstile verification result:', data);
+        
+        return data.success === true;
     } catch (error) {
-        console.error('Error checking ad token replay:', error);
-        return false; // في حالة الخطأ، نفضل الأمان ونعتبره إعادة استخدام
+        console.error('Turnstile verification error:', error);
+        return false;
     }
 }
 
-async function recordAdTokenUsage(env, userId, adToken, usageData) {
+// منطق الكابتشا (قاعدة واحدة واضحة)
+function isCaptchaRequired(adsCount) {
+    return (adsCount + 1) % 10 === 0;
+}
+
+// معالجة النقر على الإعلان مع نظام Turnstile
+async function handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToken) {
     try {
-        await handleDbPush(env, `adTokens/${userId}`, {
-            token: adToken,
-            ...usageData,
-            recordedAt: Date.now()
-        });
-        
-        // تنظيف التوكنات القديمة (أقدم من 24 ساعة)
-        const tokenUsageResult = await handleDbGet(env, `adTokens/${userId}`);
-        if (tokenUsageResult.success && tokenUsageResult.data) {
-            const tokenUsage = tokenUsageResult.data;
-            const cleanUsage = {};
-            const now = Date.now();
-            const MAX_TOKEN_AGE = 24 * 60 * 60 * 1000;
-            
-            for (const [key, tokenData] of Object.entries(tokenUsage)) {
-                if (tokenData.timestamp && (now - tokenData.timestamp) < MAX_TOKEN_AGE) {
-                    cleanUsage[key] = tokenData;
+        // التحقق من الحظر
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
+            return { 
+                success: false, 
+                error: 'ACCOUNT_BLOCKED',
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`,
+                    redirectToBlockPage: true
                 }
-            }
-            
-            await handleDbSet(env, `adTokens/${userId}`, cleanUsage);
+            };
         }
         
-        return true;
+        const { adType, reward } = data;
+        
+        // جلب بيانات المستخدم
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { 
+                success: false, 
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        const userData = userResult.data;
+        
+        const adCountField = `ads${capitalizeFirstLetter(adType)}`;
+        const currentCount = userData[adCountField] || 0;
+        
+        // جلب الإعدادات للتحقق من القيم الصحيحة
+        const configResult = await handleGetConfig();
+        const settings = configResult.data?.settings || {};
+        
+        // القيم المسموح بها لكل نوع إعلان (جميعها 500 عملة فقط)
+        const allowedRewards = {
+            'monetag': 500,
+            'giga': 500,
+            'adsgram': 500
+        };
+        
+        // التحقق من وجود نوع الإعلان
+        if (!allowedRewards[adType]) {
+            return {
+                success: false,
+                error: 'Invalid ad type',
+                errorCode: 'INVALID_AD_TYPE',
+                data: {
+                    allowedTypes: Object.keys(allowedRewards)
+                }
+            };
+        }
+        
+        // التحقق من قيمة المكافأة (يجب أن تطابق القيمة في الإعدادات بالضبط)
+        const allowedReward = allowedRewards[adType];
+        const requestedReward = parseInt(reward);
+        
+        if (requestedReward !== allowedReward) {
+            // تسجيل مخالفة
+            await recordViolation(env, userId, {
+                action: 'handleAdClick',
+                violation: 'REWARD_MANIPULATION',
+                details: `Ad reward manipulation: Expected ${allowedReward}, got ${requestedReward}`,
+                timestamp: Date.now()
+            });
+            
+            // تطبيق الحظر الفوري
+            await applyBlock(env, userId, {
+                reason: 'Ad reward manipulation detected',
+                violation: 'REWARD_MANIPULATION',
+                action: 'handleAdClick',
+                details: `Attempted to manipulate ad reward: Expected ${allowedReward}, got ${requestedReward}`,
+                timestamp: Date.now(),
+                permanent: true
+            });
+            
+            return {
+                success: false,
+                error: 'ACCOUNT_BLOCKED',
+                errorCode: 'REWARD_MANIPULATION_BLOCKED',
+                data: {
+                    isBlocked: true,
+                    expectedReward: allowedReward,
+                    receivedReward: requestedReward,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: Ad reward manipulation\nViolation: REWARD_MANIPULATION\n\nThis decision is final.`,
+                    redirectToBlockPage: true
+                }
+            };
+        }
+        
+        // التحقق من الحد الأقصى للإعلانات اليومية
+        const adLimitField = `limit${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
+        const limit = settings[adLimitField] || 50;
+        
+        if (currentCount >= limit) {
+            return {
+                success: false,
+                error: 'Ad limit exceeded',
+                errorCode: 'AD_LIMIT_EXCEEDED',
+                data: {
+                    limit: limit,
+                    current: currentCount,
+                    remaining: 0,
+                    message: `Daily limit for ${adType} ads reached. Try again tomorrow.`
+                }
+            };
+        }
+        
+        // 🔐 التحقق من متطلبات الكابتشا
+        // نستخدم adsWatched للعد (إجمالي جميع الإعلانات)
+        const totalAdsWatched = userData.adsWatched || 0;
+        const needCaptcha = isCaptchaRequired(totalAdsWatched);
+        
+        console.log(`Ad click for user ${userId}: totalAds=${totalAdsWatched}, needCaptcha=${needCaptcha}`);
+        
+        // 🔐 لو الإعلان العاشر (أو مضاعفاته)
+        if (needCaptcha) {
+            console.log(`Captcha required for user ${userId}, token: ${captchaToken ? 'Provided' : 'Missing'}`);
+            
+            if (!captchaToken) {
+                return {
+                    success: false,
+                    error: 'CAPTCHA_REQUIRED',
+                    errorCode: 'CAPTCHA_REQUIRED',
+                    data: { 
+                        showCaptcha: true,
+                        message: 'Complete the captcha to continue',
+                        adsCount: totalAdsWatched,
+                        nextCaptchaAt: totalAdsWatched + 10
+                    }
+                };
+            }
+            
+            const captchaOK = await verifyTurnstile(env, captchaToken, clientIp);
+            
+            if (!captchaOK) {
+                // تسجيل محاولة فاشلة
+                await recordViolation(env, userId, {
+                    action: 'handleAdClick',
+                    violation: 'TURNSTILE_FAILED',
+                    details: 'Invalid Turnstile captcha token',
+                    timestamp: Date.now()
+                });
+                
+                // تطبيق الحظر الفوري بعد مخالفة واحدة
+                await applyBlock(env, userId, {
+                    reason: 'Invalid Turnstile captcha',
+                    violation: 'TURNSTILE_FAILED',
+                    action: 'handleAdClick',
+                    details: 'Failed to verify Turnstile captcha',
+                    timestamp: Date.now(),
+                    permanent: true
+                });
+                
+                return {
+                    success: false,
+                    error: 'ACCOUNT_BLOCKED',
+                    errorCode: 'INVALID_CAPTCHA_BLOCKED',
+                    data: {
+                        isBlocked: true,
+                        blockedMessage: `🚫 Account Blocked\n\nReason: Invalid captcha verification\nViolation: TURNSTILE_FAILED\n\nThis decision is final.`,
+                        redirectToBlockPage: true
+                    }
+                };
+            }
+            
+            console.log(`Captcha verified successfully for user ${userId}`);
+        }
+        
+        // ✅ الإعلان صحيح → زيادة العداد ومنح المكافأة
+        const updates = {
+            [adCountField]: currentCount + 1,
+            adsWatched: totalAdsWatched + 1,
+            dogsBalance: (userData.dogsBalance || 0) + allowedReward,
+            lastUpdated: Date.now(),
+            lastActivity: Date.now(),
+            lastAdClick: Date.now()
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        // تسجيل في السجل
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `${adType} Ad Reward`,
+            amount: allowedReward,
+            currency: 'GLX',
+            date: new Date().toISOString(),
+            captchaRequired: needCaptcha,
+            captchaPassed: needCaptcha ? true : null,
+            adNumber: totalAdsWatched + 1
+        });
+        
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
+        
+        // حساب متى ستظهر الكابتشا التالية
+        const nextAdsCount = totalAdsWatched + 1;
+        const nextCaptchaAt = (Math.floor(nextAdsCount / 10) + 1) * 10;
+        const adsUntilNextCaptcha = nextCaptchaAt - nextAdsCount;
+        
+        return {
+            success: true,
+            data: {
+                [adCountField]: currentCount + 1,
+                adsWatched: updates.adsWatched,
+                newBalance: updatedUserData.dogsBalance,
+                reward: allowedReward,
+                updatedUserData: updatedUserData,
+                captchaInfo: {
+                    required: needCaptcha,
+                    passed: needCaptcha ? true : null,
+                    nextCaptchaAt: nextCaptchaAt,
+                    adsUntilNextCaptcha: adsUntilNextCaptcha,
+                    message: adsUntilNextCaptcha > 0 
+                        ? `Next captcha after ${adsUntilNextCaptcha} more ads` 
+                        : 'Captcha completed successfully'
+                }
+            }
+        };
     } catch (error) {
-        console.error('Error recording ad token usage:', error);
-        return false;
+        console.error('Handle ad click with captcha error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HANDLE_AD_CLICK_WITH_CAPTCHA_ERROR'
+        };
     }
 }
 
@@ -1986,12 +1699,11 @@ async function handleGetConfig() {
                 'EarnMoneyWithRedone'
             ],
             
-            // 🔒 إعدادات الأمان الجديدة
-            enableAdTokenValidation: true, // تفعيل التحقق من توكن الإعلان
-            adTokenExpiryMinutes: 5, // صلاحية التوكن 5 دقائق
-            requireSessionSecret: true, // مفتاح الجلسة مطلوب
-            sessionExpiryMinutes: 30, // صلاحية الجلسة 30 دقيقة
-            replayProtectionEnabled: true // تفعيل حماية من إعادة الاستخدام
+            // نظام Turnstile
+            turnstileEnabled: true,
+            captchaEveryNAds: 10,
+            turnstileSiteKey: '0x4AAAAAACOf3vP_C_utkYl7', // هذا المفتاح العام للتطبيق
+            turnstileSecretKey: '0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU' // هذا السري في المتغيرات البيئية
         };
         
         return {
@@ -2151,10 +1863,6 @@ async function handleInitializeUser(env, userId, data, telegramData) {
         }
         
         if (!userData) {
-            // 🔒 إنشاء مفتاح جلسة جديد للمستخدم
-            const sessionKey = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            const sessionSecret = `secret_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`;
-            
             // إنشاء مستخدم جديد
             userData = {
                 id: userId,
@@ -2184,8 +1892,6 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 blockedAt: null,
                 violationCount: 0,
                 lastUpdated: Date.now(),
-                // 🔒 بيانات الجلسة
-                currentSessionKey: sessionKey,
                 // بيانات الأمان
                 ...(deviceFingerprint && {
                     deviceFingerprint: deviceFingerprint,
@@ -2196,19 +1902,15 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 }),
                 // سجل الاشتراك الإجباري
                 mandatoryChannelsSubscribed: true,
-                subscriptionVerifiedAt: Date.now()
+                subscriptionVerifiedAt: Date.now(),
+                // نظام Turnstile
+                adsCount: 0,
+                lastCaptchaAt: 0,
+                captchaPassed: 0,
+                captchaFailed: 0
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
-            
-            // 🔒 حفظ بيانات الجلسة
-            await handleDbSet(env, `sessions/${userId}/${sessionKey}`, {
-                secret: sessionSecret,
-                createdAt: Date.now(),
-                expiresAt: Date.now() + (30 * 60 * 1000), // 30 دقيقة
-                deviceFingerprint: deviceFingerprint,
-                ipAddress: data.clientIp
-            });
             
             await handleDbPush(env, `users/${userId}/history`, {
                 type: 'earn',
@@ -2217,8 +1919,7 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 currency: 'GLX',
                 date: new Date().toISOString(),
                 securityCheck: 'initialized',
-                mandatoryChannelsVerified: true,
-                sessionCreated: true
+                mandatoryChannelsVerified: true
             });
             
             console.log(`New user created: ${userId} with device fingerprint: ${deviceFingerprint ? 'Yes' : 'No'}`);
@@ -2277,22 +1978,6 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
             }
             
-            // 🔒 إنشاء جلسة جديدة أو تحديث الجلسة الحالية
-            if (!userData.currentSessionKey) {
-                const sessionKey = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                const sessionSecret = `secret_${Date.now()}_${Math.random().toString(36).substr(2, 12)}`;
-                
-                updates.currentSessionKey = sessionKey;
-                
-                await handleDbSet(env, `sessions/${userId}/${sessionKey}`, {
-                    secret: sessionSecret,
-                    createdAt: Date.now(),
-                    expiresAt: Date.now() + (30 * 60 * 1000), // 30 دقيقة
-                    deviceFingerprint: deviceFingerprint || userData.deviceFingerprint,
-                    ipAddress: data.clientIp
-                });
-            }
-            
             if (Object.keys(updates).length > 0) {
                 await handleDbUpdate(env, `users/${userId}`, updates);
             }
@@ -2326,9 +2011,6 @@ async function handleInitializeUser(env, userId, data, telegramData) {
         // التأكد من أن عدد التذاكر يعكس القيمة الحقيقية
         const userTickets = realTicketCount;
         
-        // 🔒 إرجاع مفتاح الجلسة للمستخدم
-        const currentSessionKey = userData.currentSessionKey;
-        
         return {
             success: true,
             data: {
@@ -2352,13 +2034,16 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 securityInfo: {
                     deviceVerified: !!deviceFingerprint,
                     mandatoryChannelsVerified: userData.mandatoryChannelsSubscribed || true,
-                    multiAccountCheck: true,
-                    sessionKey: currentSessionKey, // 🔒 إرجاع مفتاح الجلسة
-                    requiresAdToken: true // 🔒 تفعيل نظام التوكن للإعلانات
+                    multiAccountCheck: true
                 },
                 subscriptionInfo: {
                     required: true,
                     verified: userData.mandatoryChannelsSubscribed || true
+                },
+                turnstileInfo: {
+                    enabled: settings.turnstileEnabled || true,
+                    siteKey: settings.turnstileSiteKey || '0x4AAAAAACOf3vP_C_utkYl7',
+                    captchaEveryNAds: settings.captchaEveryNAds || 10
                 }
             }
         };
@@ -2368,88 +2053,6 @@ async function handleInitializeUser(env, userId, data, telegramData) {
             success: false,
             error: error.message,
             errorCode: 'INITIALIZE_USER_ERROR'
-        };
-    }
-}
-
-// ==================== دالة handleAdClick المعدلة (500 عملة فقط) ====================
-
-async function handleAdClick(env, userId, adType, reward) {
-    try {
-        // 🔒 6️⃣ 9. بعد كل التحققات، تنفيذ منطق الإعلان
-        
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        if (!userResult.success || !userResult.data) {
-            return { 
-                success: false, 
-                error: 'User not found',
-                errorCode: 'USER_NOT_FOUND'
-            };
-        }
-        
-        const userData = userResult.data;
-        
-        const adCountField = `ads${capitalizeFirstLetter(adType)}`;
-        const currentCount = userData[adCountField] || 0;
-        
-        // التحقق من أن المكافأة هي 500 فقط
-        const expectedReward = 500;
-        if (parseInt(reward) !== expectedReward) {
-            return {
-                success: false,
-                error: 'Invalid reward amount',
-                errorCode: 'INVALID_AD_REWARD',
-                data: {
-                    expected: expectedReward,
-                    received: reward
-                }
-            };
-        }
-        
-        const updates = {
-            [adCountField]: currentCount + 1,
-            adsWatched: (userData.adsWatched || 0) + 1,
-            dogsBalance: (userData.dogsBalance || 0) + expectedReward,
-            lastUpdated: Date.now(),
-            lastActivity: Date.now()
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `${adType} Ad Reward`,
-            amount: expectedReward,
-            currency: 'GLX',
-            date: new Date().toISOString(),
-            securityLevel: 'high', // 🔒 تسجيل مستوى الأمان
-            tokenVerified: true // 🔒 تسجيل أن التوكن تم التحقق منه
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
-        
-        return {
-            success: true,
-            data: {
-                [adCountField]: currentCount + 1,
-                adsWatched: updates.adsWatched,
-                newBalance: updatedUserData.dogsBalance,
-                reward: expectedReward,
-                updatedUserData: updatedUserData,
-                securityInfo: {
-                    tokenVerified: true,
-                    replayProtected: true,
-                    sessionValidated: true
-                }
-            }
-        };
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'HANDLE_AD_CLICK_ERROR'
         };
     }
 }
@@ -3141,9 +2744,27 @@ async function handleDbIncrement(env, path, key, amount) {
     }
 }
 
-// ==================== باقي الوظائف كما هي مع تعديلات بسيطة ====================
+// ==================== دالة handleAdClick القديمة (تم استبدالها بـ handleAdClickWithCaptcha) ====================
 
-// وظيفة للحصول على IP العميل (متبقية للتوافق فقط)
+async function handleAdClick(env, userId, adType, reward) {
+    try {
+        // هذه الدالة موجودة للتوافق فقط
+        // تم استبدالها بـ handleAdClickWithCaptcha
+        console.log('Old handleAdClick called, redirecting to new version');
+        
+        // إعادة التوجيه للدالة الجديدة مع بيانات افتراضية
+        return await handleAdClickWithCaptcha(env, userId, { adType, reward }, 'Unknown', null);
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HANDLE_AD_CLICK_ERROR'
+        };
+    }
+}
+
+// ==================== دوال مساعدة أخرى ====================
+
 async function handleGetClientIP(clientIp) {
     return {
         success: true,
