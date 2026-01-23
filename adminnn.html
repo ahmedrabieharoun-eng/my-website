@@ -1,4 +1,4 @@
-// Cloudflare Worker لـ GLX Galaxy مع نظام Turnstile المدمج
+// Cloudflare Worker لـ GLX Galaxy
 export default {
     async fetch(request, env, ctx) {
         // إعداد CORS
@@ -144,7 +144,7 @@ export default {
             }
             
             // التحقق من صحة الطلب
-            const validationResult = await validateRequest(env, userId, action, data, requestData.timestamp);
+            const validationResult = await validateRequest(env, userId, action, data, requestData.timestamp, captchaToken);
             if (!validationResult.valid) {
                 // تسجيل المخالفة وتطبيق الحظر الفوري بعد مخالفة واحدة
                 if (validationResult.shouldBlock !== false) {
@@ -330,7 +330,60 @@ export default {
                     break;
                     
                 case 'handleAdClick':
-                    result = await handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToken);
+                    // التحقق من الحظر قبل معالجة طلب الإعلان
+                    const adBlockCheck = await checkUserBlocked(env, userId);
+                    if (adBlockCheck && adBlockCheck.isBlocked) {
+                        return new Response(JSON.stringify({
+                            success: false,
+                            error: 'ACCOUNT_BLOCKED',
+                            errorCode: 'ACCOUNT_BLOCKED',
+                            data: {
+                                isBlocked: true,
+                                blockDetails: adBlockCheck,
+                                blockedMessage: `🚫 Account Blocked\n\nReason: ${adBlockCheck.reason}\nViolation: ${adBlockCheck.violation}\n\nThis decision is final.`,
+                                redirectToBlockPage: true
+                            }
+                        }), {
+                            status: 403,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    }
+                    
+                    // التحقق من صحة طلب الإعلان
+                    const adValidation = await validateAdRequest(env, userId, data, captchaToken);
+                    if (!adValidation.valid) {
+                        // حظر فوري لطلب إعلان غير صالح - مخالفة واحدة
+                        await applyBlock(env, userId, {
+                            reason: 'Invalid ad request - System violation',
+                            violation: adValidation.violation,
+                            action: 'handleAdClick',
+                            details: adValidation.details,
+                            timestamp: Date.now(),
+                            permanent: true,
+                            deviceFingerprint: deviceFingerprint
+                        });
+                        
+                        return new Response(JSON.stringify({
+                            success: false,
+                            error: 'ACCOUNT_BLOCKED',
+                            errorCode: 'AD_VALIDATION_FAILED',
+                            data: {
+                                isBlocked: true,
+                                blockDetails: {
+                                    reason: 'Invalid ad request - System violation',
+                                    violation: adValidation.violation,
+                                    permanent: true
+                                },
+                                blockedMessage: `🚫 Account Blocked\n\nReason: Invalid ad request\nViolation: ${adValidation.violation}\n\nThis decision is final.`,
+                                redirectToBlockPage: true
+                            }
+                        }), {
+                            status: 400,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    }
+                    
+                    result = await handleAdClick(env, userId, data.adType, data.reward, captchaToken);
                     break;
                     
                 case 'submitWithdrawal':
@@ -429,6 +482,14 @@ export default {
                     result = await handleCheckMandatorySubscriptions(env, userId);
                     break;
                     
+                case 'verifyCaptcha':
+                    result = await handleVerifyCaptcha(env, captchaToken);
+                    break;
+                    
+                case 'getAdStats':
+                    result = await handleGetAdStats(env, userId);
+                    break;
+                    
                 default:
                     result = {
                         success: false,
@@ -465,48 +526,125 @@ export default {
     }
 };
 
-// ==================== نظام Turnstile ====================
+// ==================== نظام Captcha بعد كل 10 إعلانات ====================
 
-// دالة التحقق من Cloudflare Turnstile
-async function verifyTurnstile(env, token, ip) {
+// التحقق من رمز Captcha
+async function verifyCaptchaToken(env, captchaToken) {
     try {
-        if (!token) {
-            console.log('No Turnstile token provided');
-            return false;
+        if (!captchaToken) {
+            return { valid: false, error: 'Captcha token is required' };
         }
         
-        const res = await fetch(
-            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-            {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: new URLSearchParams({
-                    secret: env.TURNSTILE_SECRET || "0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU",
-                    response: token,
-                    remoteip: ip || ""
-                })
-            }
-        );
+        const secretKey = '0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU';
         
-        const data = await res.json();
-        console.log('Turnstile verification result:', data);
+        const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `secret=${secretKey}&response=${captchaToken}`
+        });
         
-        return data.success === true;
+        const data = await response.json();
+        console.log("Captcha verification result:", data);
+        
+        if (data.success) {
+            return { valid: true };
+        } else {
+            return { 
+                valid: false, 
+                error: 'Invalid captcha token',
+                errorDetails: data['error-codes'] || []
+            };
+        }
     } catch (error) {
-        console.error('Turnstile verification error:', error);
-        return false;
+        console.error("Captcha verification error:", error);
+        return { 
+            valid: false, 
+            error: 'Captcha verification failed',
+            details: error.message
+        };
     }
 }
 
-// منطق الكابتشا (قاعدة واحدة واضحة)
-function isCaptchaRequired(adsCount) {
-    return (adsCount + 1) % 10 === 0;
+// التحقق مما إذا كان المستخدم يحتاج إلى كابتشا
+async function requiresCaptcha(env, userId, adType) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { requiresCaptcha: false };
+        }
+        
+        const userData = userResult.data;
+        const today = new Date().toDateString();
+        
+        // إذا لم يكن اليوم هو نفس اليوم الأخير، إعادة التعيين
+        if (userData.lastAdDate !== today) {
+            return { requiresCaptcha: false };
+        }
+        
+        // حساب عدد الإعلانات اليوم
+        const adCountToday = userData.adsWatched || 0;
+        
+        // إذا شاهد 10 إعلانات أو أكثر اليوم، يحتاج كابتشا
+        if (adCountToday >= 10) {
+            // التحقق مما إذا كان قد مر وقت كافي منذ آخر كابتشا
+            const lastCaptchaTime = userData.lastCaptchaTime || 0;
+            const captchaCooldown = 30000; // 30 ثانية بين محاولات الكابتشا
+            
+            if (Date.now() - lastCaptchaTime < captchaCooldown) {
+                return { 
+                    requiresCaptcha: true,
+                    cooldown: true,
+                    remainingCooldown: captchaCooldown - (Date.now() - lastCaptchaTime)
+                };
+            }
+            
+            return { requiresCaptcha: true };
+        }
+        
+        return { requiresCaptcha: false };
+    } catch (error) {
+        console.error("Error checking captcha requirement:", error);
+        return { requiresCaptcha: false };
+    }
 }
 
-// معالجة النقر على الإعلان مع نظام Turnstile
-async function handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToken) {
+// معالجة التحقق من Captcha
+async function handleVerifyCaptcha(env, captchaToken) {
+    try {
+        const captchaResult = await verifyCaptchaToken(env, captchaToken);
+        
+        if (!captchaResult.valid) {
+            return {
+                success: false,
+                error: captchaResult.error,
+                errorCode: 'INVALID_CAPTCHA',
+                data: {
+                    errorDetails: captchaResult.errorDetails
+                }
+            };
+        }
+        
+        return {
+            success: true,
+            data: {
+                verified: true,
+                message: "Captcha verified successfully",
+                timestamp: Date.now()
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CAPTCHA_VERIFICATION_ERROR'
+        };
+    }
+}
+
+// معالجة الحصول على إحصائيات الإعلانات
+async function handleGetAdStats(env, userId) {
     try {
         // التحقق من الحظر
         const blockCheck = await checkUserBlocked(env, userId);
@@ -524,9 +662,6 @@ async function handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToke
             };
         }
         
-        const { adType, reward } = data;
-        
-        // جلب بيانات المستخدم
         const userResult = await handleDbGet(env, `users/${userId}`);
         if (!userResult.success || !userResult.data) {
             return { 
@@ -537,207 +672,39 @@ async function handleAdClickWithCaptcha(env, userId, data, clientIp, captchaToke
         }
         
         const userData = userResult.data;
+        const today = new Date().toDateString();
         
-        const adCountField = `ads${capitalizeFirstLetter(adType)}`;
-        const currentCount = userData[adCountField] || 0;
+        // حساب عدد الإعلانات اليوم
+        const adCountToday = (userData.lastAdDate === today) ? userData.adsWatched || 0 : 0;
+        const requiresCaptcha = adCountToday >= 10;
         
-        // جلب الإعدادات للتحقق من القيم الصحيحة
+        // جلب إعدادات الحدود
         const configResult = await handleGetConfig();
         const settings = configResult.data?.settings || {};
-        
-        // القيم المسموح بها لكل نوع إعلان (جميعها 500 عملة فقط)
-        const allowedRewards = {
-            'monetag': 500,
-            'giga': 500,
-            'adsgram': 500
-        };
-        
-        // التحقق من وجود نوع الإعلان
-        if (!allowedRewards[adType]) {
-            return {
-                success: false,
-                error: 'Invalid ad type',
-                errorCode: 'INVALID_AD_TYPE',
-                data: {
-                    allowedTypes: Object.keys(allowedRewards)
-                }
-            };
-        }
-        
-        // التحقق من قيمة المكافأة (يجب أن تطابق القيمة في الإعدادات بالضبط)
-        const allowedReward = allowedRewards[adType];
-        const requestedReward = parseInt(reward);
-        
-        if (requestedReward !== allowedReward) {
-            // تسجيل مخالفة
-            await recordViolation(env, userId, {
-                action: 'handleAdClick',
-                violation: 'REWARD_MANIPULATION',
-                details: `Ad reward manipulation: Expected ${allowedReward}, got ${requestedReward}`,
-                timestamp: Date.now()
-            });
-            
-            // تطبيق الحظر الفوري
-            await applyBlock(env, userId, {
-                reason: 'Ad reward manipulation detected',
-                violation: 'REWARD_MANIPULATION',
-                action: 'handleAdClick',
-                details: `Attempted to manipulate ad reward: Expected ${allowedReward}, got ${requestedReward}`,
-                timestamp: Date.now(),
-                permanent: true
-            });
-            
-            return {
-                success: false,
-                error: 'ACCOUNT_BLOCKED',
-                errorCode: 'REWARD_MANIPULATION_BLOCKED',
-                data: {
-                    isBlocked: true,
-                    expectedReward: allowedReward,
-                    receivedReward: requestedReward,
-                    blockedMessage: `🚫 Account Blocked\n\nReason: Ad reward manipulation\nViolation: REWARD_MANIPULATION\n\nThis decision is final.`,
-                    redirectToBlockPage: true
-                }
-            };
-        }
-        
-        // التحقق من الحد الأقصى للإعلانات اليومية
-        const adLimitField = `limit${adType.charAt(0).toUpperCase() + adType.slice(1)}`;
-        const limit = settings[adLimitField] || 50;
-        
-        if (currentCount >= limit) {
-            return {
-                success: false,
-                error: 'Ad limit exceeded',
-                errorCode: 'AD_LIMIT_EXCEEDED',
-                data: {
-                    limit: limit,
-                    current: currentCount,
-                    remaining: 0,
-                    message: `Daily limit for ${adType} ads reached. Try again tomorrow.`
-                }
-            };
-        }
-        
-        // 🔐 التحقق من متطلبات الكابتشا
-        // نستخدم adsWatched للعد (إجمالي جميع الإعلانات)
-        const totalAdsWatched = userData.adsWatched || 0;
-        const needCaptcha = isCaptchaRequired(totalAdsWatched);
-        
-        console.log(`Ad click for user ${userId}: totalAds=${totalAdsWatched}, needCaptcha=${needCaptcha}`);
-        
-        // 🔐 لو الإعلان العاشر (أو مضاعفاته)
-        if (needCaptcha) {
-            console.log(`Captcha required for user ${userId}, token: ${captchaToken ? 'Provided' : 'Missing'}`);
-            
-            if (!captchaToken) {
-                return {
-                    success: false,
-                    error: 'CAPTCHA_REQUIRED',
-                    errorCode: 'CAPTCHA_REQUIRED',
-                    data: { 
-                        showCaptcha: true,
-                        message: 'Complete the captcha to continue',
-                        adsCount: totalAdsWatched,
-                        nextCaptchaAt: totalAdsWatched + 10
-                    }
-                };
-            }
-            
-            const captchaOK = await verifyTurnstile(env, captchaToken, clientIp);
-            
-            if (!captchaOK) {
-                // تسجيل محاولة فاشلة
-                await recordViolation(env, userId, {
-                    action: 'handleAdClick',
-                    violation: 'TURNSTILE_FAILED',
-                    details: 'Invalid Turnstile captcha token',
-                    timestamp: Date.now()
-                });
-                
-                // تطبيق الحظر الفوري بعد مخالفة واحدة
-                await applyBlock(env, userId, {
-                    reason: 'Invalid Turnstile captcha',
-                    violation: 'TURNSTILE_FAILED',
-                    action: 'handleAdClick',
-                    details: 'Failed to verify Turnstile captcha',
-                    timestamp: Date.now(),
-                    permanent: true
-                });
-                
-                return {
-                    success: false,
-                    error: 'ACCOUNT_BLOCKED',
-                    errorCode: 'INVALID_CAPTCHA_BLOCKED',
-                    data: {
-                        isBlocked: true,
-                        blockedMessage: `🚫 Account Blocked\n\nReason: Invalid captcha verification\nViolation: TURNSTILE_FAILED\n\nThis decision is final.`,
-                        redirectToBlockPage: true
-                    }
-                };
-            }
-            
-            console.log(`Captcha verified successfully for user ${userId}`);
-        }
-        
-        // ✅ الإعلان صحيح → زيادة العداد ومنح المكافأة
-        const updates = {
-            [adCountField]: currentCount + 1,
-            adsWatched: totalAdsWatched + 1,
-            dogsBalance: (userData.dogsBalance || 0) + allowedReward,
-            lastUpdated: Date.now(),
-            lastActivity: Date.now(),
-            lastAdClick: Date.now()
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, updates);
-        
-        // تسجيل في السجل
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'earn',
-            description: `${adType} Ad Reward`,
-            amount: allowedReward,
-            currency: 'GLX',
-            date: new Date().toISOString(),
-            captchaRequired: needCaptcha,
-            captchaPassed: needCaptcha ? true : null,
-            adNumber: totalAdsWatched + 1
-        });
-        
-        // جلب بيانات المستخدم المحدثة
-        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
-        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
-        
-        // حساب متى ستظهر الكابتشا التالية
-        const nextAdsCount = totalAdsWatched + 1;
-        const nextCaptchaAt = (Math.floor(nextAdsCount / 10) + 1) * 10;
-        const adsUntilNextCaptcha = nextCaptchaAt - nextAdsCount;
         
         return {
             success: true,
             data: {
-                [adCountField]: currentCount + 1,
-                adsWatched: updates.adsWatched,
-                newBalance: updatedUserData.dogsBalance,
-                reward: allowedReward,
-                updatedUserData: updatedUserData,
-                captchaInfo: {
-                    required: needCaptcha,
-                    passed: needCaptcha ? true : null,
-                    nextCaptchaAt: nextCaptchaAt,
-                    adsUntilNextCaptcha: adsUntilNextCaptcha,
-                    message: adsUntilNextCaptcha > 0 
-                        ? `Next captcha after ${adsUntilNextCaptcha} more ads` 
-                        : 'Captcha completed successfully'
-                }
+                adsWatchedToday: adCountToday,
+                requiresCaptcha: requiresCaptcha,
+                captchaThreshold: 10,
+                remainingBeforeCaptcha: Math.max(0, 10 - adCountToday),
+                limits: {
+                    monetag: settings.limitMonetag || 50,
+                    giga: settings.limitGiga || 300,
+                    adsgram: settings.limitAdsgram || 300,
+                    totalToday: settings.limitMonetag + settings.limitGiga + settings.limitAdsgram || 650
+                },
+                today: today,
+                lastAdDate: userData.lastAdDate,
+                siteKey: '0x4AAAAAACOf6mYyukJx5XVy' // Site Key للكابتشا
             }
         };
     } catch (error) {
-        console.error('Handle ad click with captcha error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'HANDLE_AD_CLICK_WITH_CAPTCHA_ERROR'
+            errorCode: 'GET_AD_STATS_ERROR'
         };
     }
 }
@@ -1369,7 +1336,7 @@ async function handleCheckMandatorySubscriptions(env, userId) {
 // ==================== نظام الحظر التلقائي المحسن ====================
 
 // التحقق من صحة الطلب
-async function validateRequest(env, userId, action, data, requestTimestamp) {
+async function validateRequest(env, userId, action, data, requestTimestamp, captchaToken) {
     const now = Date.now();
     const MAX_TIME_DIFF = 120000; // 2 دقيقة كحد أقصى للفرق الزمني
     
@@ -1411,7 +1378,7 @@ async function validateRequest(env, userId, action, data, requestTimestamp) {
     
     // 2. التحقق من قيم المكافآت بناءً على نوع الإجراء
     if (action === 'handleAdClick') {
-        return await validateAdRequest(env, userId, data);
+        return await validateAdRequest(env, userId, data, captchaToken);
     }
     
     if (action === 'redeemPromoCode') {
@@ -1460,7 +1427,7 @@ async function validateRequest(env, userId, action, data, requestTimestamp) {
 }
 
 // التحقق من صحة طلب الإعلان
-async function validateAdRequest(env, userId, data) {
+async function validateAdRequest(env, userId, data, captchaToken) {
     const { adType, reward } = data;
     
     // جلب الإعدادات للتحقق من القيم الصحيحة
@@ -1510,6 +1477,47 @@ async function validateAdRequest(env, userId, data) {
                 valid: false,
                 violation: 'AD_LIMIT_EXCEEDED',
                 details: `Ad limit exceeded for ${adType}`
+            };
+        }
+    }
+    
+    // ==================== التحقق من Captcha إذا لزم الأمر ====================
+    const captchaCheck = await requiresCaptcha(env, userId, adType);
+    if (captchaCheck.requiresCaptcha) {
+        if (captchaCheck.cooldown) {
+            return {
+                valid: false,
+                violation: 'CAPTCHA_COOLDOWN',
+                details: `Captcha cooldown active. Please wait ${Math.ceil(captchaCheck.remainingCooldown / 1000)} seconds`,
+                shouldBlock: false
+            };
+        }
+        
+        if (!captchaToken) {
+            return {
+                valid: false,
+                violation: 'CAPTCHA_REQUIRED',
+                details: 'Captcha verification required after 10 ads today',
+                shouldBlock: false
+            };
+        }
+        
+        // التحقق من صحة Captcha
+        const captchaResult = await verifyCaptchaToken(env, captchaToken);
+        if (!captchaResult.valid) {
+            // تحديث وقت آخر محاولة كابتشا
+            if (userResult.success && userResult.data) {
+                await handleDbUpdate(env, `users/${userId}`, {
+                    lastCaptchaTime: Date.now(),
+                    lastUpdated: Date.now()
+                });
+            }
+            
+            return {
+                valid: false,
+                violation: 'INVALID_CAPTCHA',
+                details: captchaResult.error,
+                shouldBlock: false
             };
         }
     }
@@ -1699,11 +1707,15 @@ async function handleGetConfig() {
                 'EarnMoneyWithRedone'
             ],
             
-            // نظام Turnstile
-            turnstileEnabled: true,
-            captchaEveryNAds: 10,
-            turnstileSiteKey: '0x4AAAAAACOf3vP_C_utkYl7', // هذا المفتاح العام للتطبيق
-            turnstileSecretKey: '0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU' // هذا السري في المتغيرات البيئية
+            // نظام Captcha
+            captchaSiteKey: '0x4AAAAAACOf6mYyukJx5XVy',
+            captchaSecretKey: '0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU',
+            captchaThreshold: 10, // بعد 10 إعلانات يطلب كابتشا
+            captchaCooldown: 30000, // 30 ثانية بين محاولات الكابتشا
+            
+            // نظام الإعلانات
+            adRewardFixed: 500, // المكافأة الثابتة للإعلانات
+            enableAdCaptcha: true // تفعيل نظام الكابتشا للإعلانات
         };
         
         return {
@@ -1715,6 +1727,175 @@ async function handleGetConfig() {
             success: false,
             error: error.message,
             errorCode: 'GET_CONFIG_ERROR'
+        };
+    }
+}
+
+// ==================== دالة handleAdClick المعدلة مع نظام Captcha ====================
+
+async function handleAdClick(env, userId, adType, reward, captchaToken = null) {
+    try {
+        // التحقق من الحظر
+        const blockCheck = await checkUserBlocked(env, userId);
+        if (blockCheck && blockCheck.isBlocked) {
+            return { 
+                success: false, 
+                error: 'ACCOUNT_BLOCKED',
+                errorCode: 'ACCOUNT_BLOCKED',
+                data: { 
+                    isBlocked: true,
+                    blockDetails: blockCheck,
+                    blockedMessage: `🚫 Account Blocked\n\nReason: ${blockCheck.reason}\nViolation: ${blockCheck.violation}\n\nThis decision is final.`,
+                    redirectToBlockPage: true
+                }
+            };
+        }
+        
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        if (!userResult.success || !userResult.data) {
+            return { 
+                success: false, 
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        const userData = userResult.data;
+        
+        const adCountField = `ads${capitalizeFirstLetter(adType)}`;
+        const currentCount = userData[adCountField] || 0;
+        
+        // التحقق من أن المكافأة هي 500 فقط
+        const expectedReward = 500;
+        if (parseInt(reward) !== expectedReward) {
+            return {
+                success: false,
+                error: 'Invalid reward amount',
+                errorCode: 'INVALID_AD_REWARD',
+                data: {
+                    expected: expectedReward,
+                    received: reward
+                }
+            };
+        }
+        
+        // التحقق من الحدود اليومية
+        const configResult = await handleGetConfig();
+        const settings = configResult.data?.settings || {};
+        const limit = settings[`limit${capitalizeFirstLetter(adType)}`] || 50;
+        
+        if (currentCount >= limit) {
+            return {
+                success: false,
+                error: 'Daily limit reached',
+                errorCode: 'AD_LIMIT_EXCEEDED',
+                data: {
+                    currentCount: currentCount,
+                    limit: limit,
+                    adType: adType
+                }
+            };
+        }
+        
+        // التحقق من عدد الإعلانات اليومية واحتياج الكابتشا
+        const today = new Date().toDateString();
+        let adsWatchedToday = 0;
+        
+        // إذا كان اليوم مختلف، إعادة التعيين
+        if (userData.lastAdDate !== today) {
+            adsWatchedToday = 1;
+        } else {
+            adsWatchedToday = (userData.adsWatched || 0) + 1;
+        }
+        
+        // إذا شاهد 10 إعلانات أو أكثر، يطلب كابتشا
+        if (adsWatchedToday >= 10) {
+            if (!captchaToken) {
+                return {
+                    success: false,
+                    error: 'CAPTCHA_REQUIRED',
+                    errorCode: 'CAPTCHA_REQUIRED',
+                    data: {
+                        adsWatchedToday: adsWatchedToday,
+                        captchaThreshold: 10,
+                        siteKey: '0x4AAAAAACOf6mYyukJx5XVy',
+                        message: 'Captcha verification required after 10 ads'
+                    }
+                };
+            }
+            
+            // التحقق من صحة الكابتشا
+            const captchaResult = await verifyCaptchaToken(env, captchaToken);
+            if (!captchaResult.valid) {
+                // تحديث وقت آخر محاولة كابتشا
+                await handleDbUpdate(env, `users/${userId}`, {
+                    lastCaptchaTime: Date.now(),
+                    lastUpdated: Date.now()
+                });
+                
+                return {
+                    success: false,
+                    error: captchaResult.error,
+                    errorCode: 'INVALID_CAPTCHA',
+                    data: {
+                        adsWatchedToday: adsWatchedToday,
+                        errorDetails: captchaResult.errorDetails
+                    }
+                };
+            }
+            
+            // إعادة تعيين عداد الإعلانات بعد التحقق الناجح للكابتشا
+            adsWatchedToday = 1;
+        }
+        
+        // إعداد التحديثات
+        const updates = {
+            [adCountField]: currentCount + 1,
+            adsWatched: adsWatchedToday,
+            dogsBalance: (userData.dogsBalance || 0) + expectedReward,
+            lastAdDate: today,
+            lastUpdated: Date.now(),
+            lastActivity: Date.now()
+        };
+        
+        // إذا تم التحقق من الكابتشا بنجاح، تسجيل الوقت
+        if (adsWatchedToday === 1 && captchaToken) {
+            updates.lastCaptchaVerified = Date.now();
+        }
+        
+        await handleDbUpdate(env, `users/${userId}`, updates);
+        
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'earn',
+            description: `${adType} Ad Reward`,
+            amount: expectedReward,
+            currency: 'GLX',
+            date: new Date().toISOString(),
+            captchaUsed: adsWatchedToday === 1,
+            adsWatchedToday: adsWatchedToday
+        });
+        
+        // جلب بيانات المستخدم المحدثة
+        const updatedUserResult = await handleDbGet(env, `users/${userId}`);
+        const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
+        
+        return {
+            success: true,
+            data: {
+                [adCountField]: currentCount + 1,
+                adsWatched: updates.adsWatched,
+                newBalance: updatedUserData.dogsBalance,
+                reward: expectedReward,
+                adsWatchedToday: adsWatchedToday,
+                requiresCaptcha: adsWatchedToday >= 10,
+                updatedUserData: updatedUserData
+            }
+        };
+    } catch (error) {
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HANDLE_AD_CLICK_ERROR'
         };
     }
 }
@@ -1902,12 +2083,7 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 }),
                 // سجل الاشتراك الإجباري
                 mandatoryChannelsSubscribed: true,
-                subscriptionVerifiedAt: Date.now(),
-                // نظام Turnstile
-                adsCount: 0,
-                lastCaptchaAt: 0,
-                captchaPassed: 0,
-                captchaFailed: 0
+                subscriptionVerifiedAt: Date.now()
             };
             
             await handleDbSet(env, `users/${userId}`, userData);
@@ -1978,23 +2154,15 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                 updates.deviceLoginCount = (userData.deviceLoginCount || 0) + 1;
             }
             
-            if (Object.keys(updates).length > 0) {
-                await handleDbUpdate(env, `users/${userId}`, updates);
-            }
-            
             // إعادة تعيين عداد الإعلانات إذا تغير اليوم
             const today = new Date().toDateString();
             if (userData.lastAdDate !== today) {
-                const resetData = {
-                    adsWatched: 0,
-                    adsMonetag: 0,
-                    adsGiga: 0,
-                    adsAdsgram: 0,
-                    lastAdDate: today,
-                    lastUpdated: Date.now()
-                };
-                
-                await handleDbUpdate(env, `users/${userId}`, resetData);
+                updates.adsWatched = 0;
+                updates.lastAdDate = today;
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                await handleDbUpdate(env, `users/${userId}`, updates);
             }
             
             // تحديث بيانات المستخدم بعد التغييرات
@@ -2040,10 +2208,10 @@ async function handleInitializeUser(env, userId, data, telegramData) {
                     required: true,
                     verified: userData.mandatoryChannelsSubscribed || true
                 },
-                turnstileInfo: {
-                    enabled: settings.turnstileEnabled || true,
-                    siteKey: settings.turnstileSiteKey || '0x4AAAAAACOf3vP_C_utkYl7',
-                    captchaEveryNAds: settings.captchaEveryNAds || 10
+                captchaInfo: {
+                    siteKey: '0x4AAAAAACOf6mYyukJx5XVy',
+                    threshold: 10,
+                    enabled: true
                 }
             }
         };
@@ -2744,27 +2912,9 @@ async function handleDbIncrement(env, path, key, amount) {
     }
 }
 
-// ==================== دالة handleAdClick القديمة (تم استبدالها بـ handleAdClickWithCaptcha) ====================
+// ==================== باقي الوظائف كما هي مع تعديلات بسيطة ====================
 
-async function handleAdClick(env, userId, adType, reward) {
-    try {
-        // هذه الدالة موجودة للتوافق فقط
-        // تم استبدالها بـ handleAdClickWithCaptcha
-        console.log('Old handleAdClick called, redirecting to new version');
-        
-        // إعادة التوجيه للدالة الجديدة مع بيانات افتراضية
-        return await handleAdClickWithCaptcha(env, userId, { adType, reward }, 'Unknown', null);
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'HANDLE_AD_CLICK_ERROR'
-        };
-    }
-}
-
-// ==================== دوال مساعدة أخرى ====================
-
+// وظيفة للحصول على IP العميل (متبقية للتوافق فقط)
 async function handleGetClientIP(clientIp) {
     return {
         success: true,
