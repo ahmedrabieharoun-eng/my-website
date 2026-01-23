@@ -12,357 +12,855 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
-/* جميع الأنماط CSS كما هي */
-:root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);z-index:-1;}.app-container{padding:20px;padding-bottom:110px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}.content-section{display:none;animation:fadeIn 0.4s ease;}.content-section.active{display:flex;flex-direction:column;flex:1;}@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}h2{font-size:18px;font-weight:700;margin:20px 0 10px;color:var(--gold);display:flex;align-items:center;gap:8px;}p{font-size:13px;color:var(--text-muted);line-height:1.4;}.page-header{text-align:center;margin-bottom:20px;padding-top:10px;}.card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:24px;padding:20px;margin-bottom:12px;border:1px solid var(--glass-border);box-shadow:0 4px 20px rgba(0,0,0,0.4);}.btn{display:flex;align-items:center;justify-content:center;width:100%;padding:16px;border-radius:18px;font-size:16px;font-weight:800;cursor:pointer;border:none;outline:none;gap:8px;text-transform:uppercase;letter-spacing:0.5px;transition:transform 0.1s;}.btn:active{transform:scale(0.96);}.btn:disabled{opacity:0.5;cursor:not-allowed;filter:grayscale(1);}.btn-primary{background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 0 15px rgba(168,85,247,0.4);}.btn-ton{background:linear-gradient(90deg,#0088cc,#0099ff);color:#fff;box-shadow:0 0 15px rgba(0,136,204,0.4);}.btn-check{background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 0 15px rgba(168,85,247,0.4);}.btn-action{background:rgba(0,0,0,0.3)!important;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.1)!important;color:#b0b0b0!important;flex-direction:column;padding:12px;font-size:12px;gap:5px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);transition:all 0.3s ease;}.btn-action svg{width:24px;height:24px;stroke:#b0b0b0!important;fill:none;stroke-width:2.5;transition:all 0.3s ease;}.btn-action:active{background:rgba(0,0,0,0.4)!important;transform:scale(0.98);}.hud-container{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.5);border-radius:50px;padding:10px 15px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.05);}.user-name{font-weight:700;font-size:14px;}.user-rank{font-size:10px;color:var(--primary-green);text-transform:uppercase;}.hud-avatar{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px solid var(--primary-green);}.hud-avatar img{width:100%;height:100%;object-fit:cover;}.hud-balance{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}.hud-balance-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;}.hud-glx{color:var(--gold);}.hud-ton{color:#0088cc;}.main-coin-section{text-align:center;margin:10px 0 30px;position:relative;}.main-coin-img{width:160px;height:160px;border-radius:50%;box-shadow:0 0 50px rgba(168,85,247,0.3);animation:float 4s ease-in-out infinite;object-fit:cover;border:4px solid var(--primary-green);}@keyframes float{0%{transform:translateY(0px);}50%{transform:translateY(-10px);}100%{transform:translateY(0px);}}.balance-display{margin-top:15px;}.balance-amount{font-size:48px;font-weight:800;background:linear-gradient(to bottom,#fff,#b3b3b3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}.balance-unit{font-size:16px;color:var(--primary-green);font-weight:700;letter-spacing:2px;}.stats-pill{display:inline-flex;align-items:center;gap:15px;background:rgba(255,255,255,0.05);padding:8px 16px;border-radius:20px;margin-top:10px;font-size:12px;font-weight:600;}.ton-val{color:var(--primary-green);display:flex;align-items:center;gap:4px;}.action-bar{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:25px;}.list-card{display:flex;align-items:center;background:rgba(0,0,0,0.3);border-radius:16px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);cursor:pointer;}.lc-icon{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;}.lc-icon img{width:100%;height:100%;object-fit:cover;border-radius:12px;}.lc-content{flex:1;}.lc-title{font-size:14px;font-weight:600;margin-bottom:2px;}.lc-sub{font-size:11px;color:var(--text-muted);}.lc-end{text-align:right;}.lc-val{font-weight:700;color:var(--primary-green);font-size:14px;}.daily-row{display:flex;overflow-x:auto;gap:8px;padding-bottom:10px;margin-bottom:15px;scrollbar-width:none;}.daily-box{min-width:70px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 5px;text-align:center;border:1px solid transparent;opacity:0.5;}.daily-box.active{opacity:1;border-color:var(--gold);background:rgba(255,215,0,0.1);}.daily-box.claimed{opacity:1;background:var(--primary-green);color:#000;}.slots-machine{background:rgba(0,0,0,0.6);border-radius:20px;padding:20px;margin-bottom:20px;border:2px solid var(--primary-green);box-shadow:0 0 25px rgba(168,85,247,0.4);text-align:center;}.slots-reels{display:flex;justify-content:center;align-items:center;gap:15px;margin:20px 0;padding:10px;}.reel-container{position:relative;width:70px;height:70px;overflow:hidden;border-radius:12px;background:rgba(0,0,0,0.8);border:2px solid rgba(168,85,247,0.5);box-shadow:0 0 15px rgba(168,85,247,0.3);display:flex;justify-content:center;align-items:center;}.reel{display:flex;flex-direction:column;transition:transform 2s cubic-bezier(0.1,0,0.2,1);}.slot-item{width:70px;height:70px;display:flex;align-items:center;justify-content:center;font-size:32px;}.slots-result{background:rgba(0,0,0,0.8);border-radius:15px;padding:15px;margin-top:20px;border:1px solid rgba(255,255,255,0.1);text-align:center;}.payout-table{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:15px;font-size:11px;}.payout-item{background:rgba(255,255,255,0.05);border-radius:8px;padding:8px;text-align:center;}.jackpot{color:#FFD700;font-weight:800;text-shadow:0 0 10px rgba(255,215,0,0.8);}.input-wrap{background:rgba(0,0,0,0.4);border-radius:16px;padding:15px;margin-bottom:15px;border:1px solid rgba(255,255,255,0.1);}.input-label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;text-transform:uppercase;}.custom-input{width:100%;background:transparent;border:none;color:#fff;font-size:16px;font-weight:600;outline:none;font-family:inherit;}.cat-select{display:flex;gap:10px;margin-bottom:20px;}.cat-opt{flex:1;padding:12px;text-align:center;background:rgba(255,255,255,0.05);border-radius:12px;font-size:12px;cursor:pointer;border:1px solid transparent;}.cat-opt.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);font-weight:700;}.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px;}.price-opt{padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;border:1px solid transparent;}.price-opt.active{border-color:var(--gold);background:rgba(255,215,0,0.1);}.price-count{font-size:14px;font-weight:700;color:#fff;}.price-cost{font-size:10px;color:var(--primary-green);margin-top:2px;}.terms-box{background:rgba(0,0,0,0.3);border-radius:16px;padding:15px;height:300px;overflow-y:auto;font-size:12px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.05);line-height:1.6;}.terms-box h3{color:#fff;font-size:14px;margin-top:15px;margin-bottom:5px;}.terms-box h3:first-child{margin-top:0;}.bottom-nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:90%;max-width:400px;height:65px;background:var(--nav-bg);border-radius:32px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:100;border:1px solid rgba(255,255,255,0.1);}.nav-item{display:flex;flex-direction:column;align-items:center;color:#666;transition:0.3s;cursor:pointer;position:relative;width:50px;}.nav-item svg{width:22px;height:22px;margin-bottom:4px;stroke:currentColor;fill:none;stroke-width:2.5;transition:all 0.3s;}.nav-item.active{color:var(--primary-green);transform:translateY(-2px);}.nav-item.active svg{stroke:var(--primary-green);filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));}.nav-text{font-size:9px;font-weight:700;text-transform:uppercase;}.hidden{display:none!important;}.leader-tabs{display:flex;background:rgba(0,0,0,0.3);border-radius:50px;padding:4px;margin-bottom:20px;}.tab-btn{flex:1;text-align:center;padding:10px;border-radius:50px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.3s;}.tab-btn.active{background:var(--primary-green);color:#000;}.withdrawal-type-selector{display:flex;background:rgba(0,0,0,0.3);border-radius:50px;padding:4px;margin-bottom:20px;}.withdrawal-type-btn{flex:1;text-align:center;padding:12px;border-radius:50px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.3s;border:1px solid transparent;}.withdrawal-type-btn.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);}.info-box{background:rgba(255,179,0,0.1);border:1px solid var(--gold);border-radius:12px;padding:12px;margin-bottom:15px;font-size:11px;line-height:1.5;}.info-box.success{background:rgba(39,174,96,0.1);border-color:#27ae60;}.info-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-right:5px;border-radius:50%;background:var(--gold);color:#000;font-size:10px;font-weight:bold;}.info-box.success .info-icon{background:#27ae60;color:#fff;}.floating-add-task{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);width:160px!important;min-width:140px!important;max-width:180px!important;background:rgba(168,85,247,0.15)!important;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:18px;padding:10px 16px!important;border:1px solid rgba(168,85,247,0.3);box-shadow:0 4px 20px rgba(168,85,247,0.2);z-index:99;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;}.floating-add-task:active{transform:translateX(-50%)scale(0.98);background:rgba(168,85,247,0.25)!important;}.floating-add-task:hover{background:rgba(168,85,247,0.2)!important;}.floating-add-task-content{display:flex;align-items:center;justify-content:center;gap:6px!important;}.floating-add-task-icon{width:30px;height:30px;background:rgba(168,85,247,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;color:#fff;border:1px solid rgba(168,85,247,0.5);}.floating-add-task-text{font-size:13px!important;font-weight:700;color:rgba(255,255,255,0.9);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap!important;}.spins-display{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.08);border-radius:15px;padding:12px 15px;margin-bottom:15px;border:1px solid var(--glass-border);}.spins-count{font-size:20px;font-weight:800;color:var(--primary-green);}.referred-users-list{max-height:300px;overflow-y:auto;margin-top:15px;}.referred-user-item{display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:8px;}.referred-user-avatar{width:40px;height:40px;border-radius:50%;margin-right:12px;border:2px solid var(--primary-green);}.referred-user-info{flex:1;}.referred-user-name{font-size:14px;font-weight:600;}.referred-user-date{font-size:11px;color:var(--text-muted);}.referred-user-status{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-green);color:#000;font-weight:700;}.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;}.stat-card{background:rgba(168,85,247,0.1);padding:15px;border-radius:12px;text-align:center;border:1px solid rgba(168,85,247,0.3);}.stat-value{font-size:24px;font-weight:800;color:var(--primary-green);margin-top:5px;}.stat-label{font-size:12px;color:var(--text-muted);}.promo-card,.code-channel-card{transition:all 0.3s ease;animation:cardFloat 3s ease-in-out infinite alternate;}@keyframes cardFloat{0%{transform:translateY(0);}100%{transform:translateY(-5px);}}.code-channel-card:active{transform:scale(0.98);}#promo-code-input:focus{box-shadow:0 0 15px rgba(168,85,247,0.4);border-color:#a855f7;}.max-btn,.withdraw-max-btn{min-width:60px!important;height:44px!important;padding:10px 15px!important;font-size:12px!important;font-weight:800!important;white-space:nowrap!important;border:2px solid rgba(168,85,247,0.5)!important;background:rgba(168,85,247,0.2)!important;color:white!important;border-radius:12px!important;cursor:pointer!important;}@media (max-width:480px){.max-btn,.withdraw-max-btn{min-width:50px!important;padding:8px 12px!important;font-size:11px!important;height:42px!important;}.ticket-input,.bet-input{font-size:16px!important;padding:12px!important;height:44px!important;}.coin-bet-controls,.ticket-controls{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;}.bet-input,.ticket-input{flex:1!important;min-width:0!important;font-size:16px!important;padding:12px!important;height:44px!important;}.app-container{padding:10px;padding-bottom:80px;}.main-coin-img{width:120px;height:120px;}.balance-amount{font-size:36px;}.bottom-nav{width:95%;height:60px;}.nav-text{font-size:8px;}.bottom-nav{width:96%;padding:0 5px;}.nav-item{width:45px;}.nav-text{font-size:7px;}.slots-reels{gap:8px;}.reel-container{width:60px;height:60px;}.slot-item{width:60px;height:60px;font-size:28px;}.floating-add-task{width:140px!important;padding:8px 12px!important;bottom:80px;}.floating-add-task-icon{width:28px;height:28px;font-size:16px;}.floating-add-task-text{font-size:12px!important;}}input[type="number"]{-webkit-appearance:none;-moz-appearance:textfield;appearance:none;font-size:18px!important;}input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}.coin-flip-game{background:rgba(0,0,0,0.6);border-radius:20px;padding:20px;margin-bottom:20px;border:2px solid var(--primary-green);box-shadow:0 0 25px rgba(168,85,247,0.4);}.coin-bet-controls{display:flex;align-items:center;gap:10px;margin-bottom:20px;}.bet-input{flex:1;padding:12px 15px;border-radius:12px;background:rgba(0,0,0,0.3);border:2px solid rgba(168,85,247,0.6);color:white;font-family:inherit;font-size:16px;font-weight:700;text-align:center;outline:none;min-height:44px;}.bet-input:focus{box-shadow:0 0 15px rgba(168,85,247,0.6);border-color:#a855f7;}.bet-buttons{display:flex;gap:8px;margin-top:15px;}.bet-btn{padding:12px 15px;background:rgba(168,85,247,0.2);border:2px solid rgba(168,85,247,0.5);border-radius:10px;color:white;cursor:pointer;font-size:14px;font-weight:700;min-width:65px;text-align:center;flex:1;}.bet-btn.active{background:linear-gradient(135deg,#a855f7,#7c3aed);border-color:#a855f7;box-shadow:0 5px 15px rgba(168,85,247,0.4);}.coin-container{width:150px;height:150px;margin:0 auto 20px;perspective:1000px;}.coin{width:100%;height:100%;position:relative;transform-style:preserve-3d;transform:rotateY(0deg);transition:none;}.coin-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(0,0,0,0.5);overflow:hidden;}.coin-face img{width:100%;height:100%;object-fit:cover;}.coin-front{background:linear-gradient(45deg,#a855f7,#7c3aed);transform:rotateY(0deg);}.coin-back{background:linear-gradient(45deg,#7c3aed,#a855f7);transform:rotateY(180deg);}.gold-side{filter:sepia(1)saturate(2)hue-rotate(10deg)brightness(1.2);}@keyframes coinSpin{0%{transform:rotateY(0);}25%{transform:rotateY(180deg)translateY(-20px);}50%{transform:rotateY(360deg)translateY(0);}75%{transform:rotateY(540deg)translateY(-10px);}100%{transform:rotateY(var(--final-rotation,720deg))translateY(0);}}.coin-spinning{animation:coinSpin 2.5s cubic-bezier(0.4,2.4,0.8,0.9)forwards;}.coin-final{animation:none!important;transform:rotateY(var(--final-rotation,0deg))!important;}.game-result{background:rgba(0,0,0,0.8);border-radius:15px;padding:15px;margin-top:20px;text-align:center;}.result-text{font-size:18px;font-weight:700;margin-bottom:10px;}.win-amount{font-size:24px;font-weight:800;color:#27ae60;}.loss-amount{font-size:24px;font-weight:800;color:#e74c3c;}.bonus-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}.bonus-game-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:16px;overflow:hidden;border:1px solid var(--glass-border);cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 15px rgba(0,0,0,0.3);}.bonus-game-card:active{transform:scale(0.97);}.game-banner{width:100%;height:120px;object-fit:cover;display:block;}.game-content{padding:12px;}.game-title{font-size:14px;font-weight:700;color:white;margin-bottom:4px;text-align:center;}.game-description{font-size:11px;color:var(--text-muted);text-align:center;line-height:1.3;}.game-icon{font-size:20px;margin-bottom:8px;text-align:center;color:var(--primary-green);}.side-selection{display:flex;gap:10px;margin-bottom:20px;}.side-btn{flex:1;padding:20px 15px;border-radius:15px;background:rgba(255,255,255,0.05);border:2px solid transparent;cursor:pointer;text-align:center;transition:all 0.3s;min-height:140px;display:flex;flex-direction:column;justify-content:center;align-items:center;}.side-btn.active{border-color:var(--primary-green);background:rgba(168,85,247,0.2);box-shadow:0 5px 20px rgba(168,85,247,0.3);}.side-btn.win{border-color:#27ae60;background:rgba(39,174,96,0.2);}.side-btn.lose{border-color:#e74c3c;background:rgba(231,76,60,0.2);}.side-icon{font-size:24px;margin-bottom:10px;width:70px;height:70px;display:flex;align-items:center;justify-content:center;}.side-name{font-size:16px;font-weight:700;margin-bottom:5px;}.side-description{font-size:12px;color:var(--text-muted);text-align:center;}.probability-display{display:none!important;}.competition-nav-item{position:relative;}.competition-nav-icon{position:relative;display:flex;align-items:center;justify-content:center;}@keyframes trophyGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,0.7));}50%{filter:drop-shadow(0 0 20px rgba(255,215,0,0.9));}}.nav-item.competition-nav-item.active svg{animation:trophyGlow 2s infinite alternate;}.nav-item[data-target="withdrawal-history"] svg{filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));animation:none;}.galaxy-log-icon{width:40px;height:40px;background:rgba(168,85,247,0.2);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(168,85,247,0.4);transition:all 0.3s;}.galaxy-log-icon:hover{transform:scale(1.05);background:rgba(168,85,247,0.3);border-color:#a855f7;}.btn-filter{padding:8px 15px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-muted);font-size:12px;cursor:pointer;transition:all 0.3s;}.btn-filter.active{background:var(--primary-green);color:#000;font-weight:700;border-color:var(--primary-green);}.btn-filter.small{padding:5px 10px;font-size:10px;}.log-stat-card{background:rgba(0,0,0,0.3);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.1);}.log-item{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:8px;border-left:4px solid transparent;}.log-item.earn{border-left-color:#27ae60;background:rgba(39,174,96,0.1);}.log-item.spend{border-left-color:#e74c3c;background:rgba(231,76,60,0.1);}.log-item.swap{border-left-color:#3498db;background:rgba(52,152,219,0.1);}.log-item.withdraw{border-left-color:#9b59b6;background:rgba(155,89,182,0.1);}.support-channel-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;border:1px solid rgba(255,255,255,0.1);}.support-channel-card:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);border-color:rgba(168,85,247,0.4);}.withdrawal-overview{text-align:center;margin-bottom:20px;}.coin-game-rules{margin-top:25px;padding:20px;background:rgba(0,0,0,0.4);border-radius:15px;border:1px solid rgba(255,255,255,0.1);}.coin-game-rules h4{font-size:14px;color:var(--gold);margin-bottom:15px;}.coin-game-rules ul{font-size:12px;color:var(--text-muted);padding-left:20px;}.coin-game-rules li{margin-bottom:8px;}.competition-timer-card{background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(123,97,255,0.2));border:2px solid rgba(168,85,247,0.3);border-radius:20px;padding:25px;margin-bottom:20px;text-align:center;box-shadow:0 10px 30px rgba(168,85,247,0.2);}.countdown-display{font-size:36px;font-weight:800;color:#fff;text-shadow:0 0 15px rgba(168,85,247,0.8);margin-bottom:8px;font-family:'Courier New',monospace;}.timer-label{font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;}.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:20px;}.status-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:16px;padding:20px;text-align:center;border:1px solid var(--glass-border);}.status-icon{font-size:30px;margin-bottom:10px;}.status-value{font-size:24px;font-weight:800;color:#fff;margin-bottom:5px;}.status-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}.ticket-price-note{background:rgba(168,85,247,0.1);border-radius:12px;padding:15px;margin-bottom:20px;text-align:center;font-size:12px;border:1px solid rgba(168,85,247,0.3);}.ticket-controls{display:flex;align-items:center;gap:10px;margin-bottom:20px;}.ticket-input{flex:1;padding:15px;border-radius:12px;background:rgba(0,0,0,0.3);border:2px solid rgba(168,85,247,0.5);color:white;font-size:18px;font-weight:700;text-align:center;outline:none;min-height:44px;}.competition-leaderboard{margin-top:25px;}.leaderboard-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.1);}.previous-winners-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:16px;padding:20px;margin-top:20px;border:1px solid var(--glass-border);}.winner-item{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:10px;}.winner-rank{width:30px;height:30px;background:var(--primary-green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;margin-right:15px;}.winner-avatar{width:40px;height:40px;border-radius:50%;margin-right:12px;border:2px solid var(--primary-green);}.winner-info{flex:1;}.winner-name{font-size:14px;font-weight:600;margin-bottom:2px;}.winner-date{font-size=10px;color:var(--text-muted);}.winner-prize{font-size:14px;font-weight=700;color:var(--primary-green);}.withdraw-max-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.5);border-radius:8px;padding:6px 12px;color:white;font-size:10px;cursor:pointer;font-weight:700;z-index:10;}.bet-btn.k-style{min-width:55px;padding:10px 12px;font-size=13px;flex:1;}.user-withdrawal-item{background:rgba(255,255,255,0.05);border-radius=12px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.1);}.withdrawal-status{font-size=10px;padding:3px 10px;border-radius=20px;font-weight=700;}.status-completed{background:rgba(39,174,96,0.2);color:#27ae60;}.status-pending{background:rgba(255,193,7,0.2);color:#FFC107;}.status-rejected{background:rgba(231,76,60,0.2);color:#e74c3c;}.masked-email{font-family:'Courier New',monospace;letter-spacing:1px;}.competition-rank-card{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius=12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.1);}.competition-rank{width:30px;font-weight=800;font-size=14px;text-align:center;margin-right:10px;}.rank-1 .competition-rank{color:#27ae60;font-weight:900;}.rank-2 .competition-rank{color:#C0C0C0;}.rank-3 .competition-rank{color:#CD7F32;}.competition-user-avatar{width:36px;height:36px;border-radius=50%;margin-right:12px;border:2px solid var(--primary-green);}.competition-user-info{flex:1;}.competition-user-name{font-size=13px;font-weight:600;margin-bottom:2px;}.competition-ticket-count{font-size=14px;font-weight=700;color:var(--primary-green);}.competition-rules-card{background:rgba(0,0,0,0.4);border-radius=16px;padding=20px;margin-bottom=20px;border=1px solid rgba(255,255,255,0.1);}.rules-header{display:flex;align-items:center;gap:10px;margin-bottom:15px;color:var(--gold);font-size=16px;font-weight=700;}.rules-list{font-size=12px;color:var(--text-muted);line-height=1.6;padding-left=20px;}.rules-list li{margin-bottom=8px;}.winner-highlight{color:#27ae60;font-weight=700;}.loser-note{color:#e74c3c;font-weight=600;}.important-note{background:rgba(255,193,7,0.1);border-left:3px solid #FFC107;padding=10px;margin-top=15px;border-radius=5px;font-size=11px;}.swap-direction-selector{display:flex;background:rgba(0,0,0,0.3);border-radius=50px;padding=4px;margin-bottom=20px;}.swap-direction-btn{flex:1;text-align:center;padding=12px;border-radius=50px;font-size=12px;font-weight=700;cursor:pointer;transition:all 0.3s;border=1px solid transparent;}.swap-direction-btn.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);}.withdraw-input-with-max{position:relative;}.withdraw-input-with-max .custom-input{padding-right:70px;}.email-display{font-family:'Courier New',monospace;background:rgba(255,255,255,0.1);padding=15px;border-radius=12px;border=1px solid rgba(255,255,255,0.2);font-size=16px;letter-spacing=2px;color:white;text-align:center;margin-top=10px;}.swap-mode-text{font-size=12px;color:var(--text-muted);text-align:center;margin=10px 0;}.verification-container{background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius=24px;padding=30px;margin=20px;text-align:center;border=2px solid rgba(168,85,247,0.3);box-shadow:0 10px 40px rgba(0,0,0,0.5);}.verification-step{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);border-radius=12px;padding=15px;margin-bottom=10px;border=1px solid rgba(255,255,255,0.1);transition:all 0.3s ease;}.verification-step.active{border-color:var(--primary-green);background:rgba(168,85,247,0.1);}.verification-step.completed{border-color:#27ae60;background:rgba(39,174,96,0.1);}.verification-step.failed{border-color:#e74c3c;background:rgba(231,76,60,0.1);}.step-icon{width=40px;height=40px;border-radius=50%;display:flex;align-items:center;justify-content:center;font-size=18px;font-weight:bold;}.step-info{flex:1;text-align:left;padding:0 15px;}.step-title{font-size=14px;font-weight:600;color:white;margin-bottom=3px;}.step-description{font-size=11px;color:var(--text-muted);}.step-status{width=40px;height=40px;border-radius=50%;display:flex;align-items:center;justify-content:center;font-size=18px;}.security-message{background:rgba(231,76,60,0.1);border=1px solid rgba(231,76,60,0.3);border-radius=12px;padding=15px;margin=15px 0;color:#e74c3c;font-size=14px;}.verification-progress{width=100%;height=8px;background:rgba(255,255,255,0.1);border-radius=4px;margin=20px 0;overflow:hidden;}.progress-bar{height=100%;background:linear-gradient(90deg,var(--primary-green),#7c3aed);border-radius=4px;transition:width 0.5s ease;}.blocked-container{background:rgba(0,0,0,0.8);border-radius=24px;padding=40px 30px;text-align:center;margin=20px;border=2px solid rgba(231,76,60,0.3);animation:pulse 2s infinite;}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(231,76,60,0.4);}70%{box-shadow:0 0 0 10px rgba(231,76,60,0);}100%{box-shadow:0 0 0 0 rgba(231,76,60,0);}}.blocked-icon{font-size=60px;margin-bottom=20px;color:#e74c3c;}.blocked-title{font-size=24px;font-weight=800;color:#e74c3c;margin-bottom=15px;}.blocked-reason{background:rgba(231,76,60,0.1);border-radius=12px;padding=15px;margin=20px 0;font-size=14px;line-height=1.5;}.verification-loading{display:inline-block;width=20px;height=20px;border=3px solid rgba(255,255,255,0.3);border-radius=50%;border-top-color:var(--primary-green);animation:spin 1s ease-in-out infinite;}@keyframes spin{to{transform:rotate(360deg);}}.ip-display{background:rgba(0,0,0,0.5);padding=10px;border-radius=8px;font-family:'Courier New',monospace;font-size=12px;color:#fff;margin-top=5px;}.notification-message{position:fixed;top:100px;left:50%;transform:translateX(-50%);z-index=1000;background:var(--glass-bg);backdrop-filter:blur(20px);border=1px solid var(--glass-border);border-radius=15px;padding=15px 20px;max-width=90%;width=400px;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,0.3);animation:fadeIn 0.3s ease;}.notification-success{border-color:#27ae60;background:rgba(39,174,96,0.1);}.notification-error{border-color:#e74c3c;background:rgba(231,76,60,0.1);}.notification-warning{border-color:#FFC107;background:rgba(255,193,7,0.1);}.notification-info{border-color:#3498db;background:rgba(52,152,219,0.1);}.deposit-processing{animation:processingPulse 1s infinite alternate;}@keyframes processingPulse{from{opacity:0.7;}to{opacity:1;}}@keyframes fadeOut{from{opacity:1;}to{opacity:0;}}.status-card[style*="grid-column:span 2"]{grid-column:span 2!important;min-height=120px;display:flex;flex-direction:column;justify-content:center;align-items:center;}.status-card[style*="grid-column:span 2"] .status-value{font-size=32px!important;margin-bottom=10px;font-weight:900!important;color:var(--primary-green)!important;}.status-card[style*="grid-column:span 2"] .status-label{font-size=12px;letter-spacing=1px;text-transform:uppercase;font-weight=700;}@keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-5px);}20%,40%,60%,80%{transform:translateX(5px);}}.shake-animation{animation:shake 0.8s ease-in-out;}#global-loading-page{position:fixed;top:0;left:0;width=100%;height=100%;background:linear-gradient(135deg,#1a1a1a,#0a0a0a);display=flex;flex-direction:column;align-items:center;justify-content:center;z-index=999999;text-align:center;padding=20px;}.loading-logo{width=120px;height=120px;border-radius=50%;margin-bottom=25px;border=4px solid var(--primary-green);animation:float 2s ease-in-out infinite;}.loading-title{font-size=32px;font-weight=800;color:#fff;margin-bottom=10px;text-transform=uppercase;letter-spacing=2px;background:linear-gradient(90deg,#a855f7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}.loading-subtitle{font-size=14px;color:var(--text-muted);margin-bottom=30px;max-width=300px;line-height=1.5;}.loading-progress-container{width=80%;max-width=300px;height=6px;background:rgba(255,255,255,0.1);border-radius=3px;overflow:hidden;margin=20px 0;}.loading-progress-bar{height=100%;background:linear-gradient(90deg,var(--primary-green),#7c3aed);border-radius=3px;width=0%;transition:width 0.3s ease;}.loading-timer{font-size=12px;color:var(--text-muted);margin-top=10px;font-family:'Courier New',monospace;}.btn-blocked{background:rgba(231,76,60,0.2)!important;border=1px solid rgba(231,76,60,0.5)!important;color:#e74c3c!important;cursor:not-allowed!important;opacity=0.7!important;}@media (max-width:480px){.loading-logo{width=100px;height=100px;}.loading-title{font-size=24px;}.loading-subtitle{font-size=12px;}}.btn-processing{background:rgba(128,128,128,0.3)!important;border-color:rgba(128,128,128,0.5)!important;color:#888!important;cursor:not-allowed!important;opacity=0.7!important;}.task-btn-disabled{pointer-events:none!important;opacity=0.5!important;filter:grayscale(1)!important;}.coin-flip-btn-processing{background:linear-gradient(90deg,#666,#888)!important;color:#ccc!important;cursor:wait!important;}.coin-flip-btn-processing:hover{transform:none!important;}.coin-flip-result-details{font-size=12px;margin-top=5px;opacity=0.8;}.net-profit{color:#27ae60;font-weight:bold;}.net-loss{color:#e74c3c;font-weight:bold;}.withdraw-disabled{background:rgba(128,128,128,0.3)!important;border-color:rgba(128,128,128,0.5)!important;color:#aaa!important;cursor:not-allowed!important;opacity=0.7!important;}.daily-limit-reached{position:relative;}.daily-limit-reached::after{content:"2/2 Daily Limit";position:absolute;top:-8px;right:-8px;background:#e74c3c;color:white;font-size=9px;padding=2px 6px;border-radius=10px;font-weight:bold;z-index=1;}.withdrawals-counter{background:rgba(168,85,247,0.2);border-radius=8px;padding=8px 12px;margin-bottom=15px;text-align:center;font-size=12px;border=1px solid rgba(168,85,247,0.3);}.withdrawals-counter .count{font-weight:bold;color:var(--primary-green);font-size=14px;}.withdrawals-counter .limit-reached{color:#e74c3c;font-weight:bold;}.withdrawals-counter .reset-time{color:#FFC107;margin-top=5px;font-size=10px;}.security-status-icon{position:fixed;top:15px;right:70px;background:rgba(255,255,255,0.1);border-radius=50%;width=40px;height=40px;display=flex;align-items:center;justify-content:center;font-size=20px;cursor:pointer;z-index=1000;backdrop-filter:blur(10px);border=1px solid rgba(255,255,255,0.2);transition:all 0.3s ease;}.security-status-icon:hover{background:rgba(255,255,255,0.2);transform:scale(1.1);}.security-status-item{display:flex;justify-content:space-between;align-items:center;padding=10px 0;border-bottom:1px solid rgba(255,255,255,0.1);}.security-label{font-weight:bold;color:#fff;}.security-value{font-weight:bold;padding=4px 8px;border-radius=4px;font-size=12px;}.security-value.valid{background:rgba(76,175,80,0.2);color:#4CAF50;}.security-value.invalid{background:rgba(244,67,54,0.2);color:#F44336;}.security-value.checking{background:rgba(255,193,7,0.2);color:#FFC107;}.security-info{margin-top=15px;padding=10px;background:rgba(0,0,0,0.2);border-radius=8px;font-size=12px;color:rgba(255,255,255,0.7);}.modal{position:fixed;top:0;left:0;width=100%;height=100%;background:rgba(0,0,0,0.8);display=flex;justify-content:center;align-items:center;z-index=9999;backdrop-filter:blur(5px);}.modal-content{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius=15px;padding=20px;border=1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5);}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom=20px;padding-bottom=15px;border-bottom:1px solid rgba(255,255,255,0.1);}.modal-header h3{margin:0;color:#fff;}.close-modal{font-size=24px;cursor:pointer;color:rgba(255,255,255,0.7);transition:color 0.3s ease;}.close-modal:hover{color:#fff;}.modal-body{margin-bottom=20px;}.modal-footer{display:flex;justify-content:flex-end;gap=10px;}
+/* جميع الأنماط السابقة كما هي */
+:root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);z-index:-1;}.app-container{padding:20px;padding-bottom:110px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}.content-section{display:none;animation:fadeIn 0.4s ease;}.content-section.active{display:flex;flex-direction:column;flex:1;}@keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}h2{font-size:18px;font-weight:700;margin:20px 0 10px;color:var(--gold);display:flex;align-items:center;gap:8px;}p{font-size:13px;color:var(--text-muted);line-height:1.4;}.page-header{text-align:center;margin-bottom:20px;padding-top:10px;}.card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:24px;padding:20px;margin-bottom:12px;border:1px solid var(--glass-border);box-shadow:0 4px 20px rgba(0,0,0,0.4);}.btn{display:flex;align-items:center;justify-content:center;width:100%;padding:16px;border-radius:18px;font-size:16px;font-weight:800;cursor:pointer;border:none;outline:none;gap:8px;text-transform:uppercase;letter-spacing:0.5px;transition:transform 0.1s;}.btn:active{transform:scale(0.96);}.btn:disabled{opacity:0.5;cursor:not-allowed;filter:grayscale(1);}.btn-primary{background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 0 15px rgba(168,85,247,0.4);}.btn-ton{background:linear-gradient(90deg,#0088cc,#0099ff);color:#fff;box-shadow:0 0 15px rgba(0,136,204,0.4);}.btn-check{background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;box-shadow:0 0 15px rgba(168,85,247,0.4);}.btn-action{background:rgba(0,0,0,0.3)!important;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.1)!important;color:#b0b0b0!important;flex-direction:column;padding:12px;font-size:12px;gap:5px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);transition:all 0.3s ease;}.btn-action svg{width:24px;height:24px;stroke:#b0b0b0!important;fill:none;stroke-width:2.5;transition:all 0.3s ease;}.btn-action:active{background:rgba(0,0,0,0.4)!important;transform:scale(0.98);}.hud-container{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.5);border-radius:50px;padding:10px 15px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.05);}.user-name{font-weight:700;font-size:14px;}.user-rank{font-size:10px;color:var(--primary-green);text-transform:uppercase;}.hud-avatar{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px solid var(--primary-green);}.hud-avatar img{width:100%;height:100%;object-fit:cover;}.hud-balance{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}.hud-balance-item{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;}.hud-glx{color:var(--gold);}.hud-ton{color:#0088cc;}.main-coin-section{text-align:center;margin:10px 0 30px;position:relative;}.main-coin-img{width:160px;height:160px;border-radius:50%;box-shadow:0 0 50px rgba(168,85,247,0.3);animation:float 4s ease-in-out infinite;object-fit:cover;border:4px solid var(--primary-green);}@keyframes float{0%{transform:translateY(0px);}50%{transform:translateY(-10px);}100%{transform:translateY(0px);}}.balance-display{margin-top:15px;}.balance-amount{font-size:48px;font-weight:800;background:linear-gradient(to bottom,#fff,#b3b3b3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}.balance-unit{font-size:16px;color:var(--primary-green);font-weight:700;letter-spacing:2px;}.stats-pill{display:inline-flex;align-items:center;gap:15px;background:rgba(255,255,255,0.05);padding:8px 16px;border-radius:20px;margin-top:10px;font-size:12px;font-weight:600;}.ton-val{color:var(--primary-green);display:flex;align-items:center;gap:4px;}.action-bar{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:25px;}.list-card{display:flex;align-items:center;background:rgba(0,0,0,0.3);border-radius:16px;padding:12px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);cursor:pointer;}.lc-icon{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;}.lc-icon img{width:100%;height:100%;object-fit:cover;border-radius:12px;}.lc-content{flex:1;}.lc-title{font-size:14px;font-weight:600;margin-bottom:2px;}.lc-sub{font-size:11px;color:var(--text-muted);}.lc-end{text-align:right;}.lc-val{font-weight:700;color:var(--primary-green);font-size:14px;}.daily-row{display:flex;overflow-x:auto;gap:8px;padding-bottom:10px;margin-bottom:15px;scrollbar-width:none;}.daily-box{min-width:70px;background:rgba(255,255,255,0.05);border-radius:12px;padding:10px 5px;text-align:center;border:1px solid transparent;opacity:0.5;}.daily-box.active{opacity:1;border-color:var(--gold);background:rgba(255,215,0,0.1);}.daily-box.claimed{opacity:1;background:var(--primary-green);color:#000;}.slots-machine{background:rgba(0,0,0,0.6);border-radius:20px;padding:20px;margin-bottom:20px;border:2px solid var(--primary-green);box-shadow:0 0 25px rgba(168,85,247,0.4);text-align:center;}.slots-reels{display:flex;justify-content:center;align-items:center;gap:15px;margin:20px 0;padding:10px;}.reel-container{position:relative;width:70px;height:70px;overflow:hidden;border-radius:12px;background:rgba(0,0,0,0.8);border:2px solid rgba(168,85,247,0.5);box-shadow:0 0 15px rgba(168,85,247,0.3);display:flex;justify-content:center;align-items:center;}.reel{display:flex;flex-direction:column;transition:transform 2s cubic-bezier(0.1,0,0.2,1);}.slot-item{width:70px;height:70px;display:flex;align-items:center;justify-content:center;font-size:32px;}.slots-result{background:rgba(0,0,0,0.8);border-radius:15px;padding:15px;margin-top:20px;border:1px solid rgba(255,255,255,0.1);text-align:center;}.payout-table{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:15px;font-size:11px;}.payout-item{background:rgba(255,255,255,0.05);border-radius:8px;padding:8px;text-align:center;}.jackpot{color:#FFD700;font-weight:800;text-shadow:0 0 10px rgba(255,215,0,0.8);}.input-wrap{background:rgba(0,0,0,0.4);border-radius:16px;padding:15px;margin-bottom:15px;border:1px solid rgba(255,255,255,0.1);}.input-label{font-size:11px;color:var(--text-muted);display:block;margin-bottom:5px;text-transform:uppercase;}.custom-input{width:100%;background:transparent;border:none;color:#fff;font-size:16px;font-weight:600;outline:none;font-family:inherit;}.cat-select{display:flex;gap:10px;margin-bottom:20px;}.cat-opt{flex:1;padding:12px;text-align:center;background:rgba(255,255,255,0.05);border-radius:12px;font-size:12px;cursor:pointer;border:1px solid transparent;}.cat-opt.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);font-weight:700;}.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:15px;}.price-opt{padding:10px;background:rgba(255,255,255,0.05);border-radius:10px;text-align:center;cursor:pointer;border:1px solid transparent;}.price-opt.active{border-color:var(--gold);background:rgba(255,215,0,0.1);}.price-count{font-size:14px;font-weight:700;color:#fff;}.price-cost{font-size:10px;color:var(--primary-green);margin-top:2px;}.terms-box{background:rgba(0,0,0,0.3);border-radius:16px;padding:15px;height:300px;overflow-y:auto;font-size:12px;color:var(--text-muted);border:1px solid rgba(255,255,255,0.05);line-height:1.6;}.terms-box h3{color:#fff;font-size:14px;margin-top:15px;margin-bottom:5px;}.terms-box h3:first-child{margin-top:0;}.bottom-nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:90%;max-width:400px;height:65px;background:var(--nav-bg);border-radius:32px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:100;border:1px solid rgba(255,255,255,0.1);}.nav-item{display:flex;flex-direction:column;align-items:center;color:#666;transition:0.3s;cursor:pointer;position:relative;width:50px;}.nav-item svg{width:22px;height:22px;margin-bottom:4px;stroke:currentColor;fill:none;stroke-width:2.5;transition:all 0.3s;}.nav-item.active{color:var(--primary-green);transform:translateY(-2px);}.nav-item.active svg{stroke:var(--primary-green);filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));}.nav-text{font-size:9px;font-weight:700;text-transform:uppercase;}.hidden{display:none!important;}.leader-tabs{display:flex;background:rgba(0,0,0,0.3);border-radius:50px;padding:4px;margin-bottom:20px;}.tab-btn{flex:1;text-align:center;padding:10px;border-radius:50px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.3s;}.tab-btn.active{background:var(--primary-green);color:#000;}.withdrawal-type-selector{display:flex;background:rgba(0,0,0,0.3);border-radius:50px;padding:4px;margin-bottom:20px;}.withdrawal-type-btn{flex:1;text-align:center;padding:12px;border-radius:50px;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.3s;border:1px solid transparent;}.withdrawal-type-btn.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);}.info-box{background:rgba(255,179,0,0.1);border:1px solid var(--gold);border-radius:12px;padding:12px;margin-bottom:15px;font-size:11px;line-height:1.5;}.info-box.success{background:rgba(39,174,96,0.1);border-color:#27ae60;}.info-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-right:5px;border-radius:50%;background:var(--gold);color:#000;font-size:10px;font-weight:bold;}.info-box.success .info-icon{background:#27ae60;color:#fff;}.floating-add-task{position:fixed;bottom:85px;left:50%;transform:translateX(-50%);width:160px!important;min-width:140px!important;max-width:180px!important;background:rgba(168,85,247,0.15)!important;backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:18px;padding:10px 16px!important;border:1px solid rgba(168,85,247,0.3);box-shadow:0 4px 20px rgba(168,85,247,0.2);z-index:99;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s;}.floating-add-task:active{transform:translateX(-50%)scale(0.98);background:rgba(168,85,247,0.25)!important;}.floating-add-task:hover{background:rgba(168,85,247,0.2)!important;}.floating-add-task-content{display:flex;align-items:center;justify-content:center;gap:6px!important;}.floating-add-task-icon{width:30px;height:30px;background:rgba(168,85,247,0.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;color:#fff;border:1px solid rgba(168,85,247,0.5);}.floating-add-task-text{font-size:13px!important;font-weight:700;color:rgba(255,255,255,0.9);text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap!important;}.spins-display{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.08);border-radius:15px;padding:12px 15px;margin-bottom:15px;border:1px solid var(--glass-border);}.spins-count{font-size:20px;font-weight:800;color:var(--primary-green);}.referred-users-list{max-height:300px;overflow-y:auto;margin-top:15px;}.referred-user-item{display:flex;align-items:center;padding:10px;background:rgba(255,255,255,0.05);border-radius:12px;margin-bottom:8px;}.referred-user-avatar{width:40px;height:40px;border-radius:50%;margin-right:12px;border:2px solid var(--primary-green);}.referred-user-info{flex:1;}.referred-user-name{font-size:14px;font-weight:600;}.referred-user-date{font-size:11px;color:var(--text-muted);}.referred-user-status{font-size:10px;padding:2px 8px;border-radius:10px;background:var(--primary-green);color:#000;font-weight:700;}.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;}.stat-card{background:rgba(168,85,247,0.1);padding:15px;border-radius:12px;text-align:center;border:1px solid rgba(168,85,247,0.3);}.stat-value{font-size:24px;font-weight:800;color:var(--primary-green);margin-top:5px;}.stat-label{font-size:12px;color:var(--text-muted);}.promo-card,.code-channel-card{transition:all 0.3s ease;animation:cardFloat 3s ease-in-out infinite alternate;}@keyframes cardFloat{0%{transform:translateY(0);}100%{transform:translateY(-5px);}}.code-channel-card:active{transform:scale(0.98);}#promo-code-input:focus{box-shadow:0 0 15px rgba(168,85,247,0.4);border-color:#a855f7;}.max-btn,.withdraw-max-btn{min-width:60px!important;height:44px!important;padding:10px 15px!important;font-size:12px!important;font-weight:800!important;white-space:nowrap!important;border:2px solid rgba(168,85,247,0.5)!important;background:rgba(168,85,247,0.2)!important;color:white!important;border-radius:12px!important;cursor:pointer!important;}@keyframes cupShine{0%{filter:drop-shadow(0 0 5px rgba(255,215,0,0.7));}50%{filter:drop-shadow(0 0 15px rgba(255,215,0,0.9));}100%{filter:drop-shadow(0 0 5px rgba(255,215,0,0.7));}}@keyframes pulseArrow{0%{transform:translateY(0);opacity:1;}50%{transform:translateY(-2px);opacity:0.7;}100%{transform:translateY(0);opacity:1;}}@media (max-width:480px){.max-btn,.withdraw-max-btn{min-width:50px!important;padding:8px 12px!important;font-size:11px!important;height:42px!important;}.ticket-input,.bet-input{font-size:16px!important;padding:12px!important;height:44px!important;}.coin-bet-controls,.ticket-controls{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;}.bet-input,.ticket-input{flex:1!important;min-width:0!important;font-size:16px!important;padding:12px!important;height:44px!important;}.app-container{padding:10px;padding-bottom:80px;}.main-coin-img{width:120px;height:120px;}.balance-amount{font-size:36px;}.bottom-nav{width:95%;height:60px;}.nav-text{font-size:8px;}.bottom-nav{width:96%;padding:0 5px;}.nav-item{width:45px;}.nav-text{font-size:7px;}.slots-reels{gap:8px;}.reel-container{width:60px;height:60px;}.slot-item{width:60px;height:60px;font-size:28px;}.floating-add-task{width:140px!important;padding:8px 12px!important;bottom:80px;}.floating-add-task-icon{width:28px;height=28px;font-size=16px;}.floating-add-task-text{font-size=12px!important;}}input[type="number"]{-webkit-appearance:none;-moz-appearance:textfield;appearance:none;font-size=18px!important;}input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}.coin-flip-game{background:rgba(0,0,0,0.6);border-radius=20px;padding:20px;margin-bottom=20px;border:2px solid var(--primary-green);box-shadow:0 0 25px rgba(168,85,247,0.4);}.coin-bet-controls{display:flex;align-items:center;gap:10px;margin-bottom:20px;}.bet-input{flex:1;padding:12px 15px;border-radius=12px;background:rgba(0,0,0,0.3);border:2px solid rgba(168,85,247,0.6);color:white;font-family:inherit;font-size=16px;font-weight:700;text-align:center;outline:none;min-height=44px;}.bet-input:focus{box-shadow:0 0 15px rgba(168,85,247,0.6);border-color:#a855f7;}.bet-buttons{display:flex;gap:8px;margin-top:15px;}.bet-btn{padding:12px 15px;background:rgba(168,85,247,0.2);border:2px solid rgba(168,85,247,0.5);border-radius=10px;color:white;cursor:pointer;font-size=14px;font-weight:700;min-width=65px;text-align:center;flex:1;}.bet-btn.active{background:linear-gradient(135deg,#a855f7,#7c3aed);border-color:#a855f7;box-shadow:0 5px 15px rgba(168,85,247,0.4);}.coin-container{width=150px;height=150px;margin:0 auto 20px;perspective:1000px;}.coin{width=100%;height=100%;position:relative;transform-style:preserve-3d;transform:rotateY(0deg);transition:none;}.coin-face{position:absolute;width=100%;height=100%;backface-visibility:hidden;border-radius=50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 20px rgba(0,0,0,0.5);overflow:hidden;}.coin-face img{width=100%;height=100%;object-fit:cover;}.coin-front{background:linear-gradient(45deg,#a855f7,#7c3aed);transform:rotateY(0deg);}.coin-back{background:linear-gradient(45deg,#7c3aed,#a855f7);transform:rotateY(180deg);}.gold-side{filter:sepia(1)saturate(2)hue-rotate(10deg)brightness(1.2);}@keyframes coinSpin{0%{transform:rotateY(0);}25%{transform:rotateY(180deg)translateY(-20px);}50%{transform:rotateY(360deg)translateY(0);}75%{transform:rotateY(540deg)translateY(-10px);}100%{transform:rotateY(var(--final-rotation,720deg))translateY(0);}}.coin-spinning{animation:coinSpin 2.5s cubic-bezier(0.4,2.4,0.8,0.9)forwards;}.coin-final{animation:none!important;transform:rotateY(var(--final-rotation,0deg))!important;}.game-result{background:rgba(0,0,0,0.8);border-radius=15px;padding:15px;margin-top=20px;text-align:center;}.result-text{font-size=18px;font-weight:700;margin-bottom:10px;}.win-amount{font-size=24px;font-weight:800;color:#27ae60;}.loss-amount{font-size=24px;font-weight:800;color:#e74c3c;}.bonus-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}.bonus-game-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius=16px;overflow:hidden;border:1px solid var(--glass-border);cursor:pointer;transition:all 0.3s ease;box-shadow:0 4px 15px rgba(0,0,0,0.3);}.bonus-game-card:active{transform:scale(0.97);}.game-banner{width=100%;height=120px;object-fit:cover;display:block;}.game-content{padding:12px;}.game-title{font-size=14px;font-weight:700;color:white;margin-bottom:4px;text-align:center;}.game-description{font-size=11px;color:var(--text-muted);text-align:center;line-height:1.3;}.game-icon{font-size=20px;margin-bottom:8px;text-align:center;color:var(--primary-green);}.side-selection{display:flex;gap:10px;margin-bottom=20px;}.side-btn{flex:1;padding:20px 15px;border-radius=15px;background:rgba(255,255,255,0.05);border:2px solid transparent;cursor:pointer;text-align:center;transition:all 0.3s;min-height=140px;display:flex;flex-direction:column;justify-content:center;align-items:center;}.side-btn.active{border-color:var(--primary-green);background:rgba(168,85,247,0.2);box-shadow:0 5px 20px rgba(168,85,247,0.3);}.side-btn.win{border-color:#27ae60;background:rgba(39,174,96,0.2);}.side-btn.lose{border-color:#e74c3c;background:rgba(231,76,60,0.2);}.side-icon{font-size=24px;margin-bottom:10px;width=70px;height=70px;display:flex;align-items:center;justify-content:center;}.side-name{font-size=16px;font-weight:700;margin-bottom:5px;}.side-description{font-size=12px;color:var(--text-muted);text-align:center;}.probability-display{display:none!important;}.competition-nav-item{position:relative;}.competition-nav-icon{position:relative;display:flex;align-items:center;justify-content:center;}@keyframes trophyGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,0.7));}50%{filter:drop-shadow(0 0 20px rgba(255,215,0,0.9));}}.nav-item.competition-nav-item.active svg{animation:trophyGlow 2s infinite alternate;}.nav-item[data-target="withdrawal-history"] svg{filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));animation:none;}.galaxy-log-icon{width=40px;height=40px;background:rgba(168,85,247,0.2);border-radius=12px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(168,85,247,0.4);transition:all 0.3s;}.galaxy-log-icon:hover{transform:scale(1.05);background:rgba(168,85,247,0.3);border-color:#a855f7;}.btn-filter{padding:8px 15px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius=8px;color:var(--text-muted);font-size=12px;cursor:pointer;transition:all 0.3s;}.btn-filter.active{background:var(--primary-green);color:#000;font-weight:700;border-color:var(--primary-green);}.btn-filter.small{padding:5px 10px;font-size=10px;}.log-stat-card{background:rgba(0,0,0,0.3);border-radius=12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.1);}.log-item{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius=12px;margin-bottom=8px;border-left:4px solid transparent;}.log-item.earn{border-left-color:#27ae60;background:rgba(39,174,96,0.1);}.log-item.spend{border-left-color:#e74c3c;background:rgba(231,76,60,0.1);}.log-item.swap{border-left-color:#3498db;background:rgba(52,152,219,0.1);}.log-item.withdraw{border-left-color:#9b59b6;background:rgba(155,89,182,0.1);}.support-channel-card{background:rgba(255,255,255,0.05);border-radius=12px;padding:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;border:1px solid rgba(255,255,255,0.1);}.support-channel-card:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);border-color:rgba(168,85,247,0.4);}.withdrawal-overview{text-align:center;margin-bottom=20px;}.coin-game-rules{margin-top=25px;padding:20px;background:rgba(0,0,0,0.4);border-radius=15px;border:1px solid rgba(255,255,255,0.1);}.coin-game-rules h4{font-size=14px;color:var(--gold);margin-bottom=15px;}.coin-game-rules ul{font-size=12px;color:var(--text-muted);padding-left=20px;}.coin-game-rules li{margin-bottom=8px;}.competition-timer-card{background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(123,97,255,0.2));border:2px solid rgba(168,85,247,0.3);border-radius=20px;padding:25px;margin-bottom=20px;text-align:center;box-shadow:0 10px 30px rgba(168,85,247,0.2);}.countdown-display{font-size=36px;font-weight:800;color:#fff;text-shadow:0 0 15px rgba(168,85,247,0.8);margin-bottom=8px;font-family:'Courier New',monospace;}.timer-label{font-size=12px;color:var(--text-muted);text-transform:uppercase;letter-spacing=1px;}.status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom=20px;}.status-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius=16px;padding:20px;text-align:center;border:1px solid var(--glass-border);}.status-icon{font-size=30px;margin-bottom=10px;}.status-value{font-size=24px;font-weight:800;color:#fff;margin-bottom=5px;}.status-label{font-size=10px;color:var(--text-muted);text-transform:uppercase;letter-spacing=0.5px;}.ticket-price-note{background:rgba(168,85,247,0.1);border-radius=12px;padding:15px;margin-bottom=20px;text-align:center;font-size=12px;border:1px solid rgba(168,85,247,0.3);}.ticket-controls{display:flex;align-items:center;gap:10px;margin-bottom=20px;}.ticket-input{flex:1;padding:15px;border-radius=12px;background:rgba(0,0,0,0.3);border:2px solid rgba(168,85,247,0.5);color:white;font-size=18px;font-weight:700;text-align:center;outline:none;min-height=44px;}.competition-leaderboard{margin-top=25px;}.leaderboard-header{display:flex;justify-content:space-between;align-items:center;margin-bottom=15px;padding-bottom=10px;border-bottom:1px solid rgba(255,255,255,0.1);}.previous-winners-card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius=16px;padding:20px;margin-top=20px;border:1px solid var(--glass-border);}.winner-item{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius=12px;margin-bottom=10px;}.winner-rank{width=30px;height=30px;background:var(--primary-green);border-radius=50%;display:flex;align-items:center;justify-content:center;font-weight:800;margin-right=15px;}.winner-avatar{width=40px;height=40px;border-radius=50%;margin-right=12px;border:2px solid var(--primary-green);}.winner-info{flex:1;}.winner-name{font-size=14px;font-weight:600;margin-bottom=2px;}.winner-date{font-size=10px;color:var(--text-muted);}.winner-prize{font-size=14px;font-weight:700;color:var(--primary-green);}.withdraw-max-btn{position:absolute;right=15px;top:50%;transform:translateY(-50%);background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.5);border-radius=8px;padding:6px 12px;color:white;font-size=10px;cursor:pointer;font-weight:700;z-index:10;}.bet-btn.k-style{min-width=55px;padding:10px 12px;font-size=13px;flex:1;}.user-withdrawal-item{background:rgba(255,255,255,0.05);border-radius=12px;padding:12px;margin-bottom=8px;border:1px solid rgba(255,255,255,0.1);}.withdrawal-status{font-size=10px;padding:3px 10px;border-radius=20px;font-weight:700;}.status-completed{background:rgba(39,174,96,0.2);color:#27ae60;}.status-pending{background:rgba(255,193,7,0.2);color:#FFC107;}.status-rejected{background:rgba(231,76,60,0.2);color:#e74c3c;}.masked-email{font-family:'Courier New',monospace;letter-spacing=1px;}.competition-rank-card{display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.05);border-radius=12px;margin-bottom=8px;border:1px solid rgba(255,255,255,0.1);}.competition-rank{width=30px;font-weight:800;font-size=14px;text-align:center;margin-right=10px;}.rank-1 .competition-rank{color:#27ae60;font-weight:900;}.rank-2 .competition-rank{color:#C0C0C0;}.rank-3 .competition-rank{color:#CD7F32;}.competition-user-avatar{width=36px;height=36px;border-radius=50%;margin-right=12px;border:2px solid var(--primary-green);}.competition-user-info{flex:1;}.competition-user-name{font-size=13px;font-weight:600;margin-bottom=2px;}.competition-ticket-count{font-size=14px;font-weight:700;color:var(--primary-green);}.competition-rules-card{background:rgba(0,0,0,0.4);border-radius=16px;padding:20px;margin-bottom=20px;border:1px solid rgba(255,255,255,0.1);}.rules-header{display:flex;align-items:center;gap:10px;margin-bottom=15px;color:var(--gold);font-size=16px;font-weight:700;}.rules-list{font-size=12px;color:var(--text-muted);line-height:1.6;padding-left=20px;}.rules-list li{margin-bottom=8px;}.winner-highlight{color:#27ae60;font-weight:700;}.loser-note{color:#e74c3c;font-weight:600;}.important-note{background:rgba(255,193,7,0.1);border-left:3px solid #FFC107;padding:10px;margin-top=15px;border-radius=5px;font-size=11px;}.swap-direction-selector{display:flex;background:rgba(0,0,0,0.3);border-radius=50px;padding:4px;margin-bottom=20px;}.swap-direction-btn{flex=1;text-align:center;padding:12px;border-radius=50px;font-size=12px;font-weight:700;cursor:pointer;transition:all 0.3s;border:1px solid transparent;}.swap-direction-btn.active{background:var(--primary-green);color:#000;border-color:var(--primary-green);}.withdraw-input-with-max{position:relative;}.withdraw-input-with-max .custom-input{padding-right=70px;}.email-display{font-family:'Courier New',monospace;background:rgba(255,255,255,0.1);padding:15px;border-radius=12px;border:1px solid rgba(255,255,255,0.2);font-size=16px;letter-spacing=2px;color:white;text-align:center;margin-top=10px;}.swap-mode-text{font-size=12px;color:var(--text-muted);text-align:center;margin=10px 0;}.verification-container{background:var(--glass-bg);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius=24px;padding:30px;margin=20px;text-align:center;border:2px solid rgba(168,85,247,0.3);box-shadow:0 10px 40px rgba(0,0,0,0.5);}.verification-step{display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.3);border-radius=12px;padding=15px;margin-bottom=10px;border:1px solid rgba(255,255,255,0.1);transition:all 0.3s ease;}.verification-step.active{border-color:var(--primary-green);background:rgba(168,85,247,0.1);}.verification-step.completed{border-color:#27ae60;background:rgba(39,174,96,0.1);}.verification-step.failed{border-color:#e74c3c;background:rgba(231,76,60,0.1);}.step-icon{width=40px;height=40px;border-radius=50%;display:flex;align-items:center;justify-content:center;font-size=18px;font-weight:bold;}.step-info{flex=1;text-align:left;padding=0 15px;}.step-title{font-size=14px;font-weight:600;color:white;margin-bottom=3px;}.step-description{font-size=11px;color:var(--text-muted);}.step-status{width=40px;height=40px;border-radius=50%;display:flex;align-items:center;justify-content:center;font-size=18px;}.security-message{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius=12px;padding=15px;margin=15px 0;color:#e74c3c;font-size=14px;}.verification-progress{width=100%;height=8px;background:rgba(255,255,255,0.1);border-radius=4px;margin=20px 0;overflow:hidden;}.progress-bar{height=100%;background:linear-gradient(90deg,var(--primary-green),#7c3aed);border-radius=4px;transition:width 0.5s ease;}.blocked-container{background:rgba(0,0,0,0.8);border-radius=24px;padding=40px 30px;text-align:center;margin=20px;border:2px solid rgba(231,76,60,0.3);animation:pulse 2s infinite;}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(231,76,60,0.4);}70%{box-shadow:0 0 0 10px rgba(231,76,60,0);}100%{box-shadow:0 0 0 0 rgba(231,76,60,0);}}.blocked-icon{font-size=60px;margin-bottom=20px;color:#e74c3c;}.blocked-title{font-size=24px;font-weight:800;color:#e74c3c;margin-bottom=15px;}.blocked-reason{background:rgba(231,76,60,0.1);border-radius=12px;padding=15px;margin=20px 0;font-size=14px;line-height:1.5;}.verification-loading{display:inline-block;width=20px;height=20px;border:3px solid rgba(255,255,255,0.3);border-radius=50%;border-top-color:var(--primary-green);animation:spin 1s ease-in-out infinite;}@keyframes spin{to{transform:rotate(360deg);}}.ip-display{background:rgba(0,0,0,0.5);padding=10px;border-radius=8px;font-family:'Courier New',monospace;font-size=12px;color:#fff;margin-top=5px;}.notification-message{position:fixed;top=100px;left=50%;transform:translateX(-50%);z-index=1000;background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius=15px;padding=15px 20px;max-width=90%;width=400px;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,0.3);animation:fadeIn 0.3s ease;}.notification-success{border-color:#27ae60;background:rgba(39,174,96,0.1);}.notification-error{border-color:#e74c3c;background:rgba(231,76,60,0.1);}.notification-warning{border-color:#FFC107;background:rgba(255,193,7,0.1);}.notification-info{border-color:#3498db;background:rgba(52,152,219,0.1);}.deposit-processing{animation:processingPulse 1s infinite alternate;}@keyframes processingPulse{from{opacity:0.7;}to{opacity:1;}}@keyframes fadeOut{from{opacity:1;}to{opacity:0;}}.status-card[style*="grid-column:span 2"]{grid-column:span 2!important;min-height=120px;display:flex;flex-direction:column;justify-content:center;align-items:center;}.status-card[style*="grid-column:span 2"] .status-value{font-size=32px!important;margin-bottom=10px;font-weight:900!important;color:var(--primary-green)!important;}.status-card[style*="grid-column:span 2"] .status-label{font-size=12px;letter-spacing=1px;text-transform:uppercase;font-weight:700;}@keyframes shake{0%,100%{transform:translateX(0);}10%,30%,50%,70%,90%{transform:translateX(-5px);}20%,40%,60%,80%{transform:translateX(5px);}}.shake-animation{animation:shake 0.8s ease-in-out;}#global-loading-page{position:fixed;top:0;left:0;width=100%;height=100%;background:linear-gradient(135deg,#1a1a1a,#0a0a0a);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index=999999;text-align:center;padding=20px;}.loading-logo{width=120px;height=120px;border-radius=50%;margin-bottom=25px;border:4px solid var(--primary-green);animation:float 2s ease-in-out infinite;}.loading-title{font-size=32px;font-weight:800;color:#fff;margin-bottom=10px;text-transform:uppercase;letter-spacing=2px;background:linear-gradient(90deg,#a855f7,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}.loading-subtitle{font-size=14px;color:var(--text-muted);margin-bottom=30px;max-width=300px;line-height:1.5;}.loading-progress-container{width=80%;max-width=300px;height=6px;background:rgba(255,255,255,0.1);border-radius=3px;overflow:hidden;margin=20px 0;}.loading-progress-bar{height=100%;background:linear-gradient(90deg,var(--primary-green),#7c3aed);border-radius=3px;width=0%;transition:width 0.3s ease;}.loading-timer{font-size=12px;color:var(--text-muted);margin-top=10px;font-family:'Courier New',monospace;}.btn-blocked{background:rgba(231,76,60,0.2)!important;border:1px solid rgba(231,76,60,0.5)!important;color:#e74c3c!important;cursor:not-allowed!important;opacity:0.7!important;}@media (max-width:480px){.loading-logo{width=100px;height=100px;}.loading-title{font-size=24px;}.loading-subtitle{font-size=12px;}}.btn-processing{background:rgba(128,128,128,0.3)!important;border-color:rgba(128,128,128,0.5)!important;color:#888!important;cursor:not-allowed!important;opacity:0.7!important;}.task-btn-disabled{pointer-events:none!important;opacity:0.5!important;filter:grayscale(1)!important;}.coin-flip-btn-processing{background:linear-gradient(90deg,#666,#888)!important;color:#ccc!important;cursor:wait!important;}.coin-flip-btn-processing:hover{transform:none!important;}.coin-flip-result-details{font-size=12px;margin-top=5px;opacity:0.8;}.net-profit{color:#27ae60;font-weight:bold;}.net-loss{color:#e74c3c;font-weight:bold;}.withdraw-disabled{background:rgba(128,128,128,0.3)!important;border-color:rgba(128,128,128,0.5)!important;color:#aaa!important;cursor:not-allowed!important;opacity:0.7!important;}.daily-limit-reached{position:relative;}.daily-limit-reached::after{content:"2/2 Daily Limit";position:absolute;top:-8px;right:-8px;background:#e74c3c;color:white;font-size=9px;padding:2px 6px;border-radius=10px;font-weight:bold;z-index:1;}.withdrawals-counter{background:rgba(168,85,247,0.2);border-radius=8px;padding=8px 12px;margin-bottom=15px;text-align:center;font-size=12px;border:1px solid rgba(168,85,247,0.3);}.withdrawals-counter .count{font-weight:bold;color:var(--primary-green);font-size=14px;}.withdrawals-counter .limit-reached{color:#e74c3c;font-weight:bold;}.withdrawals-counter .reset-time{color:#FFC107;margin-top=5px;font-size=10px;}.security-status-icon{position:fixed;top=15px;right=70px;background:rgba(255,255,255,0.1);border-radius=50%;width=40px;height=40px;display:flex;align-items:center;justify-content:center;font-size=20px;cursor:pointer;z-index=1000;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);transition:all 0.3s ease;}.security-status-icon:hover{background:rgba(255,255,255,0.2);transform:scale(1.1);}.security-status-item{display:flex;justify-content:space-between;align-items:center;padding=10px 0;border-bottom:1px solid rgba(255,255,255,0.1);}.security-label{font-weight:bold;color:#fff;}.security-value{font-weight:bold;padding=4px 8px;border-radius=4px;font-size=12px;}.security-value.valid{background:rgba(76,175,80,0.2);color:#4CAF50;}.security-value.invalid{background:rgba(244,67,54,0.2);color:#F44336;}.security-value.checking{background:rgba(255,193,7,0.2);color:#FFC107;}.security-info{margin-top=15px;padding=10px;background:rgba(0,0,0,0.2);border-radius=8px;font-size=12px;color:rgba(255,255,255,0.7);}.modal{position:fixed;top:0;left:0;width=100%;height=100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index=9999;backdrop-filter:blur(5px);}.modal-content{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius=15px;padding=20px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5);}.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom=20px;padding-bottom=15px;border-bottom:1px solid rgba(255,255,255,0.1);}.modal-header h3{margin=0;color:#fff;}.close-modal{font-size=24px;cursor:pointer;color:rgba(255,255,255,0.7);transition:color 0.3s ease;}.close-modal:hover{color:#fff;}.modal-body{margin-bottom=20px;}.modal-footer{display:flex;justify-content:flex-end;gap=10px;}
 </style>
 <script>
-/* ===================================================
-   GLX Galaxy - Updated Ad System (Simplified & Secure)
-   =================================================== */
+// ===== دالة توليد التوكن المصححة =====
+// هذه الدالة تطابق تماماً ما في الخلفية
+function generateAdTokenFrontend(userId, deviceFingerprint, adNumber, clientTimestamp, sessionKey) {
+    // نفس تنسيق البيانات المستخدم في الخلفية
+    const data = `${userId}:${deviceFingerprint}:${adNumber}:${clientTimestamp}:${sessionKey}`;
+    
+    // نفس الخوارزمية المبسطة المستخدمة في الخلفية
+    let hash = 0;
+    for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // تحويل إلى 32-bit integer
+    }
+    
+    // نفس عملية التوليد المعقدة
+    const complexHash = Math.abs(hash).toString(36) + 
+                       Math.abs(userId.length * 31).toString(36) + 
+                       Math.abs(deviceFingerprint.length * 17).toString(36) + 
+                       Math.abs(adNumber * 13).toString(36);
+    
+    console.log("✅ Frontend ad token generated:", complexHash.substring(0, 20) + "...");
+    return complexHash;
+}
+
+function getDeviceId(){
+    let deviceId = localStorage.getItem("device_id");
+    if(!deviceId){
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("device_id", deviceId);
+    }
+    return deviceId;
+}
 
 const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
+const isCryptoSupported = typeof crypto !== 'undefined' && crypto.subtle;
+let sessionSecret = null;
+let sessionSecretPromise = null;
+let SecuritySystem = null;
 
-/* -------- Device Fingerprint Helper -------- */
-async function getDeviceFingerprint() {
-  let fp = localStorage.getItem("deviceFingerprint");
-  if (fp) return fp;
-
-  const data = JSON.stringify({
-    ua: navigator.userAgent,
-    lang: navigator.language,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    screen: `${screen.width}x${screen.height}`,
-    time: Date.now()
-  });
-
-  try {
-    const hash = await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(data)
-    );
-    fp = Array.from(new Uint8Array(hash))
-      .map(b => b.toString(16).padStart(2, "0"))
-      .join("");
-    localStorage.setItem("deviceFingerprint", fp);
-    return fp;
-  } catch (error) {
-    console.error("Error generating fingerprint:", error);
-    const fallback = `fp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    localStorage.setItem("deviceFingerprint", fallback);
-    return fallback;
-  }
-}
-
-/* -------- Core Ad Request Function -------- */
-async function sendAdReward(adType, reward = 500) {
-  try {
-    const tg = window.Telegram?.WebApp;
-    const userId = tg?.initDataUnsafe?.user?.id;
-    const telegramData = tg?.initData;
-
-    if (!userId) {
-      showNotification("Please log in first.", "error");
-      return { success: false, error: 'USER_NOT_FOUND' };
-    }
-
-    const sessionKey = localStorage.getItem("sessionKey");
+// ===== دالة فحص صلاحية الجلسة =====
+function checkSessionValidity() {
+    const sessionKey = localStorage.getItem('sessionKey');
+    const sessionCreatedAt = localStorage.getItem('sessionCreatedAt');
+    
     if (!sessionKey) {
-      showNotification("Session expired, please refresh the app.", "warning");
-      return { success: false, error: 'SESSION_EXPIRED' };
+        console.error("❌ No session key found");
+        return { valid: false, reason: 'NO_SESSION_KEY' };
     }
-
-    const deviceFingerprint = await getDeviceFingerprint();
-    const clientTimestamp = Date.now();
     
-    // Get current ad count for this type
-    let adNumber = 0;
-    switch(adType) {
-      case 'monetag': adNumber = (appData.adsMonetag || 0) + 1; break;
-      case 'giga': adNumber = (appData.adsGiga || 0) + 1; break;
-      case 'adsgram': adNumber = (appData.adsAdsgram || 0) + 1; break;
-      default: adNumber = 1;
+    if (!sessionCreatedAt) {
+        console.error("❌ No session timestamp found");
+        return { valid: false, reason: 'NO_SESSION_TIMESTAMP' };
     }
+    
+    const now = Date.now();
+    const sessionAge = now - parseInt(sessionCreatedAt);
+    const MAX_SESSION_AGE = 30 * 60 * 1000; // 30 دقيقة
+    
+    if (sessionAge > MAX_SESSION_AGE) {
+        console.error("❌ Session expired:", Math.floor(sessionAge / 1000 / 60), "minutes old");
+        return { valid: false, reason: 'SESSION_EXPIRED', age: sessionAge };
+    }
+    
+    return { valid: true, sessionKey, sessionAge };
+}
 
-    // Prepare request data
-    const requestData = {
-      action: 'handleAdClick',
-      data: {
-        userId: userId.toString(),
-        deviceFingerprint: deviceFingerprint,
-        adType: adType,
-        reward: reward,
-        adNumber: adNumber,
-        clientTimestamp: clientTimestamp
-      }
+async function generateSessionSecret(){
+    if(!isCryptoSupported){
+        console.error("Web Crypto API not supported");
+        return null;
+    }
+    
+    try{
+        const timestamp = Date.now().toString();
+        const randomBytes = new Uint8Array(32);
+        crypto.getRandomValues(randomBytes);
+        const combined = timestamp + Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        const encoder = new TextEncoder();
+        const data = encoder.encode(combined);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        sessionSecret = hashHex.substring(0, 64);
+        console.log("✅ Session secret generated");
+        return sessionSecret;
+    }catch(error){
+        console.error("Error generating session secret:", error);
+        return null;
+    }
+}
+
+// ===== دالة sendSecureAdRequest المصححة =====
+async function sendSecureAdRequest(adType, reward){
+    try{
+        // 1. التحقق من صحة الجلسة أولاً
+        const sessionCheck = checkSessionValidity();
+        if (!sessionCheck.valid) {
+            if (sessionCheck.reason === 'SESSION_EXPIRED') {
+                showNotification("Session expired. Please refresh the page.", "warning");
+            } else {
+                showNotification("Session error. Please login again.", "error");
+            }
+            return { success: false, error: 'INVALID_SESSION', details: sessionCheck.reason };
+        }
+        
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if(!userId){
+            console.error("No user ID found");
+            showNotification("Please log in first.", "error");
+            return { success: false, error: 'USER_NOT_FOUND' };
+        }
+        
+        // 2. الحصول على بيانات المصادقة
+        const deviceFingerprint = await getOrGenerateDeviceFingerprint();
+        if(!deviceFingerprint){
+            console.error("Device fingerprint required");
+            showNotification("Security error: Device verification failed.", "error");
+            return { success: false, error: 'DEVICE_FINGERPRINT_REQUIRED' };
+        }
+        
+        // 3. الحصول على sessionKey من localStorage
+        const sessionKey = localStorage.getItem('sessionKey');
+        if(!sessionKey){
+            console.error("Session key not found in localStorage");
+            showNotification("Session error. Please refresh the page.", "error");
+            return { success: false, error: 'SESSION_KEY_MISSING' };
+        }
+        
+        // 4. تحضير بيانات الإعلان
+        const clientTimestamp = Date.now();
+        
+        // تحديد رقم الإعلان
+        let adNumber = 0;
+        switch(adType){
+            case 'monetag':
+                adNumber = (appData.adsMonetag || 0) + 1;
+                break;
+            case 'giga':
+                adNumber = (appData.adsGiga || 0) + 1;
+                break;
+            case 'adsgram':
+                adNumber = (appData.adsAdsgram || 0) + 1;
+                break;
+            default:
+                adNumber = Date.now();
+        }
+        
+        // 5. توليد adToken باستخدام sessionKey
+        const adToken = generateAdTokenFrontend(
+            userId.toString(),
+            deviceFingerprint,
+            adNumber,
+            clientTimestamp,
+            sessionKey
+        );
+        
+        console.log("Generated ad token for request:", {
+            userId,
+            deviceFingerprint: deviceFingerprint.substring(0, 10) + "...",
+            adNumber,
+            clientTimestamp,
+            adToken: adToken.substring(0, 20) + "...",
+            sessionKey: sessionKey.substring(0, 10) + "..."
+        });
+        
+        // 6. إعداد طلب HTTP
+        const requestData = {
+            action: 'handleAdClick',
+            data: {
+                userId: userId.toString(),
+                deviceFingerprint: deviceFingerprint,
+                adType: adType,
+                reward: reward,
+                adNumber: adNumber,
+                clientTimestamp: clientTimestamp
+            }
+        };
+        
+        const telegramData = window.Telegram?.WebApp?.initData || '';
+        
+        // 7. إرسال الطلب
+        const response = await fetch(`${API_URL}/api`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Action': 'handleAdClick',
+                'X-User-ID': userId.toString(),
+                'X-Telegram-Data': telegramData,
+                'X-Device-Fingerprint': deviceFingerprint,
+                'X-Ad-Number': adNumber.toString(),
+                'X-Ad-Token': adToken,
+                'X-Client-Timestamp': clientTimestamp.toString(),
+                'X-Session-Key': sessionKey
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const result = await response.json();
+        
+        // تسجيل النتيجة لتصحيح الأخطاء
+        console.log("Ad request result:", {
+            success: result.success,
+            error: result.error,
+            errorCode: result.errorCode,
+            data: result.data
+        });
+        
+        return result;
+        
+    }catch(error){
+        console.error("Secure ad request failed:", error);
+        return { 
+            success: false, 
+            error: error.message,
+            stack: error.stack
+        };
+    }
+}
+
+async function getOrGenerateDeviceFingerprint(){
+    if(window.localStorage){
+        const storedFingerprint = localStorage.getItem('deviceFingerprint');
+        if(storedFingerprint){
+            return storedFingerprint;
+        }
+    }
+    return await generateDeviceFingerprint();
+}
+
+async function generateDeviceFingerprint(){
+    try{
+        const userAgent = navigator.userAgent;
+        const platform = navigator.platform;
+        const language = navigator.language;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const screenInfo = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+        const hardwareConcurrency = navigator.hardwareConcurrency || 'unknown';
+        
+        const deviceData = {
+            userAgent: userAgent,
+            platform: platform,
+            language: language,
+            timezone: timezone,
+            screenInfo: screenInfo,
+            hardwareConcurrency: hardwareConcurrency,
+            timestamp: Date.now(),
+            random: Math.random().toString(36).substring(2)
+        };
+        
+        const dataString = JSON.stringify(deviceData);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(dataString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        if(window.localStorage){
+            localStorage.setItem('deviceFingerprint', hashHex);
+        }
+        return hashHex;
+    }catch(error){
+        console.error('Error generating device fingerprint:', error);
+        return `fallback_fingerprint_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    }
+}
+
+function performInitialSecurityCheck(){
+    if(!isCryptoSupported){
+        return { 
+            success: false, 
+            error: 'CRYPTO_NOT_SUPPORTED',
+            message: 'Web Crypto API is not supported in this browser'
+        };
+    }
+    return { success: true, message: 'Security checks passed' };
+}
+
+async function checkUserSecurityStatus(userId){
+    try{
+        const deviceFingerprint = await getOrGenerateDeviceFingerprint();
+        const response = await callAPI('checkDeviceFingerprint', { 
+            deviceFingerprint: deviceFingerprint 
+        });
+        return response;
+    }catch(error){
+        console.error('Security status check failed:', error);
+        return { 
+            success: false, 
+            error: 'SECURITY_CHECK_FAILED',
+            message: error.message
+        };
+    }
+}
+
+function logSecurityEvent(eventType, details){
+    const timestamp = new Date().toISOString();
+    const event = {
+        type: eventType,
+        timestamp: timestamp,
+        userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'unknown',
+        details: details
     };
+    console.log(`🔒 Security Event [${eventType}]:`, event);
+}
 
-    // Send request with headers matching server expectations
-    const response = await fetch(`${API_URL}/api`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Action': 'handleAdClick',
-        'X-User-ID': userId.toString(),
-        'X-Telegram-Data': telegramData || '',
-        'X-Device-Fingerprint': deviceFingerprint,
-        'X-Ad-Number': adNumber.toString(),
-        'X-Client-Timestamp': clientTimestamp.toString(),
-        'X-Session-Key': sessionKey.substring(0, 32)
-      },
-      body: JSON.stringify(requestData)
-    });
-
-    const result = await response.json();
-    console.log("Ad request result:", result);
-    
-    if (result.success) {
-      // Update local data
-      if (adType === 'monetag') appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
-      if (adType === 'giga') appData.adsGiga = result.data.adsGiga || appData.adsGiga;
-      if (adType === 'adsgram') appData.adsAdsgram = result.data.adsAdsgram || appData.adsAdsgram;
-      
-      appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
-      
-      showNotification(`✅ +${reward} GLX added!`, "success");
-      
-      // Update UI
-      const user = { id: userId };
-      renderUI(user);
-      
-      return result;
-    } else {
-      if (result.error === 'ACCOUNT_BLOCKED') {
-        showNotification("Your account has been blocked.", "error");
-      } else {
-        showNotification("Error: " + (result.error || "Unknown error"), "error");
-      }
-      return result;
-    }
-    
-  } catch (error) {
-    console.error("Ad request failed:", error);
-    showNotification("Connection error. Please try again.", "error");
-    return { 
-      success: false, 
-      error: error.message
+function blockDirectAdRequests(){
+    const originalCallAPI = window.callAPI;
+    window.callAPI = async function(action, data = {}){
+        if(action === 'handleAdClick'){
+            console.error("Direct handleAdClick calls are blocked.");
+            logSecurityEvent('BLOCKED_DIRECT_AD_REQUEST', { action: action, data: data });
+            return { 
+                success: false, 
+                error: 'DIRECT_AD_CALL_BLOCKED',
+                message: 'Use secure ad request system'
+            };
+        }
+        return originalCallAPI.call(this, action, data);
     };
-  }
 }
 
-/* -------- Simplified API Call Function -------- */
-async function callAPI(action, data = {}) {
-  try {
-    const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-    const response = await fetch(`${API_URL}/api`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': userId ? userId.toString() : '',
-        'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
-        'X-Action': action
-      },
-      body: JSON.stringify({
-        action: action,
-        data: data,
-        userId: userId ? userId.toString() : null,
-        timestamp: Date.now()
-      })
+async function initializeSecuritySystem(){
+    console.log("🛡️ Initializing security system...");
+    
+    const securityCheck = performInitialSecurityCheck();
+    if(!securityCheck.success){
+        throw new Error(securityCheck.message);
+    }
+    
+    sessionSecretPromise = generateSessionSecret();
+    await sessionSecretPromise;
+    
+    blockDirectAdRequests();
+    
+    logSecurityEvent('SESSION_STARTED', {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        timestamp: new Date().toISOString()
     });
     
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    if (!result.success && result.error === 'ACCOUNT_BLOCKED') {
-      showNotification("Your account has been blocked.", "error");
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('API call failed:', error);
-    showNotification("Connection error. Please try again.", "error");
-    return { success: false, error: error.message };
-  }
+    console.log("✅ Security system initialized successfully");
+    return true;
 }
 
-/* -------- Simplified User Initialization -------- */
-async function initializeUser(user, deviceFingerprint) {
-  const result = await callAPI('initializeUser', {
-    user,
-    deviceFingerprint
-  });
-
-  if (!result.success) {
-    if (result.error === 'ACCOUNT_BLOCKED') {
-      showNotification("Account blocked", "error");
-    }
-    return;
-  }
-
-  // بيانات المستخدم
-  appData = result.data.userData || {};
-
-  // حفظ sessionKey فقط (ولا شيء غيره)
-  if (result.data.sessionKey) {
-    localStorage.setItem('sessionKey', result.data.sessionKey);
-    localStorage.setItem('sessionCreatedAt', Date.now().toString());
-  }
-
-  await getUpdatedSettings();
-  await loadDailyWithdrawalsData();
-
-  renderUI(user);
-  renderDailyBonusUI();
-  updateAvailableSpins();
-  handleReferral(user);
+function isSessionValid(){
+    const sessionCheck = checkSessionValidity();
+    return sessionCheck.valid && isCryptoSupported;
 }
 
-/* -------- Ad Handlers -------- */
-let lastAdClickTime = 0;
-const AD_CLICK_DELAY = 3000;
-
-function canClickAd() {
-  const now = Date.now();
-  return (now - lastAdClickTime) >= AD_CLICK_DELAY;
+function getSecurityStatus(){
+    const sessionCheck = checkSessionValidity();
+    return {
+        isCryptoSupported: isCryptoSupported,
+        sessionValid: sessionCheck.valid,
+        sessionReason: sessionCheck.reason,
+        securityInitialized: true,
+        deviceFingerprintReady: true
+    };
 }
 
-async function handleMonetagAd() {
-  if (!canClickAd()) {
-    showNotification("Please wait 3 seconds before clicking again.", "warning");
-    return;
-  }
-  
-  const isAllowed = await checkBeforeAction("watch ad");
-  if (!isAllowed) return;
-  
-  await getUpdatedSettings();
-  lastAdClickTime = Date.now();
-  
-  const limit = appSettings.limitMonetag || 50;
-  if ((appData.adsMonetag || 0) >= limit) return;
-  
-  if (typeof show_10058786 !== 'function') {
-    showNotification("Ad system loading...", "info");
-    return;
-  }
-  
-  try {
-    await show_10058786({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-    
-    // Send reward request after ad completes
-    const result = await sendAdReward('monetag', appSettings.adRewardMonetag || 500);
-    
-  } catch (e) {
-    console.error("Monetag ad error:", e);
-    showNotification("Ad not ready", "warning");
-  }
-}
-
-async function handleGigaAd() {
-  if (!canClickAd()) {
-    showNotification("Please wait 3 seconds before clicking again.", "warning");
-    return;
-  }
-  
-  const isAllowed = await checkBeforeAction("watch ad");
-  if (!isAllowed) return;
-  
-  await getUpdatedSettings();
-  lastAdClickTime = Date.now();
-  
-  const limit = appSettings.limitGiga || 300;
-  if ((appData.adsGiga || 0) >= limit) return;
-  
-  if (typeof window.showGiga !== 'function') {
-    showNotification("Ad system loading...", "info");
-    return;
-  }
-  
-  try {
-    await window.showGiga();
-    
-    // Send reward request after ad completes
-    const result = await sendAdReward('giga', appSettings.adRewardGiga || 500);
-    
-  } catch (e) {
-    console.error("Giga ad error:", e);
-    showNotification("Ad failed or closed.", "warning");
-  }
-}
-
-async function handleAdsgramAd() {
-  if (!canClickAd()) {
-    showNotification("Please wait 3 seconds before clicking again.", "warning");
-    return;
-  }
-  
-  const isAllowed = await checkBeforeAction("watch ad");
-  if (!isAllowed) return;
-  
-  await getUpdatedSettings();
-  lastAdClickTime = Date.now();
-  
-  const limit = appSettings.limitAdsgram || 300;
-  if ((appData.adsAdsgram || 0) >= limit) return;
-  
-  if (!window.Adsgram || !window.Adsgram.show) {
-    showNotification("AdsGram not initialized", "warning");
-    return;
-  }
-  
-  try {
-    const result = await window.Adsgram.show();
-    if (result.done) {
-      // Send reward request after ad completes
-      await sendAdReward('adsgram', appSettings.adRewardAdsgram || 500);
-    }
-  } catch (error) {
-    console.error("AdsGram error:", error);
-    showNotification("Ad playback error.", "error");
-  }
-}
-
-/* -------- Notification Function -------- */
-function showNotification(message, type = 'info', duration = 5000) {
-  const notification = document.createElement('div');
-  notification.className = `notification-message notification-${type}`;
-  notification.innerHTML = `<div style="font-size:14px;font-weight:600;">${message}</div>`;
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.animation = 'fadeOut 0.3s ease';
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    }, 300);
-  }, duration);
-}
-
-/* -------- بقية الكود كما هو (بدون تعديلات) -------- */
-
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY_HERE",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+SecuritySystem = {
+    initialize: initializeSecuritySystem,
+    sendSecureAdRequest: sendSecureAdRequest,
+    getSecurityStatus: getSecurityStatus,
+    logSecurityEvent: logSecurityEvent,
+    generateDeviceFingerprint: generateDeviceFingerprint,
+    isSessionValid: isSessionValid,
+    getOrGenerateDeviceFingerprint: getOrGenerateDeviceFingerprint,
+    checkSessionValidity: checkSessionValidity
 };
 
-let db = null;
-try{
-    if(firebase && firebase.initializeApp){
-        firebase.initializeApp(firebaseConfig);
-        db = firebase.firestore();
-        console.log("✅ Firebase initialized successfully");
+function showSecurityStatus(){
+    const modal = document.getElementById('security-status-modal');
+    if(modal){
+        modal.style.display = 'flex';
+        updateSecurityStatusDisplay();
     }
-}catch(error){
-    console.error("❌ Firebase initialization error:", error);
 }
 
+function closeSecurityStatus(){
+    const modal = document.getElementById('security-status-modal');
+    if(modal){
+        modal.style.display = 'none';
+    }
+}
+
+async function updateSecurityStatusDisplay(){
+    const cryptoStatus = document.getElementById('crypto-status');
+    if(cryptoStatus){
+        cryptoStatus.textContent = isCryptoSupported ? 'Supported ✅' : 'Not Supported ❌';
+        cryptoStatus.className = 'security-value ' + (isCryptoSupported ? 'valid' : 'invalid');
+    }
+    
+    const sessionStatus = document.getElementById('session-status');
+    if(sessionStatus){
+        const sessionCheck = checkSessionValidity();
+        sessionStatus.textContent = sessionCheck.valid ? 'Active ✅' : 'Inactive ❌';
+        sessionStatus.className = 'security-value ' + (sessionCheck.valid ? 'valid' : 'invalid');
+    }
+    
+    const deviceStatus = document.getElementById('device-status');
+    if(deviceStatus){
+        try{
+            const fingerprint = await getOrGenerateDeviceFingerprint();
+            deviceStatus.textContent = fingerprint && fingerprint !== 'unknown' ? 'Verified ✅' : 'Not Verified ❌';
+            deviceStatus.className = 'security-value ' + (fingerprint && fingerprint !== 'unknown' ? 'valid' : 'invalid');
+        }catch(error){
+            deviceStatus.textContent = 'Error ❌';
+            deviceStatus.className = 'security-value invalid';
+        }
+    }
+    
+    const adSecurityStatus = document.getElementById('ad-security-status');
+    if(adSecurityStatus){
+        const sessionCheck = checkSessionValidity();
+        const allGood = isCryptoSupported && sessionCheck.valid;
+        adSecurityStatus.textContent = allGood ? 'Secure ✅' : 'At Risk ⚠️';
+        adSecurityStatus.className = 'security-value ' + (allGood ? 'valid' : 'invalid');
+    }
+}
+
+function refreshSecurityStatus(){
+    updateSecurityStatusDisplay();
+    showNotification("Security status refreshed", "info");
+}
+</script>
+</head>
+<body>
+<div id="global-loading-page">
+<img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" class="loading-logo">
+<h1 class="loading-title">GLX GALAXY</h1>
+<p class="loading-subtitle">Loading your cosmic experience...</p>
+<div class="loading-progress-container">
+<div class="loading-progress-bar" id="loading-progress-bar"></div>
+</div>
+<div class="loading-timer" id="loading-timer">10 seconds</div>
+<div style="margin-top:30px;font-size:11px;color:var(--text-muted);max-width:300px;">
+<i class="fas fa-shield-alt" style="margin-right:5px;"></i>
+Performing security checks & loading your data
+</div>
+</div>
+<div id="security-verification" class="verification-container" style="display:none;">
+<div style="margin-bottom:25px;"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" style="width:80px;height:80px;border-radius:50%;margin-bottom:15px;border:3px solid var(--primary-green);"><h1 style="font-size:24px;margin-bottom:8px;color:#fff;">GLX Galaxy Security</h1><p style="color:var(--text-muted);font-size:13px;">Secure verification process in progress</p></div>
+<div class="verification-progress"><div id="verification-progress-bar" class="progress-bar" style="width:0%"></div></div>
+<div id="verification-steps"></div>
+<div id="verification-result" style="display:none;margin-top:20px;"></div>
+</div>
+<div id="blocked-access" class="blocked-container" style="display:none;">
+<div class="blocked-icon">🚫</div>
+<div class="blocked-title">ACCESS BLOCKED</div>
+<div id="blocked-reason" class="blocked-reason"></div>
+<p style="color:var(--text-muted);font-size:12px;margin-top:20px;">If you believe this is an error, please contact support.</p>
+</div>
+<div id="security-status-modal" class="modal" style="display:none;">
+<div class="modal-content" style="max-width:400px;">
+<div class="modal-header">
+<h3>🔒 Security Status</h3>
+<span class="close-modal" onclick="closeSecurityStatus()">&times;</span>
+</div>
+<div class="modal-body">
+<div class="security-status-item">
+<span class="security-label">Web Crypto API:</span>
+<span id="crypto-status" class="security-value">Checking...</span>
+</div>
+<div class="security-status-item">
+<span class="security-label">Session:</span>
+<span id="session-status" class="security-value">Checking...</span>
+</div>
+<div class="security-status-item">
+<span class="security-label">Device Fingerprint:</span>
+<span id="device-status" class="security-value">Checking...</span>
+</div>
+<div class="security-status-item">
+<span class="security-label">Ad Security:</span>
+<span id="ad-security-status" class="security-value">Checking...</span>
+</div>
+<div class="security-info">
+<p><small>All security features must be active for ad rewards.</small></p>
+</div>
+</div>
+<div class="modal-footer">
+<button class="btn btn-secondary" onclick="closeSecurityStatus()">Close</button>
+<button class="btn btn-primary" onclick="refreshSecurityStatus()">Refresh</button>
+</div>
+</div>
+</div>
+<div class="app-container" style="display:none;" id="app-container">
+<div class="hud-container">
+<div><div class="user-name" id="home-username">Explorer</div><div class="user-rank" id="home-user-level" style="display:none;"></div><div style="display:flex;align-items:center;gap:15px;margin-top:5px;"><div class="stats-pill" style="margin:0;padding:6px 12px;"><span style="color:var(--gold);">GLX:</span><span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span></div><div class="stats-pill" style="margin:0;padding:6px 12px;"><span style="color:var(--gold);">TON:</span><span id="hud-ton-balance" style="color:#fff;font-weight:700;">0</span></div></div></div>
+<div style="display:flex;align-items:center;gap:10px;"><div class="galaxy-log-icon" id="galaxy-log-button"><span style="font-size:20px;">📜</span></div><div class="hud-avatar"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User"></div></div>
+</div>
+<main id="home" class="content-section active">
+<div class="main-coin-section"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="main-coin-img" alt="GLX"><div class="balance-display"><div class="balance-amount" id="total-GLX-balance">0</div><div class="balance-unit">GLX</div></div><div class="stats-pill"><span class="ton-val"><img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:16px;border-radius:50%;"><span id="home-ton-balance">0.0000</span> TON</span><span style="opacity:0.3">|</span><span style="font-size:10px;opacity:0.8;">100K = 0.01 TON</span></div></div>
+<div class="action-bar">
+<div class="btn btn-action nav-link" data-target="swap-page"><svg viewBox="0 0 24 24"><path d="M7 16V4m0 0L3 8m4-4 4 4m6 0v12m0 0 4-4m-4 4-4-4"/></svg><span>Swap</span></div>
+<div class="btn btn-action nav-link" data-target="withdraw"><svg viewBox="0 0 24 24"><path d="M12 5v14m0 0-6-6m6 6 6-6"/></svg><span>Withdraw</span></div>
+<div class="btn btn-action nav-link" data-target="user-withdrawals"><svg viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg><span>My Withdrawals</span></div>
+<div class="btn btn-action nav-link" data-target="deposit"><svg viewBox="0 0 24 24"><path d="M12 5v14m0 0-6-6m6 6 6-6" transform="rotate(180,12,12)"/></svg><span>Deposit</span></div>
+</div>
+<div class="card" style="margin-top:12px;">
+<h2 style="display:flex;align-items:center;gap:8px;">
+<i class="fa-solid fa-bullhorn"></i>Updates & News
+</h2>
+<div class="support-channel-card" onclick="window.open('https://t.me/earnmoney174688','_blank')" style="margin-bottom:10px;">
+<div style="display:flex;align-items:center;gap:12px;">
+<div style="width:50px;height:50px;background:linear-gradient(135deg,#9b59b6,#8e44ad);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+<i class="fa-solid fa-bell"></i>
+</div>
+<div style="flex:1;">
+<div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Bot Updates & News</div>
+<div style="font-size:11px;color:var(--text-muted);">Latest updates, announcements, and news about the bot</div>
+<div style="font-size:10px;color:#9b59b6;margin-top:5px;">
+<i class="fa-solid fa-users"></i> @earnmoney174688
+</div>
+</div>
+<div style="color:#9b59b6;font-size:18px;">
+<i class="fa-solid fa-arrow-right"></i>
+</div>
+</div>
+</div>
+</div>
+<div class="card" style="margin-top:12px;">
+<h2 style="display:flex;align-items:center;gap:8px;">
+<i class="fa-solid fa-headset"></i>Support & Help
+</h2>
+<div class="support-channel-card" onclick="window.open('https://t.me/aborabie777','_blank')" style="margin-bottom:10px;">
+<div style="display:flex;align-items:center;gap:12px;">
+<div style="width:50px;height:50px;background:linear-gradient(135deg,#3498db,#2980b9);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+<i class="fa-solid fa-user-gear"></i>
+</div>
+<div style="flex:1;">
+<div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Technical Support</div>
+<div style="font-size:11px;color:var(--text-muted);">Get help with technical issues and account problems</div>
+</div>
+<div style="color:#3498db;font-size:18px;">
+<i class="fa-solid fa-arrow-right"></i>
+</div>
+</div>
+</div>
+<div class="support-channel-card" onclick="window.open('https://t.me/Elsayed_1_Elgohary','_blank')">
+<div style="display:flex;align-items:center;gap:12px;">
+<div style="width:50px;height:50px;background:linear-gradient(135deg,#27ae60,#2ecc71);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+<i class="fa-solid fa-circle-question"></i>
+</div>
+<div style="flex:1;">
+<div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">General Support & FAQ</div>
+<div style="font-size:11px;color:var(--text-muted);">Get answers to common questions and general help</div>
+</div>
+<div style="color:#27ae60;font-size:18px;">
+<i class="fa-solid fa-arrow-right"></i>
+</div>
+</div>
+</div>
+</div>
+</main>
+<main id="galaxy-log-page" class="content-section">
+<div class="page-header"><h1>Galaxy Log</h1><p>Complete transaction history</p></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px;">
+<div class="log-stat-card"><div style="font-size:12px;color:var(--text-muted);">Total Earned</div><div style="font-size:18px;font-weight:700;color:#27ae60;" id="total-earned">0 GLX</div></div>
+<div class="log-stat-card"><div style="font-size:12px;color:var(--text-muted);">Total Spent</div><div style="font-size:18px;font-weight:700;color:#e74c3c;" id="total-spent">0 GLX</div></div>
+</div>
+<div id="galaxy-log-filtered-list" style="max-height:500px;overflow-y:auto;"></div>
+</main>
+<main id="deposit" class="content-section">
+<div class="page-header"><h1>Deposit TON</h1><p>Add funds to your account</p></div>
+<div class="card">
+<div style="text-align:center;margin-bottom:20px;"><div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-arrow-down-to-line" style="color:#27ae60;"></i>Deposit TON</div><div style="font-size:12px;color:var(--text-muted);">Add TON directly to your account</div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);padding:12px;border-radius:12px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1);"><div><div style="font-size:11px;color:var(--text-muted);">Current Balance</div><div style="font-size:20px;font-weight:700;color:#fff;"><span class="user-ton-balance">0.0000</span> TON</div></div></div>
+<div class="input-wrap"><span class="input-label">Deposit Amount (TON)</span><input type="number" id="deposit-amount" class="custom-input" placeholder="0.01" step="0.001" min="0.01" value="0.01"><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Minimum: 0.01 TON</div></div>
+<button class="btn btn-ton" id="deposit-pay-btn" onclick="initiateDeposit()"><img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:20px;border-radius:50%;">Pay with Tonkeeper</button>
+<div id="deposit-status" style="display:none;text-align:center;margin-top:15px;"><div id="deposit-status-message" style="font-size:12px;color:var(--text-muted);"></div><button class="btn btn-check" id="check-deposit-btn" onclick="verifyDeposit()" style="margin-top:10px;">Check Payment</button></div>
+<div class="info-box" style="background:rgba(52,152,219,0.1);border-color:rgba(52,152,219,0.3);margin-top:15px;"><div style="display:flex;align-items:flex-start;gap:10px;"><div style="color:#3498db;font-size:14px;"><i class="fa-solid fa-circle-info"></i></div><div style="font-size:11px;line-height:1.5;"><strong>Deposit Instructions:</strong><br>1. Enter the TON amount you want to deposit<br>2. Click "Pay with Tonkeeper"<br>3. Confirm the payment in your Tonkeeper wallet<br>4. Click "Check Payment" to verify<br>5. Funds will be added to your account immediately</div></div></div>
+</div>
+<div class="card" style="margin-top:15px;"><div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa-solid fa-headset" style="color:#3498db;"></i>Need Help with Deposit?</div><div style="font-size:12px;color:var(--text-muted);margin-bottom:15px;">If you're having issues with deposit, contact our support team</div><button class="btn btn-ton" onclick="window.open('https://t.me/Elsayed_1_Elgohary','_blank')" style="background:linear-gradient(90deg,#3498db,#2980b9);"><i class="fab fa-telegram"></i>Contact Support</button></div></div>
+</main>
+<main id="user-withdrawals" class="content-section">
+<div class="page-header"><h1>My Withdrawals</h1><p>Track your withdrawal requests</p></div>
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;"><h3 style="color:var(--gold);font-size:14px;">Withdrawal History</h3><div style="display:flex;gap:5px;"><button class="btn-filter small active" onclick="filterUserWithdrawals('all')">All</button><button class="btn-filter small" onclick="filterUserWithdrawals('pending')">Pending</button><button class="btn-filter small" onclick="filterUserWithdrawals('completed')">Completed</button></div></div>
+<div id="user-withdrawals-list" style="max-height:400px;overflow-y:auto;display:flex;flex-direction:column-reverse;"></div>
+</div>
+</main>
+<main id="competition" class="content-section">
+<div class="page-header"><h1>Daily Competition</h1><p>Win Big with Tickets</p></div>
+<div class="competition-timer-card"><div class="countdown-display" id="countdown-timer">24:00:00</div><div class="timer-label">TIME UNTIL NEXT COMPETITION</div></div>
+<div class="status-grid">
+<div class="status-card"><div class="status-icon">🏁</div><div class="status-value" id="competition-status">ACTIVE</div><div class="status-label">COMPETITION STATUS</div></div>
+<div class="status-card"><div class="status-value" id="prize-pool">0.000 TON</div><div class="status-label">TOTAL PRIZE POOL</div></div>
+<div class="status-card" style="grid-column:span 2;"><div class="status-value" id="total-tickets" style="font-size:32px;">0</div><div class="status-label">TOTAL TICKETS SOLD</div></div>
+</div>
+<div class="ticket-price-note">
+<p>🎫 <strong>Each ticket = 10,000 GLX = 0.001 TON</strong></p>
+<p style="font-size:11px;margin-top:5px;">Prize Pool = Total Tickets × 0.001 TON</p>
+</div>
+<div class="competition-rules-card">
+<div class="rules-header"><i class="fa-solid fa-circle-info"></i><span>Competition Rules</span></div>
+<ul class="rules-list">
+<li><span class="winner-highlight">🏆 ONLY THE FIRST PLACE WINS!</span> - The user with the most tickets wins the entire prize pool.</li>
+<li><span class="loser-note">❌ ALL OTHER PARTICIPANTS LOSE</span> - Only #1 gets the prize, others get nothing.</li>
+<li>🎫 Each ticket costs <strong>10,000 GLX (0.001 TON)</strong></li>
+<li>💰 Prize Pool = Total Tickets × 0.001 TON</li>
+<li>⏰ Competition runs for 24 hours, followed by 1 hour break</li>
+<li>📊 Winner is automatically selected after competition ends</li>
+</ul>
+<div class="important-note"><i class="fa-solid fa-exclamation-triangle"></i><strong>Important:</strong> Buy more tickets to increase your chance of winning! Only #1 position matters.</div>
+</div>
+<div class="card">
+<h3 style="color:var(--gold);margin-bottom:15px;">🎟️ Buy Competition Tickets</h3>
+<div class="ticket-controls"><input type="number" id="ticket-amount" class="ticket-input" placeholder="Enter tickets amount" min="1" value="1"><button class="max-btn" onclick="setMaxTickets()">MAX</button></div>
+<div class="price-info">
+<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:12px;"><span style="color:var(--text-muted);">Tickets:</span><span id="tickets-count-display">1</span></div>
+<div style="display:flex;justify-content:space-between;margin-bottom:15px;font-size:12px;"><span style="color:var(--text-muted);">Cost:</span><span id="tickets-cost-display">10,000 GLX</span></div>
+</div>
+<button class="btn btn-primary" id="buy-tickets-btn" onclick="buyTickets()"><i class="fa-solid fa-ticket"></i>BUY TICKETS</button>
+<p id="buy-tickets-status" style="text-align:center;font-size:11px;margin-top:10px;color:var(--text-muted);"></p>
+</div>
+<div class="competition-leaderboard">
+<div class="leaderboard-header"><h3 style="font-size:16px;color:var(--gold);">🏆 Top 10 Leaders</h3><span style="font-size:10px;color:var(--text-muted);">Live Ranking</span></div>
+<div id="competition-leaderboard-list" style="max-height:300px;overflow-y:auto;padding-bottom:10px;"><p style="text-align:center;padding:20px;color:var(--text-muted);">Loading leaderboard...</p></div>
+</div>
+<div class="previous-winners-card"><h3 style="font-size:16px;color:var(--gold);margin-bottom:15px;">📅 Yesterday's Winners</h3><div id="previous-winners-list"><p style="text-align:center;padding:20px;color:var(--text-muted);">No previous winners yet</p></div></div>
+</main>
+<main id="bonus" class="content-section">
+<div class="page-header"><h1>Galaxy Bonus</h1><p>Daily rewards & fun games</p></div>
+<div class="bonus-grid">
+<div class="bonus-game-card" onclick="openGame('coin-flip')"><img src="https://i.ibb.co/gLT3myT3/Coin-Flip-Game.png" alt="Coin Flip Game" class="game-banner"><div class="game-content"><div class="game-icon">🪙</div><div class="game-title">Coin Flip Game</div><div class="game-description">Heads or Tails? Win 2x your bet!</div></div></div>
+<div class="bonus-game-card" onclick="openGame('promo-codes')"><img src="https://i.ibb.co/jnp9cTb/Promo-Codes-Rewards.png" alt="Promo Codes & Rewards" class="game-banner"><div class="game-content"><div class="game-icon">🎁</div><div class="game-title">Promo Codes</div><div class="game-description">Redeem codes for free rewards</div></div></div>
+<div class="bonus-game-card" onclick="openGame('daily-streak')"><img src="https://i.ibb.co/GQQ0BnsT/Daily-Streak.png" alt="Daily Streak" class="game-banner"><div class="game-content"><div class="game-icon">📅</div><div class="game-title">Daily Streak</div><div class="game-description">Claim daily rewards up to 7 days</div></div></div>
+<div class="bonus-game-card" onclick="openGame('galaxy-slots')"><img src="https://i.ibb.co/204QyBWX/Galaxy-Slots-Game.png" alt="Galaxy Slots Game" class="game-banner"><div class="game-content"><div class="game-icon">🎰</div><div class="game-title">Galaxy Slots</div><div class="game-description">Spin the reels & win big jackpots</div></div></div>
+</div>
+<div id="coin-flip-section" class="card" style="display:none;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;"><h3 style="font-size:14px;color:var(--gold);display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-coins" style="color:#a855f7;"></i>Coin Flip Game</h3><button class="btn btn-action" onclick="closeGame()" style="width:auto;padding:8px 12px;font-size:11px;"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
+<div class="probability-display" style="display:none;"><div class="prob-item"><div class="prob-value win-prob">45%</div><div class="prob-label">Win Chance</div></div><div class="prob-item"><div class="prob-value loss-prob">55%</div><div class="prob-label">Loss Chance</div></div></div>
+<div class="coin-flip-game">
+<div class="coin-bet-controls"><input type="number" id="coin-bet-amount" class="bet-input" placeholder="Enter bet amount" min="1000" value="1000"><button class="max-btn" onclick="setMaxBet()" style="width:auto;padding:12px 15px;">MAX</button></div>
+<div class="bet-buttons"><button class="bet-btn k-style active" onclick="setBetAmount(1000)">1k</button><button class="bet-btn k-style" onclick="setBetAmount(5000)">5k</button><button class="bet-btn k-style" onclick="setBetAmount(10000)">10k</button><button class="bet-btn k-style" onclick="setBetAmount(25000)">25k</button></div>
+<div class="side-selection">
+<div class="side-btn active" id="choose-glx" onclick="chooseSide('glx')"><div class="side-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" style="width:70px;height:70px;border-radius:50%;"></div><div class="side-name">GLX Side</div><div class="side-description">Win 2x if GLX appears</div></div>
+<div class="side-btn" id="choose-gold" onclick="chooseSide('gold')"><div class="side-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" style="width:70px;height:70px;border-radius:50%;filter:sepia(1)saturate(2)hue-rotate(10deg)brightness(1.2);"></div><div class="side-name">Gold Side</div><div class="side-description">Win 2x if Gold appears</div></div>
+</div>
+<div class="coin-container"><div class="coin" id="coin"><div class="coin-face coin-front"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Coin"></div><div class="coin-face coin-back"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Gold Coin" class="gold-side"></div></div></div>
+<button class="btn btn-primary" id="flip-coin-btn" onclick="flipCoin()"><i class="fa-solid fa-play"></i>FLIP COIN</button>
+<div class="game-result" id="coin-game-result" style="display:none;"><div class="result-text" id="coin-result-text"></div><div class="win-amount" id="coin-win-amount"></div><div class="loss-amount" id="coin-loss-amount"></div></div>
+<div class="coin-game-rules">
+<h4><i class="fa-solid fa-circle-info"></i>Game Rules</h4>
+<ul>
+<li><strong>Minimum bet:</strong> 1,000 GLX</li>
+<li><strong>Choose:</strong> GLX Side or Gold Side</li>
+<li><strong>If you win:</strong> Get 2x your bet (net profit: bet amount)</li>
+<li><strong>If you lose:</strong> Lose your bet amount</li>
+<li><strong>Note:</strong> Bet amount is deducted immediately when you flip</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="promo-codes-section" class="card" style="display:none;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;"><h3 style="font-size:14px;color:var(--gold);display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-gift" style="color:#a855f7;"></i>Promo Codes & Rewards</h3><button class="btn btn-action" onclick="closeGame()" style="width:auto;padding:8px 12px;font-size:11px;"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
+<div class="promo-card" style="background:linear-gradient(135deg,rgba(168,85,247,0.2),rgba(123,97,255,0.2));border-radius:20px;padding:20px;margin-bottom:15px;border:2px solid rgba(168,85,247,0.3);position:relative;overflow:hidden;">
+<div style="position:absolute;top:-50px;right:-50px;width:100px;height:100px;background:rgba(168,85,247,0.1);border-radius:50%;"></div>
+<div style="position:absolute;bottom:-30px;left:-30px;width:80px;height:80px;background:rgba(123,97,255,0.1);border-radius:50%;"></div>
+<div style="position:relative;z-index:2;">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;"><div style="width:50px;height:50px;background:linear-gradient(135deg,#a855f7,#7b61ff);border-radius:15px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;"><i class="fa-solid fa-key"></i></div><div><div style="font-size:16px;font-weight:800;color:white;">Redeem Code</div><div style="font-size:12px;color:rgba(255,255,255,0.7);">Enter promo code for rewards</div></div></div>
+<div style="display:flex;gap:10px;margin-bottom:15px;"><input type="text" id="promo-code-input" placeholder="Enter promo code..." style="flex:1;padding:12px 15px;border-radius:12px;background:rgba(0,0,0,0.3);border:1px solid rgba(168,85,247,0.5);color:white;font-family:inherit;font-size:14px;outline:none;"><button id="redeem-code-btn" style="padding:12px 20px;background:linear-gradient(135deg,#a855f7,#7b61ff);border:none;border-radius:12px;color:white;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-gift"></i>Redeem</button></div>
+<div id="promo-result" style="padding:10px;border-radius:10px;font-size:12px;text-align:center;display:none;"></div>
+</div>
+</div>
+<div class="code-channel-card" style="background:linear-gradient(135deg,rgba(255,193,7,0.2),rgba(255,152,0,0.2));border-radius:20px;padding:20px;border:2px solid rgba(255,193,7,0.3);position:relative;overflow:hidden;cursor:pointer;" onclick="window.open('https://t.me/earnmoney1685','_blank')">
+<div style="position:absolute;top:-30px;right:-30px;width:80px;height:80px;background:rgba(255,193,7,0.1);border-radius:50%;"></div>
+<div style="position:relative;z-index:2;">
+<div style="display:flex;align-items:center;gap:15px;"><div style="width:60px;height:60px;background:linear-gradient(135deg,#FFC107,#FF9800);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:white;"><i class="fab fa-telegram"></i></div><div style="flex:1;"><div style="font-size:16px;font-weight:800;color:white;margin-bottom:5px;"><i class="fa-solid fa-bolt" style="color:#FFC107;"></i>Codes Channel</div><div style="font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:8px;">Get exclusive promo codes & daily rewards</div><div style="display:flex;align-items:center;gap:5px;"><span style="font-size:11px;color:#FFC107;font-weight:700;"><i class="fa-solid fa-users"></i>Join Now</span><span style="font-size:11px;color:rgba(255,255,255,0.6);">@earnmoney1685</span></div></div><div style="width:40px;height:40px;background:rgba(255,255,255,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFC107;font-size:18px;"><i class="fa-solid fa-arrow-right"></i></div></div>
+</div>
+</div>
+</div>
+<div id="daily-streak-section" class="card" style="display:none;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;"><h3 style="font-size:14px;color:var(--gold);display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-calendar-check" style="color:#a855f7;"></i>Daily Streak</h3><button class="btn btn-action" onclick="closeGame()" style="width:auto;padding:8px 12px;font-size:11px;"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
+<div class="daily-row" id="daily-checkin-grid"></div>
+<button class="btn btn-primary" id="claim-daily-btn">Claim Bonus</button>
+<p id="next-claim-timer" style="text-align:center;font-size:11px;margin-top:8px;opacity:0.7;"></p>
+</div>
+<div id="galaxy-slots-section" class="card" style="display:none;text-align:center;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;"><h3 style="font-size:14px;color:var(--gold);display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-slot-machine" style="color:#a855f7;"></i>Galaxy Slots Game</h3><button class="btn btn-action" onclick="closeGame()" style="width:auto;padding:8px 12px;font-size:11px;"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
+<div class="spins-display">
+<div><div style="font-size:12px;color:var(--text-muted);">Available Spins</div><div class="spins-count" id="available-spins">1</div></div>
+<button class="btn btn-ton" onclick="getExtraSpin()" style="width:auto;padding:8px 15px;">🎬 Watch Ad for Extra Spin</button>
+</div>
+<div class="slots-machine">
+<div class="slots-reels">
+<div class="reel-container"><div class="reel" id="reel1"></div></div>
+<div class="reel-container"><div class="reel" id="reel2"></div></div>
+<div class="reel-container"><div class="reel" id="reel3"></div></div>
+</div>
+<div class="slots-result">
+<div id="slots-result-text" style="font-size:14px;margin-bottom:10px;">Press SPIN to play!</div>
+<div id="slots-win-amount" style="font-size:24px;font-weight:800;color:var(--primary-green);">0 GLX</div>
+</div>
+</div>
+<button class="btn btn-primary" id="slots-spin-btn" style="margin-bottom:15px;">🚀 SPIN NOW</button>
+<div class="payout-table">
+<div class="payout-item">3x 🌟 = <span class="jackpot">10000 GLX</span></div>
+<div class="payout-item">3x 🪐 = 5000 GLX</div>
+<div class="payout-item">3x 💫 = 2500 GLX</div>
+<div class="payout-item">3x ⭐ = 1200 GLX</div>
+<div class="payout-item">2x 🌟 = 700 GLX</div>
+<div class="payout-item">Any Match = 500 GLX</div>
+</div>
+</div>
+</main>
+<main id="tasks" class="content-section">
+<div class="page-header"><h1>Missions</h1><p>Complete tasks to earn GLX</p></div>
+<div class="card">
+<div style="display:flex;justify-content:space-between;margin-bottom:10px;font-size:12px;font-weight:700;"><span>Daily Ad Limit</span><span style="color:var(--gold);">650 Total</span></div>
+<div id="monetag-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
+<div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
+<div class="lc-content"><div class="lc-title">Monetag Ad</div><div class="lc-sub"><span id="monetag-count">0</span>/<span id="monetag-limit">50</span></div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
+</div>
+<div id="gigapub-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);margin-bottom:10px;">
+<div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
+<div class="lc-content"><div class="lc-title">GigaPub Ad</div><div class="lc-sub"><span id="giga-count">0</span>/<span id="giga-limit">300</span></div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
+</div>
+<div id="adsgram-ad-task" class="list-card" style="background:rgba(255,255,255,0.08);border-color:var(--primary-green);">
+<div class="lc-icon"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Ad"></div>
+<div class="lc-content"><div class="lc-title">AdsGram Ad</div><div class="lc-sub"><span id="adsgram-count">0</span>/<span id="adsgram-limit">300</span></div></div>
+<div class="lc-end"><div class="lc-val">+500</div></div>
+</div>
+</div>
+<h2>Community</h2>
+<div id="community-tasks-card"><div id="community-tasks-list"></div></div>
+</main>
+<main id="create-task-page" class="content-section">
+<div class="page-header"><h1>Add Mission</h1><p>Promote your channel or bot</p></div>
+<div class="card">
+<div class="input-wrap"><span class="input-label">Task Name</span><input type="text" id="new-task-name" class="custom-input" placeholder="e.g. Join Galaxy Channel"></div>
+<div class="input-wrap"><span class="input-label">Link</span><input type="text" id="new-task-link" class="custom-input" placeholder="https://t.me/..."></div>
+<div class="input-label" style="margin-bottom:10px;">Category</div>
+<div class="cat-select">
+<div class="cat-opt active" onclick="selectCat(this,'channel')">Channel / Group</div>
+<div class="cat-opt" onclick="selectCat(this,'bot')">Website / Bot</div>
+</div>
+<div id="admin-required-msg" style="background:rgba(255,179,0,0.15);border:1px solid #ffb300;border-radius:12px;padding:12px;margin-bottom:20px;font-size:12px;color:#ffb300;display:block;line-height:1.5;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i><strong>Action Required:</strong> You must add <u>@RealEarnBot_bot</u> as an <strong>Admin</strong> in your Channel/Group for tracking to work.</div>
+<div class="input-label" style="margin-bottom:10px;">Number of Completions</div>
+<div class="price-grid" id="price-options"></div>
+<div id="payment-step-1"><button class="btn btn-ton" id="pay-task-btn" onclick="initiatePayment()"><img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:20px;border-radius:50%;">Pay <span id="pay-amount-display">0</span> TON</button></div>
+<div id="payment-step-2" style="display:none;text-align:center;"><p style="font-size:12px;margin-bottom:10px;color:#fff;">Payment sent? Verify below:</p><button class="btn btn-check" id="check-payment-btn" onclick="verifyPayment()">Check Payment</button><p id="payment-status-msg" style="font-size:11px;margin-top:8px;color:var(--text-muted);">Waiting for transaction...</p></div>
+</div>
+<button class="btn btn-action nav-link" data-target="tasks" style="margin-top:10px;">Cancel</button>
+</main>
+<main id="history" class="content-section">
+<div class="page-header"><h1>Ledger</h1><p>Transaction History</p></div>
+<div id="full-history-list" style="padding-bottom:20px;"></div>
+</main>
+<main id="withdrawal-history" class="content-section">
+<div class="page-header"><h1>Withdrawal History</h1><p>All completed withdrawals</p></div>
+<div class="card" style="margin-top:15px;">
+<h2 style="display:flex;align-items:center;gap:8px;"><i class="fa-solid fa-credit-card"></i>Payments Channel</h2>
+<div class="support-channel-card" onclick="window.open('https://t.me/earnmoney139482','_blank')">
+<div style="display:flex;align-items:center;gap:12px;"><div style="width:50px;height:50px;background:linear-gradient(135deg,#a855f7,#7b61ff);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;"><i class="fab fa-telegram"></i></div><div style="flex:1;"><div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Payments & Withdrawals Channel</div><div style="font-size:11px;color:var(--text-muted);">Track payments, withdrawals, and transaction updates</div><div style="font-size:10px;color:#ffb300;margin-top:5px;"><i class="fa-solid fa-users"></i> @earnmoney139482</div></div><div style="color:var(--primary-green);font-size:18px;"><i class="fa-solid fa-arrow-right"></i></div></div>
+</div>
+</div>
+<div id="withdrawal-history-list" style="max-height:500px;overflow-y:auto;"></div>
+</main>
+<main id="swap-page" class="content-section">
+<div class="page-header"><h1>Swap Market</h1><p>100K GLX = 0.01 TON</p></div>
+<div class="swap-direction-selector">
+<div class="swap-direction-btn active" onclick="selectSwapDirection('glx_to_ton')">GLX → TON</div>
+<div class="swap-direction-btn" onclick="selectSwapDirection('ton_to_glx')">TON → GLX</div>
+</div>
+<div class="card">
+<div id="glx-to-ton-section">
+<div class="input-wrap"><span class="input-label">You Give (GLX)</span><input type="number" id="swap-input-amount" class="custom-input" placeholder="Min 1,000" oninput="calculateSwap()"><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Max:<span id="swap-max-GLX">0</span><button onclick="setMaxSwap('glx')" style="margin-left:10px;background:var(--primary-green);color:#000;border:none;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;">MAX</button></div></div>
+<div class="input-wrap"><span class="input-label">You Get (TON)</span><div style="display:flex;align-items:center;gap:10px;"><img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" style="width:24px;"><span id="swap-output-amount" class="custom-input">0.0000000</span></div></div>
+<div class="swap-mode-text">Rate: 100,000 GLX = 0.01 TON</div>
+</div>
+<div id="ton-to-glx-section" style="display:none;">
+<div class="input-wrap"><span class="input-label">You Give (TON)</span><input type="number" id="ton-input-amount" class="custom-input" placeholder="Min 0.0001" oninput="calculateSwap()"><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Max:<span id="swap-max-TON">0.0000</span><button onclick="setMaxSwap('ton')" style="margin-left:10px;background:var(--primary-green);color:#000;border:none;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;">MAX</button></div></div>
+<div class="input-wrap"><span class="input-label">You Get (GLX)</span><div style="display:flex;align-items:center;gap:10px;"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" style="width:24px;height:24px;border-radius:50%;"><span id="ton-output-amount" class="custom-input">0</span></div></div>
+<div class="swap-mode-text">Rate: 0.01 TON = 100,000 GLX</div>
+</div>
+<button class="btn btn-primary" id="execute-swap-btn" onclick="executeSwap()">Confirm Swap</button>
+</div>
+</main>
+<main id="withdraw" class="content-section">
+<div class="page-header"><h1>Withdraw</h1><p>GLX out to TON Wallet</p></div>
+<div class="withdrawals-counter" id="daily-withdrawals-counter">
+<div>Today's Withdrawals: <span class="count" id="today-withdrawals-count">0</span>/2</div>
+<div class="reset-time" id="withdraw-reset-timer">Resets in: 24h 00m</div>
+</div>
+<div class="withdrawal-type-selector">
+<div class="withdrawal-type-btn active" data-type="faucetpay" onclick="selectWithdrawalType('faucetpay')"><i class="fa-solid fa-envelope"></i>FaucetPay</div>
+<div class="withdrawal-type-btn" data-type="tonwallet" onclick="selectWithdrawalType('tonwallet')"><i class="fa-solid fa-wallet"></i>TON Wallet</div>
+</div>
+<div id="faucetpay-form" class="card">
+<div class="input-wrap"><span class="input-label">FaucetPay Email Address</span><input type="email" id="faucetpay-email" class="custom-input" placeholder="example@gmail.com" oninput="maskEmail()"><div id="email-preview" class="email-display masked-email" style="display:none;margin-top:8px;font-size:12px;color:#a855f7;font-family:'Courier New',monospace;"></div></div>
+<div class="input-wrap withdraw-input-with-max"><span class="input-label">Withdrawal Amount (TON)</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="faucetpay-amount" class="custom-input" placeholder="0.0001" step="0.0001" min="0.0001" value="0.0001" style="flex:1;"><button class="max-btn" onclick="setMaxFaucetPay()">MAX</button></div><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Minimum: 0.0001 TON</div></div>
+<div class="info-box"><div style="display:flex;align-items:flex-start;gap:8px;"><div class="info-icon">!</div><div style="font-size:11px;line-height:1.4;"><strong>Important Information:</strong><br>• Enter the email registered with your FaucetPay account<br>• Minimum withdrawal: 0.0001 TON<br>• <span style="color:#27ae60;">✅ No fees</span> - We cover all transaction costs<br>• Processing time: Up to 1 minute<br>• Your email will be partially hidden for privacy</div></div></div>
+<button class="btn btn-primary" id="withdraw-faucetpay-btn" onclick="handleFaucetPayWithdraw()"><i class="fa-solid fa-paper-plane"></i>WITHDRAW VIA FAUCETPAY</button>
+</div>
+<div id="tonwallet-form" class="card" style="display:none;">
+<div class="input-wrap"><span class="input-label">TON Wallet Address</span><input type="text" id="ton-wallet-address" class="custom-input" placeholder="UQ... or EQ... or kQ..."><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Enter your TON wallet address (starts with UQ, EQ, or kQ)</div></div>
+<div class="input-wrap"><span class="input-label">Memo (Optional)</span><input type="text" id="ton-memo" class="custom-input" placeholder="For exchange deposits only"><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Optional: Required by some exchanges for deposits</div></div>
+<div class="input-wrap withdraw-input-with-max"><span class="input-label">Withdrawal Amount (TON)</span><div style="display:flex;align-items:center;gap:8px;"><input type="number" id="ton-withdraw-amount" class="custom-input" placeholder="0.05" step="0.01" min="0.05" value="0.05" style="flex:1;"><button class="max-btn" onclick="setMaxTonWallet()">MAX</button></div><div style="text-align:right;font-size:10px;color:var(--text-muted);margin-top:5px;">Minimum: 0.05 TON</div></div>
+<div class="info-box success"><div style="display:flex;align-items:flex-start;gap:8px;"><div class="info-icon">✓</div><div style="font-size:11px;line-height:1.4;"><strong>Withdrawal Details:</strong><br>• Minimum withdrawal: 0.05 TON<br>• <span style="color:#27ae60;">✅ No fees</span> - We cover all transaction costs<br>• Processing time: Up to 24 hours<br>• Memo is only needed for exchange deposits<br>• Ensure address is correct - transactions are irreversible</div></div></div>
+<button class="btn btn-primary" id="withdraw-ton-now-btn" onclick="handleTonWalletWithdraw()"><i class="fa-solid fa-wallet"></i>WITHDRAW TO TON WALLET</button>
+</div>
+</main>
+<main id="leaderboard" class="content-section">
+<div class="page-header"><h1>Top Kings</h1><p>The richest in the Galaxy</p></div>
+<div class="leader-tabs"><div class="tab-btn active" data-target="invites-leaderboard-list">Invites</div><div class="tab-btn" data-target="earnings-leaderboard-list">Holders</div></div>
+<div class="podium-list" id="invites-leaderboard-list"></div>
+<div class="podium-list hidden" id="earnings-leaderboard-list"></div>
+</main>
+<main id="referrals" class="content-section">
+<div class="page-header"><h1>Referrals</h1><p>Invite friends, earn together</p></div>
+<div class="card" style="text-align:center;">
+<img src="https://i.ibb.co/tTkJX1Qy/logo.png" style="width:80px;margin-bottom:15px;">
+<div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:12px;margin-bottom:20px;"><div style="font-size:12px;color:var(--text-muted);">Total Referrals</div><div style="font-size:24px;font-weight:800;color:#fff;" id="referral-count-display">0</div></div>
+<p>Earn <strong>+100K GLX</strong> for every friend.</p>
+<div id="referral-link-display" style="background:#000;padding:10px;border-radius:8px;font-family:monospace;font-size:10px;color:#aaa;margin:15px 0;word-break:break-all;">...</div>
+<button class="btn btn-primary" id="share-referral-btn">Invite Friends</button>
+<button class="btn btn-outline" id="copy-referral-btn" style="margin-top:10px;">Copy Link</button>
+</div>
+</main>
+</div>
+<div class="floating-add-task hidden" id="floatingAddTask" onclick="switchTab('create-task-page')">
+<div class="floating-add-task-content">
+<div class="floating-add-task-icon">+</div>
+<div class="floating-add-task-text">Add Task</div>
+</div>
+</div>
+<nav class="bottom-nav">
+<div class="nav-item active" data-target="home"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg><span class="nav-text">Home</span></div>
+<div class="nav-item" data-target="tasks"><svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="nav-text">Tasks</span></div>
+<div class="nav-item" data-target="bonus"><svg viewBox="0 0 24 24"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg><span class="nav-text">Bonus</span></div>
+<div class="nav-item competition-nav-item" data-target="competition">
+<div class="competition-nav-icon"><svg viewBox="0 0 32 32" width="28" height="28"><circle cx="16" cy="16" r="14" fill="rgba(255,215,0,0.15)" opacity="0.8"/><path d="M9 13 L16 8 L23 13 L21 21 L11 21 Z" fill="none" stroke="#FFD700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 5 L17.5 10 L22 10 L18.5 13 L19.5 18 L16 15 L12.5 18 L13.5 13 L10 10 L14.5 10 Z" fill="#FFD700" stroke="#FFA500" stroke-width="1.5"/><circle cx="16" cy="16" r="6" fill="none" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="2 2"/><circle cx="16" cy="16" r="8" fill="none" stroke="rgba(255,215,0,0.3)" stroke-width="3"/></svg></div>
+<span class="nav-text">Competition</span>
+</div>
+<div class="nav-item" data-target="referrals"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-text">Referrals</span></div>
+<div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
+</nav>
+<script>
+// ===== نظام التحميل الأولي =====
 let loadingProgress = 0;
 let loadingSeconds = 10;
 let loadingTimerInterval;
@@ -653,6 +1151,16 @@ async function simulateAccountCheck(userId){
 const API_RealEarnBot_bot = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
 
 async function callAPI(action, data = {}){
+    if(action === 'handleAdClick'){
+        console.error("Direct handleAdClick calls are blocked.");
+        logSecurityEvent('BLOCKED_DIRECT_AD_REQUEST', { action: action, data: data });
+        return { 
+            success: false, 
+            error: 'DIRECT_AD_CALL_BLOCKED',
+            message: 'Use secure ad request system'
+        };
+    }
+    
     try{
         const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
         const response = await fetch(`${API_RealEarnBot_bot}/api`, {
@@ -964,6 +1472,42 @@ const BOT_USERNAME = APP_CONFIG.botUsername;
 const BOT_WALLET = APP_CONFIG.botWallet;
 const BOT_TOKEN = APP_CONFIG.botToken;
 
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY_HERE",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+let db = null;
+try{
+    if(firebase && firebase.initializeApp){
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        console.log("✅ Firebase initialized successfully");
+    }
+}catch(error){
+    console.error("❌ Firebase initialization error:", error);
+}
+
+function showNotification(message, type = 'info', duration = 5000){
+    const notification = document.createElement('div');
+    notification.className = `notification-message notification-${type}`;
+    notification.innerHTML = `<div style="font-size:14px;font-weight:600;">${message}</div>`;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            if(notification.parentNode){
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, duration);
+}
+
 function showStyledMessage(message, type = 'error', containerId = 'app-container'){
     const container = document.getElementById(containerId);
     if(!container) return;
@@ -1064,7 +1608,7 @@ async function performSecurityVerification(){
     stepsContainer.innerHTML += createVerificationStep(2, 'Device Security', 'Generating device fingerprint', 'active');
     progressBar.style.width = '60%';
     
-    const deviceFingerprint = await getDeviceFingerprint();
+    const deviceFingerprint = await generateDeviceFingerprint();
     console.log("Device Fingerprint:", deviceFingerprint);
     
     stepsContainer.innerHTML = createVerificationStep(1, 'Telegram Check', 'Telegram environment verified', 'completed');
@@ -1175,6 +1719,9 @@ let competitionData = {
     userTickets: {},
     winners: []
 };
+
+let lastAdClickTime = 0;
+const AD_CLICK_DELAY = 3000;
 
 let gigaAdRequired = false;
 let gigaAdCallback = null;
@@ -1332,6 +1879,64 @@ async function getUpdatedSettings(){
     return newSettings;
 }
 
+async function initializeUser(user, deviceFingerprint){
+    const isNewUser = await callAPI('checkIsNewUser', { userId: user.id.toString() });
+    
+    if(isNewUser.success && isNewUser.data.isNew){
+        const fingerprintCheck = await callAPI('checkDeviceFingerprint', { 
+            userId: user.id.toString(), 
+            deviceFingerprint: deviceFingerprint 
+        });
+        
+        if(!fingerprintCheck.success){
+            console.log("Device security check failed");
+            return;
+        }
+        
+        if(fingerprintCheck.data && fingerprintCheck.data.deviceLimitExceeded){
+            console.log("Multiple accounts detected from same device");
+            return;
+        }
+        
+        const saveResult = await callAPI('saveDeviceFingerprint', { 
+            userId: user.id.toString(), 
+            deviceFingerprint: deviceFingerprint 
+        });
+        
+        if(!saveResult.success){
+            console.warn("Failed to save device fingerprint:", saveResult.error);
+        }
+    }
+    
+    const result = await callAPI('initializeUser', { user, deviceFingerprint: deviceFingerprint });
+    
+    if(result.success){
+        appData = result.data.userData || {};
+        
+        // 🔥 حفظ sessionKey من استجابة السيرفر
+        if (result.data.sessionKey) {
+            localStorage.setItem('sessionKey', result.data.sessionKey);
+            localStorage.setItem('sessionCreatedAt', Date.now().toString());
+            console.log("✅ Session key saved:", result.data.sessionKey.substring(0, 20) + "...");
+        }
+        
+        await getUpdatedSettings();
+        await loadDailyWithdrawalsData();
+        renderUI(user);
+        renderDailyBonusUI();
+        updateAvailableSpins();
+        handleReferral(user);
+        
+        return result;
+    }else{
+        if(result.error && result.error.includes('banned')){
+            console.log("Account banned");
+            return;
+        }
+        console.error('Error initializing user:', result.error);
+    }
+}
+
 async function loadDailyWithdrawalsData(){
     const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
     if(!userId) return;
@@ -1472,6 +2077,18 @@ function initializeApp(user){
     document.getElementById('home-username').textContent = fullName;
     document.getElementById('referral-link-display').textContent = `https://t.me/${BOT_USERNAME}?startapp=ref${user.id}`;
     
+    if(SecuritySystem && typeof SecuritySystem.initialize === 'function'){
+        SecuritySystem.initialize().then(success => {
+            if(success){
+                console.log("✅ Security system initialized for user");
+            }else{
+                console.warn("⚠️ Security system initialization failed");
+            }
+        }).catch(error => {
+            console.error("❌ Security system error:", error);
+        });
+    }
+    
     if(window.Adsgram){
         AdController = window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID });
     }
@@ -1499,6 +2116,14 @@ function initializeApp(user){
     initializeCompetition();
     loadUserCompetitionData();
     setInterval(updateWithdrawalsResetTimer, 60000);
+    
+    if(SecuritySystem){
+        SecuritySystem.logSecurityEvent('APP_INITIALIZED', {
+            userId: user.id.toString(),
+            userName: fullName,
+            timestamp: new Date().toISOString()
+        });
+    }
 }
 
 async function handleReferral(user){
@@ -3155,6 +3780,212 @@ function setupEventListeners(user){
     });
 }
 
+function canClickAd(){
+    const now = Date.now();
+    return (now - lastAdClickTime) >= AD_CLICK_DELAY;
+}
+
+async function handleMonetagAd(){
+    if(!canClickAd()){
+        showNotification("Please wait 3 seconds before clicking again.", "warning");
+        return;
+    }
+    
+    const isAllowed = await checkBeforeAction("watch ad");
+    if(!isAllowed) return;
+    
+    await getUpdatedSettings();
+    lastAdClickTime = Date.now();
+    
+    const limit = appSettings.limitMonetag || 50;
+    if((appData.adsMonetag || 0) >= limit) return;
+    
+    if(!isAdScriptLoaded){
+        showNotification("Loading ad...", "info");
+        return;
+    }
+    
+    try{
+        await show_10058786({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        
+        // استخدام نظام الأمان الجديد
+        let result;
+        if(SecuritySystem && typeof SecuritySystem.sendSecureAdRequest === 'function'){
+            result = await SecuritySystem.sendSecureAdRequest('monetag', appSettings.adRewardMonetag || 500);
+        }else{
+            result = await callAPI('handleAdClick', { 
+                adType: 'monetag', 
+                reward: appSettings.adRewardMonetag || 500 
+            });
+        }
+        
+        if(result.success){
+            appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
+            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+            
+            if(SecuritySystem){
+                SecuritySystem.logSecurityEvent('AD_COMPLETED', {
+                    adType: 'monetag',
+                    reward: appSettings.adRewardMonetag || 500,
+                    success: true
+                });
+            }
+            
+            showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success");
+            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        }else{
+            if(result.error === 'ACCOUNT_BLOCKED'){
+                showNotification("Your account has been blocked.", "error");
+            }else if(result.error === 'SECURITY_CHECK_FAILED'){
+                showNotification("Security verification failed. Please refresh.", "error");
+            }else if(result.error === 'DIRECT_AD_CALL_BLOCKED'){
+                showNotification("Please update the app to the latest version.", "error");
+            }else if(result.error === 'INVALID_SESSION'){
+                showNotification("Session expired. Please refresh the page.", "warning");
+            }else{
+                showNotification("Error: " + result.error, "error");
+            }
+        }
+    }catch(e){
+        showNotification("Ad not ready", "warning");
+    }
+}
+
+async function handleGigaAd(){
+    if(!canClickAd()){
+        showNotification("Please wait 3 seconds before clicking again.", "warning");
+        return;
+    }
+    
+    const isAllowed = await checkBeforeAction("watch ad");
+    if(!isAllowed) return;
+    
+    await getUpdatedSettings();
+    lastAdClickTime = Date.now();
+    
+    const limit = appSettings.limitGiga || 300;
+    if((appData.adsGiga || 0) >= limit) return;
+    
+    if(typeof window.showGiga !== 'function'){
+        showNotification("Giga Ads loading...", "info");
+        return;
+    }
+    
+    try{
+        await window.showGiga();
+        
+        // استخدام نظام الأمان الجديد
+        let result;
+        if(SecuritySystem && typeof SecuritySystem.sendSecureAdRequest === 'function'){
+            result = await SecuritySystem.sendSecureAdRequest('giga', appSettings.adRewardGiga || 500);
+        }else{
+            result = await callAPI('handleAdClick', { 
+                adType: 'giga', 
+                reward: appSettings.adRewardGiga || 500 
+            });
+        }
+        
+        if(result.success){
+            appData.adsGiga = result.data.adsGiga || appData.adsGiga;
+            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+            
+            if(SecuritySystem){
+                SecuritySystem.logSecurityEvent('AD_COMPLETED', {
+                    adType: 'giga',
+                    reward: appSettings.adRewardGiga || 500,
+                    success: true
+                });
+            }
+            
+            showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success");
+            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        }else{
+            if(result.error === 'ACCOUNT_BLOCKED'){
+                showNotification("Your account has been blocked.", "error");
+            }else if(result.error === 'SECURITY_CHECK_FAILED'){
+                showNotification("Security verification failed. Please refresh.", "error");
+            }else if(result.error === 'DIRECT_AD_CALL_BLOCKED'){
+                showNotification("Please update the app to the latest version.", "error");
+            }else if(result.error === 'INVALID_SESSION'){
+                showNotification("Session expired. Please refresh the page.", "warning");
+            }else{
+                showNotification("Error: " + result.error, "error");
+            }
+        }
+    }catch(e){
+        console.error(e);
+        showNotification("Ad failed or closed.", "warning");
+    }
+}
+
+async function handleAdsgramAd(){
+    if(!canClickAd()){
+        showNotification("Please wait 3 seconds before clicking again.", "warning");
+        return;
+    }
+    
+    const isAllowed = await checkBeforeAction("watch ad");
+    if(!isAllowed) return;
+    
+    await getUpdatedSettings();
+    lastAdClickTime = Date.now();
+    
+    const limit = appSettings.limitAdsgram || 300;
+    if((appData.adsAdsgram || 0) >= limit) return;
+    
+    if(!AdController){
+        showNotification("AdsGram not initialized", "warning");
+        return;
+    }
+    
+    try{
+        const result = await AdController.show();
+        if(result.done){
+            // استخدام نظام الأمان الجديد
+            let apiResult;
+            if(SecuritySystem && typeof SecuritySystem.sendSecureAdRequest === 'function'){
+                apiResult = await SecuritySystem.sendSecureAdRequest('adsgram', appSettings.adRewardAdsgram || 500);
+            }else{
+                apiResult = await callAPI('handleAdClick', { 
+                    adType: 'adsgram', 
+                    reward: appSettings.adRewardAdsgram || 500 
+                });
+            }
+            
+            if(apiResult.success){
+                appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
+                appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
+                
+                if(SecuritySystem){
+                    SecuritySystem.logSecurityEvent('AD_COMPLETED', {
+                        adType: 'adsgram',
+                        reward: appSettings.adRewardAdsgram || 500,
+                        success: true
+                    });
+                }
+                
+                showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success");
+                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+            }else{
+                if(apiResult.error === 'ACCOUNT_BLOCKED'){
+                    showNotification("Your account has been blocked.", "error");
+                }else if(apiResult.error === 'SECURITY_CHECK_FAILED'){
+                    showNotification("Security verification failed. Please refresh.", "error");
+                }else if(apiResult.error === 'DIRECT_AD_CALL_BLOCKED'){
+                    showNotification("Please update the app to the latest version.", "error");
+                }else if(apiResult.error === 'INVALID_SESSION'){
+                    showNotification("Session expired. Please refresh the page.", "warning");
+                }
+            }
+        }
+    }catch(error){
+        console.error("AdsGram error:", error);
+        showNotification("Ad playback error.", "error");
+    }
+}
+
 window.selectWithdrawalType = function(type){
     withdrawalType = type;
     
@@ -3578,43 +4409,62 @@ function getLevel(balance){
     return 1;
 }
 
-document.addEventListener('DOMContentLoaded', async function(){
-    if(!window.crypto || !window.crypto.subtle){
-        console.error("Web Crypto API is not supported in this browser");
-        showNotification("Your browser does not support required security features. Please update your browser.", "error");
-        return;
+async function getDeviceFingerprint(){
+    if(SecuritySystem && typeof SecuritySystem.getOrGenerateDeviceFingerprint === 'function'){
+        return await SecuritySystem.getOrGenerateDeviceFingerprint();
     }
-    
+    return await generateDeviceFingerprint();
+}
+
+// بدء التطبيق الرئيسي
+window.onload = async function() {
     startGlobalLoading();
     
-    setTimeout(async() => {
-        const verificationResult = await performSecurityVerification();
-        if(!verificationResult){
-            return;
+    // تهيئة النظام الأمني
+    try {
+        if (SecuritySystem && typeof SecuritySystem.initialize === 'function') {
+            await SecuritySystem.initialize();
+            console.log("✅ Security system initialized");
         }
+    } catch (error) {
+        console.error("❌ Security system initialization error:", error);
+    }
+    
+    // تحقق من مستخدم Telegram
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+        const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+        const user = {
+            id: tgUser.id.toString(),
+            first_name: tgUser.first_name,
+            last_name: tgUser.last_name || '',
+            username: tgUser.username || ''
+        };
         
-        const blockCheck = await checkUserBlockStatus();
-        if(blockCheck && blockCheck.success === false && blockCheck.error === 'ACCOUNT_BLOCKED'){
-            const blockedMessage = blockCheck.data?.blockedMessage || "Your account has been suspended due to violation of our terms of service.";
-            showNotification(blockedMessage, "error");
-            return;
-        }
+        // توليد بصمة الجهاز
+        const deviceFingerprint = await getDeviceFingerprint();
         
-        showMainApp();
-        
-        const { user, isExisting, deviceFingerprint } = verificationResult;
-        
-        if(window.Telegram?.WebApp){
-            window.Telegram.WebApp.ready();
-            window.Telegram.WebApp.expand();
-            window.Telegram.WebApp.headerColor = '#202020';
-            window.Telegram.WebApp.backgroundColor = '#202020';
-        }
-        
+        // تهيئة المستخدم
         await initializeUser(user, deviceFingerprint);
+        
+        // تهيئة التطبيق
         initializeApp(user);
-    }, 10000);
-});
+        
+        // تحديث حالة الأمان
+        updateSecurityStatusDisplay();
+        
+        console.log("✅ App initialized successfully");
+    } else {
+        console.log("⚠️ Telegram user not found, showing fallback");
+        showMainApp();
+    }
+};
+
+// إضافة مستمع للتمرير إذا كان التطبيق في وضع ملء الشاشة
+if (window.Telegram?.WebApp) {
+    window.Telegram.WebApp.expand();
+    window.Telegram.WebApp.setHeaderColor('#202020');
+    window.Telegram.WebApp.setBackgroundColor('#202020');
+}
 </script>
 </body>
 </html>
