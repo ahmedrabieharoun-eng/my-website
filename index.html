@@ -4,20 +4,135 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
     <title>GLX Galaxy</title>
+    
+    <!-- ✅ مكتبات الإعلانات -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="//libtl.com/sdk.js" data-zone="10058786" data-sdk="show_10058786" async></script>
     <script src="https://ad.gigapub.tech/script?id=4102"></script>
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+    
+    <!-- ✅ مكتبة Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-    <!-- ✅ إضافة Cloudflare Turnstile -->
+    
+    <!-- ✅ مكتبة Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    
+    <!-- ✅ Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
     <style>
+        /* أنماط الصفحة (نفس الكود السابق) */
         :root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}
         body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);z-index:-1;}
+        
+        /* ✅ أنماط الكابتشا */
+        .captcha-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(15px);
+        }
+        
+        .captcha-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 30px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 2px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+        }
+        
+        .captcha-header {
+            margin-bottom: 20px;
+        }
+        
+        .captcha-header h3 {
+            font-size: 20px;
+            color: var(--gold);
+            margin-bottom: 10px;
+        }
+        
+        .captcha-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        
+        .captcha-widget-container {
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            min-height: 80px;
+        }
+        
+        .captcha-note {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 12px;
+            color: #FFC107;
+            line-height: 1.4;
+        }
+        
+        .captcha-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn-captcha {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-captcha-verify {
+            background: linear-gradient(90deg, #a855f7, #7c3aed);
+            color: white;
+        }
+        
+        .btn-captcha-cancel {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-captcha-processing {
+            background: linear-gradient(90deg, #666, #888) !important;
+            cursor: not-allowed !important;
+        }
+        
+        .captcha-ad-info {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 11px;
+            color: #3498db;
+        }
+        
+        /* باقي الأنماط (نفس الكود السابق) */
         .app-container{padding:20px;padding-bottom:110px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
         .content-section{display:none;animation:fadeIn 0.4s ease;}
         .content-section.active{display:flex;flex-direction:column;flex:1;}
@@ -203,7 +318,7 @@
         .max-btn,.withdraw-max-btn{min-width:60px!important;height:44px!important;padding:10px 15px!important;font-size:12px!important;font-weight:800!important;white-space:nowrap!important;border:2px solid rgba(168,85,247,0.5)!important;background:rgba(168,85,247,0.2)!important;color:white!important;border-radius:12px!important;cursor:pointer!important;}
         @keyframes cupShine{0%{filter:drop-shadow(0 0 5px rgba(255,215,0,0.7));}50%{filter:drop-shadow(0 0 15px rgba(255,215,0,0.9));}100%{filter:drop-shadow(0 0 5px rgba(255,215,0,0.7));}}
         @keyframes pulseArrow{0%{transform:translateY(0);opacity:1;}50%{transform:translateY(-2px);opacity:0.7;}100%{transform:translateY(0);opacity:1;}}
-        @media (max-width:480px){.max-btn,.withdraw-max-btn{min-width:50px!important;padding:8px 12px!important;font-size:11px!important;height:42px!important;}.ticket-input,.bet-input{font-size:16px!important;padding:12px!important;height:44px!important;}.coin-bet-controls,.ticket-controls{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;}.bet-input,.ticket-input{flex:1!important;min-width:0!important;font-size:16px!important;padding:12px!important;height:44px!important;}.app-container{padding:10px;padding-bottom:80px;}.main-coin-img{width:120px;height:120px;}.balance-amount{font-size:36px;}.bottom-nav{width:95%;height:60px;}.nav-text{font-size:8px;}.bottom-nav{width:96%;padding:0 5px;}.nav-item{width:45px;}.nav-text{font-size:7px;}.slots-reels{gap:8px;}.reel-container{width:60px;height:60px;}.slot-item{width:60px;height:60px;font-size:28px;}.floating-add-task{width:140px!important;padding:8px 12px!important;bottom:80px;}.floating-add-task-icon{width:28px;height:28px;font-size:16px;}.floating-add-task-text{font-size:12px!important;}}
+        @media (max-width:480px){.max-btn,.withdraw-max-btn{min-width:50px!important;padding:8px 12px!important;font-size:11px!important;height:42px!important;}.ticket-input,.bet-input{font-size:16px!important;padding:12px!important;height:44px!important;}.coin-bet-controls,.ticket-controls{display:flex!important;align-items:center!important;gap:8px!important;width:100%!important;}.bet-input,.ticket-input{flex:1!important;min-width:0!important;font-size:16px!important;padding:12px!important;height:44px!important;}.app-container{padding:10px;padding-bottom:80px;}.main-coin-img{width:120px;height:120px;}.balance-amount{font-size:36px;}.bottom-nav{width:95%;height:60px;}.nav-text{font-size:8px;}.bottom-nav{width:96%;padding:0 5px;}.nav-item{width:45px;}.nav-text{font-size:7px;}.slots-reels{gap:8px;}.reel-container{width:60px;height=60px;}.slot-item{width=60px;height=60px;font-size:28px;}.floating-add-task{width:140px!important;padding:8px 12px!important;bottom:80px;}.floating-add-task-icon{width:28px;height:28px;font-size:16px;}.floating-add-task-text{font-size:12px!important;}.captcha-container{padding:20px;}.btn-captcha{padding:12px;font-size:13px;}}
         input[type="number"]{-webkit-appearance:none;-moz-appearance:textfield;appearance:none;font-size:18px!important;}
         input[type="number"]::-webkit-inner-spin-button,input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
         .coin-flip-game{background:rgba(0,0,0,0.6);border-radius:20px;padding:20px;margin-bottom:20px;border:2px solid var(--primary-green);box-shadow:0 0 25px rgba(168,85,247,0.4);}
@@ -584,36 +699,6 @@
             margin-top: 5px;
             font-size: 10px;
         }
-
-        /* ✅ أنماط Cloudflare Turnstile */
-        .captcha-container {
-            animation: fadeIn 0.3s ease;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .cf-turnstile {
-            margin: 0 auto;
-        }
-
-        .captcha-message {
-            background: rgba(255, 193, 7, 0.1);
-            border: 1px solid rgba(255, 193, 7, 0.3);
-            border-radius: 12px;
-            padding: 10px;
-            margin: 10px 0;
-            font-size: 11px;
-            color: #FFC107;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -635,30 +720,40 @@
     </div>
 </div>
 
-<!-- ✅ صندوق Cloudflare Turnstile الكابتشا -->
-<div id="captcha-container" class="captcha-container" style="display:none;">
-    <div class="captcha-box" style="background:var(--glass-bg); backdrop-filter:blur(20px); border-radius:20px; padding:30px; max-width:400px; width:90%; border:2px solid var(--primary-green); box-shadow:0 10px 40px rgba(168,85,247,0.3);">
-        <div style="text-align:center; margin-bottom:20px;">
-            <div style="font-size:24px; font-weight:800; color:#fff; margin-bottom:10px;">Security Verification</div>
-            <div style="font-size:14px; color:var(--text-muted);">Complete this security check to continue</div>
+<!-- ✅ نافذة الكابتشا -->
+<div id="captchaModal" class="captcha-modal">
+    <div class="captcha-container">
+        <div class="captcha-header">
+            <h3>🔒 Security Verification Required</h3>
+            <p>Complete the captcha to continue watching ads</p>
         </div>
         
-        <div id="turnstile-widget" class="cf-turnstile" 
-             data-sitekey="0x4AAAAAACOf6mYyukJx5XVy"
-             data-theme="dark"
-             data-callback="onCaptchaSolved"
-             style="margin:20px auto;"></div>
-        
-        <div style="text-align:center; margin-top:20px; font-size:12px; color:var(--text-muted);">
-            This helps prevent automated abuse
+        <div class="captcha-ad-info">
+            <i class="fas fa-shield-alt"></i> 
+            This helps prevent automated tools from abusing the system
         </div>
         
-        <button id="cancel-captcha-btn" onclick="hideCaptcha()" style="margin-top:20px; width:100%; padding:12px; background:rgba(231,76,60,0.2); border:1px solid rgba(231,76,60,0.5); border-radius:12px; color:#e74c3c; font-weight:700; cursor:pointer;">
-            Cancel
-        </button>
+        <div class="captcha-note">
+            <i class="fas fa-exclamation-triangle"></i>
+            <strong>Important:</strong> This verification is required after every 10 ads to ensure you're human
+        </div>
+        
+        <div id="captchaWidget" class="captcha-widget-container">
+            <!-- سيتم تحميل الكابتشا هنا -->
+        </div>
+        
+        <div class="captcha-buttons">
+            <button class="btn-captcha btn-captcha-cancel" onclick="closeCaptcha()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button class="btn-captcha btn-captcha-verify" id="verifyCaptchaBtn" onclick="verifyCaptcha()">
+                <i class="fas fa-check"></i> Verify & Continue
+            </button>
+        </div>
     </div>
 </div>
 
+<!-- باقي الكود (نفس الكود السابق) -->
 <div id="security-verification" class="verification-container" style="display:none;">
 <div style="margin-bottom:25px;"><img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" style="width:80px;height:80px;border-radius:50%;margin-bottom:15px;border:3px solid var(--primary-green);"><h1 style="font-size:24px;margin-bottom:8px;color:#fff;">GLX Galaxy Security</h1><p style="color:var(--text-muted);font-size:13px;">Secure verification process in progress</p></div>
 <div class="verification-progress"><div id="verification-progress-bar" class="progress-bar" style="width:0%"></div></div>
@@ -1047,6 +1142,18 @@
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
 <script>
+// 🔹 متغيرات نظام الكابتشا
+const CAPTCHA_SITE_KEY = '0x4AAAAAACOf6mYyukJx5XVy';
+const CAPTCHA_SECRET_KEY = '0x4AAAAAACOf6iTNX4O5_WP9Kt07Kimr8FU';
+const AD_CLICK_LIMIT_BEFORE_CAPTCHA = 10; // بعد كل 10 إعلانات
+
+let captchaToken = null;
+let captchaWidgetId = null;
+let isCaptchaVerified = false;
+let adClickCount = 0;
+let pendingAdAction = null;
+let isCaptchaModalOpen = false;
+
 // ✅ 1. دالة صفحة التحميل العالمية (10 ثوانٍ)
 let loadingProgress = 0;
 let loadingSeconds = 10;
@@ -1090,94 +1197,6 @@ function startGlobalLoading() {
     }, 1000);
 }
 
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-// ✅ نظام إدارة Cloudflare Turnstile الكابتشا
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-let captchaToken = null;
-let captchaRequiredForAction = null;
-let isCaptchaWidgetInitialized = false;
-
-// ✅ تهيئة كود التفعيل للكابتشا
-function initializeCaptchaWidget() {
-    if (window.turnstile && !isCaptchaWidgetInitialized) {
-        const container = document.getElementById('turnstile-widget');
-        if (container) {
-            window.turnstile.render(container, {
-                sitekey: '0x4AAAAAACOf6mYyukJx5XVy',
-                theme: 'dark',
-                callback: onCaptchaSolved
-            });
-            isCaptchaWidgetInitialized = true;
-            console.log("✅ Cloudflare Turnstile initialized");
-        }
-    }
-}
-
-// ✅ عرض الكابتشا عند الحاجة
-function showCaptchaForAction(actionName) {
-    console.log("📢 Showing captcha for action:", actionName);
-    
-    captchaRequiredForAction = actionName;
-    captchaToken = null;
-    
-    // إظهار حاوية الكابتشا
-    const captchaContainer = document.getElementById('captcha-container');
-    if (captchaContainer) {
-        captchaContainer.style.display = 'flex';
-        
-        // إعادة تعيين الـ widget إذا لزم الأمر
-        const turnstileElement = document.getElementById('turnstile-widget');
-        if (turnstileElement) {
-            turnstileElement.innerHTML = '';
-            setTimeout(() => {
-                initializeCaptchaWidget();
-            }, 100);
-        }
-    }
-    
-    // إيقاف التمرير
-    document.body.style.overflow = 'hidden';
-}
-
-// ✅ إخفاء الكابتشا
-function hideCaptcha() {
-    console.log("📢 Hiding captcha");
-    
-    const captchaContainer = document.getElementById('captcha-container');
-    if (captchaContainer) {
-        captchaContainer.style.display = 'none';
-    }
-    
-    // إعادة التمرير
-    document.body.style.overflow = 'auto';
-    
-    captchaRequiredForAction = null;
-    captchaToken = null;
-}
-
-// ✅ عند حل الكابتشا بنجاح
-function onCaptchaSolved(token) {
-    console.log("✅ Captcha solved, token received");
-    
-    captchaToken = token;
-    hideCaptcha();
-    
-    // استئناف الإجراء الذي كان ينتظر الكابتشا
-    if (captchaRequiredForAction) {
-        // استدعاء الدالة المناسبة بناءً على الإجراء
-        if (captchaRequiredForAction === 'monetag') {
-            proceedWithMonetagAd();
-        } else if (captchaRequiredForAction === 'giga') {
-            proceedWithGigaAd();
-        } else if (captchaRequiredForAction === 'adsgram') {
-            proceedWithAdsgramAd();
-        } else if (captchaRequiredForAction === 'coinFlip') {
-            proceedWithCoinFlip();
-        }
-        captchaRequiredForAction = null;
-    }
-}
-
 // ✅ دالة التحقق من الحظر من السيرفر
 async function checkUserBlockStatus() {
     try {
@@ -1209,6 +1228,366 @@ let competitionUpdateInterval = null;
 let lastLeaderboardUpdate = 0;
 const LEADERBOARD_UPDATE_INTERVAL = 60000; // تحديث كل دقيقة
 let isCompetitionPageVisible = false;
+
+// ✅ دالة فتح نافذة الكابتشا
+function openCaptcha(adType) {
+    if (isCaptchaModalOpen) return;
+    
+    pendingAdAction = adType;
+    isCaptchaModalOpen = true;
+    
+    const modal = document.getElementById('captchaModal');
+    if (!modal) return;
+    
+    modal.style.display = 'flex';
+    
+    // تهيئة الكابتشا إذا لم تكن موجودة
+    setTimeout(() => {
+        if (!captchaWidgetId && window.turnstile) {
+            captchaWidgetId = window.turnstile.render('#captchaWidget', {
+                sitekey: CAPTCHA_SITE_KEY,
+                theme: 'dark',
+                callback: function(token) {
+                    captchaToken = token;
+                    console.log("Captcha token received:", token.substring(0, 20) + "...");
+                    
+                    // تمكين زر التحقق
+                    const verifyBtn = document.getElementById('verifyCaptchaBtn');
+                    if (verifyBtn) {
+                        verifyBtn.disabled = false;
+                        verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify & Continue';
+                    }
+                }
+            });
+        }
+    }, 500);
+    
+    showNotification("🔒 Security verification required to continue watching ads", "info");
+}
+
+// ✅ دالة إغلاق نافذة الكابتشا
+function closeCaptcha() {
+    const modal = document.getElementById('captchaModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    isCaptchaModalOpen = false;
+    pendingAdAction = null;
+    
+    // إعادة تعيين الكابتشا
+    if (window.turnstile && captchaWidgetId) {
+        window.turnstile.reset(captchaWidgetId);
+        captchaToken = null;
+    }
+    
+    // إعادة تعيين زر التحقق
+    const verifyBtn = document.getElementById('verifyCaptchaBtn');
+    if (verifyBtn) {
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify & Continue';
+        verifyBtn.classList.remove('btn-captcha-processing');
+    }
+}
+
+// ✅ دالة التحقق من الكابتشا
+async function verifyCaptcha() {
+    if (!captchaToken) {
+        showNotification("Please complete the captcha first.", "warning");
+        return;
+    }
+    
+    const verifyBtn = document.getElementById('verifyCaptchaBtn');
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+        verifyBtn.classList.add('btn-captcha-processing');
+    }
+    
+    try {
+        // ✅ إرسال التوكن للتحقق في السيرفر
+        const result = await callAPI('verifyCaptcha', {
+            captchaToken: captchaToken
+        });
+        
+        if (result.success) {
+            isCaptchaVerified = true;
+            adClickCount = 0;
+            
+            // 🔹 تحديث بيانات المستخدم بعد التحقق الناجح
+            const user = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            if (user) {
+                const statsResult = await callAPI('getUserAdStats', {
+                    userId: user.id
+                });
+                
+                if (statsResult.success) {
+                    adClickCount = statsResult.data.adsWatchedToday || 0;
+                }
+            }
+            
+            showNotification("✅ Captcha verified successfully! You can continue watching ads.", "success");
+            
+            closeCaptcha();
+            
+            // 🔹 تشغيل الإعلان المنتظر بعد التحقق
+            if (pendingAdAction) {
+                setTimeout(() => {
+                    handlePendingAdAction(pendingAdAction);
+                }, 1000);
+            }
+        } else {
+            showNotification("❌ Captcha verification failed: " + result.error, "error");
+            
+            // 🔹 إعادة تعيين الكابتشا
+            if (window.turnstile && captchaWidgetId) {
+                window.turnstile.reset(captchaWidgetId);
+                captchaToken = null;
+            }
+            
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Verify & Continue';
+                verifyBtn.classList.remove('btn-captcha-processing');
+            }
+        }
+    } catch (error) {
+        console.error("Captcha verification error:", error);
+        showNotification("Error verifying captcha. Please try again.", "error");
+        
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Verify & Continue';
+            verifyBtn.classList.remove('btn-captcha-processing');
+        }
+    }
+}
+
+// ✅ دالة التحقق من الكابتشا قبل عرض الإعلان
+async function checkCaptchaBeforeAd(adType) {
+    try {
+        // 🔹 الحصول على عدد الإعلانات اليومية من السيرفر
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (userId) {
+            const result = await callAPI('getUserAdStats', { userId: userId });
+            if (result.success) {
+                adClickCount = result.data.adsWatchedToday || 0;
+                
+                // إذا طلب السيرفر كابتشا
+                if (result.data.requiresCaptcha) {
+                    openCaptcha(adType);
+                    return false;
+                }
+            }
+        }
+        
+        // 🔹 إذا تم التحقق بالفعل من الكابتشا
+        if (isCaptchaVerified) {
+            return true;
+        }
+        
+        // 🔹 زيادة العداد المحلي
+        adClickCount++;
+        
+        // 🔹 إذا وصل للحد، طلب الكابتشا
+        if (adClickCount >= AD_CLICK_LIMIT_BEFORE_CAPTCHA) {
+            openCaptcha(adType);
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error("Check captcha error:", error);
+        // في حالة الخطأ، السماح بالإعلان (fail-safe)
+        return true;
+    }
+}
+
+// ✅ دالة معالجة الإعلان المنتظر
+function handlePendingAdAction(adType) {
+    switch(adType) {
+        case 'monetag':
+            executeMonetagAd();
+            break;
+        case 'giga':
+            executeGigaAd();
+            break;
+        case 'adsgram':
+            executeAdsgramAd();
+            break;
+    }
+}
+
+// ✅ دالة تنفيذ إعلان Monetag بعد التحقق
+async function executeMonetagAd() {
+    await getUpdatedSettings();
+    const limit = appSettings.limitMonetag || 50;
+    if ((appData.adsMonetag || 0) >= limit) return;
+    
+    try {
+        await show_10058786({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        
+        const result = await callAPI('handleAdClick', {
+            adType: 'monetag',
+            reward: appSettings.adRewardMonetag || 500,
+            captchaToken: captchaToken
+        });
+        
+        if (result.success) {
+            appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
+            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+            
+            // 🔹 إذا تم استخدام الكابتشا، إعادة تعيينها
+            if (isCaptchaVerified) {
+                isCaptchaVerified = false;
+                captchaToken = null;
+            }
+            
+            showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success");
+            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        }
+    } catch (e) {
+        showNotification("Ad not ready", "warning");
+    }
+}
+
+// ✅ دالة تنفيذ إعلان Giga بعد التحقق
+async function executeGigaAd() {
+    if (typeof window.showGiga !== 'function') {
+        showNotification("Giga Ads loading...", "info");
+        return;
+    }
+    
+    try {
+        await window.showGiga();
+        
+        const result = await callAPI('handleAdClick', {
+            adType: 'giga',
+            reward: appSettings.adRewardGiga || 500,
+            captchaToken: captchaToken
+        });
+        
+        if (result.success) {
+            appData.adsGiga = result.data.adsGiga || appData.adsGiga;
+            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+            
+            // 🔹 إذا تم استخدام الكابتشا، إعادة تعيينها
+            if (isCaptchaVerified) {
+                isCaptchaVerified = false;
+                captchaToken = null;
+            }
+            
+            showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success");
+            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+        }
+    } catch (e) {
+        console.error(e);
+        showNotification("Ad failed or closed.", "warning");
+    }
+}
+
+// ✅ دالة تنفيذ إعلان Adsgram بعد التحقق
+async function executeAdsgramAd() {
+    if (!AdController) {
+        showNotification("AdsGram not initialized", "warning");
+        return;
+    }
+    
+    try {
+        const result = await AdController.show();
+        if (result.done) {
+            const apiResult = await callAPI('handleAdClick', {
+                adType: 'adsgram',
+                reward: appSettings.adRewardAdsgram || 500,
+                captchaToken: captchaToken
+            });
+            
+            if (apiResult.success) {
+                appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
+                appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
+                
+                // 🔹 إذا تم استخدام الكابتشا، إعادة تعيينها
+                if (isCaptchaVerified) {
+                    isCaptchaVerified = false;
+                    captchaToken = null;
+                }
+                
+                showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success");
+                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+            }
+        }
+    } catch (error) {
+        console.error("AdsGram error:", error);
+        showNotification("Ad playback error.", "error");
+    }
+}
+
+// ✅ تعديل دالة callAPI لمعالجة أخطاء الكابتشا
+async function callAPI(action, data = {}) {
+    try {
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-User-ID': userId || '',
+            'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
+            'X-Action': action
+        };
+        
+        // إضافة توكن الكابتشا إذا كان موجوداً
+        if (captchaToken && (action === 'handleAdClick' || action === 'verifyCaptcha')) {
+            data.captchaToken = captchaToken;
+        }
+        
+        const response = await fetch(`${API_URL}/api`, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({
+                action: action,
+                data: data,
+                userId: userId,
+                timestamp: Date.now()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // 🔹 معالجة أخطاء الكابتشا
+        if (!result.success) {
+            if (result.error === 'CAPTCHA_REQUIRED') {
+                // فتح الكابتشا
+                openCaptcha(data.adType);
+                return {
+                    success: false,
+                    error: 'CAPTCHA_REQUIRED',
+                    data: { message: "Captcha required" }
+                };
+            }
+            
+            if (result.error === 'INVALID_CAPTCHA') {
+                showNotification("❌ Captcha verification failed. Please try again.", "error");
+                return result;
+            }
+            
+            if (result.error === 'ACCOUNT_BLOCKED') {
+                showNotification("Your account has been blocked.", "error");
+                return result;
+            }
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error('API call failed:', error);
+        showNotification("Connection error. Please try again.", "error");
+        return { success: false, error: error.message };
+    }
+}
 
 // ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
 // ✅ الإصلاح الرئيسي: دالة التحقق من الاشتراك الإجباري في القنوات - الإصدار المصحح
@@ -1486,100 +1865,8 @@ async function simulateAccountCheck(userId) {
     };
 }
 
-// ✅ تعديل دالة callAPI لمعالجة أخطاء الحظر وطلبات الكابتشا
+// ✅ تعديل دالة callAPI لمعالجة أخطاء الحظر
 const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
-
-async function callAPI(action, data = {}) {
-    try {
-        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-        const payload = {
-            action: action,
-            data: data,
-            userId: userId,
-            timestamp: Date.now()
-        };
-
-        // ✅ إضافة توكن الكابتشا إذا كان متاحاً
-        if (captchaToken && (action === 'handleAdClick' || action === 'flipCoin')) {
-            payload.data.captchaToken = captchaToken;
-            captchaToken = null; // إعادة تعيين التوكن بعد استخدامه
-        }
-
-        const response = await fetch(`${API_URL}/api`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-User-ID': userId || '',
-                'X-Telegram-Data': window.Telegram?.WebApp?.initData || '',
-                'X-Action': action
-            },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // ✅ معالجة أخطاء الحظر بشكل خاص
-        if (!result.success && result.error && result.error === 'ACCOUNT_BLOCKED') {
-            console.log("Account blocked:", result.data?.blockedMessage);
-            showNotification("Your account has been blocked.", "error");
-            return { success: false, error: 'ACCOUNT_BLOCKED', data: result.data };
-        }
-
-        // ✅ معالجة طلب الكابتشا من السيرفر
-        if (!result.success && result.error && result.error === 'CAPTCHA_REQUIRED') {
-            console.log("Captcha required for action:", action);
-            
-            // عرض الكابتشا بناءً على نوع الإجراء
-            if (action === 'handleAdClick') {
-                const adType = data.adType || 'monetag';
-                showCaptchaForAction(adType);
-            } else if (action === 'flipCoin') {
-                showCaptchaForAction('coinFlip');
-            }
-            
-            return { success: false, error: 'CAPTCHA_REQUIRED', data: result.data };
-        }
-        
-        if (!result.success && result.error && result.error.includes('Connection error')) {
-            console.log("Connection error");
-            showNotification("Connection error. Please try again.", "error");
-            return { success: false, error: result.error };
-        }
-        
-        // ✅ معالجة خاصة لعملة Coin Flip
-        if (action === 'flipCoin' && result.success) {
-            // التأكد من وجود البيانات الضرورية
-            if (!result.data.currentBalance) {
-                result.data.currentBalance = result.data.newBalance || result.data.finalBalance;
-            }
-        }
-        
-        if (action === 'getCompetitionData' && result.success) {
-            if (result.data.competitionData && !result.data.competitionData.userTickets) {
-                result.data.competitionData.userTickets = {};
-            }
-        }
-        
-        return result;
-    } catch (error) {
-        console.error('API call failed:', error);
-        
-        // ✅ تصنيف أخطاء الاتصال
-        if (error.message && error.message.includes('Connection error') || 
-            error.message && error.message.includes('Failed to fetch')) {
-            console.log("Connection error occurred");
-            showNotification("Connection error. Please try again.", "error");
-        } else {
-            showNotification("Connection error. Please try again.", "error");
-        }
-        
-        return { success: false, error: error.message };
-    }
-}
 
 // ✅ إصلاح دالة لعبة Coin Flip (تم إصلاح مشكلة الإشعار المبكر)
 async function flipCoin() {
@@ -1668,9 +1955,6 @@ async function flipCoin() {
         } else {
             if (result.error === 'ACCOUNT_BLOCKED') {
                 showNotification("Your account has been blocked.", "error");
-            } else if (result.error === 'CAPTCHA_REQUIRED') {
-                // ✅ الكابتشا مطلوبة - تم عرضها بالفعل في callAPI
-                console.log("Captcha required for coin flip");
             } else {
                 showNotification("Error: " + result.error, "error");
             }
@@ -1689,12 +1973,6 @@ async function flipCoin() {
             }
         }, 3000);
     }
-}
-
-// ✅ دالة استئناف لعبة Coin Flip بعد حل الكابتشا
-async function proceedWithCoinFlip() {
-    // إعادة تشغيل لعبة Coin Flip بعد حل الكابتشا
-    await flipCoin();
 }
 
 // ✅ تعديل دالة عرض النتيجة لتعكس صافي الربح/الخسارة
@@ -1875,6 +2153,70 @@ try {
     }
 } catch (error) {
     console.error("❌ Firebase initialization error:", error);
+}
+
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+// ✅ دالة بصمة الجهاز المعدلة (بدون IP) - الإصدار المحسّن
+// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
+async function generateDeviceFingerprint() {
+    const components = [];
+    try {
+        // ✅ معلمات الجهاز الثابتة (بدون IP)
+        components.push(navigator.userAgent);
+        components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+        components.push(navigator.platform);
+        components.push(navigator.language);
+        
+        // ✅ خصائص WebGL الفريدة للجهاز
+        if (window.WebGLRenderingContext) {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                if (debugInfo) {
+                    components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
+                    components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
+                }
+            }
+        }
+        
+        // ✅ ميزات الجهاز الإضافية
+        components.push('ontouchstart' in window);
+        components.push(navigator.hardwareConcurrency || 'unknown');
+        components.push(navigator.deviceMemory || 'unknown');
+        components.push(navigator.cookieEnabled);
+        components.push(navigator.doNotTrack || 'unknown');
+        
+        // ✅ تفاصيل إضافية لزيادة الدقة
+        components.push(navigator.maxTouchPoints || 0);
+        components.push('devicePixelRatio' in window ? window.devicePixelRatio : 'unknown');
+        components.push('orientation' in screen ? screen.orientation.type : 'unknown');
+        
+        // ✅ إنشاء بصمة فريدة باستخدام SHA-256
+        const fingerprintString = components.join('|');
+        const encoder = new TextEncoder();
+        const data = encoder.encode(fingerprintString);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        console.log("✅ Generated device fingerprint (IP independent):", fingerprint.substring(0, 16) + "...");
+        return fingerprint;
+        
+    } catch (error) {
+        console.error("❌ Error generating device fingerprint:", error);
+        // ✅ استخدام بصمة بديلة في حالة الخطأ
+        const fallbackComponents = [
+            navigator.userAgent,
+            screen.width,
+            screen.height,
+            navigator.platform,
+            navigator.language
+        ];
+        const fallbackFingerprint = btoa(fallbackComponents.join('|')).slice(0, 64);
+        console.log("⚠️ Using fallback fingerprint:", fallbackFingerprint);
+        return fallbackFingerprint;
+    }
 }
 
 function showNotification(message, type = 'info', duration = 5000) {
@@ -4095,9 +4437,148 @@ function setupEventListeners(user) {
         });
     });
     
-    document.getElementById('monetag-ad-task').addEventListener('click', handleMonetagAd);
-    document.getElementById('gigapub-ad-task').addEventListener('click', handleGigaAd);
-    document.getElementById('adsgram-ad-task').addEventListener('click', handleAdsgramAd);
+    document.getElementById('monetag-ad-task').addEventListener('click', async () => {
+        // 🔹 التحقق من الكابتشا أولاً
+        const canProceed = await checkCaptchaBeforeAd('monetag');
+        if (!canProceed) {
+            return;
+        }
+        
+        if (!canClickAd()) {
+            showNotification("Please wait 3 seconds before clicking again.", "warning");
+            return;
+        }
+        
+        // ✅ التحقق من الحظر أولاً
+        const isAllowed = await checkBeforeAction("watch ad");
+        if (!isAllowed) return;
+        
+        await getUpdatedSettings();
+        lastAdClickTime = Date.now();
+        const limit = appSettings.limitMonetag || 50;
+        if ((appData.adsMonetag || 0) >= limit) return;
+        
+        if (!isAdScriptLoaded) {
+            showNotification("Loading ad...", "info");
+            return;
+        }
+        
+        try {
+            await show_10058786({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+            
+            const result = await callAPI('handleAdClick', {
+                adType: 'monetag',
+                reward: appSettings.adRewardMonetag || 500 // تغيير من 1000 إلى 500
+            });
+            
+            if (result.success) {
+                appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
+                appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+                appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+                
+                showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success");
+                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+            }
+        } catch (e) {
+            showNotification("Ad not ready", "warning");
+        }
+    });
+    
+    document.getElementById('gigapub-ad-task').addEventListener('click', async () => {
+        // 🔹 التحقق من الكابتشا أولاً
+        const canProceed = await checkCaptchaBeforeAd('giga');
+        if (!canProceed) {
+            return;
+        }
+        
+        if (!canClickAd()) {
+            showNotification("Please wait 3 seconds before clicking again.", "warning");
+            return;
+        }
+        
+        // ✅ التحقق من الحظر أولاً
+        const isAllowed = await checkBeforeAction("watch ad");
+        if (!isAllowed) return;
+        
+        await getUpdatedSettings();
+        lastAdClickTime = Date.now();
+        const limit = appSettings.limitGiga || 300;
+        if ((appData.adsGiga || 0) >= limit) return;
+        
+        if (typeof window.showGiga !== 'function') {
+            showNotification("Giga Ads loading...", "info");
+            return;
+        }
+        
+        try {
+            await window.showGiga();
+            
+            const result = await callAPI('handleAdClick', {
+                adType: 'giga',
+                reward: appSettings.adRewardGiga || 500 // تغيير من 2000 إلى 500
+            });
+            
+            if (result.success) {
+                appData.adsGiga = result.data.adsGiga || appData.adsGiga;
+                appData.adsWatched = result.data.adsWatched || appData.adsWatched;
+                appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
+                
+                showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success");
+                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+            }
+        } catch (e) {
+            console.error(e);
+            showNotification("Ad failed or closed.", "warning");
+        }
+    });
+    
+    document.getElementById('adsgram-ad-task').addEventListener('click', async () => {
+        // 🔹 التحقق من الكابتشا أولاً
+        const canProceed = await checkCaptchaBeforeAd('adsgram');
+        if (!canProceed) {
+            return;
+        }
+        
+        if (!canClickAd()) {
+            showNotification("Please wait 3 seconds before clicking again.", "warning");
+            return;
+        }
+        
+        // ✅ التحقق من الحظر أولاً
+        const isAllowed = await checkBeforeAction("watch ad");
+        if (!isAllowed) return;
+        
+        await getUpdatedSettings();
+        lastAdClickTime = Date.now();
+        const limit = appSettings.limitAdsgram || 300;
+        if ((appData.adsAdsgram || 0) >= limit) return;
+        
+        if (!AdController) {
+            showNotification("AdsGram not initialized", "warning");
+            return;
+        }
+        
+        try {
+            const result = await AdController.show();
+            if (result.done) {
+                const apiResult = await callAPI('handleAdClick', {
+                    adType: 'adsgram',
+                    reward: appSettings.adRewardAdsgram || 500 // تغيير من 2000 إلى 500
+                });
+                
+                if (apiResult.success) {
+                    appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
+                    appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
+                    
+                    showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success");
+                    renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
+                }
+            }
+        } catch (error) {
+            console.error("AdsGram error:", error);
+            showNotification("Ad playback error.", "error");
+        }
+    });
     
     document.getElementById('share-referral-btn').addEventListener('click', () => {
         const link = document.getElementById('referral-link-display').textContent;
@@ -4151,196 +4632,6 @@ function setupEventListeners(user) {
 function canClickAd() {
     const now = Date.now();
     return (now - lastAdClickTime) >= AD_CLICK_DELAY;
-}
-
-async function handleMonetagAd() {
-    if (!canClickAd()) {
-        showNotification("Please wait 3 seconds before clicking again.", "warning");
-        return;
-    }
-    
-    // ✅ التحقق من الحظر أولاً
-    const isAllowed = await checkBeforeAction("watch ad");
-    if (!isAllowed) return;
-    
-    await getUpdatedSettings();
-    lastAdClickTime = Date.now();
-    const limit = appSettings.limitMonetag || 50;
-    if ((appData.adsMonetag || 0) >= limit) return;
-    
-    if (!isAdScriptLoaded) {
-        showNotification("Loading ad...", "info");
-        return;
-    }
-    
-    try {
-        await show_10058786({ ymid: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-        
-        const result = await callAPI('handleAdClick', {
-            adType: 'monetag',
-            reward: appSettings.adRewardMonetag || 500 // تغيير من 1000 إلى 500
-        });
-        
-        if (result.success) {
-            // ✅ تحديث appData من البيانات المرجعة
-            appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
-            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
-            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
-            
-            showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success"); // تغيير من 1000 إلى 500
-            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-        }
-    } catch (e) {
-        showNotification("Ad not ready", "warning");
-    }
-}
-
-// ✅ دالة استئناف إعلان Monetag بعد حل الكابتشا
-async function proceedWithMonetagAd() {
-    console.log("Proceeding with Monetag ad after captcha");
-    
-    await getUpdatedSettings();
-    const result = await callAPI('handleAdClick', {
-        adType: 'monetag',
-        reward: appSettings.adRewardMonetag || 500
-    });
-    
-    if (result.success) {
-        // ✅ تحديث appData من البيانات المرجعة
-        appData.adsMonetag = result.data.adsMonetag || appData.adsMonetag;
-        appData.adsWatched = result.data.adsWatched || appData.adsWatched;
-        appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
-        
-        showNotification(`✅ +${appSettings.adRewardMonetag || 500} GLX added!`, "success");
-        renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-    }
-}
-
-async function handleGigaAd() {
-    if (!canClickAd()) {
-        showNotification("Please wait 3 seconds before clicking again.", "warning");
-        return;
-    }
-    
-    // ✅ التحقق من الحظر أولاً
-    const isAllowed = await checkBeforeAction("watch ad");
-    if (!isAllowed) return;
-    
-    await getUpdatedSettings();
-    lastAdClickTime = Date.now();
-    const limit = appSettings.limitGiga || 300;
-    if ((appData.adsGiga || 0) >= limit) return;
-    
-    if (typeof window.showGiga !== 'function') {
-        showNotification("Giga Ads loading...", "info");
-        return;
-    }
-    
-    try {
-        await window.showGiga();
-        
-        const result = await callAPI('handleAdClick', {
-            adType: 'giga',
-            reward: appSettings.adRewardGiga || 500 // تغيير من 2000 إلى 500
-        });
-        
-        if (result.success) {
-            // ✅ تحديث appData من البيانات المرجعة
-            appData.adsGiga = result.data.adsGiga || appData.adsGiga;
-            appData.adsWatched = result.data.adsWatched || appData.adsWatched;
-            appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
-            
-            showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success"); // تغيير من 2000 إلى 500
-            renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-        }
-    } catch (e) {
-        console.error(e);
-        showNotification("Ad failed or closed.", "warning");
-    }
-}
-
-// ✅ دالة استئناف إعلان Giga بعد حل الكابتشا
-async function proceedWithGigaAd() {
-    console.log("Proceeding with Giga ad after captcha");
-    
-    await getUpdatedSettings();
-    const result = await callAPI('handleAdClick', {
-        adType: 'giga',
-        reward: appSettings.adRewardGiga || 500
-    });
-    
-    if (result.success) {
-        // ✅ تحديث appData من البيانات المرجعة
-        appData.adsGiga = result.data.adsGiga || appData.adsGiga;
-        appData.adsWatched = result.data.adsWatched || appData.adsWatched;
-        appData.dogsBalance = result.data.newBalance || appData.dogsBalance;
-        
-        showNotification(`✅ +${appSettings.adRewardGiga || 500} GLX added!`, "success");
-        renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-    }
-}
-
-async function handleAdsgramAd() {
-    if (!canClickAd()) {
-        showNotification("Please wait 3 seconds before clicking again.", "warning");
-        return;
-    }
-    
-    // ✅ التحقق من الحظر أولاً
-    const isAllowed = await checkBeforeAction("watch ad");
-    if (!isAllowed) return;
-    
-    await getUpdatedSettings();
-    lastAdClickTime = Date.now();
-    const limit = appSettings.limitAdsgram || 300;
-    if ((appData.adsAdsgram || 0) >= limit) return;
-    
-    if (!AdController) {
-        showNotification("AdsGram not initialized", "warning");
-        return;
-    }
-    
-    try {
-        const result = await AdController.show();
-        if (result.done) {
-            const apiResult = await callAPI('handleAdClick', {
-                adType: 'adsgram',
-                reward: appSettings.adRewardAdsgram || 500 // تغيير من 2000 إلى 500
-            });
-            
-            if (apiResult.success) {
-                // ✅ تحديث appData من البيانات المرجعة
-                appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
-                appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
-                
-                showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success"); // تغيير من 2000 إلى 500
-                renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-            }
-        }
-    } catch (error) {
-        console.error("AdsGram error:", error);
-        showNotification("Ad playback error.", "error");
-    }
-}
-
-// ✅ دالة استئناف إعلان Adsgram بعد حل الكابتشا
-async function proceedWithAdsgramAd() {
-    console.log("Proceeding with Adsgram ad after captcha");
-    
-    await getUpdatedSettings();
-    const apiResult = await callAPI('handleAdClick', {
-        adType: 'adsgram',
-        reward: appSettings.adRewardAdsgram || 500
-    });
-    
-    if (apiResult.success) {
-        // ✅ تحديث appData من البيانات المرجعة
-        appData.adsAdsgram = apiResult.data.adsAdsgram || appData.adsAdsgram;
-        appData.dogsBalance = apiResult.data.newBalance || appData.dogsBalance;
-        
-        showNotification(`✅ +${appSettings.adRewardAdsgram || 500} GLX added!`, "success");
-        renderUI({ id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id });
-    }
 }
 
 window.selectWithdrawalType = function(type) {
@@ -4798,70 +5089,6 @@ function getLevel(balance) {
     return 1;
 }
 
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-// ✅ دالة بصمة الجهاز المعدلة (بدون IP) - الإصدار المحسّن
-// ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅ ✅
-async function generateDeviceFingerprint() {
-    const components = [];
-    try {
-        // ✅ معلمات الجهاز الثابتة (بدون IP)
-        components.push(navigator.userAgent);
-        components.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
-        components.push(navigator.platform);
-        components.push(navigator.language);
-        
-        // ✅ خصائص WebGL الفريدة للجهاز
-        if (window.WebGLRenderingContext) {
-            const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (gl) {
-                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                if (debugInfo) {
-                    components.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL));
-                    components.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL));
-                }
-            }
-        }
-        
-        // ✅ ميزات الجهاز الإضافية
-        components.push('ontouchstart' in window);
-        components.push(navigator.hardwareConcurrency || 'unknown');
-        components.push(navigator.deviceMemory || 'unknown');
-        components.push(navigator.cookieEnabled);
-        components.push(navigator.doNotTrack || 'unknown');
-        
-        // ✅ تفاصيل إضافية لزيادة الدقة
-        components.push(navigator.maxTouchPoints || 0);
-        components.push('devicePixelRatio' in window ? window.devicePixelRatio : 'unknown');
-        components.push('orientation' in screen ? screen.orientation.type : 'unknown');
-        
-        // ✅ إنشاء بصمة فريدة باستخدام SHA-256
-        const fingerprintString = components.join('|');
-        const encoder = new TextEncoder();
-        const data = encoder.encode(fingerprintString);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const fingerprint = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        console.log("✅ Generated device fingerprint (IP independent):", fingerprint.substring(0, 16) + "...");
-        return fingerprint;
-        
-    } catch (error) {
-        console.error("❌ Error generating device fingerprint:", error);
-        // ✅ استخدام بصمة بديلة في حالة الخطأ
-        const fallbackComponents = [
-            navigator.userAgent,
-            screen.width,
-            screen.height,
-            navigator.platform,
-            navigator.language
-        ];
-        const fallbackFingerprint = btoa(fallbackComponents.join('|')).slice(0, 64);
-        console.log("⚠️ Using fallback fingerprint:", fallbackFingerprint);
-        return fallbackFingerprint;
-    }
-}
-
 // ✅ تعديل document.addEventListener لبدء التحميل
 document.addEventListener('DOMContentLoaded', async function() {
     // بدء صفحة التحميل العالمية (10 ثوانٍ)
@@ -4895,11 +5122,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         await initializeUser(user, deviceFingerprint);
         initializeApp(user);
-        
-        // ✅ تهيئة كود الكابتشا بعد تحميل الصفحة
-        setTimeout(() => {
-            initializeCaptchaWidget();
-        }, 2000);
     }, 10000); // 10 ثوانٍ
 });
 </script>
