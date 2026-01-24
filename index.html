@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5125,5 +5126,34 @@ document.addEventListener('DOMContentLoaded', async function() {
     }, 10000); // 10 ثوانٍ
 });
 </script>
-</body>
+
+<!-- ===== Captcha Integration (Merged) ===== -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+<script>
+const TURNSTILE_SITE_KEY='0x4AAAAAXXXXXXXXX';
+const HCAPTCHA_SITE_KEY='b34eba88-b91c-4732-95c4-22d09748e630';
+let pendingCaptcha=false;
+
+async function handleServerCaptcha(resp){
+  if(resp?.errorCode==='CAPTCHA_REQUIRED'){
+    openCaptchaModal();
+    if(resp.data.captchaType==='turnstile'){
+      turnstile.render('#captcha-widget',{sitekey:TURNSTILE_SITE_KEY,callback:sendCaptcha});
+    } else {
+      hcaptcha.render('captcha-widget',{sitekey:HCAPTCHA_SITE_KEY,callback:sendCaptcha});
+    }
+    return true;
+  }
+  return false;
+}
+async function sendCaptcha(token){
+  pendingCaptcha=false;
+  document.getElementById('captchaModal').style.display='none';
+  await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Captcha-Token':token},body:JSON.stringify({action:'handleAdClick'})});
+}
+</script>
+<!-- ===== End Captcha Integration ===== -->
+</body></html>
+
 </html>
