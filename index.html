@@ -11,6 +11,11 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- مكتبات CAPTCHA -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    
     <style>
         :root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -582,6 +587,321 @@
             margin-top: 5px;
             font-size: 10px;
         }
+        
+        /* ✅ أنماط نظام CAPTCHA الجديدة */
+        .captcha-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            backdrop-filter: blur(5px);
+        }
+        
+        .captcha-modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid #00ffea;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .captcha-modal-header {
+            background: linear-gradient(90deg, #00ffea 0%, #0083ff 100%);
+            padding: 15px 20px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #000;
+            font-weight: bold;
+        }
+        
+        .captcha-modal-header h3 {
+            margin: 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .captcha-close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #000;
+            transition: transform 0.2s;
+        }
+        
+        .captcha-close-btn:hover {
+            transform: scale(1.2);
+        }
+        
+        .captcha-modal-body {
+            padding: 25px;
+            color: #fff;
+        }
+        
+        #captchaMessage {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #00ffea;
+        }
+        
+        .captcha-info {
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .captcha-stats {
+            background: rgba(0, 131, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 131, 255, 0.3);
+        }
+        
+        .captcha-stats p {
+            margin: 5px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .captcha-stats span {
+            color: #00ffea;
+            font-weight: bold;
+        }
+        
+        .captcha-actions {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        #verifyCaptchaBtn {
+            background: linear-gradient(90deg, #00ffea 0%, #0083ff 100%);
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+        
+        #verifyCaptchaBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #666;
+        }
+        
+        #verifyCaptchaBtn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        #captchaError {
+            background: rgba(255, 50, 50, 0.1);
+            border: 1px solid rgba(255, 50, 50, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+            text-align: center;
+            color: #ff3232;
+            animation: errorShake 0.5s;
+        }
+        
+        @keyframes errorShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .captcha-help {
+            background: rgba(0, 255, 234, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            border: 1px solid rgba(0, 255, 234, 0.2);
+        }
+        
+        .captcha-help p {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            color: #00ffea;
+        }
+        
+        .captcha-help ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 14px;
+            color: #ccc;
+        }
+        
+        .captcha-help li {
+            margin-bottom: 5px;
+        }
+        
+        .captcha-loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #00ffea;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        .captcha-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(90deg, #00ffea 0%, #0083ff 100%);
+            color: #000;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            animation: slideInRight 0.5s ease-out;
+            max-width: 300px;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .captcha-notification.hide {
+            animation: slideOutRight 0.5s ease-in;
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .captcha-status {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border: 1px solid rgba(0, 255, 234, 0.3);
+        }
+        
+        .progress-bar {
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffea, #0083ff);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        /* حاوية CAPTCHA محددة */
+        #hcaptchaContainer .h-captcha,
+        #cloudflareCaptchaContainer .cf-turnstile {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+        
+        .captcha-widget-container {
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        /* إضافة شريط حالة CAPTCHA في الـ HUD */
+        .hud-captcha-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #00ffea;
+            margin-top: 5px;
+        }
+        
+        .captcha-progress {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .captcha-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffea, #0083ff);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -600,6 +920,61 @@
     <div style="margin-top: 30px; font-size: 11px; color: var(--text-muted); max-width: 300px;">
         <i class="fas fa-shield-alt" style="margin-right: 5px;"></i>
         Performing security checks & loading your data
+    </div>
+</div>
+
+<!-- ✅ موذال CAPTCHA -->
+<div id="captchaModal" class="captcha-modal" style="display: none;">
+    <div class="captcha-modal-content">
+        <div class="captcha-modal-header">
+            <h3>🔒 Security Verification</h3>
+            <button class="captcha-close-btn" onclick="closeCaptchaModal()">×</button>
+        </div>
+        <div class="captcha-modal-body">
+            <p id="captchaMessage">Please complete the CAPTCHA verification to continue.</p>
+            
+            <!-- Cloudflare Turnstile -->
+            <div id="cloudflareCaptchaContainer" style="display: none;">
+                <div class="captcha-widget-container">
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAACOf6mYyukJx5XVy" data-callback="onCloudflareCaptchaSuccess"></div>
+                </div>
+                <p class="captcha-info">This helps us prevent automated requests.</p>
+            </div>
+            
+            <!-- hCaptcha -->
+            <div id="hcaptchaContainer" style="display: none;">
+                <div class="captcha-widget-container">
+                    <div id="hcaptchaWidget"></div>
+                </div>
+                <p class="captcha-info">Complete the challenge to verify you're human.</p>
+            </div>
+            
+            <div class="captcha-stats">
+                <p>📊 <span id="adsCount">0</span> ads watched | Next CAPTCHA after: <span id="nextCaptchaAfter">10</span> ads</p>
+                <p>⚠️ <span id="failedAttempts">0</span> failed attempts | Remaining: <span id="remainingAttempts">3</span></p>
+            </div>
+            
+            <div class="captcha-actions">
+                <button id="verifyCaptchaBtn" class="btn btn-primary" disabled onclick="submitCaptcha()">
+                    Verify CAPTCHA
+                </button>
+                <button class="btn btn-secondary" onclick="refreshCaptcha()">
+                    ↻ Refresh CAPTCHA
+                </button>
+            </div>
+            
+            <div id="captchaError" class="error-message" style="display: none;"></div>
+            
+            <div class="captcha-help">
+                <p><strong>ℹ️ Why CAPTCHA?</strong></p>
+                <ul>
+                    <li>Prevents automated bots</li>
+                    <li>Ensures fair rewards distribution</li>
+                    <li>Required every 10 ads</li>
+                    <li>Protects your account security</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -990,7 +1365,507 @@
 <div class="nav-item" data-target="referrals"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="nav-text">Referrals</span></div>
 <div class="nav-item" data-target="withdrawal-history"><svg viewBox="0 0 24 24" style="filter:drop-shadow(0 0 8px rgba(168,85,247,0.4));"><path d="M12 2v20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="nav-text">Withdrawals</span></div>
 </nav>
+
 <script>
+// ✅ نظام CAPTCHA الكامل
+let captchaConfig = {
+    enabled: true,
+    adsBetweenCaptcha: 10,
+    maxRetries: 3,
+    currentAdsCount: 0,
+    lastCaptchaTime: 0,
+    failedAttempts: 0,
+    captchaToken: null,
+    currentCaptchaType: null,
+    isCaptchaModalOpen: false,
+    captchaWidgetId: null
+};
+
+// ✅ تهيئة نظام CAPTCHA
+async function initializeCaptchaSystem() {
+    try {
+        console.log('📋 Initializing CAPTCHA system...');
+        
+        // تحميل الإعدادات من localStorage
+        const savedConfig = localStorage.getItem('captchaConfig');
+        if (savedConfig) {
+            const parsed = JSON.parse(savedConfig);
+            captchaConfig = { ...captchaConfig, ...parsed };
+        }
+        
+        // الحصول على الإعدادات من السيرفر
+        await loadCaptchaConfig();
+        
+        // إضافة شريط الحالة إلى الـ HUD
+        addCaptchaStatusToHUD();
+        
+        console.log('✅ CAPTCHA system initialized');
+    } catch (error) {
+        console.error('❌ Error initializing CAPTCHA system:', error);
+    }
+}
+
+// ✅ تحميل إعدادات CAPTCHA من السيرفر
+async function loadCaptchaConfig() {
+    try {
+        const result = await callAPI('getCaptchaConfig');
+        if (result.success && result.data) {
+            // تحديث الإعدادات
+            captchaConfig = {
+                ...captchaConfig,
+                ...result.data.userStats,
+                config: result.data.config
+            };
+            
+            // حفظ في localStorage
+            localStorage.setItem('captchaConfig', JSON.stringify(captchaConfig));
+            
+            // تحديث واجهة المستخدم
+            updateCaptchaUI();
+            
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error loading CAPTCHA config:', error);
+        return false;
+    }
+}
+
+// ✅ إضافة شريط حالة CAPTCHA إلى الـ HUD
+function addCaptchaStatusToHUD() {
+    const hudContainer = document.querySelector('.hud-container');
+    if (!hudContainer || document.getElementById('captchaStatusHUD')) return;
+    
+    const captchaStatusDiv = document.createElement('div');
+    captchaStatusDiv.id = 'captchaStatusHUD';
+    captchaStatusDiv.className = 'hud-captcha-status';
+    captchaStatusDiv.innerHTML = `
+        <span>🔒</span>
+        <div class="captcha-progress">
+            <div class="captcha-progress-fill" id="captchaProgressFill"></div>
+        </div>
+        <span id="captchaCounter">${captchaConfig.currentAdsCount}/${captchaConfig.adsBetweenCaptcha}</span>
+    `;
+    
+    // إدراجه بعد عناصر الـ HUD
+    const hudBalance = document.querySelector('.hud-balance');
+    if (hudBalance) {
+        hudBalance.parentNode.insertBefore(captchaStatusDiv, hudBalance.nextSibling);
+    } else {
+        hudContainer.appendChild(captchaStatusDiv);
+    }
+    
+    updateCaptchaUI();
+}
+
+// ✅ تحديث واجهة المستخدم للـ CAPTCHA
+function updateCaptchaUI() {
+    // تحديث عداد الإعلانات
+    const counterElement = document.getElementById('captchaCounter');
+    if (counterElement) {
+        counterElement.textContent = `${captchaConfig.currentAdsCount}/${captchaConfig.adsBetweenCaptcha}`;
+    }
+    
+    // تحديث شريط التقدم
+    const progressElement = document.getElementById('captchaProgressFill');
+    if (progressElement) {
+        const progress = (captchaConfig.currentAdsCount / captchaConfig.adsBetweenCaptcha) * 100;
+        progressElement.style.width = `${Math.min(progress, 100)}%`;
+        
+        // تغيير اللون بناءً على التقدم
+        if (progress >= 90) {
+            progressElement.style.background = 'linear-gradient(90deg, #ff3232, #ff6b6b)';
+        } else if (progress >= 70) {
+            progressElement.style.background = 'linear-gradient(90deg, #FFC107, #ffd93d)';
+        } else {
+            progressElement.style.background = 'linear-gradient(90deg, #00ffea, #0083ff)';
+        }
+    }
+    
+    // تحديث إحصائيات الموذال
+    if (document.getElementById('adsCount')) {
+        document.getElementById('adsCount').textContent = captchaConfig.currentAdsCount;
+        document.getElementById('nextCaptchaAfter').textContent = 
+            Math.max(0, captchaConfig.adsBetweenCaptcha - captchaConfig.currentAdsCount);
+        document.getElementById('failedAttempts').textContent = captchaConfig.failedAttempts;
+        document.getElementById('remainingAttempts').textContent = 
+            Math.max(0, captchaConfig.maxRetries - captchaConfig.failedAttempts);
+    }
+}
+
+// ✅ التحقق من الحاجة إلى CAPTCHA قبل الإعلان
+async function checkCaptchaBeforeAd(adType) {
+    try {
+        console.log(`🔍 Checking CAPTCHA requirement for ${adType} ad...`);
+        
+        if (!captchaConfig.enabled) {
+            console.log('CAPTCHA system is disabled');
+            return { requireCaptcha: false };
+        }
+        
+        const result = await callAPI('checkCaptchaRequirement', {
+            adType: adType,
+            currentCount: captchaConfig.currentAdsCount
+        });
+        
+        if (result.success) {
+            if (result.data.requireCaptcha) {
+                console.log('⚠️ CAPTCHA required:', result.data.message);
+                return {
+                    requireCaptcha: true,
+                    captchaType: result.data.captchaType,
+                    message: result.data.message
+                };
+            } else {
+                console.log('✅ No CAPTCHA required');
+                return { requireCaptcha: false };
+            }
+        }
+        
+        return { requireCaptcha: false };
+    } catch (error) {
+        console.error('Error checking CAPTCHA requirement:', error);
+        return { requireCaptcha: false };
+    }
+}
+
+// ✅ عرض موذال CAPTCHA
+async function showCaptchaModal(captchaType) {
+    return new Promise((resolve) => {
+        captchaConfig.currentCaptchaType = captchaType;
+        captchaConfig.isCaptchaModalOpen = true;
+        
+        // تحديث الرسالة
+        document.getElementById('captchaMessage').textContent = 
+            'Please complete the CAPTCHA verification to continue watching ads.';
+        
+        // إخفاء جميع الحاويات أولاً
+        document.getElementById('cloudflareCaptchaContainer').style.display = 'none';
+        document.getElementById('hcaptchaContainer').style.display = 'none';
+        
+        // إظهار النوع المطلوب
+        if (captchaType === 'cloudflare') {
+            document.getElementById('cloudflareCaptchaContainer').style.display = 'block';
+            
+            // إعادة تحميل Cloudflare Turnstile إذا كان متاحاً
+            if (window.turnstile) {
+                setTimeout(() => {
+                    const container = document.querySelector('.cf-turnstile');
+                    if (container) {
+                        container.innerHTML = '';
+                    }
+                }, 100);
+            }
+        } else if (captchaType === 'hcaptcha') {
+            document.getElementById('hcaptchaContainer').style.display = 'block';
+            
+            // تحميل hCaptcha Widget
+            loadHCaptchaWidget();
+        }
+        
+        // تحديث الإحصائيات
+        updateCaptchaUI();
+        
+        // تعطيل زر التحقق
+        document.getElementById('verifyCaptchaBtn').disabled = true;
+        
+        // إظهار الموذال
+        document.getElementById('captchaModal').style.display = 'flex';
+        
+        // إخفاء أي أخطاء سابقة
+        const errorDiv = document.getElementById('captchaError');
+        if (errorDiv) errorDiv.style.display = 'none';
+        
+        // دالة الحل
+        window.resolveCaptcha = (success) => {
+            closeCaptchaModal();
+            resolve(success);
+        };
+    });
+}
+
+// ✅ تحميل hCaptcha Widget
+function loadHCaptchaWidget() {
+    const widgetContainer = document.getElementById('hcaptchaWidget');
+    if (!widgetContainer) return;
+    
+    widgetContainer.innerHTML = '';
+    
+    if (window.hcaptcha) {
+        try {
+            captchaConfig.captchaWidgetId = window.hcaptcha.render('hcaptchaWidget', {
+                sitekey: 'b34eba88-b91c-4732-95c4-22d09748e630',
+                callback: onHCaptchaSuccess,
+                'error-callback': onHCaptchaError,
+                theme: 'dark',
+                size: 'normal'
+            });
+        } catch (error) {
+            console.error('Error loading hCaptcha:', error);
+            widgetContainer.innerHTML = '<p style="color:#ff3232;">Error loading CAPTCHA. Please refresh the page.</p>';
+        }
+    } else {
+        widgetContainer.innerHTML = '<p style="color:#ff3232;">hCaptcha library not loaded. Please refresh the page.</p>';
+    }
+}
+
+// ✅ إغلاق موذال CAPTCHA
+function closeCaptchaModal() {
+    document.getElementById('captchaModal').style.display = 'none';
+    captchaConfig.isCaptchaModalOpen = false;
+    captchaConfig.captchaToken = null;
+    
+    // إعادة تعيين hCaptcha إذا كان مستخدماً
+    if (captchaConfig.captchaWidgetId && window.hcaptcha) {
+        try {
+            window.hcaptcha.reset(captchaConfig.captchaWidgetId);
+        } catch (error) {
+            console.error('Error resetting hCaptcha:', error);
+        }
+        captchaConfig.captchaWidgetId = null;
+    }
+}
+
+// ✅ نجاح Cloudflare CAPTCHA
+function onCloudflareCaptchaSuccess(token) {
+    console.log('✅ Cloudflare CAPTCHA success');
+    captchaConfig.captchaToken = token;
+    document.getElementById('verifyCaptchaBtn').disabled = false;
+}
+
+// ✅ نجاح hCaptcha
+function onHCaptchaSuccess(token) {
+    console.log('✅ hCaptcha success');
+    captchaConfig.captchaToken = token;
+    document.getElementById('verifyCaptchaBtn').disabled = false;
+}
+
+// ✅ خطأ hCaptcha
+function onHCaptchaError() {
+    console.log('❌ hCaptcha error');
+    const errorDiv = document.getElementById('captchaError');
+    if (errorDiv) {
+        errorDiv.textContent = 'CAPTCHA error. Please try again.';
+        errorDiv.style.display = 'block';
+    }
+}
+
+// ✅ إرسال CAPTCHA للتحقق
+async function submitCaptcha() {
+    try {
+        const verifyBtn = document.getElementById('verifyCaptchaBtn');
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<span class="captcha-loading"></span> Verifying...';
+        
+        const result = await callAPI('verifyCaptcha', {
+            captchaType: captchaConfig.currentCaptchaType,
+            captchaToken: captchaConfig.captchaToken
+        });
+        
+        if (result.success) {
+            console.log('✅ CAPTCHA verified successfully');
+            
+            // تحديث الإعدادات المحلية
+            captchaConfig.currentAdsCount = 0;
+            captchaConfig.failedAttempts = 0;
+            captchaConfig.lastCaptchaTime = Date.now();
+            
+            // حفظ في localStorage
+            localStorage.setItem('captchaConfig', JSON.stringify(captchaConfig));
+            
+            // تحديث واجهة المستخدم
+            updateCaptchaUI();
+            
+            // إظهار إشعار النجاح
+            showNotification('✅ CAPTCHA verified! You can continue watching ads.', 'success');
+            
+            // إغلاق الموذال وحل الوعد
+            if (window.resolveCaptcha) {
+                window.resolveCaptcha(true);
+            }
+            
+            return true;
+        } else {
+            // فشل التحقق
+            captchaConfig.failedAttempts++;
+            
+            // عرض الخطأ
+            const errorDiv = document.getElementById('captchaError');
+            errorDiv.textContent = result.message || 'CAPTCHA verification failed. Please try again.';
+            errorDiv.style.display = 'block';
+            
+            // تحديث الإحصائيات
+            updateCaptchaUI();
+            
+            // التحقق من الحظر المؤقت
+            if (result.data && result.data.isBlocked) {
+                errorDiv.textContent = `Temporarily blocked: ${result.data.message}`;
+                showNotification('🚫 Temporarily blocked due to multiple CAPTCHA failures', 'error');
+                
+                // إعادة تحميل الصفحة بعد فترة
+                setTimeout(() => {
+                    location.reload();
+                }, 5000);
+            }
+            
+            // إعادة تعيين CAPTCHA
+            refreshCaptcha();
+            
+            return false;
+        }
+    } catch (error) {
+        console.error('Error submitting CAPTCHA:', error);
+        
+        const errorDiv = document.getElementById('captchaError');
+        errorDiv.textContent = 'Network error. Please check your connection and try again.';
+        errorDiv.style.display = 'block';
+        
+        document.getElementById('verifyCaptchaBtn').disabled = false;
+        document.getElementById('verifyCaptchaBtn').innerHTML = 'Verify CAPTCHA';
+        
+        return false;
+    }
+}
+
+// ✅ تحديث CAPTCHA
+function refreshCaptcha() {
+    captchaConfig.captchaToken = null;
+    document.getElementById('verifyCaptchaBtn').disabled = true;
+    const errorDiv = document.getElementById('captchaError');
+    if (errorDiv) errorDiv.style.display = 'none';
+    
+    // إعادة تعيين hCaptcha
+    if (captchaConfig.currentCaptchaType === 'hcaptcha' && captchaConfig.captchaWidgetId && window.hcaptcha) {
+        try {
+            window.hcaptcha.reset(captchaConfig.captchaWidgetId);
+        } catch (error) {
+            console.error('Error resetting hCaptcha:', error);
+            loadHCaptchaWidget();
+        }
+    }
+    
+    // إعادة تعيين Cloudflare Turnstile
+    if (captchaConfig.currentCaptchaType === 'cloudflare' && window.turnstile) {
+        try {
+            window.turnstile.reset();
+        } catch (error) {
+            console.error('Error resetting Cloudflare:', error);
+        }
+    }
+}
+
+// ✅ زيادة عداد الإعلانات
+function incrementAdCount() {
+    captchaConfig.currentAdsCount++;
+    
+    // تحديث localStorage
+    localStorage.setItem('captchaConfig', JSON.stringify(captchaConfig));
+    
+    // تحديث واجهة المستخدم
+    updateCaptchaUI();
+    
+    // التحقق إذا اقتربنا من الحد
+    if (captchaConfig.currentAdsCount >= captchaConfig.adsBetweenCaptcha - 2) {
+        const remaining = captchaConfig.adsBetweenCaptcha - captchaConfig.currentAdsCount;
+        if (remaining > 0) {
+            showNotification(`⚠️ You need to complete CAPTCHA after ${remaining} more ad${remaining !== 1 ? 's' : ''}`, 'warning');
+        }
+    }
+}
+
+// ✅ دالة الإعلان مع CAPTCHA
+async function handleAdWithCaptcha(adType, originalFunction) {
+    try {
+        // التحقق من CAPTCHA أولاً
+        const captchaCheck = await checkCaptchaBeforeAd(adType);
+        
+        if (captchaCheck.requireCaptcha) {
+            // انتظار إكمال CAPTCHA
+            const captchaCompleted = await new Promise((resolve) => {
+                showCaptchaModal(captchaCheck.captchaType);
+                window.resolveCaptcha = resolve;
+            });
+            
+            if (!captchaCompleted) {
+                throw new Error('CAPTCHA verification failed or canceled');
+            }
+        }
+        
+        // تنفيذ الإعلان الأصلي
+        const result = await originalFunction();
+        
+        if (result.success) {
+            // زيادة عداد الإعلانات
+            incrementAdCount();
+            
+            // تحديث الإعدادات من السيرفر إذا تم إرجاعها
+            if (result.data.captchaInfo) {
+                captchaConfig.currentAdsCount = result.data.captchaInfo.adsCount || captchaConfig.currentAdsCount;
+                captchaConfig.failedAttempts = result.data.captchaInfo.failedAttempts || captchaConfig.failedAttempts;
+                updateCaptchaUI();
+            }
+        }
+        
+        return result;
+    } catch (error) {
+        console.error('Error in ad with CAPTCHA:', error);
+        throw error;
+    }
+}
+
+// ✅ إظهار إشعار
+function showNotification(message, type = 'info') {
+    // إزالة الإشعار القديم إذا كان موجوداً
+    const oldNotification = document.getElementById('captchaNotification');
+    if (oldNotification) {
+        oldNotification.remove();
+    }
+    
+    // إنشاء الإشعار الجديد
+    const notification = document.createElement('div');
+    notification.id = 'captchaNotification';
+    notification.className = `captcha-notification ${type}`;
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">
+                ${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}
+            </span>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // إزالة الإشعار بعد 5 ثوانٍ
+    setTimeout(() => {
+        notification.classList.add('hide');
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 500);
+    }, 5000);
+}
+
+// ✅ استبدال دوال الإعلانات الأصلية
+const originalHandleMonetagAd = window.handleMonetagAd;
+const originalHandleGigaAd = window.handleGigaAd;
+const originalHandleAdsgramAd = window.handleAdsgramAd;
+
+// ✅ دالة الإعلان الجديدة مع CAPTCHA
+async function handleMonetagAdWithCaptcha() {
+    return handleAdWithCaptcha('monetag', originalHandleMonetagAd);
+}
+
+async function handleGigaAdWithCaptcha() {
+    return handleAdWithCaptcha('giga', originalHandleGigaAd);
+}
+
+async function handleAdsgramAdWithCaptcha() {
+    return handleAdWithCaptcha('adsgram', originalHandleAdsgramAd);
+}
+
 // ✅ 1. دالة صفحة التحميل العالمية (10 ثوانٍ)
 let loadingProgress = 0;
 let loadingSeconds = 10;
@@ -2193,6 +3068,9 @@ async function initializeUser(user, deviceFingerprint) {
         
         // ✅ تحميل بيانات السحب اليومي
         await loadDailyWithdrawalsData();
+        
+        // ✅ تهيئة نظام CAPTCHA
+        await initializeCaptchaSystem();
         
         renderUI(user);
         renderDailyBonusUI();
