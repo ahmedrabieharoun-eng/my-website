@@ -487,7 +487,7 @@ export default {
                     break;
                     
                 case 'verifyCaptcha':
-                    result = await handleVerifyCaptcha(captchaToken, clientIp);
+                    result = await handleVerifyCaptcha(env, userId, captchaToken, clientIp);
                     break;
                     
                 default:
@@ -1194,7 +1194,7 @@ async function verifyCaptchaToken(captchaToken, userIp) {
 }
 
 // معالجة التحقق من الكابتشا
-async function handleVerifyCaptcha(captchaToken, userIp) {
+async function handleVerifyCaptcha(env, userId, captchaToken, userIp) {
     try {
         if (!captchaToken) {
             return {
@@ -1207,14 +1207,37 @@ async function handleVerifyCaptcha(captchaToken, userIp) {
         const verification = await verifyCaptchaToken(captchaToken, userIp);
         
         if (verification.success) {
-            return {
-                success: true,
-                data: {
-                    verified: true,
-                    message: 'Captcha verified successfully',
-                    details: verification.details
-                }
-            };
+            // إعادة تعيين adsWatchedToday عند التحقق الناجح من الكابتشا
+            const userResult = await handleDbGet(env, `users/${userId}`);
+            if (userResult.success && userResult.data) {
+                await handleDbUpdate(env, `users/${userId}`, {
+                    adsWatchedToday: 0,
+                    captchaVerifiedToday: true,
+                    lastCaptchaVerification: Date.now(),
+                    requiresCaptcha: false,
+                    lastUpdated: Date.now()
+                });
+                
+                console.log(`Reset adsWatchedToday to 0 for user ${userId} after captcha verification`);
+                
+                return {
+                    success: true,
+                    data: {
+                        verified: true,
+                        message: 'Captcha verified successfully and ad counter reset',
+                        details: verification.details,
+                        adsWatchedToday: 0,
+                        requiresCaptcha: false,
+                        captchaVerifiedToday: true
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: 'User not found',
+                    errorCode: 'USER_NOT_FOUND'
+                };
+            }
         } else {
             return {
                 success: false,
@@ -1658,6 +1681,7 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
         }
         
         // إذا تم إرسال توكن كابتشا، التحقق منه
+        let captchaVerified = false;
         if (captchaToken) {
             const captchaVerification = await verifyCaptchaToken(captchaToken, clientIp);
             
@@ -1673,6 +1697,7 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
                     }
                 };
             }
+            captchaVerified = true;
         }
         
         const adCountField = `ads${capitalizeFirstLetter(adType)}`;
@@ -1692,6 +1717,15 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
             };
         }
         
+        // حساب adsWatchedToday الجديد بناءً على ما إذا تم التحقق من الكابتشا
+        let newAdsWatchedToday = (userData.adsWatchedToday || 0) + 1;
+        
+        // إذا تم التحقق من الكابتشا بنجاح، إعادة التعيين إلى 0
+        if (captchaVerified) {
+            newAdsWatchedToday = 0;
+            console.log(`Captcha verified for user ${userId}, resetting adsWatchedToday from ${userData.adsWatchedToday} to 0`);
+        }
+        
         // إعداد التحديثات
         const updates = {
             [adCountField]: currentCount + 1,
@@ -1699,25 +1733,28 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
             dogsBalance: (userData.dogsBalance || 0) + expectedReward,
             lastUpdated: Date.now(),
             lastActivity: Date.now(),
-            adsWatchedToday: (userData.adsWatchedToday || 0) + 1,
+            adsWatchedToday: newAdsWatchedToday,
             lastAdDate: new Date().toDateString()
         };
         
-        // إذا تم التحقق من الكابتشا، إعادة تعيين العداد
-        if (captchaToken) {
-            updates.adsWatchedToday = 0;
+        // إذا تم التحقق من الكابتشا بنجاح، تحديث الحقول ذات الصلة
+        if (captchaVerified) {
             updates.captchaVerifiedToday = true;
             updates.lastCaptchaVerification = Date.now();
-            console.log(`Captcha verified for user ${userId}, resetting ad counter`);
+            updates.requiresCaptcha = false;
+            console.log(`Setting captchaVerifiedToday=true for user ${userId}`);
         } 
         // إذا وصل للحد ولم يتم التحقق من الكابتشا
-        else if ((userData.adsWatchedToday || 0) + 1 >= CAPTCHA_CONFIG.REQUIRED_AFTER_ADS) {
+        else if (newAdsWatchedToday >= CAPTCHA_CONFIG.REQUIRED_AFTER_ADS) {
             updates.requiresCaptcha = true;
             updates.captchaVerifiedToday = false;
+            console.log(`User ${userId} reached ad limit (${newAdsWatchedToday}), setting requiresCaptcha=true`);
         }
         
+        // تطبيق التحديثات
         await handleDbUpdate(env, `users/${userId}`, updates);
         
+        // تسجيل في السجل
         await handleDbPush(env, `users/${userId}/history`, {
             type: 'earn',
             description: `${adType} Ad Reward`,
@@ -1725,15 +1762,19 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
             currency: 'GLX',
             date: new Date().toISOString(),
             captchaRequired: adCheck.requiresCaptcha,
-            captchaVerified: !!captchaToken
+            captchaVerified: captchaVerified,
+            adsWatchedToday: newAdsWatchedToday
         });
         
-        // جلب بيانات المستخدم المحدثة
+        // جلب بيانات المستخدم المحدثة للتأكد من الحفظ
         const updatedUserResult = await handleDbGet(env, `users/${userId}`);
         const updatedUserData = updatedUserResult.data || { ...userData, ...updates };
         
-        // التحقق من العداد الجديد
+        // التحقق من العداد الجديد باستخدام الدالة الأصلية
         const newAdCheck = await checkAdLimitAndCaptcha(env, userId);
+        
+        // تسجيل للتصحيح
+        console.log(`After ad click - User ${userId}: adsWatchedToday=${updatedUserData.adsWatchedToday}, requiresCaptcha=${newAdCheck.requiresCaptcha}, captchaVerifiedToday=${updatedUserData.captchaVerifiedToday}`);
         
         return {
             success: true,
@@ -1747,10 +1788,17 @@ async function handleAdClick(env, userId, adType, reward, captchaToken = null, c
                 captchaVerifiedToday: updatedUserData.captchaVerifiedToday || false,
                 remainingBeforeCaptcha: newAdCheck.remainingBeforeCaptcha,
                 updatedUserData: updatedUserData,
-                message: captchaToken ? 'Captcha verified and reward added successfully!' : 'Ad reward added successfully!'
+                message: captchaVerified ? 'Captcha verified and reward added successfully!' : 'Ad reward added successfully!',
+                debug: {
+                    previousAdsWatchedToday: userData.adsWatchedToday || 0,
+                    newAdsWatchedToday: updatedUserData.adsWatchedToday || 0,
+                    captchaVerified: captchaVerified,
+                    captchaTokenProvided: !!captchaToken
+                }
             }
         };
     } catch (error) {
+        console.error('Handle ad click error:', error);
         return {
             success: false,
             error: error.message,
