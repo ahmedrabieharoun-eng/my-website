@@ -825,6 +825,125 @@
             width: 0%;
             transition: width 0.3s ease;
         }
+        
+        /* New Finance Styles */
+        .finance-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .finance-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        
+        .finance-tab.active {
+            background: var(--dark-card);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .finance-content {
+            display: none;
+        }
+        
+        .finance-content.active {
+            display: block;
+        }
+        
+        .wallet-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .wallet-status.connected {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid rgba(0, 212, 170, 0.3);
+        }
+        
+        .wallet-status.disconnected {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        
+        .wallet-address {
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+        
+        .ton-amount {
+            font-size: 32px;
+            font-weight: 800;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 16px 0;
+        }
+        
+        .preset-btn {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--dark-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .fee-details {
+            background: rgba(255, 183, 77, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            margin: 16px 0;
+        }
+        
+        .fee-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .fee-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .fee-label {
+            color: var(--text-secondary);
+        }
+        
+        .fee-value {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -862,7 +981,7 @@
                 <div class="status-value" id="statusTon">0.0000</div>
                 <div class="status-label">TON</div>
             </div>
-            <button class="add-button" onclick="showDepositModal()">+</button>
+            <button class="add-button" onclick="showFinancePage()">$</button>
         </div>
     </div>
 
@@ -1088,7 +1207,6 @@
                     </h2>
                     
                     <div id="myOrdersList">
-                        <!-- User's orders will be populated here -->
                         <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
                             <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
                             <p>No active orders</p>
@@ -1241,6 +1359,140 @@
                 </div>
             </div>
         </div>
+
+        <!-- Finance Tab (New) -->
+        <div id="financeTab" class="content-section">
+            <div class="finance-tabs">
+                <div class="finance-tab active" onclick="switchFinanceTab('deposit')">Deposit</div>
+                <div class="finance-tab" onclick="switchFinanceTab('withdraw')">Withdraw</div>
+            </div>
+            
+            <!-- Deposit Tab -->
+            <div id="depositTab" class="finance-content active">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Deposit TON
+                    </h2>
+                    
+                    <div id="walletStatus" class="wallet-status disconnected">
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; font-weight: 600;">Wallet Status</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Not connected</div>
+                        </div>
+                        <button class="btn btn-primary" onclick="connectWallet()" id="connectWalletBtn">
+                            <i class="fas fa-plug"></i> Connect Wallet
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Enter Amount (TON)</label>
+                        <input type="number" id="depositAmount" class="form-input" placeholder="0.00" step="0.1" min="0.1">
+                        <div class="preset-buttons">
+                            <div class="preset-btn" onclick="setDepositAmount(0.5)">0.5</div>
+                            <div class="preset-btn" onclick="setDepositAmount(1)">1</div>
+                            <div class="preset-btn" onclick="setDepositAmount(2)">2</div>
+                            <div class="preset-btn" onclick="setDepositAmount(5)">5</div>
+                            <div class="preset-btn" onclick="setDepositAmount(10)">10</div>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top: 20px;">
+                        <h3 class="card-title">
+                            <i class="fas fa-wallet"></i>
+                            Payment Method
+                        </h3>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-secondary" onclick="openTonkeeper()" style="flex: 1;">
+                                <i class="fas fa-external-link-alt"></i>
+                                Open Tonkeeper
+                            </button>
+                            <button class="btn btn-primary" onclick="initiateDeposit()" id="initiateDepositBtn" style="flex: 1;" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                                Deposit
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top: 20px; display: none;" id="depositDetailsCard">
+                        <h3 class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            Deposit Details
+                        </h3>
+                        
+                        <div style="margin-top: 16px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Send exactly:</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="depositExactAmount">0 TON</div>
+                        </div>
+                        
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">To address:</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--text-primary); word-break: break-all; margin-top: 4px;" id="depositTargetAddress"></div>
+                        </div>
+                        
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText"></div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="sendDepositTransaction()" id="sendDepositBtn" style="width: 100%; margin-top: 16px;">
+                            <i class="fas fa-check-circle"></i>
+                            Confirm & Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Withdraw Tab -->
+            <div id="withdrawTab" class="finance-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        Withdraw TON
+                    </h2>
+                    
+                    <div style="text-align: center; margin-bottom: 24px;">
+                        <div style="font-size: 12px; color: var(--text-secondary);">Available Balance</div>
+                        <div class="ton-amount" id="availableBalance">0.0000</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">TON</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Withdrawal Amount (TON)</label>
+                        <input type="number" id="withdrawAmountFinance" class="form-input" placeholder="0.5" step="0.1" min="0.5">
+                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">
+                            Minimum: 0.5 TON | Fee: 5%
+                        </div>
+                    </div>
+                    
+                    <div id="withdrawFeeDetails" class="fee-details" style="display: none;">
+                        <div class="fee-row">
+                            <span class="fee-label">Amount:</span>
+                            <span class="fee-value" id="withdrawAmountDisplay">0 TON</span>
+                        </div>
+                        <div class="fee-row">
+                            <span class="fee-label">Fee (5%):</span>
+                            <span class="fee-value" id="withdrawFeeDisplay">0 TON</span>
+                        </div>
+                        <div class="fee-row">
+                            <span class="fee-label">You receive:</span>
+                            <span class="fee-value" id="withdrawNetAmountDisplay">0 TON</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">TON Wallet Address</label>
+                        <input type="text" id="withdrawAddressFinance" class="form-input" placeholder="EQD...">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitWithdrawal()" style="width: 100%;">
+                        <i class="fas fa-paper-plane"></i>
+                        Withdraw TON
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Bottom Navigation -->
@@ -1253,9 +1505,9 @@
             <div class="nav-icon">🏠</div>
             <div class="nav-text">Home</div>
         </div>
-        <div class="nav-item" data-tab="marketTab">
+        <div class="nav-item" data-tab="financeTab">
             <div class="nav-icon">💰</div>
-            <div class="nav-text">Market</div>
+            <div class="nav-text">Finance</div>
         </div>
         <div class="nav-item" data-tab="mintTab">
             <div class="nav-icon">🛠️</div>
@@ -1386,90 +1638,6 @@
         </div>
     </div>
 
-    <!-- New Deposit Modal -->
-    <div class="modal-overlay" id="depositModal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fas fa-wallet"></i>
-                    Deposit TON
-                </h2>
-                <button class="close-modal" onclick="closeDepositModal()">×</button>
-            </div>
-            
-            <div class="modal-body">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <div id="qrcode" class="qrcode-container"></div>
-                    <div style="font-size: 12px; color: var(--text-secondary);">
-                        Scan QR code to deposit TON
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">TON Deposit Address</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="depositAddress" class="form-input" readonly>
-                        <button class="btn btn-secondary" onclick="copyDepositAddress()">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Comment (Required)</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="depositComment" class="form-input" readonly>
-                        <button class="btn btn-secondary" onclick="copyDepositComment()">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                    <div style="font-size: 12px; color: var(--warning); margin-top: 8px;">
-                        ⚠️ Must include this exact comment for automatic deposit
-                    </div>
-                </div>
-                
-                <div style="background: rgba(0, 180, 216, 0.1); padding: 16px; border-radius: 12px; margin: 20px 0;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: var(--text-secondary);">Minimum deposit:</span>
-                        <span style="font-weight: 600;">0.1 TON</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: var(--text-secondary);">Processing time:</span>
-                        <span style="font-weight: 600;">1-2 minutes</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: var(--text-secondary);">Network:</span>
-                        <span style="font-weight: 600;">TON Mainnet</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="color: var(--text-secondary);">Status:</span>
-                        <span style="font-weight: 600; color: var(--warning);" id="depositStatus">Waiting for deposit...</span>
-                    </div>
-                </div>
-                
-                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
-                    <i class="fas fa-info-circle"></i>
-                    Send only TON to this address. Other tokens will be lost.
-                </div>
-                <div style="font-size: 12px; color: var(--warning);">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Make sure to include the comment above. Without it, your deposit won't be credited automatically.
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="openTonkeeper()" style="flex: 1;">
-                    <i class="fas fa-external-link-alt"></i>
-                    Open Tonkeeper
-                </button>
-                <button class="btn btn-primary" onclick="checkDepositStatus()" style="flex: 1;">
-                    <i class="fas fa-sync-alt"></i>
-                    Check Status
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         // Game State
         let gameState = {
@@ -1481,8 +1649,8 @@
                 mintedSquids: 0,
                 referralCode: '',
                 referredBy: null,
-                depositAddress: '',
-                depositComment: ''
+                walletAddress: '',
+                walletConnected: false
             },
             global: {
                 totalSquids: 0,
@@ -1497,18 +1665,101 @@
 
         // UI State
         let currentMarketTab = 'buy';
+        let currentFinanceTab = 'deposit';
         let eggTimer = 0;
         let eggTimerInterval;
-        let depositCheckInterval;
+        let connectedWallet = null;
         let currentDepositInfo = null;
 
         // API Configuration
         const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
-        const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user';
-        const TELEGRAM_DATA = window.Telegram?.WebApp?.initData || '';
+        let USER_ID = 'demo_user';
+        let TELEGRAM_DATA = '';
 
-        // Deposit Address (Your wallet address)
-        const TON_WALLET_ADDRESS = "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG";
+        // Telegram Integration
+        async function setupTelegramAuth() {
+            if (window.Telegram?.WebApp?.initData) {
+                TELEGRAM_DATA = window.Telegram.WebApp.initData;
+                
+                // Extract user ID properly
+                const initData = new URLSearchParams(TELEGRAM_DATA);
+                const userParam = initData.get('user');
+                if (userParam) {
+                    try {
+                        const userData = JSON.parse(decodeURIComponent(userParam));
+                        USER_ID = String(userData.id);
+                        
+                        // Update UI with actual user data
+                        document.getElementById('profileName').textContent = 
+                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
+                        document.getElementById('profileUsername').textContent = 
+                            userData.username ? `@${userData.username}` : 'User';
+                            
+                        console.log('Authenticated Telegram User:', userData);
+                        
+                        return userData;
+                    } catch (error) {
+                        console.error('Failed to parse Telegram user data:', error);
+                    }
+                }
+            }
+            
+            // Fallback for testing
+            console.warn('Using demo mode - no Telegram auth');
+            return null;
+        }
+
+        // API Functions
+        async function callAPI(action, data = {}) {
+            try {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-User-ID': USER_ID
+                };
+                
+                // Add Telegram authentication if available
+                if (TELEGRAM_DATA) {
+                    headers['Authorization'] = `Telegram ${TELEGRAM_DATA}`;
+                    headers['X-Telegram-Data'] = TELEGRAM_DATA;
+                }
+                
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ 
+                        action, 
+                        data,
+                        userId: USER_ID 
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    return result.data;
+                } else {
+                    console.error(`API Error (${result.errorCode}):`, result.error);
+                    
+                    // Handle specific errors
+                    if (result.errorCode === 'AUTH_REQUIRED') {
+                        alert('Please open this game through Telegram to play.');
+                    } else {
+                        alert(result.error || 'An error occurred');
+                    }
+                    
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('API call failed:', error);
+                
+                // Don't show alert for network errors in production
+                if (!error.message.includes('Network')) {
+                    alert('Network error. Please check your connection and try again.');
+                }
+                
+                throw error;
+            }
+        }
 
         // Utility Functions
         function formatNumber(num) {
@@ -1530,36 +1781,6 @@
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        // API Functions
-        async function callAPI(action, data = {}) {
-            try {
-                const response = await fetch(API_BASE, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-ID': USER_ID,
-                        'X-Telegram-Data': TELEGRAM_DATA,
-                        'X-Action': action
-                    },
-                    body: JSON.stringify({ action, data })
-                });
-
-                const result = await response.json();
-                
-                if (result.success) {
-                    return result.data;
-                } else {
-                    console.error(`API Error (${result.errorCode}):`, result.error);
-                    alert(result.error);
-                    throw new Error(result.error);
-                }
-            } catch (error) {
-                console.error('API call failed:', error);
-                alert('Network error. Please try again.');
-                throw error;
-            }
         }
 
         // Game State Management
@@ -1685,168 +1906,250 @@
             }
         }
 
-        // Deposit Functions
-        async function loadDepositInfo() {
+        // Finance Functions
+        function showFinancePage() {
+            switchTab('financeTab');
+        }
+
+        function switchFinanceTab(tab) {
+            currentFinanceTab = tab;
+            
+            // Update tabs
+            document.querySelectorAll('.finance-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.finance-content').forEach(t => t.classList.remove('active'));
+            
+            // Show selected tab
+            document.querySelector(`.finance-tab:nth-child(${tab === 'deposit' ? 1 : 2})`).classList.add('active');
+            document.getElementById(`${tab}Tab`).classList.add('active');
+            
+            // Update UI based on tab
+            if (tab === 'withdraw') {
+                updateWithdrawUI();
+            }
+        }
+
+        // Wallet Connection
+        async function connectWallet() {
             try {
-                // Generate unique comment for this user
-                const comment = `SQUID_${USER_ID}`;
+                // In a real implementation, use TON Connect SDK
+                // For demo purposes, we'll simulate wallet connection
                 
-                // Set deposit info
-                currentDepositInfo = {
-                    address: TON_WALLET_ADDRESS,
-                    comment: comment,
-                    userId: USER_ID
+                const walletAddress = prompt('Enter your TON wallet address:');
+                if (!walletAddress) {
+                    return;
+                }
+                
+                // Validate wallet address format
+                if (walletAddress.length < 10) {
+                    alert('Invalid wallet address format');
+                    return;
+                }
+                
+                connectedWallet = {
+                    address: walletAddress,
+                    type: 'tonkeeper' // or 'tonhub', 'mytonwallet', etc.
                 };
                 
                 // Update UI
-                document.getElementById('depositAddress').value = currentDepositInfo.address;
-                document.getElementById('depositComment').value = currentDepositInfo.comment;
+                const walletStatus = document.getElementById('walletStatus');
+                walletStatus.innerHTML = `
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; font-weight: 600; color: var(--success);">Wallet Connected</div>
+                        <div class="wallet-address">${walletAddress.substring(0, 20)}...${walletAddress.substring(walletAddress.length - 6)}</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="disconnectWallet()">
+                        <i class="fas fa-unplug"></i> Disconnect
+                    </button>
+                `;
+                walletStatus.classList.remove('disconnected');
+                walletStatus.classList.add('connected');
                 
-                // Generate QR code
-                generateQRCode(currentDepositInfo.address, currentDepositInfo.comment);
+                // Enable deposit button
+                document.getElementById('initiateDepositBtn').disabled = false;
                 
-                // Start checking deposit status
-                startDepositStatusChecker();
+                alert('Wallet connected successfully!');
                 
             } catch (error) {
-                console.error('Failed to load deposit info:', error);
-                alert('Failed to load deposit information. Please try again.');
+                console.error('Failed to connect wallet:', error);
+                alert('Failed to connect wallet. Please try again.');
             }
         }
 
-        function generateQRCode(address, comment) {
-            // Clear existing QR code
-            document.getElementById('qrcode').innerHTML = '';
+        function disconnectWallet() {
+            connectedWallet = null;
             
-            // Create TON transfer URL
-            const tonTransferURL = `ton://transfer/${address}?text=${encodeURIComponent(comment)}`;
+            // Update UI
+            const walletStatus = document.getElementById('walletStatus');
+            walletStatus.innerHTML = `
+                <div style="flex: 1;">
+                    <div style="font-size: 14px; font-weight: 600;">Wallet Status</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">Not connected</div>
+                </div>
+                <button class="btn btn-primary" onclick="connectWallet()" id="connectWalletBtn">
+                    <i class="fas fa-plug"></i> Connect Wallet
+                </button>
+            `;
+            walletStatus.classList.remove('connected');
+            walletStatus.classList.add('disconnected');
             
-            // Generate QR code
-            new QRCode(document.getElementById("qrcode"), {
-                text: tonTransferURL,
-                width: 200,
-                height: 200,
-                colorDark: "#8338EC",
-                colorLight: "#12121F",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+            // Disable deposit button
+            document.getElementById('initiateDepositBtn').disabled = true;
+            
+            // Hide deposit details
+            document.getElementById('depositDetailsCard').style.display = 'none';
+            
+            alert('Wallet disconnected.');
         }
 
-        async function checkDepositStatus() {
+        function setDepositAmount(amount) {
+            document.getElementById('depositAmount').value = amount;
+        }
+
+        // Deposit Functions
+        async function initiateDeposit() {
+            if (!connectedWallet) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+            
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+            if (!amount || amount < 0.1) {
+                alert('Minimum deposit amount is 0.1 TON');
+                return;
+            }
+            
             try {
-                // In a real implementation, this would call your backend
-                // to check if a deposit with this comment has been received
+                // Call backend to initialize deposit
+                const depositData = await callAPI('deposit/init', {
+                    amount: amount,
+                    wallet_address: connectedWallet.address
+                });
                 
-                // For now, we'll simulate the check
-                const statusElement = document.getElementById('depositStatus');
-                statusElement.textContent = 'Checking blockchain...';
-                statusElement.style.color = 'var(--warning)';
+                currentDepositInfo = depositData;
                 
-                // Simulate API call
-                setTimeout(async () => {
-                    try {
-                        // This would be your actual API call
-                        // const data = await callAPI('checkDeposit', { 
-                        //     comment: currentDepositInfo.comment 
-                        // });
-                        
-                        // For demo purposes, we'll just update from game state
-                        statusElement.textContent = 'No deposit detected yet';
-                        statusElement.style.color = 'var(--warning)';
-                        
-                        alert('No new deposits found. Please make sure you included the correct comment.');
-                        
-                    } catch (error) {
-                        console.error('Deposit check failed:', error);
-                        statusElement.textContent = 'Check failed';
-                        statusElement.style.color = 'var(--danger)';
-                    }
-                }, 1500);
+                // Update UI with deposit details
+                document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
+                document.getElementById('depositTargetAddress').textContent = depositData.address;
+                document.getElementById('depositCommentText').textContent = depositData.comment;
+                
+                // Show deposit details
+                document.getElementById('depositDetailsCard').style.display = 'block';
                 
             } catch (error) {
-                console.error('Deposit status check failed:', error);
-                alert('Failed to check deposit status.');
-            }
-        }
-
-        function startDepositStatusChecker() {
-            // Clear any existing interval
-            if (depositCheckInterval) {
-                clearInterval(depositCheckInterval);
-            }
-            
-            // Check every 30 seconds while modal is open
-            depositCheckInterval = setInterval(() => {
-                if (document.getElementById('depositModal').classList.contains('active')) {
-                    autoCheckDeposit();
-                }
-            }, 30000);
-        }
-
-        async function autoCheckDeposit() {
-            try {
-                // This would be your actual deposit check
-                // const data = await callAPI('checkDeposit', {
-                //     comment: currentDepositInfo.comment
-                // });
-                
-                // For now, we'll just refresh the game state
-                await loadGameState();
-                
-                // Update status based on balance change
-                const currentBalance = gameState.user.tonBalance;
-                const statusElement = document.getElementById('depositStatus');
-                
-                if (currentBalance > 0) {
-                    statusElement.textContent = `Balance: ${formatTON(currentBalance)} TON`;
-                    statusElement.style.color = 'var(--success)';
-                }
-                
-            } catch (error) {
-                console.error('Auto deposit check failed:', error);
+                console.error('Failed to initiate deposit:', error);
+                alert('Failed to prepare deposit. Please try again.');
             }
         }
 
         function openTonkeeper() {
             if (!currentDepositInfo) {
-                alert('Please wait for deposit info to load');
+                alert('Please initiate a deposit first.');
                 return;
             }
             
-            const tonkeeperURL = `https://app.tonkeeper.com/transfer/${currentDepositInfo.address}?text=${encodeURIComponent(currentDepositInfo.comment)}`;
+            // Create Tonkeeper deep link
+            const tonkeeperURL = `https://app.tonkeeper.com/transfer/${currentDepositInfo.address}?text=${encodeURIComponent(currentDepositInfo.comment)}&amount=${currentDepositInfo.amount * 1000000000}`;
+            
+            // Open in new tab
             window.open(tonkeeperURL, '_blank');
         }
 
-        function copyDepositAddress() {
+        async function sendDepositTransaction() {
             if (!currentDepositInfo) {
-                alert('Please wait for deposit info to load');
+                alert('Please initiate a deposit first.');
                 return;
             }
             
-            navigator.clipboard.writeText(currentDepositInfo.address)
-                .then(() => {
-                    alert('TON address copied to clipboard!');
-                })
-                .catch(err => {
-                    console.error('Failed to copy address:', err);
-                    alert('Failed to copy address');
-                });
+            try {
+                // In a real implementation, this would use TON Connect SDK
+                // For now, we'll simulate the transaction
+                
+                alert(`Transaction prepared!\n\nSend ${currentDepositInfo.amount} TON to:\n${currentDepositInfo.address}\n\nWith comment: ${currentDepositInfo.comment}\n\nPlease complete the transaction in your wallet.`);
+                
+                // Hide deposit details
+                document.getElementById('depositDetailsCard').style.display = 'none';
+                
+                // Reset form
+                document.getElementById('depositAmount').value = '';
+                
+                // Start checking for deposit confirmation
+                setTimeout(() => {
+                    loadGameState();
+                    alert('Checking for deposit confirmation... Please wait a moment.');
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Failed to send transaction:', error);
+                alert('Failed to send transaction. Please try again.');
+            }
         }
 
-        function copyDepositComment() {
-            if (!currentDepositInfo) {
-                alert('Please wait for deposit info to load');
+        // Withdraw Functions
+        function updateWithdrawUI() {
+            document.getElementById('availableBalance').textContent = formatTON(gameState.user.tonBalance);
+            
+            // Update fee calculation when amount changes
+            const amountInput = document.getElementById('withdrawAmountFinance');
+            amountInput.addEventListener('input', calculateWithdrawFee);
+            calculateWithdrawFee();
+        }
+
+        function calculateWithdrawFee() {
+            const amount = parseFloat(document.getElementById('withdrawAmountFinance').value) || 0;
+            const feeDetails = document.getElementById('withdrawFeeDetails');
+            
+            if (amount >= 0.5) {
+                const fee = amount * 0.05;
+                const netAmount = amount - fee;
+                
+                document.getElementById('withdrawAmountDisplay').textContent = `${formatTON(amount)} TON`;
+                document.getElementById('withdrawFeeDisplay').textContent = `${formatTON(fee)} TON`;
+                document.getElementById('withdrawNetAmountDisplay').textContent = `${formatTON(netAmount)} TON`;
+                
+                feeDetails.style.display = 'block';
+            } else {
+                feeDetails.style.display = 'none';
+            }
+        }
+
+        async function submitWithdrawal() {
+            const amount = parseFloat(document.getElementById('withdrawAmountFinance').value);
+            const address = document.getElementById('withdrawAddressFinance').value;
+            
+            if (!amount || amount < 0.5) {
+                alert('Minimum withdrawal amount is 0.5 TON');
                 return;
             }
             
-            navigator.clipboard.writeText(currentDepositInfo.comment)
-                .then(() => {
-                    alert('Deposit comment copied to clipboard!');
-                })
-                .catch(err => {
-                    console.error('Failed to copy comment:', err);
-                    alert('Failed to copy comment');
+            if (!address || address.length < 10) {
+                alert('Please enter a valid TON wallet address');
+                return;
+            }
+            
+            if (amount > gameState.user.tonBalance) {
+                alert('Insufficient balance');
+                return;
+            }
+
+            try {
+                const data = await callAPI('withdrawTON', { 
+                    amount: amount, 
+                    address: address 
                 });
+                
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                
+                // Reset form
+                document.getElementById('withdrawAmountFinance').value = '';
+                document.getElementById('withdrawAddressFinance').value = '';
+                document.getElementById('withdrawFeeDetails').style.display = 'none';
+                
+                // Refresh game state
+                loadGameState();
+                
+            } catch (error) {
+                console.error('Withdrawal failed:', error);
+            }
         }
 
         // UI Update Functions
@@ -1910,6 +2213,11 @@
             // Update referral link
             const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
             document.getElementById('referralLink').value = referralLink;
+            
+            // Update finance page if active
+            if (currentFinanceTab === 'withdraw') {
+                updateWithdrawUI();
+            }
         }
 
         // Modal Functions
@@ -1933,21 +2241,6 @@
 
         function closeHatchModal() {
             document.getElementById('hatchModal').classList.remove('active');
-        }
-
-        function showDepositModal() {
-            loadDepositInfo();
-            document.getElementById('depositModal').classList.add('active');
-        }
-
-        function closeDepositModal() {
-            // Clear the deposit check interval
-            if (depositCheckInterval) {
-                clearInterval(depositCheckInterval);
-                depositCheckInterval = null;
-            }
-            
-            document.getElementById('depositModal').classList.remove('active');
         }
 
         function copyReferralLink() {
@@ -2051,6 +2344,9 @@
 
         // Initialize
         async function initialize() {
+            // Setup Telegram authentication
+            await setupTelegramAuth();
+            
             // Setup event listeners
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', () => switchTab(item.dataset.tab));
@@ -2094,32 +2390,8 @@
             }, 1000);
         }
 
-        // Telegram integration
-        function setupTelegram() {
-            if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-                const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-                const name = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
-                const username = tgUser.username ? `@${tgUser.username}` : '';
-                
-                document.getElementById('profileName').textContent = name || 'Explorer';
-                document.getElementById('profileUsername').textContent = username;
-                
-                // Initialize user if needed
-                callAPI('initializeUser', {
-                    user: {
-                        first_name: tgUser.first_name,
-                        last_name: tgUser.last_name || '',
-                        username: tgUser.username || ''
-                    }
-                });
-            }
-        }
-
         // Start the app
-        document.addEventListener('DOMContentLoaded', () => {
-            setupTelegram();
-            initialize();
-        });
+        document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
 </html>
