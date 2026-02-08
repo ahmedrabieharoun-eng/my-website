@@ -2,199 +2,345 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>SquidPEPE Game</title>
-    
-    <!-- مكتبات Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SquidPEPE</title>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- Telegram WebApp -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
-        :root {
-            --primary-color: #00d4ff;
-            --secondary-color: #ff00ff;
-            --background: linear-gradient(135deg, #0a0a2a, #1a1a4a);
-            --card-bg: rgba(10, 10, 42, 0.8);
-            --text-color: #ffffff;
-            --accent-color: #00ff88;
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            /* Colors - SquidPEPE Theme */
+            --primary-blue: #00B4D8;
+            --primary-purple: #8338EC;
+            --primary-pink: #FF006E;
+            --dark-bg: #0A0A0F;
+            --dark-card: #12121F;
+            --dark-border: #1E1E2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #6C6C7C;
+            --success: #00D4AA;
+            --warning: #FFB74D;
+            --danger: #FF5252;
+            
+            /* Game Specific */
+            --squid-color: #8338EC;
+            --egg-color: #FFB74D;
+            --ton-color: #0088CC;
+        }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--background);
-            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #0F0F1F 100%);
+            color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
         }
         
-        /* 🔝 Top Status Bar */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(131, 56, 236, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 180, 216, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 0, 110, 0.08) 0%, transparent 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Top Status Bar */
         .status-bar {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: rgba(18, 18, 31, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--dark-border);
+            padding: 12px 16px;
             z-index: 1000;
-            border-bottom: 2px solid var(--primary-color);
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
         }
         
         .status-item {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            min-width: 80px;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-item.left {
+            justify-content: flex-start;
+        }
+        
+        .status-item.center {
+            justify-content: center;
+        }
+        
+        .status-item.right {
+            justify-content: flex-end;
+        }
+        
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
         }
         
         .status-value {
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--accent-color);
+            font-weight: 700;
+            color: var(--text-primary);
         }
         
         .status-label {
-            font-size: 10px;
-            opacity: 0.8;
+            color: var(--text-secondary);
+            font-size: 11px;
             margin-top: 2px;
         }
         
-        /* 📱 محتوى الصفحة الرئيسي */
+        .status-secondary {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        .add-button {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .add-button:active {
+            transform: scale(0.95);
+        }
+        
+        /* Main Container */
         .app-container {
-            padding-top: 80px;
+            padding-top: 70px;
             padding-bottom: 80px;
             max-width: 500px;
             margin: 0 auto;
             min-height: 100vh;
         }
         
-        /* 🏠 Home Screen */
-        .home-screen {
+        .content-section {
+            display: none;
+            padding: 16px;
+        }
+        
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Home Screen */
+        .home-container {
             text-align: center;
-            padding: 20px;
         }
         
         .squid-character {
-            width: 180px;
-            height: 180px;
-            margin: 20px auto;
-            background: url('https://i.ibb.co/.../squid-character.png') center/contain no-repeat;
+            width: 200px;
+            height: 200px;
+            margin: 20px auto 30px;
+            position: relative;
             animation: float 3s ease-in-out infinite;
         }
         
         @keyframes float {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .squid-character::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(131, 56, 236, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
         }
         
         .mint-progress {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 15px;
+            background: var(--dark-card);
+            border-radius: 16px;
+            padding: 20px;
             margin: 20px 0;
-            border: 2px solid var(--primary-color);
+            border: 1px solid var(--dark-border);
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
         }
         
         .progress-bar {
-            height: 10px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-            border-radius: 5px;
-            margin: 10px 0;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
         }
         
         .action-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
             margin: 20px 0;
         }
         
+        /* Buttons */
         .btn {
-            padding: 15px;
-            border-radius: 15px;
+            padding: 16px;
+            border-radius: 16px;
             border: none;
-            font-size: 16px;
-            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
         }
         
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
             color: white;
         }
         
-        /* ⬇️ Bottom Navigation */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(15px);
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            padding: 10px 5px;
-            z-index: 1000;
-            border-top: 2px solid var(--primary-color);
+        .btn-secondary {
+            background: var(--dark-card);
+            color: var(--text-primary);
+            border: 1px solid var(--dark-border);
         }
         
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: #666;
-            transition: all 0.3s;
-            cursor: pointer;
-            padding: 5px;
-        }
-        
-        .nav-item.active {
-            color: var(--primary-color);
-            transform: translateY(-5px);
-        }
-        
-        .nav-icon {
-            font-size: 20px;
-            margin-bottom: 3px;
-        }
-        
-        .nav-text {
-            font-size: 10px;
-            font-weight: bold;
-        }
-        
-        /* 📊 Screens Content */
-        .screen-content {
-            display: none;
+        /* Cards */
+        .card {
+            background: var(--dark-card);
+            border-radius: 16px;
             padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--dark-border);
         }
         
-        .screen-content.active {
-            display: block;
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
         }
         
-        /* 🏪 Market Screen */
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Market Screen */
         .order-book {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
+            margin: 20px 0;
+        }
+        
+        .order-type-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .order-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        
+        .order-tab.active {
+            background: var(--dark-card);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
         
         .order-list {
@@ -205,433 +351,1544 @@
         .order-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        /* 👥 Friends Screen */
-        .referral-card {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .order-price {
+            font-weight: 700;
+            color: var(--success);
+        }
+        
+        .order-price.sell {
+            color: var(--danger);
+        }
+        
+        .order-amount {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .order-user {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .create-order-form {
+            margin-top: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--dark-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+        }
+        
+        .amount-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .amount-btn {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--dark-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
             text-align: center;
+        }
+        
+        .amount-btn.active {
+            background: var(--primary-purple);
+            border-color: var(--primary-purple);
+        }
+        
+        /* Friends Screen */
+        .referral-card {
+            background: linear-gradient(135deg, rgba(131, 56, 236, 0.2), rgba(0, 180, 216, 0.2));
+            border: 1px solid rgba(131, 56, 236, 0.3);
         }
         
         .referral-link {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 10px;
-            border-radius: 10px;
-            margin: 15px 0;
-            word-break: break-all;
-            font-family: monospace;
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
         }
         
-        /* 👤 Profile Screen */
-        .profile-stats {
+        .referral-input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .copy-btn {
+            padding: 0 20px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .referral-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
+            gap: 12px;
             margin: 20px 0;
         }
         
-        .stat-card {
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 15px;
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 12px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        /* 📱 Responsive */
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-purple);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Profile Screen */
+        .profile-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            border: 3px solid var(--primary-purple);
+            padding: 3px;
+        }
+        
+        .profile-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .profile-username {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .balance-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .balance-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .balance-icon.squid {
+            background: rgba(131, 56, 236, 0.2);
+            color: var(--squid-color);
+        }
+        
+        .balance-icon.egg {
+            background: rgba(255, 183, 77, 0.2);
+            color: var(--egg-color);
+        }
+        
+        .balance-icon.ton {
+            background: rgba(0, 136, 204, 0.2);
+            color: var(--ton-color);
+        }
+        
+        .balance-amount {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        
+        .balance-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .production-stats {
+            margin: 20px 0;
+        }
+        
+        .production-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .production-item:last-child {
+            border-bottom: none;
+        }
+        
+        .production-label {
+            color: var(--text-secondary);
+        }
+        
+        .production-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 31, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--dark-border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 8px;
+            border-radius: 12px;
+            min-width: 60px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-purple);
+            background: rgba(131, 56, 236, 0.1);
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+        }
+        
+        .nav-text {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal {
+            background: var(--dark-card);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid var(--dark-border);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-body {
+            margin-bottom: 24px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-footer .btn {
+            flex: 1;
+        }
+        
+        /* Responsive */
         @media (max-width: 480px) {
-            .status-value { font-size: 16px; }
-            .squid-character { width: 150px; height: 150px; }
-            .btn { padding: 12px; font-size: 14px; }
+            .app-container {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            
+            .squid-character {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .balance-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .bottom-nav {
+                padding: 8px 12px;
+            }
+            
+            .nav-item {
+                min-width: 50px;
+                padding: 6px;
+            }
+            
+            .nav-icon {
+                font-size: 18px;
+            }
+            
+            .nav-text {
+                font-size: 10px;
+            }
+        }
+        
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        
+        .loading-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-title {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .loading-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
+            width: 0%;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
 <body>
-    <!-- 🔝 Top Status Bar -->
-    <div class="status-bar">
-        <div class="status-item">
-            <div class="status-value" id="status-squids">0</div>
-            <div class="status-label">Squids</div>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">🦑</div>
+        <h1 class="loading-title">SquidPEPE</h1>
+        <p class="loading-subtitle">Loading your underwater adventure...</p>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgress"></div>
         </div>
-        <div class="status-item">
-            <div class="status-value" id="status-eggs">0</div>
-            <div class="status-label">Eggs</div>
-        </div>
-        <div class="status-item">
-            <div class="status-value" id="status-ton">0.00</div>
-            <div class="status-label">TON</div>
-        </div>
-        <button class="btn" onclick="showMintModal()" style="padding: 8px 15px; font-size: 14px;">
-            <i class="fas fa-plus"></i>
-        </button>
     </div>
 
-    <!-- 📱 App Content -->
-    <div class="app-container">
-        <!-- 🏠 Home Screen -->
-        <div id="home-screen" class="screen-content active">
-            <div class="home-screen">
-                <h1>🐙 SquidPEPE</h1>
-                <div class="squid-character"></div>
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+        <div class="status-item left">
+            <div class="status-icon">🦑</div>
+            <div>
+                <div class="status-value" id="statusSquids">0</div>
+                <div class="status-label" id="statusSquidsRate">0/day</div>
+            </div>
+        </div>
+        
+        <div class="status-item center">
+            <div class="status-icon">🥚</div>
+            <div>
+                <div class="status-value" id="statusEggs">0</div>
+                <div class="status-label" id="statusEggsTimer">--:--</div>
+            </div>
+        </div>
+        
+        <div class="status-item right">
+            <div class="status-icon">⚡</div>
+            <div>
+                <div class="status-value" id="statusTon">0.0000</div>
+                <div class="status-label">TON</div>
+            </div>
+            <button class="add-button" onclick="showAddTonModal()">+</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- Friends Tab -->
+        <div id="friendsTab" class="content-section">
+            <div class="card referral-card">
+                <h2 class="card-title">
+                    <i class="fas fa-users"></i>
+                    Invite Friends
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                    Invite friends and earn 10% of their mint and 5% of their hatch rewards!
+                </p>
                 
-                <div class="mint-progress">
-                    <div>Mint Progress</div>
-                    <div class="progress-bar" id="mint-progress-bar" style="width: 5.56%"></div>
-                    <div id="mint-progress-text">5,000 / 90,000,000</div>
+                <div class="referral-link">
+                    <input type="text" id="referralLink" class="referral-input" readonly>
+                    <button class="copy-btn" onclick="copyReferralLink()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-trophy"></i>
+                    Your Rewards
+                </h2>
+                
+                <div class="referral-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalReferrals">0</div>
+                        <div class="stat-label">Friends</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="referralEarnings">0</div>
+                        <div class="stat-label">TON Earned</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--text-primary);">
+                        <i class="fas fa-history"></i> Recent Rewards
+                    </h3>
+                    <div id="referralHistory" style="color: var(--text-secondary); font-size: 14px;">
+                        No rewards yet. Invite friends to start earning!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-info-circle"></i>
+                    How It Works
+                </h2>
+                <div style="color: var(--text-secondary); font-size: 14px; line-height: 1.6;">
+                    <p style="margin-bottom: 10px;">1. Share your referral link with friends</p>
+                    <p style="margin-bottom: 10px;">2. Earn <strong>10% of 1 TON</strong> when they mint</p>
+                    <p style="margin-bottom: 10px;">3. Earn <strong>5% of eggs</strong> when they hatch</p>
+                    <p style="margin-bottom: 10px;">4. Unlimited referral rewards!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Tab -->
+        <div id="homeTab" class="content-section active">
+            <div class="home-container">
+                <div class="squid-character">
+                    🦑
+                </div>
+                
+                <div class="card mint-progress">
+                    <div class="progress-label">
+                        <span>Limited Mint</span>
+                        <span id="mintProgressText">0/90,000,000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="mintProgressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span id="mintAvailable">90,000,000 available</span>
+                        <span id="mintUsed">0 used</span>
+                    </div>
                 </div>
                 
                 <div class="action-buttons">
                     <button class="btn btn-primary" onclick="showHatchModal()">
-                        <i class="fas fa-egg"></i> Hatch
+                        <i class="fas fa-egg"></i>
+                        Hatch
                     </button>
-                    <button class="btn btn-primary" onclick="showMintModal()">
-                        <i class="fas fa-coins"></i> Mint
+                    <button class="btn btn-secondary" onclick="showMintModal()" id="mintButton">
+                        <i class="fas fa-coins"></i>
+                        Mint
                     </button>
                 </div>
                 
-                <div class="profile-stats">
-                    <div class="stat-card">
-                        <div class="status-label">Active Squids</div>
-                        <div class="status-value" id="active-squids">0</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="status-label">Eggs/Day</div>
-                        <div class="status-value" id="eggs-per-day">0</div>
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        Market Stats
+                    </h2>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Best Buy</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="bestBuyPrice">0.0000</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Best Sell</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--danger);" id="bestSellPrice">0.0000</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 👥 Friends Screen -->
-        <div id="friends-screen" class="screen-content">
-            <div class="referral-card">
-                <h3><i class="fas fa-users"></i> Friends Program</h3>
-                <p>Invite friends and earn rewards!</p>
+        <!-- Market Tab -->
+        <div id="marketTab" class="content-section">
+            <div class="order-type-tabs">
+                <div class="order-tab active" onclick="switchMarketTab('buy')">Buy</div>
+                <div class="order-tab" onclick="switchMarketTab('sell')">Sell</div>
+                <div class="order-tab" onclick="switchMarketTab('orders')">My Orders</div>
+            </div>
+            
+            <!-- Buy Tab -->
+            <div id="buyTab" class="market-tab">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-shopping-cart"></i>
+                        Buy Squids
+                    </h2>
+                    
+                    <div class="order-book">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-list"></i> Sell Orders
+                        </h3>
+                        <div class="order-list" id="sellOrdersList">
+                            <!-- Sell orders will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="create-order-form">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-plus-circle"></i> Create Buy Order
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Price per Squid (TON)</label>
+                            <input type="number" id="buyPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Amount (Squids)</label>
+                            <input type="number" id="buyAmount" class="form-input" placeholder="100" min="100">
+                            <div class="amount-buttons">
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.25)">25%</div>
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.5)">50%</div>
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.75)">75%</div>
+                                <div class="amount-btn" onclick="setBuyAmountMax()">MAX</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="createBuyOrder()" style="width: 100%;">
+                            <i class="fas fa-check-circle"></i>
+                            Place Buy Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sell Tab -->
+            <div id="sellTab" class="market-tab" style="display: none;">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-cash-register"></i>
+                        Sell Squids
+                    </h2>
+                    
+                    <div class="order-book">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-list"></i> Buy Orders
+                        </h3>
+                        <div class="order-list" id="buyOrdersList">
+                            <!-- Buy orders will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="create-order-form">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-plus-circle"></i> Create Sell Order
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Price per Squid (TON)</label>
+                            <input type="number" id="sellPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Amount (Squids)</label>
+                            <input type="number" id="sellAmount" class="form-input" placeholder="100" min="100">
+                            <div class="amount-buttons">
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.25)">25%</div>
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.5)">50%</div>
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.75)">75%</div>
+                                <div class="amount-btn" onclick="setSellAmountMax()">MAX</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="createSellOrder()" style="width: 100%;">
+                            <i class="fas fa-check-circle"></i>
+                            Place Sell Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- My Orders Tab -->
+            <div id="ordersTab" class="market-tab" style="display: none;">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        My Active Orders
+                    </h2>
+                    
+                    <div id="myOrdersList">
+                        <!-- User's orders will be populated here -->
+                        <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>No active orders</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mint Tab -->
+        <div id="mintTab" class="content-section">
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-hammer"></i>
+                    Craft Station
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+                    Convert your resources between Eggs and Squids
+                </p>
                 
-                <div class="referral-link" id="referral-link">
-                    https://t.me/yourbot?start=ref_...
+                <div style="margin: 20px 0;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div style="width: 40px; height: 40px; background: rgba(131, 56, 236, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--squid-color);">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">Your Squids</div>
+                            <div style="font-size: 24px; font-weight: 700;" id="craftSquids">0</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: rgba(255, 183, 77, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--egg-color);">
+                            <i class="fas fa-egg"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">Your Eggs</div>
+                            <div style="font-size: 24px; font-weight: 700;" id="craftEggs">0</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="copyReferralLink()">
-                        <i class="fas fa-copy"></i> Copy Link
+                    <button class="btn btn-primary" onclick="showHatchModal()">
+                        <i class="fas fa-arrow-down"></i>
+                        Hatch (Eggs → Squids)
                     </button>
-                    <button class="btn btn-primary" onclick="shareReferral()">
-                        <i class="fas fa-share"></i> Share
-                    </button>
-                </div>
-                
-                <div class="stat-card" style="margin-top: 15px;">
-                    <div class="status-label">Total Referrals</div>
-                    <div class="status-value" id="total-referrals">0</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 🏪 Market Screen -->
-        <div id="market-screen" class="screen-content">
-            <div class="order-book">
-                <h3><i class="fas fa-chart-line"></i> Order Book</h3>
-                <div class="order-list" id="order-book-list">
-                    <!-- Orders will be loaded here -->
                 </div>
             </div>
             
-            <div class="action-buttons">
-                <button class="btn btn-primary" onclick="showCreateOrderModal('buy')">
-                    <i class="fas fa-shopping-cart"></i> Buy Order
-                </button>
-                <button class="btn btn-primary" onclick="showCreateOrderModal('sell')">
-                    <i class="fas fa-tag"></i> Sell Order
-                </button>
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-history"></i>
+                    Recent Crafts
+                </h2>
+                <div id="craftHistory" style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 20px;">
+                    No craft history yet
+                </div>
             </div>
         </div>
 
-        <!-- ⚡ Mint Screen -->
-        <div id="mint-screen" class="screen-content">
-            <div class="referral-card">
-                <h3><i class="fas fa-coins"></i> Mint Squids</h3>
-                <div class="mint-info">
-                    <p><strong>Price:</strong> 1 TON</p>
-                    <p><strong>You receive:</strong> 3,000 Squids</p>
-                    <p><strong>Global Limit:</strong> 90,000,000 Squids</p>
+        <!-- Profile Tab -->
+        <div id="profileTab" class="content-section">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    🦑
                 </div>
-                
-                <div class="progress-bar" id="global-mint-progress"></div>
-                
-                <button class="btn btn-primary" onclick="mintSquids()" id="mint-button">
-                    <i class="fas fa-coins"></i> Mint Now
-                </button>
+                <div class="profile-name" id="profileName">Explorer</div>
+                <div class="profile-username" id="profileUsername">@username</div>
             </div>
-        </div>
-
-        <!-- 👤 Profile Screen -->
-        <div id="profile-screen" class="screen-content">
-            <div class="profile-stats">
-                <div class="stat-card">
-                    <div class="status-label">TON Balance</div>
-                    <div class="status-value" id="profile-ton">0.00</div>
-                </div>
-                <div class="stat-card">
-                    <div class="status-label">Eggs</div>
-                    <div class="status-value" id="profile-eggs">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="status-label">Squids</div>
-                    <div class="status-value" id="profile-squids">0</div>
-                </div>
-                <div class="stat-card">
-                    <div class="status-label">Active Orders</div>
-                    <div class="status-value" id="active-orders">0</div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-wallet"></i>
+                    Balances
+                </h2>
+                
+                <div class="balance-grid">
+                    <div class="balance-item">
+                        <div class="balance-icon squid">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div class="balance-amount" id="profileSquids">0</div>
+                        <div class="balance-label">Squids</div>
+                    </div>
+                    
+                    <div class="balance-item">
+                        <div class="balance-icon egg">
+                            <i class="fas fa-egg"></i>
+                        </div>
+                        <div class="balance-amount" id="profileEggs">0</div>
+                        <div class="balance-label">Eggs</div>
+                    </div>
+                    
+                    <div class="balance-item">
+                        <div class="balance-icon ton">
+                            ⚡
+                        </div>
+                        <div class="balance-amount" id="profileTon">0.0000</div>
+                        <div class="balance-label">TON</div>
+                    </div>
                 </div>
             </div>
             
-            <button class="btn btn-primary" onclick="showWithdrawModal()" style="width: 100%; margin-top: 20px;">
-                <i class="fas fa-wallet"></i> Withdraw TON
-            </button>
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-industry"></i>
+                    Production
+                </h2>
+                
+                <div class="production-stats">
+                    <div class="production-item">
+                        <span class="production-label">Active Squids</span>
+                        <span class="production-value" id="activeSquids">0</span>
+                    </div>
+                    <div class="production-item">
+                        <span class="production-label">Eggs per Day</span>
+                        <span class="production-value" id="eggsPerDay">0</span>
+                    </div>
+                    <div class="production-item">
+                        <span class="production-label">Next Egg</span>
+                        <span class="production-value" id="nextEggTimer">--:--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-exchange-alt"></i>
+                    Withdraw TON
+                </h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount (TON)</label>
+                    <input type="number" id="withdrawAmount" class="form-input" placeholder="0.1" step="0.001" min="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">TON Wallet Address</label>
+                    <input type="text" id="withdrawAddress" class="form-input" placeholder="EQD...">
+                </div>
+                
+                <button class="btn btn-primary" onclick="withdrawTON()" style="width: 100%;">
+                    <i class="fas fa-paper-plane"></i>
+                    Withdraw
+                </button>
+                
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 12px; text-align: center;">
+                    Minimum withdrawal: 0.1 TON (5% fee)
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- ⬇️ Bottom Navigation -->
+    <!-- Bottom Navigation -->
     <nav class="bottom-nav">
-        <div class="nav-item" data-screen="friends-screen" onclick="switchScreen('friends-screen')">
+        <div class="nav-item active" data-tab="friendsTab">
             <div class="nav-icon">👥</div>
             <div class="nav-text">Friends</div>
         </div>
-        <div class="nav-item active" data-screen="home-screen" onclick="switchScreen('home-screen')">
+        <div class="nav-item" data-tab="homeTab">
             <div class="nav-icon">🏠</div>
             <div class="nav-text">Home</div>
         </div>
-        <div class="nav-item" data-screen="market-screen" onclick="switchScreen('market-screen')">
-            <div class="nav-icon">🏪</div>
+        <div class="nav-item" data-tab="marketTab">
+            <div class="nav-icon">💰</div>
             <div class="nav-text">Market</div>
         </div>
-        <div class="nav-item" data-screen="mint-screen" onclick="switchScreen('mint-screen')">
-            <div class="nav-icon">⚡</div>
+        <div class="nav-item" data-tab="mintTab">
+            <div class="nav-icon">🛠️</div>
             <div class="nav-text">Mint</div>
         </div>
-        <div class="nav-item" data-screen="profile-screen" onclick="switchScreen('profile-screen')">
+        <div class="nav-item" data-tab="profileTab">
             <div class="nav-icon">👤</div>
             <div class="nav-text">Profile</div>
         </div>
     </nav>
 
-    <!-- ⚡ JavaScript -->
+    <!-- Modals -->
+    <div class="modal-overlay" id="mintModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-coins"></i>
+                    Mint Squids
+                </h2>
+                <button class="close-modal" onclick="closeMintModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🦑</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Get your first Squids with TON
+                    </div>
+                </div>
+                
+                <div style="background: rgba(131, 56, 236, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Price:</span>
+                        <span style="font-weight: 600;">1 TON</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">You receive:</span>
+                        <span style="font-weight: 600; color: var(--success);">3,000 Squids</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Your balance:</span>
+                        <span style="font-weight: 600;" id="mintBalance">0 TON</span>
+                    </div>
+                </div>
+                
+                <div class="progress-bar" style="margin-bottom: 20px;">
+                    <div class="progress-fill" id="mintLimitBar" style="width: 0%"></div>
+                </div>
+                <div style="text-align: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">
+                    <span id="mintLimitText">0/90,000,000 minted</span>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    You can only mint once. Unlimited Squids through hatching and market.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMintModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="mintSquids()" id="mintConfirmBtn">
+                    Mint 3,000 Squids
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="hatchModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-egg"></i>
+                    Hatch Squids
+                </h2>
+                <button class="close-modal" onclick="closeHatchModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🥚→🦑</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Convert Eggs to Squids
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Eggs to Hatch</label>
+                    <input type="number" id="hatchAmount" class="form-input" placeholder="100" min="100">
+                    <div class="amount-buttons">
+                        <div class="amount-btn" onclick="setHatchPercent(0.25)">25%</div>
+                        <div class="amount-btn" onclick="setHatchPercent(0.5)">50%</div>
+                        <div class="amount-btn" onclick="setHatchPercent(0.75)">75%</div>
+                        <div class="amount-btn" onclick="setHatchMax()">MAX</div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255, 183, 77, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Base eggs:</span>
+                        <span style="font-weight: 600;" id="baseEggs">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Craft fee (5%):</span>
+                        <span style="font-weight: 600; color: var(--warning);" id="craftFee">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Total required:</span>
+                        <span style="font-weight: 600; color: var(--success);" id="totalRequired">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">You receive:</span>
+                        <span style="font-weight: 600; color: var(--primary-purple);" id="youReceive">0 Squids</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <i class="fas fa-info-circle"></i>
+                    Minimum 100 eggs. 5% fee is distributed to the referral system.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeHatchModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="hatchSquids()" id="hatchConfirmBtn">
+                    Hatch Squids
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addTonModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus-circle"></i>
+                    Add TON
+                </h2>
+                <button class="close-modal" onclick="closeAddTonModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Deposit TON to your game wallet
+                    </div>
+                </div>
+                
+                <div style="background: rgba(0, 136, 204, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                        Your Deposit Address
+                    </div>
+                    <div style="font-family: monospace; font-size: 14px; word-break: break-all; padding: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 8px;">
+                        EQD...DEPOSIT_ADDRESS_HERE
+                    </div>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Send only TON to this address. Deposits are automatic.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="copyDepositAddress()" style="flex: 1;">
+                    <i class="fas fa-copy"></i>
+                    Copy Address
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
-        
-        // 🔧 Game State
+        // Game State
         let gameState = {
-            squids: 0,
-            eggs: 0,
-            tonBalance: 0,
-            mintUsed: false,
-            activeSquids: 0,
-            eggsPerDay: 0
+            user: {
+                squids: 0,
+                eggs: 0,
+                tonBalance: 0,
+                mintUsed: false,
+                mintedSquids: 0,
+                referralCode: '',
+                referredBy: null
+            },
+            global: {
+                totalSquids: 0,
+                mintedSoFar: 0,
+                mintProgress: 0
+            },
+            market: {
+                bestBuy: 0,
+                bestSell: 0
+            }
         };
-        
-        // 🔧 API Functions
+
+        // UI State
+        let currentMarketTab = 'buy';
+        let eggTimer = 0;
+        let eggTimerInterval;
+
+        // API Configuration
+        const API_BASE = 'https://your-worker.workers.dev/api';
+        const USER_ID = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'demo_user';
+        const TELEGRAM_DATA = window.Telegram?.WebApp?.initData || '';
+
+        // Utility Functions
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toLocaleString();
+        }
+
+        function formatTON(amount) {
+            return parseFloat(amount).toFixed(4);
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // API Functions
         async function callAPI(action, data = {}) {
             try {
-                const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-                const response = await fetch(`${API_URL}/api`, {
+                const response = await fetch(API_BASE, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-User-ID': userId,
-                        'X-Telegram-Data': window.Telegram?.WebApp?.initData,
+                        'X-User-ID': USER_ID,
+                        'X-Telegram-Data': TELEGRAM_DATA,
                         'X-Action': action
                     },
-                    body: JSON.stringify({
-                        action: action,
-                        data: data
-                    })
+                    body: JSON.stringify({ action, data })
                 });
-                
+
                 const result = await response.json();
-                return result;
+                
+                if (result.success) {
+                    return result.data;
+                } else {
+                    console.error(`API Error (${result.errorCode}):`, result.error);
+                    alert(result.error);
+                    throw new Error(result.error);
+                }
             } catch (error) {
-                console.error('API Error:', error);
-                return { success: false, error: 'Network error' };
+                console.error('API call failed:', error);
+                alert('Network error. Please try again.');
+                throw error;
             }
         }
-        
-        // 🎮 Game Functions
+
+        // Game State Management
         async function loadGameState() {
-            const result = await callAPI('getState');
-            if (result.success) {
-                gameState = result.data.user;
+            try {
+                const data = await callAPI('getState');
+                gameState = data;
                 updateUI();
+            } catch (error) {
+                console.error('Failed to load game state:', error);
             }
         }
-        
+
         async function mintSquids() {
-            const result = await callAPI('mintSquids');
-            if (result.success) {
-                await loadGameState();
-                showNotification('🎉 Minted 3,000 Squids!', 'success');
-            } else {
-                showNotification(`❌ ${result.error}`, 'error');
+            try {
+                const data = await callAPI('mintSquids');
+                gameState.user.mintUsed = true;
+                gameState.user.tonBalance = data.newTonBalance;
+                gameState.user.squids = data.newSquids;
+                gameState.global.mintedSoFar = data.globalMinted;
+                gameState.global.mintProgress = data.mintProgress;
+                updateUI();
+                closeMintModal();
+                alert('Successfully minted 3,000 Squids!');
+            } catch (error) {
+                console.error('Mint failed:', error);
             }
         }
-        
-        async function hatchSquids(amount) {
-            const result = await callAPI('hatchSquids', { amount: amount });
-            if (result.success) {
-                await loadGameState();
-                showNotification(`🥚 Hatched ${amount} eggs!`, 'success');
-            } else {
-                showNotification(`❌ ${result.error}`, 'error');
+
+        async function hatchSquids() {
+            const amount = parseInt(document.getElementById('hatchAmount').value);
+            if (amount < 100) {
+                alert('Minimum hatch amount is 100 eggs');
+                return;
+            }
+
+            try {
+                const data = await callAPI('hatchSquids', { amount });
+                gameState.user.eggs = data.newEggs;
+                gameState.user.squids = data.newSquids;
+                updateUI();
+                closeHatchModal();
+                alert(`Successfully hatched ${data.squidsProduced} Squids!`);
+            } catch (error) {
+                console.error('Hatch failed:', error);
             }
         }
-        
-        // 📊 Update UI
+
+        async function createBuyOrder() {
+            const price = parseFloat(document.getElementById('buyPrice').value);
+            const amount = parseInt(document.getElementById('buyAmount').value);
+            
+            if (!price || price <= 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+            
+            if (!amount || amount < 100) {
+                alert('Minimum order amount is 100 Squids');
+                return;
+            }
+
+            try {
+                const data = await callAPI('createOrder', {
+                    type: 'buy',
+                    price,
+                    amount
+                });
+                alert('Buy order created successfully!');
+                loadGameState();
+            } catch (error) {
+                console.error('Create buy order failed:', error);
+            }
+        }
+
+        async function createSellOrder() {
+            const price = parseFloat(document.getElementById('sellPrice').value);
+            const amount = parseInt(document.getElementById('sellAmount').value);
+            
+            if (!price || price <= 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+            
+            if (!amount || amount < 100) {
+                alert('Minimum order amount is 100 Squids');
+                return;
+            }
+
+            try {
+                const data = await callAPI('createOrder', {
+                    type: 'sell',
+                    price,
+                    amount
+                });
+                alert('Sell order created successfully!');
+                loadGameState();
+            } catch (error) {
+                console.error('Create sell order failed:', error);
+            }
+        }
+
+        async function withdrawTON() {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const address = document.getElementById('withdrawAddress').value;
+            
+            if (!amount || amount < 0.1) {
+                alert('Minimum withdrawal amount is 0.1 TON');
+                return;
+            }
+            
+            if (!address || address.length < 10) {
+                alert('Please enter a valid TON wallet address');
+                return;
+            }
+
+            try {
+                const data = await callAPI('withdrawTON', { amount, address });
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                loadGameState();
+            } catch (error) {
+                console.error('Withdrawal failed:', error);
+            }
+        }
+
+        // UI Update Functions
         function updateUI() {
-            // Top Status Bar
-            document.getElementById('status-squids').textContent = gameState.squids.toLocaleString();
-            document.getElementById('status-eggs').textContent = gameState.eggs.toLocaleString();
-            document.getElementById('status-ton').textContent = gameState.tonBalance.toFixed(2);
+            // Update status bar
+            document.getElementById('statusSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('statusEggs').textContent = formatNumber(gameState.user.eggs);
+            document.getElementById('statusTon').textContent = formatTON(gameState.user.tonBalance);
             
-            // Profile
-            document.getElementById('profile-squids').textContent = gameState.squids.toLocaleString();
-            document.getElementById('profile-eggs').textContent = gameState.eggs.toLocaleString();
-            document.getElementById('profile-ton').textContent = gameState.tonBalance.toFixed(2);
+            // Update mint progress
+            const progressPercent = (gameState.global.mintedSoFar / 90000000) * 100;
+            document.getElementById('mintProgressFill').style.width = `${progressPercent}%`;
+            document.getElementById('mintProgressText').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000`;
+            document.getElementById('mintAvailable').textContent = 
+                `${formatNumber(90000000 - gameState.global.mintedSoFar)} available`;
+            document.getElementById('mintUsed').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)} used`;
             
-            // Mint Button
-            const mintButton = document.getElementById('mint-button');
-            if (gameState.mintUsed) {
-                mintButton.disabled = true;
-                mintButton.textContent = 'Already Minted';
-                mintButton.style.opacity = '0.5';
+            // Update market stats
+            document.getElementById('bestBuyPrice').textContent = 
+                gameState.market.bestBuy ? formatTON(gameState.market.bestBuy) : '0.0000';
+            document.getElementById('bestSellPrice').textContent = 
+                gameState.market.bestSell ? formatTON(gameState.market.bestSell) : '0.0000';
+            
+            // Update craft station
+            document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('craftEggs').textContent = formatNumber(gameState.user.eggs);
+            
+            // Update profile
+            document.getElementById('profileSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('profileEggs').textContent = formatNumber(gameState.user.eggs);
+            document.getElementById('profileTon').textContent = formatTON(gameState.user.tonBalance);
+            
+            // Update mint button state
+            const mintBtn = document.getElementById('mintButton');
+            if (gameState.user.mintUsed || gameState.global.mintedSoFar >= 90000000) {
+                mintBtn.disabled = true;
+                mintBtn.innerHTML = '<i class="fas fa-check"></i> Minted';
+            }
+            
+            // Update mint modal
+            document.getElementById('mintBalance').textContent = `${formatTON(gameState.user.tonBalance)} TON`;
+            document.getElementById('mintLimitBar').style.width = `${progressPercent}%`;
+            document.getElementById('mintLimitText').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000 minted`;
+            
+            // Update mint confirm button
+            const mintConfirmBtn = document.getElementById('mintConfirmBtn');
+            if (gameState.user.mintUsed) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Already Minted';
+            } else if (gameState.user.tonBalance < 1) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Insufficient TON';
+            } else if (gameState.global.mintedSoFar >= 90000000) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Mint Limit Reached';
+            }
+            
+            // Update referral link
+            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
+            document.getElementById('referralLink').value = referralLink;
+        }
+
+        // Modal Functions
+        function showMintModal() {
+            if (gameState.user.mintUsed) {
+                alert('You have already minted your initial Squids.');
+                return;
+            }
+            document.getElementById('mintModal').classList.add('active');
+        }
+
+        function closeMintModal() {
+            document.getElementById('mintModal').classList.remove('active');
+        }
+
+        function showHatchModal() {
+            document.getElementById('hatchAmount').value = '100';
+            updateHatchEstimate();
+            document.getElementById('hatchModal').classList.add('active');
+        }
+
+        function closeHatchModal() {
+            document.getElementById('hatchModal').classList.remove('active');
+        }
+
+        function showAddTonModal() {
+            document.getElementById('addTonModal').classList.add('active');
+        }
+
+        function closeAddTonModal() {
+            document.getElementById('addTonModal').classList.remove('active');
+        }
+
+        function copyDepositAddress() {
+            const address = 'EQD...DEPOSIT_ADDRESS_HERE';
+            navigator.clipboard.writeText(address);
+            alert('Deposit address copied to clipboard!');
+        }
+
+        function copyReferralLink() {
+            const input = document.getElementById('referralLink');
+            input.select();
+            navigator.clipboard.writeText(input.value);
+            alert('Referral link copied to clipboard!');
+        }
+
+        // Hatch Modal Functions
+        function updateHatchEstimate() {
+            const amount = parseInt(document.getElementById('hatchAmount').value) || 0;
+            const fee = Math.ceil(amount * 0.05);
+            const total = amount + fee;
+            const receive = Math.floor(amount * 0.95);
+            
+            document.getElementById('baseEggs').textContent = formatNumber(amount);
+            document.getElementById('craftFee').textContent = formatNumber(fee);
+            document.getElementById('totalRequired').textContent = formatNumber(total);
+            document.getElementById('youReceive').textContent = `${formatNumber(receive)} Squids`;
+            
+            const btn = document.getElementById('hatchConfirmBtn');
+            if (total > gameState.user.eggs) {
+                btn.disabled = true;
+                btn.textContent = 'Insufficient Eggs';
+            } else {
+                btn.disabled = false;
+                btn.textContent = `Hatch ${formatNumber(receive)} Squids`;
             }
         }
-        
-        // 📱 Screen Management
-        function switchScreen(screenId) {
-            // Hide all screens
-            document.querySelectorAll('.screen-content').forEach(screen => {
-                screen.classList.remove('active');
+
+        function setHatchPercent(percent) {
+            const maxEggs = gameState.user.eggs;
+            const amount = Math.floor(maxEggs * percent / 1.05); // Account for 5% fee
+            document.getElementById('hatchAmount').value = Math.max(100, amount);
+            updateHatchEstimate();
+        }
+
+        function setHatchMax() {
+            const maxEggs = gameState.user.eggs;
+            const amount = Math.floor(maxEggs / 1.05); // Account for 5% fee
+            document.getElementById('hatchAmount').value = Math.max(100, amount);
+            updateHatchEstimate();
+        }
+
+        // Market Functions
+        function switchMarketTab(tab) {
+            currentMarketTab = tab;
+            
+            // Update tabs
+            document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.market-tab').forEach(t => t.style.display = 'none');
+            
+            // Show selected tab
+            document.querySelector(`.order-tab:nth-child(${tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3})`).classList.add('active');
+            document.getElementById(`${tab}Tab`).style.display = 'block';
+        }
+
+        function setBuyAmountPercent(percent) {
+            const maxTON = gameState.user.tonBalance;
+            const bestPrice = gameState.market.bestSell || 0.01;
+            const maxSquids = Math.floor(maxTON / bestPrice);
+            const amount = Math.floor(maxSquids * percent);
+            document.getElementById('buyAmount').value = Math.max(100, amount);
+        }
+
+        function setBuyAmountMax() {
+            const maxTON = gameState.user.tonBalance;
+            const bestPrice = gameState.market.bestSell || 0.01;
+            const maxSquids = Math.floor(maxTON / bestPrice);
+            document.getElementById('buyAmount').value = Math.max(100, maxSquids);
+        }
+
+        function setSellAmountPercent(percent) {
+            const amount = Math.floor(gameState.user.squids * percent);
+            document.getElementById('sellAmount').value = Math.max(100, amount);
+        }
+
+        function setSellAmountMax() {
+            document.getElementById('sellAmount').value = Math.max(100, gameState.user.squids);
+        }
+
+        // Navigation
+        function switchTab(tabId) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
             });
             
-            // Show selected screen
-            document.getElementById(screenId).classList.add('active');
-            
-            // Update navigation
+            // Remove active class from all nav items
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
-                if (item.dataset.screen === screenId) {
-                    item.classList.add('active');
-                }
             });
             
-            // Load data for screen
-            switch(screenId) {
-                case 'market-screen':
-                    loadMarketOrders();
-                    break;
-                case 'friends-screen':
-                    loadReferralData();
-                    break;
-                case 'profile-screen':
-                    loadProfileData();
-                    break;
-            }
+            // Show selected section
+            document.getElementById(tabId).classList.add('active');
+            
+            // Activate corresponding nav item
+            document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
         }
-        
-        // 📈 Market Functions
-        async function loadMarketOrders() {
-            const result = await callAPI('getMarketOrders');
-            if (result.success) {
-                const orders = result.data.sellOrders.slice(0, 10);
-                const orderList = document.getElementById('order-book-list');
-                orderList.innerHTML = '';
+
+        // Initialize
+        async function initialize() {
+            // Setup event listeners
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => switchTab(item.dataset.tab));
+            });
+            
+            document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
+            
+            // Simulate loading
+            let progress = 0;
+            const loadingInterval = setInterval(() => {
+                progress += 5;
+                document.getElementById('loadingProgress').style.width = `${progress}%`;
                 
-                orders.forEach(order => {
-                    const orderElement = document.createElement('div');
-                    orderElement.className = 'order-item';
-                    orderElement.innerHTML = `
-                        <div>${order.amount} Squids</div>
-                        <div>${order.price} TON</div>
-                        <button class="btn" onclick="buyOrder('${order.id}')">Buy</button>
-                    `;
-                    orderList.appendChild(orderElement);
+                if (progress >= 100) {
+                    clearInterval(loadingInterval);
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                    
+                    // Load initial data
+                    loadGameState();
+                    
+                    // Start auto-refresh
+                    setInterval(loadGameState, 30000); // Refresh every 30 seconds
+                    
+                    // Start egg timer simulation
+                    startEggTimer();
+                }
+            }, 100);
+        }
+
+        function startEggTimer() {
+            // Simulate egg production timer
+            eggTimer = 3600; // 1 hour in seconds
+            eggTimerInterval = setInterval(() => {
+                eggTimer--;
+                if (eggTimer <= 0) {
+                    eggTimer = 3600;
+                    // In real implementation, this would update from server
+                }
+                document.getElementById('statusEggsTimer').textContent = formatTime(eggTimer);
+            }, 1000);
+        }
+
+        // Telegram integration
+        function setupTelegram() {
+            if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+                const name = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
+                const username = tgUser.username ? `@${tgUser.username}` : '';
+                
+                document.getElementById('profileName').textContent = name || 'Explorer';
+                document.getElementById('profileUsername').textContent = username;
+                
+                // Initialize user if needed
+                callAPI('initializeUser', {
+                    user: {
+                        first_name: tgUser.first_name,
+                        last_name: tgUser.last_name || '',
+                        username: tgUser.username || ''
+                    }
                 });
             }
         }
-        
-        // 👥 Referral Functions
-        async function loadReferralData() {
-            const result = await callAPI('getReferralStats');
-            if (result.success) {
-                document.getElementById('referral-link').textContent = result.data.referralLink;
-                document.getElementById('total-referrals').textContent = result.data.totalReferrals;
-            }
-        }
-        
-        function copyReferralLink() {
-            const link = document.getElementById('referral-link').textContent;
-            navigator.clipboard.writeText(link);
-            showNotification('✅ Link copied!', 'success');
-        }
-        
-        function shareReferral() {
-            const link = document.getElementById('referral-link').textContent;
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=Join SquidPEPE Game!`);
-            }
-        }
-        
-        // 🔔 Notification System
-        function showNotification(message, type = 'info') {
-            // Create notification element
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
-                color: white;
-                padding: 12px 20px;
-                border-radius: 10px;
-                z-index: 10000;
-                animation: fadeInOut 3s ease-in-out;
-            `;
-            
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
-        }
-        
-        // 📱 Initialize
-        async function initializeApp() {
-            // Load game state
-            await loadGameState();
-            
-            // Set up auto-refresh
-            setInterval(loadGameState, 10000); // Refresh every 10 seconds
-            
-            // Initial screen
-            switchScreen('home-screen');
-        }
-        
+
         // Start the app
-        if (window.Telegram?.WebApp) {
-            Telegram.WebApp.ready();
-            initializeApp();
-        } else {
-            // Fallback for testing
-            initializeApp();
-        }
+        document.addEventListener('DOMContentLoaded', () => {
+            setupTelegram();
+            initialize();
+        });
     </script>
 </body>
 </html>
