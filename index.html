@@ -1673,76 +1673,128 @@
 
         // API Configuration
         const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
-        let USER_ID = 'demo_user';
+        let USER_ID = '';
         let TELEGRAM_DATA = '';
 
         // Telegram Integration
         async function setupTelegramAuth() {
-            if (window.Telegram?.WebApp?.initData) {
-                TELEGRAM_DATA = window.Telegram.WebApp.initData;
-                
-                // Extract user ID properly
-                const initData = new URLSearchParams(TELEGRAM_DATA);
-                const userParam = initData.get('user');
-                if (userParam) {
-                    try {
-                        const userData = JSON.parse(decodeURIComponent(userParam));
-                        USER_ID = String(userData.id);
-                        
-                        // Update UI with actual user data
-                        document.getElementById('profileName').textContent = 
-                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
-                        document.getElementById('profileUsername').textContent = 
-                            userData.username ? `@${userData.username}` : 'User';
-                            
-                        console.log('Authenticated Telegram User:', userData);
-                        
-                        return userData;
-                    } catch (error) {
-                        console.error('Failed to parse Telegram user data:', error);
-                    }
-                }
+            // تأكد من أننا داخل Telegram Web App
+            if (typeof window.Telegram === 'undefined' || !window.Telegram.WebApp) {
+                // إذا لم يكن داخل Telegram، أظهر رسالة خطأ
+                document.getElementById('loadingScreen').innerHTML = `
+                    <div style="text-align: center; padding: 40px;">
+                        <h2 style="color: var(--danger); margin-bottom: 20px;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Telegram Required
+                        </h2>
+                        <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                            This game must be played inside Telegram.
+                        </p>
+                        <p style="margin-bottom: 30px; color: var(--text-secondary);">
+                            Please open it from the Telegram bot.
+                        </p>
+                        <a href="https://t.me/YOUR_BOT_USERNAME" 
+                           style="background: var(--primary-blue); 
+                                  color: white; 
+                                  padding: 12px 24px; 
+                                  border-radius: 12px; 
+                                  text-decoration: none;
+                                  font-weight: 600;">
+                            Open in Telegram
+                        </a>
+                    </div>
+                `;
+                throw new Error('Must be used inside Telegram Web App');
             }
             
-            // Fallback for testing
-            console.warn('Using demo mode - no Telegram auth');
-            return null;
+            // تهيئة Telegram WebApp
+            const tg = window.Telegram.WebApp;
+            
+            // تأكد من أن initData موجودة
+            if (!tg.initData) {
+                console.error('Telegram WebApp initData is missing');
+                tg.showAlert('Authentication error. Please restart the app.');
+                return null;
+            }
+            
+            TELEGRAM_DATA = tg.initData;
+            
+            // استخراج بيانات المستخدم
+            const initData = new URLSearchParams(TELEGRAM_DATA);
+            const userParam = initData.get('user');
+            
+            if (!userParam) {
+                console.error('User data not found in initData');
+                tg.showAlert('User data not found. Please try again.');
+                return null;
+            }
+            
+            try {
+                const userData = JSON.parse(decodeURIComponent(userParam));
+                USER_ID = String(userData.id);
+                
+                // تحديث واجهة المستخدم
+                document.getElementById('profileName').textContent = 
+                    `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Telegram User';
+                document.getElementById('profileUsername').textContent = 
+                    userData.username ? `@${userData.username}` : 'User';
+                
+                // توسيع الواجهة لتملأ الشاشة
+                tg.expand();
+                
+                console.log('Authenticated Telegram User:', userData);
+                return userData;
+                
+            } catch (error) {
+                console.error('Failed to parse Telegram user data:', error);
+                tg.showAlert('Failed to parse user data.');
+                return null;
+            }
         }
 
         // API Functions
         async function callAPI(action, data = {}) {
             try {
+                // تأكد من أن لدينا TELEGRAM_DATA
+                if (!TELEGRAM_DATA) {
+                    throw new Error('Telegram authentication missing');
+                }
+                
                 const headers = {
                     'Content-Type': 'application/json',
-                    'X-User-ID': USER_ID
+                    'Authorization': `Telegram ${TELEGRAM_DATA}`,
+                    'X-User-ID': USER_ID,
+                    'X-Action': action
                 };
                 
-                // Add Telegram authentication if available
-                if (TELEGRAM_DATA) {
-                    headers['Authorization'] = `Telegram ${TELEGRAM_DATA}`;
-                    headers['X-Telegram-Data'] = TELEGRAM_DATA;
-                }
+                console.log('API Request:', { action, data, headers });
                 
                 const response = await fetch(API_BASE, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ 
                         action, 
-                        data,
-                        userId: USER_ID 
+                        data 
                     })
                 });
 
+                console.log('API Response Status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const result = await response.json();
+                console.log('API Response:', result);
                 
                 if (result.success) {
                     return result.data;
                 } else {
                     console.error(`API Error (${result.errorCode}):`, result.error);
                     
-                    // Handle specific errors
-                    if (result.errorCode === 'AUTH_REQUIRED') {
-                        alert('Please open this game through Telegram to play.');
+                    // عرض رسالة الخطأ للمستخدم
+                    if (window.Telegram?.WebApp?.showAlert) {
+                        window.Telegram.WebApp.showAlert(result.error || 'An error occurred');
                     } else {
                         alert(result.error || 'An error occurred');
                     }
@@ -1752,9 +1804,9 @@
             } catch (error) {
                 console.error('API call failed:', error);
                 
-                // Don't show alert for network errors in production
-                if (!error.message.includes('Network')) {
-                    alert('Network error. Please check your connection and try again.');
+                // عرض رسالة الخطأ
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Network error. Please check your connection.');
                 }
                 
                 throw error;
@@ -1786,9 +1838,11 @@
         // Game State Management
         async function loadGameState() {
             try {
+                console.log('Loading game state...');
                 const data = await callAPI('getState');
                 gameState = data;
                 updateUI();
+                console.log('Game state loaded:', gameState);
             } catch (error) {
                 console.error('Failed to load game state:', error);
             }
@@ -1804,7 +1858,12 @@
                 gameState.global.mintProgress = data.mintProgress;
                 updateUI();
                 closeMintModal();
-                alert('Successfully minted 3,000 Squids!');
+                
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Successfully minted 3,000 Squids!');
+                } else {
+                    alert('Successfully minted 3,000 Squids!');
+                }
             } catch (error) {
                 console.error('Mint failed:', error);
             }
@@ -1813,7 +1872,11 @@
         async function hatchSquids() {
             const amount = parseInt(document.getElementById('hatchAmount').value);
             if (amount < 100) {
-                alert('Minimum hatch amount is 100 eggs');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum hatch amount is 100 eggs');
+                } else {
+                    alert('Minimum hatch amount is 100 eggs');
+                }
                 return;
             }
 
@@ -1823,7 +1886,12 @@
                 gameState.user.squids = data.newSquids;
                 updateUI();
                 closeHatchModal();
-                alert(`Successfully hatched ${data.squidsProduced} Squids!`);
+                
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert(`Successfully hatched ${data.squidsProduced} Squids!`);
+                } else {
+                    alert(`Successfully hatched ${data.squidsProduced} Squids!`);
+                }
             } catch (error) {
                 console.error('Hatch failed:', error);
             }
@@ -1834,12 +1902,20 @@
             const amount = parseInt(document.getElementById('buyAmount').value);
             
             if (!price || price <= 0) {
-                alert('Please enter a valid price');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please enter a valid price');
+                } else {
+                    alert('Please enter a valid price');
+                }
                 return;
             }
             
             if (!amount || amount < 100) {
-                alert('Minimum order amount is 100 Squids');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum order amount is 100 Squids');
+                } else {
+                    alert('Minimum order amount is 100 Squids');
+                }
                 return;
             }
 
@@ -1849,7 +1925,12 @@
                     price,
                     amount
                 });
-                alert('Buy order created successfully!');
+                
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Buy order created successfully!');
+                } else {
+                    alert('Buy order created successfully!');
+                }
                 loadGameState();
             } catch (error) {
                 console.error('Create buy order failed:', error);
@@ -1861,12 +1942,20 @@
             const amount = parseInt(document.getElementById('sellAmount').value);
             
             if (!price || price <= 0) {
-                alert('Please enter a valid price');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please enter a valid price');
+                } else {
+                    alert('Please enter a valid price');
+                }
                 return;
             }
             
             if (!amount || amount < 100) {
-                alert('Minimum order amount is 100 Squids');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum order amount is 100 Squids');
+                } else {
+                    alert('Minimum order amount is 100 Squids');
+                }
                 return;
             }
 
@@ -1876,7 +1965,12 @@
                     price,
                     amount
                 });
-                alert('Sell order created successfully!');
+                
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Sell order created successfully!');
+                } else {
+                    alert('Sell order created successfully!');
+                }
                 loadGameState();
             } catch (error) {
                 console.error('Create sell order failed:', error);
@@ -1888,18 +1982,31 @@
             const address = document.getElementById('withdrawAddress').value;
             
             if (!amount || amount < 0.1) {
-                alert('Minimum withdrawal amount is 0.1 TON');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum withdrawal amount is 0.1 TON');
+                } else {
+                    alert('Minimum withdrawal amount is 0.1 TON');
+                }
                 return;
             }
             
             if (!address || address.length < 10) {
-                alert('Please enter a valid TON wallet address');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please enter a valid TON wallet address');
+                } else {
+                    alert('Please enter a valid TON wallet address');
+                }
                 return;
             }
 
             try {
                 const data = await callAPI('withdrawTON', { amount, address });
-                alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Withdrawal request submitted! It will be processed within 24 hours.');
+                } else {
+                    alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                }
                 loadGameState();
             } catch (error) {
                 console.error('Withdrawal failed:', error);
@@ -1931,26 +2038,30 @@
         // Wallet Connection
         async function connectWallet() {
             try {
-                // In a real implementation, use TON Connect SDK
-                // For demo purposes, we'll simulate wallet connection
+                // في الوضع الحقيقي، استخدم TON Connect SDK
+                // للاختبار، سنستخدم محاكاة
                 
                 const walletAddress = prompt('Enter your TON wallet address:');
                 if (!walletAddress) {
                     return;
                 }
                 
-                // Validate wallet address format
+                // التحقق من تنسيق عنوان المحفظة
                 if (walletAddress.length < 10) {
-                    alert('Invalid wallet address format');
+                    if (window.Telegram?.WebApp?.showAlert) {
+                        window.Telegram.WebApp.showAlert('Invalid wallet address format');
+                    } else {
+                        alert('Invalid wallet address format');
+                    }
                     return;
                 }
                 
                 connectedWallet = {
                     address: walletAddress,
-                    type: 'tonkeeper' // or 'tonhub', 'mytonwallet', etc.
+                    type: 'tonkeeper'
                 };
                 
-                // Update UI
+                // تحديث واجهة المستخدم
                 const walletStatus = document.getElementById('walletStatus');
                 walletStatus.innerHTML = `
                     <div style="flex: 1;">
@@ -1964,21 +2075,29 @@
                 walletStatus.classList.remove('disconnected');
                 walletStatus.classList.add('connected');
                 
-                // Enable deposit button
+                // تفعيل زر الإيداع
                 document.getElementById('initiateDepositBtn').disabled = false;
                 
-                alert('Wallet connected successfully!');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Wallet connected successfully!');
+                } else {
+                    alert('Wallet connected successfully!');
+                }
                 
             } catch (error) {
                 console.error('Failed to connect wallet:', error);
-                alert('Failed to connect wallet. Please try again.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Failed to connect wallet. Please try again.');
+                } else {
+                    alert('Failed to connect wallet. Please try again.');
+                }
             }
         }
 
         function disconnectWallet() {
             connectedWallet = null;
             
-            // Update UI
+            // تحديث واجهة المستخدم
             const walletStatus = document.getElementById('walletStatus');
             walletStatus.innerHTML = `
                 <div style="flex: 1;">
@@ -1992,13 +2111,17 @@
             walletStatus.classList.remove('connected');
             walletStatus.classList.add('disconnected');
             
-            // Disable deposit button
+            // تعطيل زر الإيداع
             document.getElementById('initiateDepositBtn').disabled = true;
             
-            // Hide deposit details
+            // إخفاء تفاصيل الإيداع
             document.getElementById('depositDetailsCard').style.display = 'none';
             
-            alert('Wallet disconnected.');
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('Wallet disconnected.');
+            } else {
+                alert('Wallet disconnected.');
+            }
         }
 
         function setDepositAmount(amount) {
@@ -2008,18 +2131,26 @@
         // Deposit Functions
         async function initiateDeposit() {
             if (!connectedWallet) {
-                alert('Please connect your wallet first.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please connect your wallet first.');
+                } else {
+                    alert('Please connect your wallet first.');
+                }
                 return;
             }
             
             const amount = parseFloat(document.getElementById('depositAmount').value);
             if (!amount || amount < 0.1) {
-                alert('Minimum deposit amount is 0.1 TON');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum deposit amount is 0.1 TON');
+                } else {
+                    alert('Minimum deposit amount is 0.1 TON');
+                }
                 return;
             }
             
             try {
-                // Call backend to initialize deposit
+                // استدعاء الخلفية لتهيئة الإيداع
                 const depositData = await callAPI('deposit/init', {
                     amount: amount,
                     wallet_address: connectedWallet.address
@@ -2027,60 +2158,81 @@
                 
                 currentDepositInfo = depositData;
                 
-                // Update UI with deposit details
+                // تحديث واجهة المستخدم بتفاصيل الإيداع
                 document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
                 document.getElementById('depositTargetAddress').textContent = depositData.address;
                 document.getElementById('depositCommentText').textContent = depositData.comment;
                 
-                // Show deposit details
+                // عرض تفاصيل الإيداع
                 document.getElementById('depositDetailsCard').style.display = 'block';
                 
             } catch (error) {
                 console.error('Failed to initiate deposit:', error);
-                alert('Failed to prepare deposit. Please try again.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Failed to prepare deposit. Please try again.');
+                } else {
+                    alert('Failed to prepare deposit. Please try again.');
+                }
             }
         }
 
         function openTonkeeper() {
             if (!currentDepositInfo) {
-                alert('Please initiate a deposit first.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please initiate a deposit first.');
+                } else {
+                    alert('Please initiate a deposit first.');
+                }
                 return;
             }
             
-            // Create Tonkeeper deep link
+            // إنشاء رابط عميق لـ Tonkeeper
             const tonkeeperURL = `https://app.tonkeeper.com/transfer/${currentDepositInfo.address}?text=${encodeURIComponent(currentDepositInfo.comment)}&amount=${currentDepositInfo.amount * 1000000000}`;
             
-            // Open in new tab
+            // فتح في نافذة جديدة
             window.open(tonkeeperURL, '_blank');
         }
 
         async function sendDepositTransaction() {
             if (!currentDepositInfo) {
-                alert('Please initiate a deposit first.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please initiate a deposit first.');
+                } else {
+                    alert('Please initiate a deposit first.');
+                }
                 return;
             }
             
             try {
-                // In a real implementation, this would use TON Connect SDK
-                // For now, we'll simulate the transaction
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert(`Transaction prepared!\n\nSend ${currentDepositInfo.amount} TON to:\n${currentDepositInfo.address}\n\nWith comment: ${currentDepositInfo.comment}\n\nPlease complete the transaction in your wallet.`);
+                } else {
+                    alert(`Transaction prepared!\n\nSend ${currentDepositInfo.amount} TON to:\n${currentDepositInfo.address}\n\nWith comment: ${currentDepositInfo.comment}\n\nPlease complete the transaction in your wallet.`);
+                }
                 
-                alert(`Transaction prepared!\n\nSend ${currentDepositInfo.amount} TON to:\n${currentDepositInfo.address}\n\nWith comment: ${currentDepositInfo.comment}\n\nPlease complete the transaction in your wallet.`);
-                
-                // Hide deposit details
+                // إخفاء تفاصيل الإيداع
                 document.getElementById('depositDetailsCard').style.display = 'none';
                 
-                // Reset form
+                // إعادة تعيين النموذج
                 document.getElementById('depositAmount').value = '';
                 
-                // Start checking for deposit confirmation
+                // بدء التحقق من تأكيد الإيداع
                 setTimeout(() => {
                     loadGameState();
-                    alert('Checking for deposit confirmation... Please wait a moment.');
+                    if (window.Telegram?.WebApp?.showAlert) {
+                        window.Telegram.WebApp.showAlert('Checking for deposit confirmation... Please wait a moment.');
+                    } else {
+                        alert('Checking for deposit confirmation... Please wait a moment.');
+                    }
                 }, 5000);
                 
             } catch (error) {
                 console.error('Failed to send transaction:', error);
-                alert('Failed to send transaction. Please try again.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Failed to send transaction. Please try again.');
+                } else {
+                    alert('Failed to send transaction. Please try again.');
+                }
             }
         }
 
@@ -2088,7 +2240,7 @@
         function updateWithdrawUI() {
             document.getElementById('availableBalance').textContent = formatTON(gameState.user.tonBalance);
             
-            // Update fee calculation when amount changes
+            // تحديث حساب الرسوم عند تغيير المبلغ
             const amountInput = document.getElementById('withdrawAmountFinance');
             amountInput.addEventListener('input', calculateWithdrawFee);
             calculateWithdrawFee();
@@ -2117,17 +2269,29 @@
             const address = document.getElementById('withdrawAddressFinance').value;
             
             if (!amount || amount < 0.5) {
-                alert('Minimum withdrawal amount is 0.5 TON');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Minimum withdrawal amount is 0.5 TON');
+                } else {
+                    alert('Minimum withdrawal amount is 0.5 TON');
+                }
                 return;
             }
             
             if (!address || address.length < 10) {
-                alert('Please enter a valid TON wallet address');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Please enter a valid TON wallet address');
+                } else {
+                    alert('Please enter a valid TON wallet address');
+                }
                 return;
             }
             
             if (amount > gameState.user.tonBalance) {
-                alert('Insufficient balance');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Insufficient balance');
+                } else {
+                    alert('Insufficient balance');
+                }
                 return;
             }
 
@@ -2137,14 +2301,18 @@
                     address: address 
                 });
                 
-                alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('Withdrawal request submitted! It will be processed within 24 hours.');
+                } else {
+                    alert('Withdrawal request submitted! It will be processed within 24 hours.');
+                }
                 
-                // Reset form
+                // إعادة تعيين النموذج
                 document.getElementById('withdrawAmountFinance').value = '';
                 document.getElementById('withdrawAddressFinance').value = '';
                 document.getElementById('withdrawFeeDetails').style.display = 'none';
                 
-                // Refresh game state
+                // تحديث حالة اللعبة
                 loadGameState();
                 
             } catch (error) {
@@ -2154,12 +2322,12 @@
 
         // UI Update Functions
         function updateUI() {
-            // Update status bar
+            // تحديث شريط الحالة
             document.getElementById('statusSquids').textContent = formatNumber(gameState.user.squids);
             document.getElementById('statusEggs').textContent = formatNumber(gameState.user.eggs);
             document.getElementById('statusTon').textContent = formatTON(gameState.user.tonBalance);
             
-            // Update mint progress
+            // تحديث تقدم الـ Mint
             const progressPercent = (gameState.global.mintedSoFar / 90000000) * 100;
             document.getElementById('mintProgressFill').style.width = `${progressPercent}%`;
             document.getElementById('mintProgressText').textContent = 
@@ -2169,35 +2337,35 @@
             document.getElementById('mintUsed').textContent = 
                 `${formatNumber(gameState.global.mintedSoFar)} used`;
             
-            // Update market stats
+            // تحديث إحصائيات السوق
             document.getElementById('bestBuyPrice').textContent = 
                 gameState.market.bestBuy ? formatTON(gameState.market.bestBuy) : '0.0000';
             document.getElementById('bestSellPrice').textContent = 
                 gameState.market.bestSell ? formatTON(gameState.market.bestSell) : '0.0000';
             
-            // Update craft station
+            // تحديث محطة الحرف
             document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
             document.getElementById('craftEggs').textContent = formatNumber(gameState.user.eggs);
             
-            // Update profile
+            // تحديث الملف الشخصي
             document.getElementById('profileSquids').textContent = formatNumber(gameState.user.squids);
             document.getElementById('profileEggs').textContent = formatNumber(gameState.user.eggs);
             document.getElementById('profileTon').textContent = formatTON(gameState.user.tonBalance);
             
-            // Update mint button state
+            // تحديث حالة زر الـ Mint
             const mintBtn = document.getElementById('mintButton');
             if (gameState.user.mintUsed || gameState.global.mintedSoFar >= 90000000) {
                 mintBtn.disabled = true;
                 mintBtn.innerHTML = '<i class="fas fa-check"></i> Minted';
             }
             
-            // Update mint modal
+            // تحديث نافذة الـ Mint
             document.getElementById('mintBalance').textContent = `${formatTON(gameState.user.tonBalance)} TON`;
             document.getElementById('mintLimitBar').style.width = `${progressPercent}%`;
             document.getElementById('mintLimitText').textContent = 
                 `${formatNumber(gameState.global.mintedSoFar)}/90,000,000 minted`;
             
-            // Update mint confirm button
+            // تحديث زر تأكيد الـ Mint
             const mintConfirmBtn = document.getElementById('mintConfirmBtn');
             if (gameState.user.mintUsed) {
                 mintConfirmBtn.disabled = true;
@@ -2210,11 +2378,11 @@
                 mintConfirmBtn.textContent = 'Mint Limit Reached';
             }
             
-            // Update referral link
-            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
+            // تحديث رابط الإحالة
+            const referralLink = `https://t.me/YOUR_BOT_USERNAME?start=ref_${gameState.user.referralCode}`;
             document.getElementById('referralLink').value = referralLink;
             
-            // Update finance page if active
+            // تحديث صفحة المال إذا كانت نشطة
             if (currentFinanceTab === 'withdraw') {
                 updateWithdrawUI();
             }
@@ -2223,7 +2391,11 @@
         // Modal Functions
         function showMintModal() {
             if (gameState.user.mintUsed) {
-                alert('You have already minted your initial Squids.');
+                if (window.Telegram?.WebApp?.showAlert) {
+                    window.Telegram.WebApp.showAlert('You have already minted your initial Squids.');
+                } else {
+                    alert('You have already minted your initial Squids.');
+                }
                 return;
             }
             document.getElementById('mintModal').classList.add('active');
@@ -2247,7 +2419,12 @@
             const input = document.getElementById('referralLink');
             input.select();
             navigator.clipboard.writeText(input.value);
-            alert('Referral link copied to clipboard!');
+            
+            if (window.Telegram?.WebApp?.showAlert) {
+                window.Telegram.WebApp.showAlert('Referral link copied to clipboard!');
+            } else {
+                alert('Referral link copied to clipboard!');
+            }
         }
 
         // Hatch Modal Functions
@@ -2274,14 +2451,14 @@
 
         function setHatchPercent(percent) {
             const maxEggs = gameState.user.eggs;
-            const amount = Math.floor(maxEggs * percent / 1.05); // Account for 5% fee
+            const amount = Math.floor(maxEggs * percent / 1.05); // حساب رسوم 5%
             document.getElementById('hatchAmount').value = Math.max(100, amount);
             updateHatchEstimate();
         }
 
         function setHatchMax() {
             const maxEggs = gameState.user.eggs;
-            const amount = Math.floor(maxEggs / 1.05); // Account for 5% fee
+            const amount = Math.floor(maxEggs / 1.05); // حساب رسوم 5%
             document.getElementById('hatchAmount').value = Math.max(100, amount);
             updateHatchEstimate();
         }
@@ -2290,11 +2467,11 @@
         function switchMarketTab(tab) {
             currentMarketTab = tab;
             
-            // Update tabs
+            // تحديث الألسنة
             document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.market-tab').forEach(t => t.style.display = 'none');
             
-            // Show selected tab
+            // عرض اللسان المحدد
             document.querySelector(`.order-tab:nth-child(${tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3})`).classList.add('active');
             document.getElementById(`${tab}Tab`).style.display = 'block';
         }
@@ -2325,72 +2502,76 @@
 
         // Navigation
         function switchTab(tabId) {
-            // Hide all sections
+            // إخفاء جميع الأقسام
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
             
-            // Remove active class from all nav items
+            // إزالة الفئة النشطة من جميع عناصر التنقل
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             
-            // Show selected section
+            // عرض القسم المحدد
             document.getElementById(tabId).classList.add('active');
             
-            // Activate corresponding nav item
+            // تنشيط عنصر التنقل المقابل
             document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
         }
 
         // Initialize
         async function initialize() {
-            // Setup Telegram authentication
-            await setupTelegramAuth();
-            
-            // Setup event listeners
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => switchTab(item.dataset.tab));
-            });
-            
-            document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
-            
-            // Simulate loading
-            let progress = 0;
-            const loadingInterval = setInterval(() => {
-                progress += 5;
-                document.getElementById('loadingProgress').style.width = `${progress}%`;
+            try {
+                // إعداد مصادقة Telegram
+                await setupTelegramAuth();
                 
-                if (progress >= 100) {
-                    clearInterval(loadingInterval);
-                    document.getElementById('loadingScreen').style.display = 'none';
-                    document.getElementById('appContainer').style.display = 'block';
+                // إعداد مستمعي الأحداث
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => switchTab(item.dataset.tab));
+                });
+                
+                document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
+                
+                // محاكاة التحميل
+                let progress = 0;
+                const loadingInterval = setInterval(() => {
+                    progress += 5;
+                    document.getElementById('loadingProgress').style.width = `${progress}%`;
                     
-                    // Load initial data
-                    loadGameState();
-                    
-                    // Start auto-refresh
-                    setInterval(loadGameState, 30000); // Refresh every 30 seconds
-                    
-                    // Start egg timer simulation
-                    startEggTimer();
-                }
-            }, 100);
+                    if (progress >= 100) {
+                        clearInterval(loadingInterval);
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        document.getElementById('appContainer').style.display = 'block';
+                        
+                        // تحميل البيانات الأولية
+                        loadGameState();
+                        
+                        // بدء التحديث التلقائي
+                        setInterval(loadGameState, 30000); // تحديث كل 30 ثانية
+                        
+                        // بدء مؤقت إنتاج البيض
+                        startEggTimer();
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Initialization failed:', error);
+            }
         }
 
         function startEggTimer() {
-            // Simulate egg production timer
-            eggTimer = 3600; // 1 hour in seconds
+            // محاكاة مؤقت إنتاج البيض
+            eggTimer = 3600; // ساعة واحدة بالثواني
             eggTimerInterval = setInterval(() => {
                 eggTimer--;
                 if (eggTimer <= 0) {
                     eggTimer = 3600;
-                    // In real implementation, this would update from server
+                    // في التنفيذ الحقيقي، سيتم التحديث من الخادم
                 }
                 document.getElementById('statusEggsTimer').textContent = formatTime(eggTimer);
             }, 1000);
         }
 
-        // Start the app
+        // بدء التطبيق
         document.addEventListener('DOMContentLoaded', initialize);
     </script>
 </body>
