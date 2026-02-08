@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>GLX Galaxy</title>
+    <title>مزرعة الدجاج - Chicken Farm</title>
     
-    <!-- ✅ مكتبة Firebase فقط -->
+    <!-- ✅ مكتبة Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     
@@ -13,339 +13,637 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* أنماط الصفحة الأساسية فقط */
-        :root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}
-        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-        body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}
-        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);z-index:-1;}
+        /* أنماط الصفحة */
+        :root{
+            --primary-green:#a855f7;
+            --deep-Galaxy:#202020;
+            --gold:#d6bcfa;
+            --gold-glow:rgba(168,85,247,0.4);
+            --glass-bg:rgba(32,32,32,0.7);
+            --glass-border:rgba(255,255,255,0.1);
+            --text-color:#ffffff;
+            --text-muted:#b0b0b0;
+            --nav-bg:rgba(40,40,40,0.98);
+            --success-color:#a855f7;
+        }
         
-        .app-container{padding:20px;padding-bottom:110px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
-        .content-section{display:none;animation:fadeIn 0.4s ease;}
-        .content-section.active{display:flex;flex-direction:column;flex:1;}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-        h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}
-        h2{font-size:18px;font-weight:700;margin:20px 0 10px;color:var(--gold);display:flex;align-items:center;gap:8px;}
-        p{font-size:13px;color:var(--text-muted);line-height:1.4;}
-        .page-header{text-align:center;margin-bottom:20px;padding-top:10px;}
-        .card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:24px;padding:20px;margin-bottom:12px;border:1px solid var(--glass-border);box-shadow:0 4px 20px rgba(0,0,0,0.4);}
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            -webkit-tap-highlight-color:transparent;
+        }
         
-        .btn{display:flex;align-items:center;justify-content:center;width:100%;padding:16px;border-radius:18px;font-size:16px;font-weight:800;cursor:pointer;border:none;outline:none;gap:8px;text-transform:uppercase;letter-spacing:0.5px;transition:transform 0.1s;}
-        .btn:active{transform:scale(0.96);}
-        .btn:disabled{opacity:0.5;cursor:not-allowed;filter:grayscale(1);}
+        body{
+            font-family:'Outfit', sans-serif;
+            color:var(--text-color);
+            overflow-x:hidden;
+            background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');
+            background-size:cover;
+            background-position:center;
+            background-attachment:fixed;
+            min-height:100vh;
+        }
         
-        .hud-container{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.5);border-radius:50px;padding:10px 15px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.05);}
-        .user-name{font-weight:700;font-size:14px;}
-        .hud-avatar{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px solid var(--primary-green);}
-        .hud-avatar img{width:100%;height:100%;object-fit:cover;}
+        body::before{
+            content:'';
+            position:fixed;
+            top:0;
+            left:0;
+            width:100%;
+            height:100%;
+            background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);
+            z-index:-1;
+        }
         
-        .main-coin-section{text-align:center;margin:10px 0 30px;position:relative;}
-        .main-coin-img{width:160px;height:160px;border-radius:50%;box-shadow:0 0 50px rgba(168,85,247,0.3);animation:float 4s ease-in-out infinite;object-fit:cover;border:4px solid var(--primary-green);}
-        @keyframes float{0%{transform:translateY(0px);}50%{transform:translateY(-10px);}100%{transform:translateY(0px);}}
-        .balance-display{margin-top:15px;}
-        .balance-amount{font-size:48px;font-weight:800;background:linear-gradient(to bottom,#fff,#b3b3b3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
-        .balance-unit{font-size:16px;color:var(--primary-green);font-weight:700;letter-spacing:2px;}
-        .stats-pill{display:inline-flex;align-items:center;gap:15px;background:rgba(255,255,255,0.05);padding:8px 16px;border-radius:20px;margin-top:10px;font-size:12px;font-weight:600;}
+        /* ✅ أنماط الصفحة الرئيسية */
+        .app-container{
+            padding:20px;
+            padding-bottom:110px;
+            max-width:500px;
+            margin:0 auto;
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+        }
         
-        .support-channel-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;border:1px solid rgba(255,255,255,0.1);}
-        .support-channel-card:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);border-color:rgba(168,85,247,0.4);}
+        .content-section{
+            display:none;
+            animation:fadeIn 0.4s ease;
+            flex-direction:column;
+            flex:1;
+        }
         
-        .bottom-nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:90%;max-width:400px;height:65px;background:var(--nav-bg);border-radius:32px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:100;border:1px solid rgba(255,255,255,0.1);}
-        .nav-item{display:flex;flex-direction:column;align-items:center;color:#666;transition:0.3s;cursor:pointer;position:relative;width:50px;}
-        .nav-item svg{width:22px;height:22px;margin-bottom:4px;stroke:currentColor;fill:none;stroke-width:2.5;transition:all 0.3s;}
-        .nav-item.active{color:var(--primary-green);transform:translateY(-2px);}
-        .nav-item.active svg{stroke:var(--primary-green);filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));}
-        .nav-text{font-size:9px;font-weight:700;text-transform:uppercase;}
+        .content-section.active{
+            display:flex;
+        }
         
+        @keyframes fadeIn{
+            from{opacity:0;transform:translateY(10px);}
+            to{opacity:1;transform:translateY(0);}
+        }
+        
+        .page-header{
+            text-align:center;
+            margin-bottom:20px;
+            padding-top:10px;
+        }
+        
+        h1{
+            font-size:26px;
+            font-weight:800;
+            color:#fff;
+            margin-bottom:5px;
+            text-transform:uppercase;
+            letter-spacing:1px;
+        }
+        
+        h2{
+            font-size:18px;
+            font-weight:700;
+            margin:20px 0 10px;
+            color:var(--gold);
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
+        
+        p{
+            font-size:13px;
+            color:var(--text-muted);
+            line-height:1.4;
+        }
+        
+        .card{
+            background:var(--glass-bg);
+            backdrop-filter:blur(15px);
+            -webkit-backdrop-filter:blur(15px);
+            border-radius:24px;
+            padding:20px;
+            margin-bottom:12px;
+            border:1px solid var(--glass-border);
+            box-shadow:0 4px 20px rgba(0,0,0,0.4);
+        }
+        
+        /* ✅ إحصاءات اللعبة */
+        .stats-grid{
+            display:grid;
+            grid-template-columns:repeat(2, 1fr);
+            gap:15px;
+            margin-bottom:20px;
+        }
+        
+        .stat-card{
+            background:rgba(168,85,247,0.1);
+            padding:15px;
+            border-radius:12px;
+            text-align:center;
+            border:1px solid rgba(168,85,247,0.3);
+        }
+        
+        .stat-value{
+            font-size:24px;
+            font-weight:800;
+            color:var(--primary-green);
+            margin-top:5px;
+        }
+        
+        .stat-label{
+            font-size:12px;
+            color:var(--text-muted);
+        }
+        
+        /* ✅ أزرار اللعبة */
+        .btn{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            width:100%;
+            padding:16px;
+            border-radius:18px;
+            font-size:16px;
+            font-weight:800;
+            cursor:pointer;
+            border:none;
+            outline:none;
+            gap:8px;
+            text-transform:uppercase;
+            letter-spacing:0.5px;
+            transition:transform 0.1s;
+            margin-bottom:10px;
+        }
+        
+        .btn:active{
+            transform:scale(0.96);
+        }
+        
+        .btn:disabled{
+            opacity:0.5;
+            cursor:not-allowed;
+            filter:grayscale(1);
+        }
+        
+        .btn-primary{
+            background:linear-gradient(90deg,#a855f7,#7c3aed);
+            color:#fff;
+            box-shadow:0 0 15px rgba(168,85,247,0.4);
+        }
+        
+        .btn-action{
+            background:rgba(0,0,0,0.3)!important;
+            backdrop-filter:blur(15px);
+            -webkit-backdrop-filter:blur(15px);
+            border:1px solid rgba(255,255,255,0.1)!important;
+            color:#b0b0b0!important;
+            flex-direction:column;
+            padding:12px;
+            font-size:12px;
+            gap:5px;
+            border-radius:12px;
+            box-shadow:0 4px 15px rgba(0,0,0,0.2);
+            transition:all 0.3s ease;
+        }
+        
+        /* ✅ متجر الدجاج */
+        .shop-item{
+            display:flex;
+            align-items:center;
+            background:rgba(0,0,0,0.3);
+            border-radius:16px;
+            padding:12px;
+            margin-bottom:8px;
+            border:1px solid rgba(255,255,255,0.05);
+        }
+        
+        .shop-icon{
+            width:42px;
+            height:42px;
+            border-radius:12px;
+            background:rgba(255,255,255,0.05);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin-right:12px;
+            flex-shrink:0;
+            font-size:20px;
+        }
+        
+        .shop-content{
+            flex:1;
+        }
+        
+        .shop-title{
+            font-size:14px;
+            font-weight:600;
+            margin-bottom:2px;
+        }
+        
+        .shop-description{
+            font-size:11px;
+            color:var(--text-muted);
+        }
+        
+        .shop-price{
+            text-align:right;
+            font-weight:700;
+            color:var(--primary-green);
+            font-size:14px;
+        }
+        
+        /* ✅ رأس الصفحة */
+        .hud-container{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            background:rgba(0,0,0,0.5);
+            border-radius:50px;
+            padding:10px 15px;
+            margin-bottom:20px;
+            border:1px solid rgba(255,255,255,0.05);
+        }
+        
+        .user-name{
+            font-weight:700;
+            font-size:14px;
+        }
+        
+        .hud-avatar{
+            width:50px;
+            height:50px;
+            border-radius:50%;
+            overflow:hidden;
+            border:2px solid var(--primary-green);
+        }
+        
+        .hud-avatar img{
+            width:100%;
+            height:100%;
+            object-fit:cover;
+        }
+        
+        /* ✅ التبويب السفلي */
+        .bottom-nav{
+            position:fixed;
+            bottom:20px;
+            left:50%;
+            transform:translateX(-50%);
+            width:90%;
+            max-width:400px;
+            height:65px;
+            background:var(--nav-bg);
+            border-radius:32px;
+            display:flex;
+            justify-content:space-around;
+            align-items:center;
+            box-shadow:0 10px 30px rgba(0,0,0,0.5);
+            z-index:100;
+            border:1px solid rgba(255,255,255,0.1);
+        }
+        
+        .nav-item{
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            color:#666;
+            transition:0.3s;
+            cursor:pointer;
+            position:relative;
+            width:50px;
+        }
+        
+        .nav-item svg{
+            width:22px;
+            height:22px;
+            margin-bottom:4px;
+            stroke:currentColor;
+            fill:none;
+            stroke-width:2.5;
+            transition:all 0.3s;
+        }
+        
+        .nav-item.active{
+            color:var(--primary-green);
+            transform:translateY(-2px);
+        }
+        
+        .nav-item.active svg{
+            stroke:var(--primary-green);
+            filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));
+        }
+        
+        .nav-text{
+            font-size:9px;
+            font-weight:700;
+            text-transform:uppercase;
+        }
+        
+        /* ✅ تحسينات للهواتف */
         @media (max-width:480px){
-            .app-container{padding:10px;padding-bottom:80px;}
-            .main-coin-img{width:120px;height:120px;}
-            .balance-amount{font-size:36px;}
-            .bottom-nav{width:95%;height:60px;}
-            .nav-text{font-size:8px;}
-            .bottom-nav{width:96%;padding:0 5px;}
-            .nav-item{width:45px;}
-            .nav-text{font-size:7px;}
-        }
-        
-        /* ✅ صفحة التحميل العالمية */
-        #global-loading-page {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 999999;
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .loading-logo {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            margin-bottom: 25px;
-            border: 4px solid var(--primary-green);
-            animation: float 2s ease-in-out infinite;
-        }
-        
-        .loading-title {
-            font-size: 32px;
-            font-weight: 800;
-            color: #fff;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            background: linear-gradient(90deg, #a855f7, #7c3aed);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .loading-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 30px;
-            max-width: 300px;
-            line-height: 1.5;
-        }
-        
-        .loading-progress-container {
-            width: 80%;
-            max-width: 300px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 20px 0;
-        }
-        
-        .loading-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-green), #7c3aed);
-            border-radius: 3px;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .loading-timer {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        @media (max-width: 480px) {
-            .loading-logo {
-                width: 100px;
-                height: 100px;
+            .app-container{
+                padding:10px;
+                padding-bottom:80px;
             }
             
-            .loading-title {
-                font-size: 24px;
+            .stats-grid{
+                grid-template-columns:repeat(2, 1fr);
+                gap:10px;
             }
             
-            .loading-subtitle {
-                font-size: 12px;
+            .stat-card{
+                padding:12px;
             }
+            
+            .stat-value{
+                font-size:20px;
+            }
+            
+            .bottom-nav{
+                width:95%;
+                height:60px;
+            }
+            
+            .nav-text{
+                font-size:8px;
+            }
+        }
+        
+        /* ✅ الإشعارات */
+        .notification-message{
+            position:fixed;
+            top:100px;
+            left:50%;
+            transform:translateX(-50%);
+            z-index:1000;
+            background:var(--glass-bg);
+            backdrop-filter:blur(20px);
+            border:1px solid var(--glass-border);
+            border-radius:15px;
+            padding:15px 20px;
+            max-width:90%;
+            width:400px;
+            text-align:center;
+            box-shadow:0 5px 20px rgba(0,0,0,0.3);
+            animation:fadeIn 0.3s ease;
+        }
+        
+        .notification-success{
+            border-color:#27ae60;
+            background:rgba(39,174,96,0.1);
+        }
+        
+        .notification-error{
+            border-color:#e74c3c;
+            background:rgba(231,76,60,0.1);
+        }
+        
+        .notification-warning{
+            border-color:#FFC107;
+            background:rgba(255,193,7,0.1);
+        }
+        
+        .notification-info{
+            border-color:#3498db;
+            background:rgba(52,152,219,0.1);
+        }
+        
+        @keyframes fadeOut{
+            from{opacity:1;}
+            to{opacity:0;}
+        }
+        
+        /* ✅ تحسينات عامة */
+        .hidden{
+            display:none!important;
         }
     </style>
 </head>
 <body>
 <!-- ✅ صفحة التحميل العالمية -->
 <div id="global-loading-page">
-    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" class="loading-logo">
-    <h1 class="loading-title">GLX GALAXY</h1>
-    <p class="loading-subtitle">Loading your cosmic experience...</p>
+    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="مزرعة الدجاج" class="loading-logo">
+    <h1 class="loading-title">🐔 مزرعة الدجاج</h1>
+    <p class="loading-subtitle">جارٍ تحميل المزرعة الخاصة بك...</p>
     
     <div class="loading-progress-container">
         <div class="loading-progress-bar" id="loading-progress-bar"></div>
     </div>
     
-    <div class="loading-timer" id="loading-timer">10 seconds</div>
+    <div class="loading-timer" id="loading-timer">5 seconds</div>
     
-    <div style="margin-top: 30px; font-size: 11px; color: var(--text-muted); max-width: 300px;">
-        <i class="fas fa-shield-alt" style="margin-right: 5px;"></i>
-        Performing security checks & loading your data
+    <div style="margin-top:30px;font-size:11px;color:var(--text-muted);max-width:300px;">
+        <i class="fas fa-shield-alt" style="margin-right:5px;"></i>
+        جارٍ تحميل بيانات المزرعة
     </div>
 </div>
 
-<!-- ✅ الصفحة الرئيسية فقط -->
+<!-- ✅ التطبيق الرئيسي -->
 <div class="app-container" style="display:none;" id="app-container">
+    <!-- رأس الصفحة -->
     <div class="hud-container">
         <div>
-            <div class="user-name" id="home-username">Explorer</div>
+            <div class="user-name" id="home-username">مزارع</div>
             <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
                 <div class="stats-pill" style="margin:0;padding:6px 12px;">
-                    <span style="color:var(--gold);">GLX:</span>
+                    <span style="color:var(--gold);">💰:</span>
                     <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
                 </div>
-                <div class="stats-pill" style="margin:0;padding:6px 12px;">
-                    <span style="color:var(--gold);">TON:</span>
-                    <span id="hud-ton-balance" style="color:#fff;font-weight:700;">0.0000</span>
-                </div>
             </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-            <div class="hud-avatar">
-                <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
-            </div>
+        <div class="hud-avatar">
+            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
         </div>
     </div>
-
+    
+    <!-- الصفحة الرئيسية - مزرعة الدجاج -->
     <main id="home" class="content-section active">
-        <div class="main-coin-section">
-            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="main-coin-img" alt="GLX">
-            <div class="balance-display">
-                <div class="balance-amount" id="total-GLX-balance">0</div>
-                <div class="balance-unit">GLX</div>
+        <div class="page-header">
+            <h1>🐔 مزرعة الدجاج</h1>
+            <p>إزرع، اجمع، واربح!</p>
+        </div>
+        
+        <!-- إحصاءات اللعبة -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">💰 الرصيد</div>
+                <div class="stat-value" id="balance">0</div>
             </div>
-            <div class="stats-pill">
-                <span style="font-size:10px;opacity:0.8;">Welcome to GLX Galaxy</span>
+            
+            <div class="stat-card">
+                <div class="stat-label">🐔 الدجاج</div>
+                <div class="stat-value" id="chickens">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">🥚 البيض</div>
+                <div class="stat-value" id="eggs">0</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">⚡ الإنتاج/ساعة</div>
+                <div class="stat-value" id="production">0</div>
             </div>
         </div>
-
-        <!-- 🔄 قسم الأخبار -->
-        <div class="card" style="margin-top:12px;">
-            <h2 style="display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-bullhorn"></i>Updates & News
-            </h2>
-            <div class="support-channel-card" onclick="window.open('https://t.me/earnmoney174688','_blank')" style="margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#9b59b6,#8e44ad);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
-                        <i class="fa-solid fa-bell"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Bot Updates & News</div>
-                        <div style="font-size:11px;color:var(--text-muted);">Latest updates, announcements, and news about the bot</div>
-                        <div style="font-size:10px;color:#9b59b6;margin-top:5px;">
-                            <i class="fa-solid fa-users"></i> @earnmoney174688
-                        </div>
-                    </div>
-                    <div style="color:#9b59b6;font-size:18px;">
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </div>
+        
+        <!-- متجر الدجاج -->
+        <div class="card" style="margin-bottom:15px;">
+            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-store"></i> متجر الدجاج
+            </h3>
+            
+            <div class="shop-item" onclick="buyChicken('basic')">
+                <div class="shop-icon">🐔</div>
+                <div class="shop-content">
+                    <div class="shop-title">دجاجة عادية</div>
+                    <div class="shop-description">تنتج 1 بيضة/ساعة</div>
                 </div>
+                <div class="shop-price">100</div>
+            </div>
+            
+            <div class="shop-item" onclick="buyChicken('golden')">
+                <div class="shop-icon">🐓</div>
+                <div class="shop-content">
+                    <div class="shop-title">دجاجة ذهبية</div>
+                    <div class="shop-description">تنتج 3 بيضات/ساعة</div>
+                </div>
+                <div class="shop-price">300</div>
+            </div>
+            
+            <div class="shop-item" onclick="buyChicken('diamond')">
+                <div class="shop-icon">💎</div>
+                <div class="shop-content">
+                    <div class="shop-title">دجاجة ماسية</div>
+                    <div class="shop-description">تنتج 10 بيضات/ساعة</div>
+                </div>
+                <div class="shop-price">1000</div>
             </div>
         </div>
-
-        <!-- 🔄 قسم الدعم -->
-        <div class="card" style="margin-top:12px;">
-            <h2 style="display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-headset"></i>Support & Help
-            </h2>
-            <div class="support-channel-card" onclick="window.open('https://t.me/aborabie777','_blank')" style="margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#3498db,#2980b9);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
-                        <i class="fa-solid fa-user-gear"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Technical Support</div>
-                        <div style="font-size:11px;color:var(--text-muted);">Get help with technical issues and account problems</div>
-                    </div>
-                    <div style="color:#3498db;font-size:18px;">
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </div>
+        
+        <!-- أزرار الإجراءات -->
+        <div class="card">
+            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-play"></i> إجراءات
+            </h3>
+            
+            <button class="btn btn-primary" onclick="collectEggs()">
+                <i class="fa-solid fa-egg"></i> جمع البيض
+            </button>
+            
+            <button class="btn btn-action" onclick="sellEggs()">
+                <i class="fa-solid fa-coins"></i> بيع البيض
+            </button>
+            
+            <button class="btn btn-action" onclick="convertEggs()">
+                <i class="fa-solid fa-exchange-alt"></i> تحويل البيض لدجاج
+            </button>
+        </div>
+        
+        <!-- معلومات اللعبة -->
+        <div class="card" style="margin-top:10px;">
+            <h3 style="color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-circle-info"></i> معلومات اللعبة
+            </h3>
+            <p style="font-size:11px;color:var(--text-muted);line-height:1.5;">
+                • كل دجاجة تنتج بيضًا تلقائيًا مع مرور الوقت<br>
+                • يمكنك جمع البيض يدويًا كل 5 دقائق<br>
+                • بيع البيض لتحصل على العملة<br>
+                • استخدم العملة لشراء دجاج أكثر<br>
+                • كلما زاد عدد الدجاج، زاد إنتاجك!
+            </p>
+        </div>
+    </main>
+    
+    <!-- صفحة السوق -->
+    <main id="market" class="content-section">
+        <div class="page-header">
+            <h1>🏪 السوق</h1>
+            <p>بيع وشراء المنتجات</p>
+        </div>
+        
+        <div class="card">
+            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-chart-line"></i> أسعار السوق
+            </h3>
+            
+            <div class="shop-item">
+                <div class="shop-icon">🥚</div>
+                <div class="shop-content">
+                    <div class="shop-title">بيضة واحدة</div>
+                    <div class="shop-description">سعر البيع الحالي</div>
                 </div>
+                <div class="shop-price" id="egg-price">5</div>
             </div>
-            <div class="support-channel-card" onclick="window.open('https://t.me/Elsayed_1_Elgohary','_blank')">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#27ae60,#2ecc71);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
-                        <i class="fa-solid fa-circle-question"></i>
-                    </div>
-                    <div style="flex:1;">
-                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">General Support & FAQ</div>
-                        <div style="font-size:11px;color:var(--text-muted);">Get answers to common questions and general help</div>
-                    </div>
-                    <div style="color:#27ae60;font-size:18px;">
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </div>
+            
+            <div class="shop-item">
+                <div class="shop-icon">🐔</div>
+                <div class="shop-content">
+                    <div class="shop-title">دجاجة عادية</div>
+                    <div class="shop-description">سعر الشراء</div>
                 </div>
+                <div class="shop-price">100</div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="sellAllEggs()" style="margin-top:15px;">
+                <i class="fa-solid fa-money-bill-wave"></i> بيع كل البيض
+            </button>
+        </div>
+        
+        <div class="card" style="margin-top:15px;">
+            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-history"></i> تاريخ المعاملات
+            </h3>
+            <div id="transaction-history" style="max-height:200px;overflow-y:auto;">
+                <p style="text-align:center;padding:20px;color:var(--text-muted);">لا توجد معاملات بعد</p>
             </div>
         </div>
     </main>
 </div>
 
+<!-- التبويب السفلي -->
 <nav class="bottom-nav">
     <div class="nav-item active" data-target="home">
         <svg viewBox="0 0 24 24">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
         </svg>
-        <span class="nav-text">Home</span>
+        <span class="nav-text">الرئيسية</span>
+    </div>
+    <div class="nav-item" data-target="market">
+        <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+        </svg>
+        <span class="nav-text">السوق</span>
     </div>
 </nav>
 
 <script>
-// ✅ دالة صفحة التحميل العالمية (10 ثوانٍ)
-let loadingProgress = 0;
-let loadingSeconds = 10;
-let loadingTimerInterval;
-
-function startGlobalLoading() {
-    const loadingPage = document.getElementById('global-loading-page');
-    const progressBar = document.getElementById('loading-progress-bar');
-    const timerElement = document.getElementById('loading-timer');
-    
-    if (!loadingPage || !progressBar || !timerElement) return;
-    
-    // إظهار صفحة التحميل
-    loadingPage.style.display = 'flex';
-    
-    // بدء المؤقت
-    loadingTimerInterval = setInterval(() => {
-        loadingSeconds--;
-        
-        if (loadingSeconds <= 0) {
-            loadingSeconds = 0;
-            timerElement.textContent = "Complete!";
-        } else {
-            timerElement.textContent = loadingSeconds + " second" + (loadingSeconds !== 1 ? 's' : '');
-        }
-        
-        // تحديث شريط التقدم
-        loadingProgress = ((10 - loadingSeconds) / 10) * 100;
-        progressBar.style.width = loadingProgress + '%';
-        
-        // عند انتهاء الوقت
-        if (loadingSeconds <= 0) {
-            clearInterval(loadingTimerInterval);
-            finishLoading();
-        }
-    }, 1000);
-}
-
-async function finishLoading() {
-    const loadingPage = document.getElementById('global-loading-page');
-    
-    try {
-        // ✅ عرض التطبيق الرئيسي فقط
-        showMainApp();
-        
-    } catch (error) {
-        console.error("Loading error:", error);
-        showMainApp();
-    } finally {
-        if (loadingPage) {
-            loadingPage.style.display = 'none';
-        }
-    }
-}
-
-function showMainApp() {
-    document.getElementById('global-loading-page').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
-}
-
-// ✅ الإعدادات الأساسية
-const APP_CONFIG = {
-    botUsername: 'RealEarnBot_bot'
+// ✅ المتغيرات الأساسية
+const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
+let gameState = {
+    balance: 1000,
+    chickens: 0,
+    eggs: 0,
+    production: 0,
+    lastCollectTime: Date.now(),
+    transactions: []
 };
 
-// ✅ دالة التبديل بين الصفحات (مبسطة)
+// ✅ دالة عرض الإشعارات
+function showNotification(message, type = 'info', duration = 3000) {
+    const notification = document.createElement('div');
+    notification.className = `notification-message notification-${type}`;
+    notification.innerHTML = `<div style="font-size:14px;font-weight:600;">${message}</div>`;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }, 300);
+    }, duration);
+}
+
+// ✅ دالة التبديل بين الصفحات
 function switchTab(tabId) {
     document.querySelectorAll('.content-section').forEach(section => {
         section.classList.remove('active');
@@ -357,42 +655,355 @@ function switchTab(tabId) {
     
     document.getElementById(tabId).classList.add('active');
     document.querySelector(`.nav-item[data-target="${tabId}"]`).classList.add('active');
+    
+    if (tabId === 'market') {
+        updateMarketPage();
+    }
+}
+
+// ✅ دالة تحميل اللعبة
+async function loadGame() {
+    try {
+        const result = await callAPI('getGameState');
+        if (result.success) {
+            gameState = result.data;
+            updateGameUI();
+        }
+    } catch (error) {
+        console.error("Error loading game:", error);
+    }
+}
+
+// ✅ دالة تحديث واجهة اللعبة
+function updateGameUI() {
+    // تحديث الإحصاءات
+    document.getElementById('balance').textContent = gameState.balance;
+    document.getElementById('chickens').textContent = gameState.chickens;
+    document.getElementById('eggs').textContent = gameState.eggs;
+    document.getElementById('production').textContent = gameState.production || 0;
+    
+    // تحديث رأس الصفحة
+    document.getElementById('hud-glx-balance').textContent = gameState.balance;
+    
+    // حساب البيض المتاح للجمع
+    const now = Date.now();
+    const timeDiff = now - gameState.lastCollectTime;
+    const hoursPassed = timeDiff / (1000 * 60 * 60);
+    const eggsProduced = Math.floor(gameState.production * hoursPassed);
+    
+    if (eggsProduced > 0) {
+        showNotification(`⚠️ لديك ${eggsProduced} بيضة جاهزة للجمع!`, 'warning');
+    }
+}
+
+// ✅ دالة تحديث صفحة السوق
+function updateMarketPage() {
+    document.getElementById('egg-price').textContent = '5';
+    const historyContainer = document.getElementById('transaction-history');
+    
+    if (gameState.transactions && gameState.transactions.length > 0) {
+        historyContainer.innerHTML = '';
+        gameState.transactions.slice(-10).reverse().forEach(transaction => {
+            const transactionEl = document.createElement('div');
+            transactionEl.className = 'shop-item';
+            transactionEl.style.padding = '8px';
+            transactionEl.style.marginBottom = '5px';
+            transactionEl.style.fontSize = '11px';
+            
+            const typeIcon = transaction.type === 'sell' ? '💰' : '🐔';
+            transactionEl.innerHTML = `
+                <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div>${typeIcon}</div>
+                        <div>${transaction.description}</div>
+                    </div>
+                    <div style="color:var(--primary-green);font-weight:bold;">${transaction.amount}</div>
+                </div>
+            `;
+            historyContainer.appendChild(transactionEl);
+        });
+    }
+}
+
+// ✅ دالة شراء دجاج
+async function buyChicken(type) {
+    const prices = {
+        'basic': 100,
+        'golden': 300,
+        'diamond': 1000
+    };
+    
+    const productions = {
+        'basic': 1,
+        'golden': 3,
+        'diamond': 10
+    };
+    
+    const price = prices[type];
+    const production = productions[type];
+    
+    if (gameState.balance < price) {
+        showNotification("❌ رصيدك غير كافي!", 'error');
+        return;
+    }
+    
+    const result = await callAPI('buyChicken', {
+        type: type,
+        price: price,
+        production: production
+    });
+    
+    if (result.success) {
+        gameState = result.data;
+        updateGameUI();
+        
+        const chickenNames = {
+            'basic': 'عادية',
+            'golden': 'ذهبية',
+            'diamond': 'ماسية'
+        };
+        
+        showNotification(`✅ تم شراء دجاجة ${chickenNames[type]} بنجاح!`, 'success');
+    } else {
+        showNotification("❌ حدث خطأ: " + result.error, 'error');
+    }
+}
+
+// ✅ دالة جمع البيض
+async function collectEggs() {
+    const now = Date.now();
+    const timeDiff = now - gameState.lastCollectTime;
+    const hoursPassed = timeDiff / (1000 * 60 * 60);
+    const eggsProduced = Math.floor(gameState.production * hoursPassed);
+    
+    if (eggsProduced <= 0) {
+        showNotification("⏳ لم يتم إنتاج بيض كافي بعد!", 'warning');
+        return;
+    }
+    
+    const result = await callAPI('collectEggs', {
+        eggsProduced: eggsProduced
+    });
+    
+    if (result.success) {
+        gameState = result.data;
+        updateGameUI();
+        showNotification(`✅ تم جمع ${eggsProduced} بيضة!`, 'success');
+    } else {
+        showNotification("❌ حدث خطأ: " + result.error, 'error');
+    }
+}
+
+// ✅ دالة بيع البيض
+async function sellEggs() {
+    if (gameState.eggs <= 0) {
+        showNotification("❌ لا تمتلك بيضًا للبيع!", 'error');
+        return;
+    }
+    
+    const eggPrice = 5;
+    const totalPrice = gameState.eggs * eggPrice;
+    
+    const result = await callAPI('sellEggs', {
+        eggs: gameState.eggs,
+        price: totalPrice
+    });
+    
+    if (result.success) {
+        gameState = result.data;
+        updateGameUI();
+        showNotification(`💰 تم بيع ${gameState.lastSoldEggs || 0} بيضة بـ ${totalPrice} عملة!`, 'success');
+    } else {
+        showNotification("❌ حدث خطأ: " + result.error, 'error');
+    }
+}
+
+// ✅ دالة بيع كل البيض
+async function sellAllEggs() {
+    if (gameState.eggs <= 0) {
+        showNotification("❌ لا تمتلك بيضًا للبيع!", 'error');
+        return;
+    }
+    
+    const eggPrice = 5;
+    const totalPrice = gameState.eggs * eggPrice;
+    
+    if (!confirm(`هل تريد بيع كل البيض (${gameState.eggs} بيضة) بـ ${totalPrice} عملة؟`)) {
+        return;
+    }
+    
+    const result = await callAPI('sellEggs', {
+        eggs: gameState.eggs,
+        price: totalPrice
+    });
+    
+    if (result.success) {
+        gameState = result.data;
+        updateGameUI();
+        showNotification(`💰 تم بيع ${gameState.lastSoldEggs || 0} بيضة بـ ${totalPrice} عملة!`, 'success');
+        updateMarketPage();
+    } else {
+        showNotification("❌ حدث خطأ: " + result.error, 'error');
+    }
+}
+
+// ✅ دالة تحويل البيض لدجاج
+async function convertEggs() {
+    if (gameState.eggs < 100) {
+        showNotification("❌ تحتاج 100 بيضة على الأقل لتحويلها لدجاجة!", 'error');
+        return;
+    }
+    
+    const eggsNeeded = 100;
+    const chickensToAdd = Math.floor(gameState.eggs / eggsNeeded);
+    
+    if (!confirm(`هل تريد تحويل ${chickensToAdd * eggsNeeded} بيضة لـ ${chickensToAdd} دجاجة؟`)) {
+        return;
+    }
+    
+    const result = await callAPI('convertEggs', {
+        eggs: chickensToAdd * eggsNeeded,
+        chickens: chickensToAdd
+    });
+    
+    if (result.success) {
+        gameState = result.data;
+        updateGameUI();
+        showNotification(`✅ تم تحويل ${chickensToAdd * eggsNeeded} بيضة لـ ${chickensToAdd} دجاجة!`, 'success');
+    } else {
+        showNotification("❌ حدث خطأ: " + result.error, 'error');
+    }
+}
+
+// ✅ دالة الاتصال بالسيرفر
+async function callAPI(action, data = {}) {
+    try {
+        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'guest';
+        const response = await fetch(`${API_URL}/api`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-ID': userId,
+                'X-Action': action
+            },
+            body: JSON.stringify({
+                action: action,
+                data: data,
+                userId: userId,
+                timestamp: Date.now()
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API call failed:', error);
+        showNotification("❌ خطأ في الاتصال. حاول مرة أخرى.", "error");
+        return { success: false, error: error.message };
+    }
+}
+
+// ✅ دالة تحميل الصفحة
+function startGlobalLoading() {
+    const loadingPage = document.getElementById('global-loading-page');
+    const progressBar = document.getElementById('loading-progress-bar');
+    const timerElement = document.getElementById('loading-timer');
+    
+    if (!loadingPage || !progressBar || !timerElement) return;
+    
+    // إخفاء كل الصفحات الأخرى
+    document.getElementById('app-container').style.display = 'none';
+    
+    // إظهار صفحة التحميل
+    loadingPage.style.display = 'flex';
+    
+    let loadingSeconds = 5;
+    let loadingProgress = 0;
+    
+    const loadingTimerInterval = setInterval(() => {
+        loadingSeconds--;
+        
+        if (loadingSeconds <= 0) {
+            loadingSeconds = 0;
+            timerElement.textContent = "جاهز!";
+        } else {
+            timerElement.textContent = loadingSeconds + " ثانية";
+        }
+        
+        // تحديث شريط التقدم
+        loadingProgress = ((5 - loadingSeconds) / 5) * 100;
+        progressBar.style.width = loadingProgress + '%';
+        
+        // عند انتهاء الوقت
+        if (loadingSeconds <= 0) {
+            clearInterval(loadingTimerInterval);
+            finishLoading();
+        }
+    }, 1000);
+}
+
+// ✅ دالة إنهاء التحميل
+async function finishLoading() {
+    const loadingPage = document.getElementById('global-loading-page');
+    
+    try {
+        // ✅ عرض التطبيق الرئيسي
+        document.getElementById('app-container').style.display = 'block';
+        
+        // ✅ تحميل بيانات اللعبة
+        await loadGame();
+        
+        // ✅ بدء التحديث التلقائي
+        setInterval(loadGame, 30000); // تحديث كل 30 ثانية
+        
+        showNotification("✅ تم تحميل المزرعة بنجاح! أهلاً بك!", "success");
+        
+    } catch (error) {
+        console.error("Loading error:", error);
+        showNotification("⚠️ تم التحميل مع بعض القيود.", "warning");
+    } finally {
+        if (loadingPage) {
+            loadingPage.style.display = 'none';
+        }
+    }
 }
 
 // ✅ تهيئة التطبيق
-function initializeApp() {
-    // إعداد المستخدم إذا كان في Telegram
+document.addEventListener('DOMContentLoaded', function() {
+    // إعداد المستخدم
     if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
         const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
         const fullName = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
-        document.getElementById('home-username').textContent = fullName || 'Explorer';
-        
-        // تحديث الأرقام الأساسية
-        document.getElementById('hud-glx-balance').textContent = '0';
-        document.getElementById('hud-ton-balance').textContent = '0.0000';
-        document.getElementById('total-GLX-balance').textContent = '0';
+        document.getElementById('home-username').textContent = fullName || 'مزارع';
     }
     
     // إعداد مستمعي الأحداث
-    setupEventListeners();
-}
-
-// ✅ إعداد مستمعي الأحداث
-function setupEventListeners() {
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.addEventListener('click', () => switchTab(btn.dataset.target));
     });
-}
-
-// ✅ بدء التطبيق
-document.addEventListener('DOMContentLoaded', function() {
-    startGlobalLoading();
     
-    // بدء تهيئة التطبيق بعد انتهاء التحميل
-    setTimeout(() => {
-        initializeApp();
-    }, 11000); // بعد 11 ثانية (10 للتحميل + 1 تأخير)
+    // بدء التحميل
+    startGlobalLoading();
 });
+
+// ✅ تحديث الإنتاج التلقائي كل دقيقة
+setInterval(() => {
+    if (gameState.production > 0) {
+        const now = Date.now();
+        const timeDiff = now - gameState.lastCollectTime;
+        const hoursPassed = timeDiff / (1000 * 60 * 60);
+        const eggsProduced = Math.floor(gameState.production * hoursPassed);
+        
+        if (eggsProduced > 0) {
+            // تحديث عدد البيض في الذاكرة المحلية فقط (ليس في السيرفر حتى يتم الجمع)
+            const tempEggs = gameState.eggs + eggsProduced;
+            document.getElementById('eggs').textContent = tempEggs;
+        }
+    }
+}, 60000); // كل دقيقة
 </script>
 </body>
 </html>
