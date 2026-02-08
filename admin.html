@@ -1,168 +1,1235 @@
+// SquidPEPE Game Engine
+export default {
+    async fetch(request, env, ctx) {
+        // إعداد CORS
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action',
+                }
+            });
+        }
+        
+        const url = new URL(request.url);
+        const path = url.pathname;
+        
+        // التحقق من المسار
+        if (path !== '/api') {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Invalid endpoint'
+            }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        try {
+            // استخراج البيانات من الطلب
+            const requestData = await request.json();
+            const action = request.headers.get('X-Action') || requestData.action;
+            const data = requestData.data || {};
+            const userId = request.headers.get('X-User-ID');
+            const telegramData = request.headers.get('X-Telegram-Data');
+            
+            console.log(`Request received: action=${action}, userId=${userId}`);
+            
+            // التحقق من المصادقة
+            if (!userId || !telegramData) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Authentication required',
+                    errorCode: 'AUTH_REQUIRED'
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // التحقق من بيانات Telegram
+            if (!isValidTelegramData(telegramData, userId)) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Invalid Telegram data',
+                    errorCode: 'INVALID_TELEGRAM_DATA'
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // معالجة الإجراءات
+            let result;
+            switch (action) {
+                case 'getState':
+                    result = await handleGetState(env, userId);
+                    break;
+                    
+                case 'mintSquids':
+                    result = await handleMintSquids(env, userId, data);
+                    break;
+                    
+                case 'hatchSquids':
+                    result = await handleHatchSquids(env, userId, data);
+                    break;
+                    
+                case 'createOrder':
+                    result = await handleCreateOrder(env, userId, data);
+                    break;
+                    
+                case 'buyOrder':
+                    result = await handleBuyOrder(env, userId, data);
+                    break;
+                    
+                case 'withdrawTON':
+                    result = await handleWithdrawTON(env, userId, data);
+                    break;
+                    
+                case 'getUserData':
+                    result = await handleGetUserData(env, userId);
+                    break;
+                    
+                case 'getMarketOrders':
+                    result = await handleGetMarketOrders(env);
+                    break;
+                    
+                default:
+                    result = {
+                        success: false,
+                        error: 'Unknown action',
+                        errorCode: 'UNKNOWN_ACTION'
+                    };
+            }
+            
+            // إرجاع النتيجة
+            return new Response(JSON.stringify(result), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+            
+        } catch (error) {
+            console.error('Worker error:', error);
+            
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Internal server error',
+                errorCode: 'INTERNAL_SERVER_ERROR',
+                details: error.message
+            }), {
+                status: 500,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+    }
+};
 
-<!doctype html>
-<html lang="ar">
-  <head>
-    <meta charset="UTF-8" />
-    
-    <!-- Content Security Policy - Security hardening -->
-    <!-- Note: URLs in CSP must be hardcoded as CSP is static HTML.
-         Update connect-src URLs if Supabase credentials are rotated. -->
-    <meta http-equiv="Content-Security-Policy" content="
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval'
-        https://telegram.org
-        https://*.telegram.org
-        https://sad.adsgram.ai
-        https://*.adsgram.ai
-        https://*.libtl.com
-        https://libtl.com
-        https://partner.adextra.io
-        https://*.adextra.io
-        https://imasdk.googleapis.com
-        https://*.doubleclick.net
-        https://*.googlesyndication.com
-        https://pagead2.googlesyndication.com
-        https://tpc.googlesyndication.com
-        https://googleads.g.doubleclick.net
-        https://ushoaglosee.com
-        https://*.ushoaglosee.com
-        https://ad.gigapub.tech
-        https://*.gigapub.tech
-        https://cdn.giga.pub
-        https://*.giga.pub;
-      style-src 'self' 'unsafe-inline'
-        https://fonts.googleapis.com
-        https://cdn-uicons.flaticon.com;
-      font-src 'self'
-        https://fonts.gstatic.com
-        https://cdn-uicons.flaticon.com;
-      img-src 'self' data: https: blob:;
-      connect-src 'self'
-        ws:
-        wss:
-        https://jtzwdmxflwymqzcelzyh.supabase.co
-        wss://jtzwdmxflwymqzcelzyh.supabase.co
-        https://telegram.org
-        https://*.telegram.org
-        https://sad.adsgram.ai
-        https://*.adsgram.ai
-        https://*.libtl.com
-        https://libtl.com
-        https://partner.adextra.io
-        https://*.adextra.io
-        https://imasdk.googleapis.com
-        https://*.doubleclick.net
-        https://*.googlesyndication.com
-        https://pagead2.googlesyndication.com
-        https://tpc.googlesyndication.com
-        https://googleads.g.doubleclick.net
-        https://ushoaglosee.com
-        https://*.ushoaglosee.com
-        https://ad.gigapub.tech
-        https://*.gigapub.tech
-        https://cdn.giga.pub
-        https://*.giga.pub
-        https://bridge.tonapi.io
-        https://bridge.ton.space
-        https://tonconnectbridge.mytonwallet.org
-        https://connect.tonhubapi.com
-        https://sse-bridge.delab.team
-        https://ton-bridge.safepal.com
-        https://bkcode.vip
-        https://connect.mytonwallet.org
-        https://storage.googleapis.com;
-      frame-src 'self'
-        https://telegram.org
-        https://*.telegram.org
-        https://sad.adsgram.ai
-        https://*.adsgram.ai
-        https://*.libtl.com
-        https://libtl.com
-        https://partner.adextra.io
-        https://*.adextra.io
-        https://imasdk.googleapis.com
-        https://*.doubleclick.net
-        https://*.googlesyndication.com
-        https://pagead2.googlesyndication.com
-        https://tpc.googlesyndication.com
-        https://googleads.g.doubleclick.net
-        https://ushoaglosee.com
-        https://*.ushoaglosee.com
-        https://ad.gigapub.tech
-        https://*.gigapub.tech
-        https://cdn.giga.pub
-        https://*.giga.pub;
-      frame-ancestors 'self'
-        https://web.telegram.org
-        https://telegram.org
-        https://*.telegram.org;
-      base-uri 'self';
-      form-action 'self';
-      upgrade-insecure-requests;
-     ">
+// ==================== SquidPEPE Game Engine ====================
 
-    <script>
-      // Log CSP blocks to help debug ads + TonConnect issues.
-      // Also persist the last violation so we can surface it in the UI (e.g., Adextra failures).
-      window.__cspViolations = window.__cspViolations || [];
-      window.__lastCspViolation = null;
+// Global Constants
+const GAME_CONSTANTS = {
+    MINT_RATE: 3000, // 1 TON = 3000 Squids
+    MINT_GLOBAL_CAP: 90000000, // 90 مليون سكويد كحد أقصى للـ Mint
+    DAILY_EGG_CAP: 30000000, // 30 مليون بيضة يومياً كحد أقصى
+    MIN_HATCH_AMOUNT: 100, // الحد الأدنى للفقس
+    HATCH_FEE_PERCENT: 5, // رسوم الحرف 5%
+    MARKET_SELLER_FEE_PERCENT: 5, // رسوم البائع 5% TON
+    MARKET_BUYER_FEE_PERCENT: 5, // رسوم المشتري 5% Eggs
+    MIN_WITHDRAW_AMOUNT: 0.1, // الحد الأدنى للسحب 0.1 TON
+    WITHDRAW_FEE_PERCENT: 5, // رسوم السحب 5%
+    REFERRAL_MINT_REWARD_PERCENT: 10, // 10% من TON للمُحيل
+    REFERRAL_HATCH_REWARD_PERCENT: 5, // 5% من البيض للمُحيل
+    MIN_ORDER_AMOUNT: 100 // الحد الأدنى للطلب في السوق
+};
 
-      window.addEventListener('securitypolicyviolation', function (e) {
-        const entry = {
-          time: Date.now(),
-          blockedURI: e.blockedURI,
-          violatedDirective: e.violatedDirective,
-          effectiveDirective: e.effectiveDirective,
-          sourceFile: e.sourceFile,
-          lineNumber: e.lineNumber,
-          columnNumber: e.columnNumber,
+// Get Global State
+async function handleGetState(env, userId) {
+    try {
+        const [globalState, userState] = await Promise.all([
+            handleDbGet(env, 'game/global'),
+            handleDbGet(env, `users/${userId}`)
+        ]);
+        
+        const global = globalState.data || await initializeGlobalState(env);
+        const user = userState.data || await initializeUser(env, userId);
+        
+        // حساب الإنتاج اليومي للبيض
+        const eggProduction = calculateDailyEggProduction(global);
+        
+        // حساب البيض للمستخدم
+        const userEggs = calculateUserEggs(user, global);
+        
+        // تحديث إذا كان الوقت مر
+        if (Date.now() - (user.lastEggCalc || 0) > 60000) { // كل دقيقة
+            await updateUserEggs(env, userId, userEggs);
+        }
+        
+        return {
+            success: true,
+            data: {
+                user: {
+                    squids: user.squids || 0,
+                    eggs: userEggs,
+                    tonBalance: user.tonBalance || 0,
+                    mintUsed: user.mintUsed || false,
+                    mintedSquids: user.mintedSquids || 0,
+                    referralCode: user.referralCode || generateReferralCode(userId),
+                    referredBy: user.referredBy || null
+                },
+                global: {
+                    totalSquids: global.totalSquids || 0,
+                    mintedSoFar: global.mintedSoFar || 0,
+                    dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
+                    totalEggsToday: global.totalEggsToday || 0,
+                    lastDailyReset: global.lastDailyReset || Date.now(),
+                    eggProduction: eggProduction,
+                    availableEggs: Math.max(0, eggProduction - (global.totalEggsToday || 0))
+                },
+                constants: GAME_CONSTANTS,
+                marketStats: await getMarketStats(env)
+            }
         };
+    } catch (error) {
+        console.error('Get state error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'GET_STATE_ERROR'
+        };
+    }
+}
 
-        window.__lastCspViolation = entry;
-        window.__cspViolations.push(entry);
-        if (window.__cspViolations.length > 20) window.__cspViolations.shift();
+// Mint Squids
+async function handleMintSquids(env, userId, data) {
+    try {
+        const { amount, referredBy } = data;
+        
+        // التحقق من البيانات
+        if (!amount || parseFloat(amount) !== 1) {
+            return {
+                success: false,
+                error: 'Mint amount must be exactly 1 TON',
+                errorCode: 'INVALID_MINT_AMOUNT'
+            };
+        }
+        
+        // جلب بيانات المستخدم والعالم
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data || await initializeUser(env, userId);
+        const global = globalResult.data || await initializeGlobalState(env);
+        
+        // التحقق مما إذا كان المستخدم قد استخدم Mint من قبل
+        if (user.mintUsed) {
+            return {
+                success: false,
+                error: 'You can only mint once per account',
+                errorCode: 'MINT_ALREADY_USED'
+            };
+        }
+        
+        // التحقق من الحد العالمي
+        const squidsToMint = GAME_CONSTANTS.MINT_RATE;
+        if (global.mintedSoFar + squidsToMint > GAME_CONSTANTS.MINT_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'Global mint cap reached',
+                errorCode: 'GLOBAL_MINT_CAP_REACHED'
+            };
+        }
+        
+        // محاكاة استلام TON (في الواقع، يجب التحقق من المعاملة)
+        // هنا نعتبر أن المستخدم دفع بالفعل
+        
+        // تحديث المستخدم
+        const userUpdates = {
+            squids: (user.squids || 0) + squidsToMint,
+            tonBalance: (user.tonBalance || 0) - 1,
+            mintUsed: true,
+            mintedSquids: squidsToMint,
+            lastUpdated: Date.now()
+        };
+        
+        // إعداد الإحالة إذا كانت موجودة
+        let referralReward = 0;
+        if (referredBy && referredBy !== userId) {
+            const referrerResult = await handleDbGet(env, `users/${referredBy}`);
+            if (referrerResult.success && referrerResult.data) {
+                const referrer = referrerResult.data;
+                referralReward = 1 * (GAME_CONSTANTS.REFERRAL_MINT_REWARD_PERCENT / 100);
+                
+                // تحديث المُحيل
+                await handleDbUpdate(env, `users/${referredBy}`, {
+                    tonBalance: (referrer.tonBalance || 0) + referralReward,
+                    lastUpdated: Date.now()
+                });
+                
+                // تسجيل الإحالة
+                await handleDbPush(env, `users/${referredBy}/referrals`, {
+                    userId: userId,
+                    type: 'mint',
+                    reward: referralReward,
+                    timestamp: Date.now()
+                });
+                
+                userUpdates.referredBy = referredBy;
+            }
+        }
+        
+        // تحديث العالم
+        const globalUpdates = {
+            totalSquids: (global.totalSquids || 0) + squidsToMint,
+            mintedSoFar: (global.mintedSoFar || 0) + squidsToMint,
+            lastUpdated: Date.now()
+        };
+        
+        // تطبيق التحديثات
+        await Promise.all([
+            handleDbUpdate(env, `users/${userId}`, userUpdates),
+            handleDbUpdate(env, 'game/global', globalUpdates)
+        ]);
+        
+        // تسجيل العملية
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'mint',
+            amount: squidsToMint,
+            tonPaid: 1,
+            referralReward: referralReward,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                mintedSquids: squidsToMint,
+                newSquids: userUpdates.squids,
+                newTonBalance: userUpdates.tonBalance,
+                referralReward: referralReward,
+                globalMinted: globalUpdates.mintedSoFar
+            }
+        };
+    } catch (error) {
+        console.error('Mint squids error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'MINT_SQUIDS_ERROR'
+        };
+    }
+}
 
-        console.warn('[CSP] Blocked', entry);
-      });
-    </script>
-     
-    <!-- Additional Security Headers -->
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    
-    <link rel="icon" type="image/x-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/69ryW3IyM3S8KND4jtEM0d40Sgr2/uploads/1764103534841-photo_2025-11-10_18-49-58.jpg">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>RED COIN</title>
-    <meta name="description" content="اربح العملات الرقمية والتوكنز من خلال إتمام المهام" />
-    
-    <!-- Flaticon UIcons -->
-    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-rounded/css/uicons-solid-rounded.css">
-    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-bold-rounded/css/uicons-bold-rounded.css">
-    <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/3.0.0/uicons-solid-chubby/css/uicons-solid-chubby.css">
-    
-    <meta property="og:description" content="اربح العملات الرقمية من خلال إتمام المهام" />
-    <meta property="og:type" content="website" />
-    
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+// Hatch Squids from Eggs
+async function handleHatchSquids(env, userId, data) {
+    try {
+        const { amount } = data;
+        const eggsToHatch = parseInt(amount);
+        
+        // التحقق من البيانات
+        if (!eggsToHatch || eggsToHatch < GAME_CONSTANTS.MIN_HATCH_AMOUNT) {
+            return {
+                success: false,
+                error: `Minimum hatch amount is ${GAME_CONSTANTS.MIN_HATCH_AMOUNT} eggs`,
+                errorCode: 'INVALID_HATCH_AMOUNT'
+            };
+        }
+        
+        // جلب بيانات المستخدم والعالم
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data || await initializeUser(env, userId);
+        const global = globalResult.data || await initializeGlobalState(env);
+        
+        // حساب البيض الحقيقي للمستخدم
+        const userEggs = calculateUserEggs(user, global);
+        
+        // التحقق من الرصيد الكافي
+        if (userEggs < eggsToHatch) {
+            return {
+                success: false,
+                error: 'Insufficient eggs',
+                errorCode: 'INSUFFICIENT_EGGS'
+            };
+        }
+        
+        // حساب الرسوم والإنتاج
+        const hatchFee = eggsToHatch * (GAME_CONSTANTS.HATCH_FEE_PERCENT / 100);
+        const squidsProduced = eggsToHatch - hatchFee;
+        
+        // إعادة تعيين آخر حساب للبيض
+        const resetEggs = userEggs - eggsToHatch;
+        
+        // تحديث المستخدم
+        const userUpdates = {
+            squids: (user.squids || 0) + squidsProduced,
+            lastEggCalc: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        // تحديث العالم
+        const globalUpdates = {
+            totalSquids: (global.totalSquids || 0) + squidsProduced,
+            totalEggsToday: (global.totalEggsToday || 0) + eggsToHatch,
+            lastUpdated: Date.now()
+        };
+        
+        // مكافأة الإحالة
+        let referralReward = 0;
+        if (user.referredBy) {
+            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
+            if (referrerResult.success && referrerResult.data) {
+                const referrer = referrerResult.data;
+                referralReward = eggsToHatch * (GAME_CONSTANTS.REFERRAL_HATCH_REWARD_PERCENT / 100);
+                
+                // تحديث بيض المُحيل
+                const referrerEggs = calculateUserEggs(referrer, global);
+                
+                await handleDbUpdate(env, `users/${user.referredBy}`, {
+                    lastEggCalc: Date.now(),
+                    lastUpdated: Date.now()
+                });
+                
+                // تسجيل الإحالة (سيتم احتساب البيض في الحساب التالي)
+                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
+                    userId: userId,
+                    type: 'hatch',
+                    eggsReward: referralReward,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // تطبيق التحديثات
+        await Promise.all([
+            handleDbUpdate(env, `users/${userId}`, userUpdates),
+            handleDbUpdate(env, 'game/global', globalUpdates)
+        ]);
+        
+        // تسجيل العملية
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'hatch',
+            eggsUsed: eggsToHatch,
+            squidsProduced: squidsProduced,
+            hatchFee: hatchFee,
+            referralReward: referralReward,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                eggsUsed: eggsToHatch,
+                squidsProduced: squidsProduced,
+                hatchFee: hatchFee,
+                newSquids: userUpdates.squids,
+                referralReward: referralReward,
+                totalSquids: globalUpdates.totalSquids
+            }
+        };
+    } catch (error) {
+        console.error('Hatch squids error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HATCH_SQUIDS_ERROR'
+        };
+    }
+}
 
-    <!-- Ad SDKs -->
-    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+// Create Market Order
+async function handleCreateOrder(env, userId, data) {
+    try {
+        const { type, price, amount } = data;
+        
+        // التحقق من البيانات
+        if (!['sell', 'buy'].includes(type)) {
+            return {
+                success: false,
+                error: 'Invalid order type. Must be "sell" or "buy"',
+                errorCode: 'INVALID_ORDER_TYPE'
+            };
+        }
+        
+        if (!price || parseFloat(price) <= 0) {
+            return {
+                success: false,
+                error: 'Invalid price',
+                errorCode: 'INVALID_PRICE'
+            };
+        }
+        
+        const orderAmount = parseInt(amount);
+        if (!orderAmount || orderAmount < GAME_CONSTANTS.MIN_ORDER_AMOUNT) {
+            return {
+                success: false,
+                error: `Minimum order amount is ${GAME_CONSTANTS.MIN_ORDER_AMOUNT}`,
+                errorCode: 'INVALID_ORDER_AMOUNT'
+            };
+        }
+        
+        // جلب بيانات المستخدم
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        const user = userResult.data || await initializeUser(env, userId);
+        
+        // التحقق من الرصيد الكافي
+        if (type === 'sell') {
+            // بيع سكويدات
+            if ((user.squids || 0) < orderAmount) {
+                return {
+                    success: false,
+                    error: 'Insufficient squids',
+                    errorCode: 'INSUFFICIENT_SQUIDS'
+                };
+            }
+        } else {
+            // شراء سكويدات
+            const totalCost = orderAmount * parseFloat(price);
+            if ((user.tonBalance || 0) < totalCost) {
+                return {
+                    success: false,
+                    error: 'Insufficient TON balance',
+                    errorCode: 'INSUFFICIENT_TON_BALANCE'
+                };
+            }
+        }
+        
+        // تجميد الأصول
+        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const orderData = {
+            id: orderId,
+            userId: userId,
+            type: type,
+            price: parseFloat(price),
+            amount: orderAmount,
+            remaining: orderAmount,
+            status: 'active',
+            createdAt: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        // حفظ الطلب
+        await handleDbSet(env, `market/orders/${orderId}`, orderData);
+        
+        // تجميد الأصول
+        const userUpdates = {};
+        if (type === 'sell') {
+            userUpdates.squids = (user.squids || 0) - orderAmount;
+        } else {
+            userUpdates.tonBalance = (user.tonBalance || 0) - (orderAmount * parseFloat(price));
+        }
+        userUpdates.lastUpdated = Date.now();
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // تسجيل الطلب المجمد
+        await handleDbSet(env, `users/${userId}/frozenAssets/${orderId}`, {
+            type: type,
+            amount: orderAmount,
+            price: parseFloat(price),
+            frozenAt: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                orderId: orderId,
+                order: orderData,
+                newBalance: type === 'sell' ? userUpdates.squids : userUpdates.tonBalance
+            }
+        };
+    } catch (error) {
+        console.error('Create order error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CREATE_ORDER_ERROR'
+        };
+    }
+}
+
+// Buy from Market Order
+async function handleBuyOrder(env, userId, data) {
+    try {
+        const { orderId, amount } = data;
+        
+        // جلب بيانات الطلب
+        const orderResult = await handleDbGet(env, `market/orders/${orderId}`);
+        if (!orderResult.success || !orderResult.data) {
+            return {
+                success: false,
+                error: 'Order not found',
+                errorCode: 'ORDER_NOT_FOUND'
+            };
+        }
+        
+        const order = orderResult.data;
+        
+        // التحقق من حالة الطلب
+        if (order.status !== 'active') {
+            return {
+                success: false,
+                error: 'Order is not active',
+                errorCode: 'ORDER_NOT_ACTIVE'
+            };
+        }
+        
+        if (order.type !== 'sell') {
+            return {
+                success: false,
+                error: 'Can only buy from sell orders',
+                errorCode: 'INVALID_ORDER_TYPE'
+            };
+        }
+        
+        const buyAmount = parseInt(amount) || order.remaining;
+        if (buyAmount > order.remaining) {
+            return {
+                success: false,
+                error: 'Order does not have enough remaining',
+                errorCode: 'INSUFFICIENT_ORDER_AMOUNT'
+            };
+        }
+        
+        // جلب بيانات المشتري والبائع
+        const [buyerResult, sellerResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, `users/${order.userId}`)
+        ]);
+        
+        const buyer = buyerResult.data || await initializeUser(env, userId);
+        const seller = sellerResult.data || await initializeUser(env, order.userId);
+        
+        // حساب التكلفة والرسوم
+        const totalCost = buyAmount * order.price;
+        const sellerFee = totalCost * (GAME_CONSTANTS.MARKET_SELLER_FEE_PERCENT / 100);
+        const buyerFee = buyAmount * (GAME_CONSTANTS.MARKET_BUYER_FEE_PERCENT / 100);
+        
+        const sellerReceives = totalCost - sellerFee;
+        const buyerReceives = buyAmount - buyerFee;
+        
+        // التحقق من رصيد المشتري
+        if ((buyer.tonBalance || 0) < totalCost) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON_BALANCE'
+            };
+        }
+        
+        // تنفيذ الصفقة
+        const sellerUpdates = {
+            tonBalance: (seller.tonBalance || 0) + sellerReceives,
+            lastUpdated: Date.now()
+        };
+        
+        const buyerUpdates = {
+            tonBalance: (buyer.tonBalance || 0) - totalCost,
+            squids: (buyer.squids || 0) + buyerReceives,
+            lastUpdated: Date.now()
+        };
+        
+        // تحديث الطلب
+        const newRemaining = order.remaining - buyAmount;
+        const orderUpdates = {
+            remaining: newRemaining,
+            status: newRemaining > 0 ? 'active' : 'filled',
+            lastUpdated: Date.now()
+        };
+        
+        // تطبيق التحديثات
+        await Promise.all([
+            handleDbUpdate(env, `users/${order.userId}`, sellerUpdates),
+            handleDbUpdate(env, `users/${userId}`, buyerUpdates),
+            handleDbUpdate(env, `market/orders/${orderId}`, orderUpdates)
+        ]);
+        
+        // تحرير الأصول المجمدة للبائع إذا اكتمل الطلب
+        if (newRemaining <= 0) {
+            await handleDbSet(env, `users/${order.userId}/frozenAssets/${orderId}`, null);
+        }
+        
+        // تسجيل المعاملة
+        const txId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        await Promise.all([
+            // سجل المشتري
+            handleDbPush(env, `users/${userId}/history`, {
+                type: 'market_buy',
+                orderId: orderId,
+                squidsBought: buyerReceives,
+                tonPaid: totalCost,
+                buyerFee: buyerFee,
+                sellerId: order.userId,
+                timestamp: Date.now(),
+                txId: txId
+            }),
+            
+            // سجل البائع
+            handleDbPush(env, `users/${order.userId}/history`, {
+                type: 'market_sell',
+                orderId: orderId,
+                squidsSold: buyAmount,
+                tonReceived: sellerReceives,
+                sellerFee: sellerFee,
+                buyerId: userId,
+                timestamp: Date.now(),
+                txId: txId
+            })
+        ]);
+        
+        return {
+            success: true,
+            data: {
+                txId: txId,
+                squidsBought: buyerReceives,
+                tonPaid: totalCost,
+                fees: {
+                    buyerFee: buyerFee,
+                    sellerFee: sellerFee
+                },
+                newBuyerBalance: buyerUpdates.tonBalance,
+                newBuyerSquids: buyerUpdates.squids,
+                newSellerBalance: sellerUpdates.tonBalance,
+                orderRemaining: newRemaining,
+                orderStatus: orderUpdates.status
+            }
+        };
+    } catch (error) {
+        console.error('Buy order error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'BUY_ORDER_ERROR'
+        };
+    }
+}
+
+// Withdraw TON
+async function handleWithdrawTON(env, userId, data) {
+    try {
+        const { amount, address } = data;
+        const withdrawAmount = parseFloat(amount);
+        
+        // التحقق من البيانات
+        if (!withdrawAmount || withdrawAmount < GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT) {
+            return {
+                success: false,
+                error: `Minimum withdrawal amount is ${GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT} TON`,
+                errorCode: 'INVALID_WITHDRAW_AMOUNT'
+            };
+        }
+        
+        if (!address || address.trim().length === 0) {
+            return {
+                success: false,
+                error: 'TON address is required',
+                errorCode: 'ADDRESS_REQUIRED'
+            };
+        }
+        
+        // جلب بيانات المستخدم
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        const user = userResult.data || await initializeUser(env, userId);
+        
+        // حساب الرسوم والمبلغ النهائي
+        const fee = withdrawAmount * (GAME_CONSTANTS.WITHDRAW_FEE_PERCENT / 100);
+        const netAmount = withdrawAmount - fee;
+        
+        // التحقق من الرصيد الكافي (بما في ذلك الرسوم)
+        if ((user.tonBalance || 0) < withdrawAmount) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON_BALANCE'
+            };
+        }
+        
+        // تحديث رصيد المستخدم
+        const userUpdates = {
+            tonBalance: (user.tonBalance || 0) - withdrawAmount,
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // تسجيل طلب السحب
+        const withdrawalId = `withdraw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const withdrawalData = {
+            id: withdrawalId,
+            userId: userId,
+            amount: withdrawAmount,
+            fee: fee,
+            netAmount: netAmount,
+            address: address,
+            status: 'pending',
+            createdAt: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbSet(env, `withdrawals/pending/${withdrawalId}`, withdrawalData);
+        
+        // تسجيل في السجل
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'withdraw_request',
+            amount: withdrawAmount,
+            fee: fee,
+            netAmount: netAmount,
+            address: address,
+            status: 'pending',
+            timestamp: Date.now(),
+            withdrawalId: withdrawalId
+        });
+        
+        return {
+            success: true,
+            data: {
+                withdrawalId: withdrawalId,
+                amount: withdrawAmount,
+                fee: fee,
+                netAmount: netAmount,
+                newBalance: userUpdates.tonBalance,
+                message: 'Withdrawal request submitted. Will be processed within 24 hours.'
+            }
+        };
+    } catch (error) {
+        console.error('Withdraw TON error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'WITHDRAW_TON_ERROR'
+        };
+    }
+}
+
+// Get User Data
+async function handleGetUserData(env, userId) {
+    try {
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data || await initializeUser(env, userId);
+        const global = globalResult.data || await initializeGlobalState(env);
+        
+        // حساب البيض الحالي
+        const userEggs = calculateUserEggs(user, global);
+        
+        // جلب الطلبات النشطة للمستخدم
+        const ordersResult = await handleDbGet(env, 'market/orders');
+        const allOrders = ordersResult.data || {};
+        
+        const userOrders = [];
+        for (const [orderId, order] of Object.entries(allOrders)) {
+            if (order.userId === userId && order.status === 'active') {
+                userOrders.push(order);
+            }
+        }
+        
+        return {
+            success: true,
+            data: {
+                user: {
+                    squids: user.squids || 0,
+                    eggs: userEggs,
+                    tonBalance: user.tonBalance || 0,
+                    mintUsed: user.mintUsed || false,
+                    mintedSquids: user.mintedSquids || 0,
+                    referralCode: user.referralCode || generateReferralCode(userId),
+                    referredBy: user.referredBy || null,
+                    joinDate: user.joinDate || Date.now()
+                },
+                activeOrders: userOrders,
+                referralStats: await getReferralStats(env, userId)
+            }
+        };
+    } catch (error) {
+        console.error('Get user data error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'GET_USER_DATA_ERROR'
+        };
+    }
+}
+
+// Get Market Orders
+async function handleGetMarketOrders(env) {
+    try {
+        const ordersResult = await handleDbGet(env, 'market/orders');
+        const allOrders = ordersResult.data || {};
+        
+        const sellOrders = [];
+        const buyOrders = [];
+        
+        for (const [orderId, order] of Object.entries(allOrders)) {
+            if (order.status === 'active') {
+                if (order.type === 'sell') {
+                    sellOrders.push(order);
+                } else {
+                    buyOrders.push(order);
+                }
+            }
+        }
+        
+        // ترتيب: البيع بالسعر الأدنى أولاً، الشراء بالسعر الأعلى أولاً
+        sellOrders.sort((a, b) => a.price - b.price);
+        buyOrders.sort((a, b) => b.price - a.price);
+        
+        return {
+            success: true,
+            data: {
+                sellOrders: sellOrders.slice(0, 50),
+                buyOrders: buyOrders.slice(0, 50),
+                totalSellOrders: sellOrders.length,
+                totalBuyOrders: buyOrders.length
+            }
+        };
+    } catch (error) {
+        console.error('Get market orders error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'GET_MARKET_ORDERS_ERROR'
+        };
+    }
+}
+
+// ==================== Helper Functions ====================
+
+// Initialize Global State
+async function initializeGlobalState(env) {
+    const now = Date.now();
+    const initialState = {
+        totalSquids: 0,
+        mintedSoFar: 0,
+        dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
+        totalEggsToday: 0,
+        lastDailyReset: now,
+        createdAt: now,
+        lastUpdated: now
+    };
     
-  
-  <meta name="twitter:card" content="summary">
-  <meta property="og:title" content="RED COIN">
-  <meta name="twitter:title" content="RED COIN">
-  <script type="module" crossorigin src="/assets/index-C1_vMolt.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/vendor-DlVCVaFH.js">
-  <link rel="modulepreload" crossorigin href="/assets/radix-ui-CJceqnEg.js">
-  <link rel="modulepreload" crossorigin href="/assets/tanstack-DJOL_Zqx.js">
-  <link rel="modulepreload" crossorigin href="/assets/animations-fcx6_Qo8.js">
-  <link rel="modulepreload" crossorigin href="/assets/supabase-BY6u0z81.js">
-  <link rel="stylesheet" crossorigin href="/assets/index-DJyANwe9.css">
-</head>
-  <body>
-    <div id="root"></div>
-    <!-- TON Connect Modal Portal - Must be outside root for proper z-index -->
-    <div id="ton-connect-modal"></div>
-  </body>
-</html>
+    await handleDbSet(env, 'game/global', initialState);
+    return initialState;
+}
+
+// Initialize User
+async function initializeUser(env, userId) {
+    const now = Date.now();
+    const initialUser = {
+        squids: 0,
+        eggs: 0,
+        tonBalance: 0,
+        mintUsed: false,
+        mintedSquids: 0,
+        lastEggCalc: now,
+        referralCode: generateReferralCode(userId),
+        referredBy: null,
+        joinDate: now,
+        lastUpdated: now
+    };
+    
+    await handleDbSet(env, `users/${userId}`, initialUser);
+    return initialUser;
+}
+
+// Calculate Daily Egg Production
+function calculateDailyEggProduction(global) {
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    
+    // إعادة تعيين الإنتاج اليومي إذا مر يوم
+    if (now - global.lastDailyReset > oneDay) {
+        return 0; // سيتم إعادة التعيين في التحديث التالي
+    }
+    
+    // حساب الإنتاج اليومي بناءً على إجمالي السكويدات
+    const totalSquids = global.totalSquids || 0;
+    const maxEggs = GAME_CONSTANTS.DAILY_EGG_CAP;
+    
+    if (totalSquids <= 0) return 0;
+    
+    // الإنتاج يتناسب مع نسبة إجمالي السكويدات إلى الحد الأقصى
+    const productionRatio = Math.min(1, totalSquids / GAME_CONSTANTS.MINT_GLOBAL_CAP);
+    const dailyProduction = Math.floor(productionRatio * maxEggs);
+    
+    return dailyProduction;
+}
+
+// Calculate User Eggs
+function calculateUserEggs(user, global) {
+    const now = Date.now();
+    
+    // إعادة تعيين الإنتاج اليومي إذا مر يوم
+    if (now - global.lastDailyReset > 24 * 60 * 60 * 1000) {
+        global.totalEggsToday = 0;
+        global.lastDailyReset = now;
+    }
+    
+    // حساب الإنتاج اليومي
+    const dailyProduction = calculateDailyEggProduction(global);
+    const availableEggs = Math.max(0, dailyProduction - (global.totalEggsToday || 0));
+    
+    if (availableEggs <= 0) return 0;
+    
+    // حساب نصيب المستخدم بناءً على سكويداته
+    const userSquids = user.squids || 0;
+    const totalSquids = global.totalSquids || 1;
+    const userShare = userSquids / totalSquids;
+    
+    // البيض المنتج منذ آخر حساب
+    const timeSinceLastCalc = Math.max(0, now - (user.lastEggCalc || now));
+    const timeFactor = Math.min(1, timeSinceLastCalc / (24 * 60 * 60 * 1000));
+    
+    const eggsProduced = Math.floor(userShare * availableEggs * timeFactor);
+    
+    return eggsProduced;
+}
+
+// Update User Eggs
+async function updateUserEggs(env, userId, eggs) {
+    await handleDbUpdate(env, `users/${userId}`, {
+        lastEggCalc: Date.now(),
+        lastUpdated: Date.now()
+    });
+}
+
+// Get Market Stats
+async function getMarketStats(env) {
+    try {
+        const ordersResult = await handleDbGet(env, 'market/orders');
+        const allOrders = ordersResult.data || {};
+        
+        let totalVolume = 0;
+        let activeOrders = 0;
+        
+        for (const order of Object.values(allOrders)) {
+            if (order.status === 'active') {
+                activeOrders++;
+                totalVolume += order.amount * order.price;
+            }
+        }
+        
+        return {
+            activeOrders,
+            totalVolume,
+            lastUpdated: Date.now()
+        };
+    } catch (error) {
+        return {
+            activeOrders: 0,
+            totalVolume: 0,
+            lastUpdated: Date.now()
+        };
+    }
+}
+
+// Get Referral Stats
+async function getReferralStats(env, userId) {
+    try {
+        const referralsResult = await handleDbGet(env, `users/${userId}/referrals`);
+        const referrals = referralsResult.data || {};
+        
+        let totalMintReward = 0;
+        let totalHatchReward = 0;
+        let referralCount = 0;
+        
+        const referralList = Object.values(referrals);
+        
+        referralList.forEach(ref => {
+            if (ref.type === 'mint') {
+                totalMintReward += ref.reward || 0;
+            } else if (ref.type === 'hatch') {
+                totalHatchReward += ref.eggsReward || 0;
+            }
+        });
+        
+        referralCount = referralList.length;
+        
+        return {
+            totalReferrals: referralCount,
+            totalMintReward,
+            totalHatchReward,
+            lastReferral: referralList.length > 0 ? Math.max(...referralList.map(r => r.timestamp)) : null
+        };
+    } catch (error) {
+        return {
+            totalReferrals: 0,
+            totalMintReward: 0,
+            totalHatchReward: 0,
+            lastReferral: null
+        };
+    }
+}
+
+// Generate Referral Code
+function generateReferralCode(userId) {
+    return `SQUID_${userId.substring(0, 8).toUpperCase()}_${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+}
+
+// Validate Telegram Data
+function isValidTelegramData(telegramData, userId) {
+    try {
+        const params = new URLSearchParams(telegramData);
+        const userParam = params.get('user');
+        
+        if (!userParam) return false;
+        
+        const userData = JSON.parse(decodeURIComponent(userParam));
+        return userData.id.toString() === userId;
+        
+    } catch (error) {
+        console.error('Telegram data validation error:', error);
+        return false;
+    }
+}
+
+// ==================== Database Functions ====================
+
+async function getFirebaseUrl(env, path) {
+    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
+    const cleanPath = path.replace(/^\//, '');
+    const apiKey = env.FIREBASE_API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('FIREBASE_API_KEY is not configured');
+    }
+    
+    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
+}
+
+async function handleDbGet(env, path) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            success: true,
+            data: data
+        };
+    } catch (error) {
+        console.error('Database GET error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_GET_ERROR'
+        };
+    }
+}
+
+async function handleDbSet(env, path, data) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Database SET error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_SET_ERROR'
+        };
+    }
+}
+
+async function handleDbUpdate(env, path, updates) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Database UPDATE error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_UPDATE_ERROR'
+        };
+    }
+}
+
+async function handleDbPush(env, path, data) {
+    try {
+        const firebaseUrl = await getFirebaseUrl(env, path);
+        
+        const response = await fetch(firebaseUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: { name: result.name }
+        };
+    } catch (error) {
+        console.error('Database PUSH error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_PUSH_ERROR'
+        };
+    }
+}
+
+// ==================== End of Code ====================
