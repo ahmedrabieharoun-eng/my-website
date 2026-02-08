@@ -1,1235 +1,2089 @@
-// SquidPEPE Game Engine
-export default {
-    async fetch(request, env, ctx) {
-        // إعداد CORS
-        if (request.method === 'OPTIONS') {
-            return new Response(null, {
-                headers: {
-                    'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action',
-                }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SquidPEPE</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            /* Colors - SquidPEPE Theme */
+            --primary-blue: #00B4D8;
+            --primary-purple: #8338EC;
+            --primary-pink: #FF006E;
+            --dark-bg: #0A0A0F;
+            --dark-card: #12121F;
+            --dark-border: #1E1E2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0B0;
+            --text-muted: #6C6C7C;
+            --success: #00D4AA;
+            --warning: #FFB74D;
+            --danger: #FF5252;
+            
+            /* Game Specific */
+            --squid-color: #8338EC;
+            --egg-color: #FFB74D;
+            --ton-color: #0088CC;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #0F0F1F 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(131, 56, 236, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 180, 216, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(255, 0, 110, 0.08) 0%, transparent 50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* Top Status Bar */
+        .status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 31, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--dark-border);
+            padding: 12px 16px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-item.left {
+            justify-content: flex-start;
+        }
+        
+        .status-item.center {
+            justify-content: center;
+        }
+        
+        .status-item.right {
+            justify-content: flex-end;
+        }
+        
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-value {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .status-label {
+            color: var(--text-secondary);
+            font-size: 11px;
+            margin-top: 2px;
+        }
+        
+        .status-secondary {
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+        
+        .add-button {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .add-button:active {
+            transform: scale(0.95);
+        }
+        
+        /* Main Container */
+        .app-container {
+            padding-top: 70px;
+            padding-bottom: 80px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+        
+        .content-section {
+            display: none;
+            padding: 16px;
+        }
+        
+        .content-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Home Screen */
+        .home-container {
+            text-align: center;
+        }
+        
+        .squid-character {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto 30px;
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .squid-character::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(131, 56, 236, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        
+        .mint-progress {
+            background: var(--dark-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid var(--dark-border);
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 16px;
+            border-radius: 16px;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--dark-card);
+            color: var(--text-primary);
+            border: 1px solid var(--dark-border);
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--dark-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--dark-border);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Market Screen */
+        .order-book {
+            margin: 20px 0;
+        }
+        
+        .order-type-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        
+        .order-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        
+        .order-tab.active {
+            background: var(--dark-card);
+            color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .order-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .order-item:last-child {
+            border-bottom: none;
+        }
+        
+        .order-price {
+            font-weight: 700;
+            color: var(--success);
+        }
+        
+        .order-price.sell {
+            color: var(--danger);
+        }
+        
+        .order-amount {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .order-user {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .create-order-form {
+            margin-top: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--dark-border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 16px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+        }
+        
+        .amount-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .amount-btn {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--dark-border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .amount-btn.active {
+            background: var(--primary-purple);
+            border-color: var(--primary-purple);
+        }
+        
+        /* Friends Screen */
+        .referral-card {
+            background: linear-gradient(135deg, rgba(131, 56, 236, 0.2), rgba(0, 180, 216, 0.2));
+            border: 1px solid rgba(131, 56, 236, 0.3);
+        }
+        
+        .referral-link {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+        }
+        
+        .referral-input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .copy-btn {
+            padding: 0 20px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .referral-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary-purple);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        /* Profile Screen */
+        .profile-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            border: 3px solid var(--primary-purple);
+            padding: 3px;
+        }
+        
+        .profile-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .profile-username {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        
+        .balance-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .balance-icon {
+            width: 32px;
+            height: 32px;
+            margin: 0 auto 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+        
+        .balance-icon.squid {
+            background: rgba(131, 56, 236, 0.2);
+            color: var(--squid-color);
+        }
+        
+        .balance-icon.egg {
+            background: rgba(255, 183, 77, 0.2);
+            color: var(--egg-color);
+        }
+        
+        .balance-icon.ton {
+            background: rgba(0, 136, 204, 0.2);
+            color: var(--ton-color);
+        }
+        
+        .balance-amount {
+            font-size: 20px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+        
+        .balance-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .production-stats {
+            margin: 20px 0;
+        }
+        
+        .production-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .production-item:last-child {
+            border-bottom: none;
+        }
+        
+        .production-label {
+            color: var(--text-secondary);
+        }
+        
+        .production-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(18, 18, 31, 0.98);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--dark-border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 8px;
+            border-radius: 12px;
+            min-width: 60px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-purple);
+            background: rgba(131, 56, 236, 0.1);
+        }
+        
+        .nav-icon {
+            font-size: 20px;
+        }
+        
+        .nav-text {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal {
+            background: var(--dark-card);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid var(--dark-border);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+        
+        .close-modal:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal-body {
+            margin-bottom: 24px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .modal-footer .btn {
+            flex: 1;
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .app-container {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+            
+            .squid-character {
+                width: 150px;
+                height: 150px;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .balance-grid {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .bottom-nav {
+                padding: 8px 12px;
+            }
+            
+            .nav-item {
+                min-width: 50px;
+                padding: 6px;
+            }
+            
+            .nav-icon {
+                font-size: 18px;
+            }
+            
+            .nav-text {
+                font-size: 10px;
+            }
+        }
+        
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--dark-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+        
+        .loading-logo {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .loading-title {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        
+        .loading-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-purple), var(--primary-pink));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">🦑</div>
+        <h1 class="loading-title">SquidPEPE</h1>
+        <p class="loading-subtitle">Loading your underwater adventure...</p>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgress"></div>
+        </div>
+    </div>
+
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+        <div class="status-item left">
+            <div class="status-icon">🦑</div>
+            <div>
+                <div class="status-value" id="statusSquids">0</div>
+                <div class="status-label" id="statusSquidsRate">0/day</div>
+            </div>
+        </div>
+        
+        <div class="status-item center">
+            <div class="status-icon">🥚</div>
+            <div>
+                <div class="status-value" id="statusEggs">0</div>
+                <div class="status-label" id="statusEggsTimer">--:--</div>
+            </div>
+        </div>
+        
+        <div class="status-item right">
+            <div class="status-icon">⚡</div>
+            <div>
+                <div class="status-value" id="statusTon">0.0000</div>
+                <div class="status-label">TON</div>
+            </div>
+            <button class="add-button" onclick="showAddTonModal()">+</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="app-container" id="appContainer" style="display: none;">
+        <!-- Friends Tab -->
+        <div id="friendsTab" class="content-section">
+            <div class="card referral-card">
+                <h2 class="card-title">
+                    <i class="fas fa-users"></i>
+                    Invite Friends
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 16px;">
+                    Invite friends and earn 10% of their mint and 5% of their hatch rewards!
+                </p>
+                
+                <div class="referral-link">
+                    <input type="text" id="referralLink" class="referral-input" readonly>
+                    <button class="copy-btn" onclick="copyReferralLink()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-trophy"></i>
+                    Your Rewards
+                </h2>
+                
+                <div class="referral-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalReferrals">0</div>
+                        <div class="stat-label">Friends</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="referralEarnings">0</div>
+                        <div class="stat-label">TON Earned</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--text-primary);">
+                        <i class="fas fa-history"></i> Recent Rewards
+                    </h3>
+                    <div id="referralHistory" style="color: var(--text-secondary); font-size: 14px;">
+                        No rewards yet. Invite friends to start earning!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-info-circle"></i>
+                    How It Works
+                </h2>
+                <div style="color: var(--text-secondary); font-size: 14px; line-height: 1.6;">
+                    <p style="margin-bottom: 10px;">1. Share your referral link with friends</p>
+                    <p style="margin-bottom: 10px;">2. Earn <strong>10% of 1 TON</strong> when they mint</p>
+                    <p style="margin-bottom: 10px;">3. Earn <strong>5% of eggs</strong> when they hatch</p>
+                    <p style="margin-bottom: 10px;">4. Unlimited referral rewards!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Tab -->
+        <div id="homeTab" class="content-section active">
+            <div class="home-container">
+                <div class="squid-character">
+                    🦑
+                </div>
+                
+                <div class="card mint-progress">
+                    <div class="progress-label">
+                        <span>Limited Mint</span>
+                        <span id="mintProgressText">0/90,000,000</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="mintProgressFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-stats">
+                        <span id="mintAvailable">90,000,000 available</span>
+                        <span id="mintUsed">0 used</span>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="showHatchModal()">
+                        <i class="fas fa-egg"></i>
+                        Hatch
+                    </button>
+                    <button class="btn btn-secondary" onclick="showMintModal()" id="mintButton">
+                        <i class="fas fa-coins"></i>
+                        Mint
+                    </button>
+                </div>
+                
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        Market Stats
+                    </h2>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Best Buy</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="bestBuyPrice">0.0000</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Best Sell</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--danger);" id="bestSellPrice">0.0000</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Tab -->
+        <div id="marketTab" class="content-section">
+            <div class="order-type-tabs">
+                <div class="order-tab active" onclick="switchMarketTab('buy')">Buy</div>
+                <div class="order-tab" onclick="switchMarketTab('sell')">Sell</div>
+                <div class="order-tab" onclick="switchMarketTab('orders')">My Orders</div>
+            </div>
+            
+            <!-- Buy Tab -->
+            <div id="buyTab" class="market-tab">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-shopping-cart"></i>
+                        Buy Squids
+                    </h2>
+                    
+                    <div class="order-book">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-list"></i> Sell Orders
+                        </h3>
+                        <div class="order-list" id="sellOrdersList">
+                            <!-- Sell orders will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="create-order-form">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-plus-circle"></i> Create Buy Order
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Price per Squid (TON)</label>
+                            <input type="number" id="buyPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Amount (Squids)</label>
+                            <input type="number" id="buyAmount" class="form-input" placeholder="100" min="100">
+                            <div class="amount-buttons">
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.25)">25%</div>
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.5)">50%</div>
+                                <div class="amount-btn" onclick="setBuyAmountPercent(0.75)">75%</div>
+                                <div class="amount-btn" onclick="setBuyAmountMax()">MAX</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="createBuyOrder()" style="width: 100%;">
+                            <i class="fas fa-check-circle"></i>
+                            Place Buy Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sell Tab -->
+            <div id="sellTab" class="market-tab" style="display: none;">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-cash-register"></i>
+                        Sell Squids
+                    </h2>
+                    
+                    <div class="order-book">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-list"></i> Buy Orders
+                        </h3>
+                        <div class="order-list" id="buyOrdersList">
+                            <!-- Buy orders will be populated here -->
+                        </div>
+                    </div>
+                    
+                    <div class="create-order-form">
+                        <h3 style="font-size: 14px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-plus-circle"></i> Create Sell Order
+                        </h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Price per Squid (TON)</label>
+                            <input type="number" id="sellPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Amount (Squids)</label>
+                            <input type="number" id="sellAmount" class="form-input" placeholder="100" min="100">
+                            <div class="amount-buttons">
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.25)">25%</div>
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.5)">50%</div>
+                                <div class="amount-btn" onclick="setSellAmountPercent(0.75)">75%</div>
+                                <div class="amount-btn" onclick="setSellAmountMax()">MAX</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="createSellOrder()" style="width: 100%;">
+                            <i class="fas fa-check-circle"></i>
+                            Place Sell Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- My Orders Tab -->
+            <div id="ordersTab" class="market-tab" style="display: none;">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        My Active Orders
+                    </h2>
+                    
+                    <div id="myOrdersList">
+                        <!-- User's orders will be populated here -->
+                        <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+                            <p>No active orders</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mint Tab -->
+        <div id="mintTab" class="content-section">
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-hammer"></i>
+                    Craft Station
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+                    Convert your resources between Eggs and Squids
+                </p>
+                
+                <div style="margin: 20px 0;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                        <div style="width: 40px; height: 40px; background: rgba(131, 56, 236, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--squid-color);">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">Your Squids</div>
+                            <div style="font-size: 24px; font-weight: 700;" id="craftSquids">0</div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; background: rgba(255, 183, 77, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--egg-color);">
+                            <i class="fas fa-egg"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-secondary);">Your Eggs</div>
+                            <div style="font-size: 24px; font-weight: 700;" id="craftEggs">0</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="showHatchModal()">
+                        <i class="fas fa-arrow-down"></i>
+                        Hatch (Eggs → Squids)
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-history"></i>
+                    Recent Crafts
+                </h2>
+                <div id="craftHistory" style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 20px;">
+                    No craft history yet
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Tab -->
+        <div id="profileTab" class="content-section">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    🦑
+                </div>
+                <div class="profile-name" id="profileName">Explorer</div>
+                <div class="profile-username" id="profileUsername">@username</div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-wallet"></i>
+                    Balances
+                </h2>
+                
+                <div class="balance-grid">
+                    <div class="balance-item">
+                        <div class="balance-icon squid">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div class="balance-amount" id="profileSquids">0</div>
+                        <div class="balance-label">Squids</div>
+                    </div>
+                    
+                    <div class="balance-item">
+                        <div class="balance-icon egg">
+                            <i class="fas fa-egg"></i>
+                        </div>
+                        <div class="balance-amount" id="profileEggs">0</div>
+                        <div class="balance-label">Eggs</div>
+                    </div>
+                    
+                    <div class="balance-item">
+                        <div class="balance-icon ton">
+                            ⚡
+                        </div>
+                        <div class="balance-amount" id="profileTon">0.0000</div>
+                        <div class="balance-label">TON</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-industry"></i>
+                    Production
+                </h2>
+                
+                <div class="production-stats">
+                    <div class="production-item">
+                        <span class="production-label">Active Squids</span>
+                        <span class="production-value" id="activeSquids">0</span>
+                    </div>
+                    <div class="production-item">
+                        <span class="production-label">Eggs per Day</span>
+                        <span class="production-value" id="eggsPerDay">0</span>
+                    </div>
+                    <div class="production-item">
+                        <span class="production-label">Next Egg</span>
+                        <span class="production-value" id="nextEggTimer">--:--</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2 class="card-title">
+                    <i class="fas fa-exchange-alt"></i>
+                    Withdraw TON
+                </h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Amount (TON)</label>
+                    <input type="number" id="withdrawAmount" class="form-input" placeholder="0.1" step="0.001" min="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">TON Wallet Address</label>
+                    <input type="text" id="withdrawAddress" class="form-input" placeholder="EQD...">
+                </div>
+                
+                <button class="btn btn-primary" onclick="withdrawTON()" style="width: 100%;">
+                    <i class="fas fa-paper-plane"></i>
+                    Withdraw
+                </button>
+                
+                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 12px; text-align: center;">
+                    Minimum withdrawal: 0.1 TON (5% fee)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-tab="friendsTab">
+            <div class="nav-icon">👥</div>
+            <div class="nav-text">Friends</div>
+        </div>
+        <div class="nav-item" data-tab="homeTab">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-text">Home</div>
+        </div>
+        <div class="nav-item" data-tab="marketTab">
+            <div class="nav-icon">💰</div>
+            <div class="nav-text">Market</div>
+        </div>
+        <div class="nav-item" data-tab="mintTab">
+            <div class="nav-icon">🛠️</div>
+            <div class="nav-text">Mint</div>
+        </div>
+        <div class="nav-item" data-tab="profileTab">
+            <div class="nav-icon">👤</div>
+            <div class="nav-text">Profile</div>
+        </div>
+    </nav>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="mintModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-coins"></i>
+                    Mint Squids
+                </h2>
+                <button class="close-modal" onclick="closeMintModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🦑</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Get your first Squids with TON
+                    </div>
+                </div>
+                
+                <div style="background: rgba(131, 56, 236, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Price:</span>
+                        <span style="font-weight: 600;">1 TON</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">You receive:</span>
+                        <span style="font-weight: 600; color: var(--success);">3,000 Squids</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">Your balance:</span>
+                        <span style="font-weight: 600;" id="mintBalance">0 TON</span>
+                    </div>
+                </div>
+                
+                <div class="progress-bar" style="margin-bottom: 20px;">
+                    <div class="progress-fill" id="mintLimitBar" style="width: 0%"></div>
+                </div>
+                <div style="text-align: center; font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">
+                    <span id="mintLimitText">0/90,000,000 minted</span>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    You can only mint once. Unlimited Squids through hatching and market.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeMintModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="mintSquids()" id="mintConfirmBtn">
+                    Mint 3,000 Squids
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="hatchModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-egg"></i>
+                    Hatch Squids
+                </h2>
+                <button class="close-modal" onclick="closeHatchModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🥚→🦑</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Convert Eggs to Squids
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Eggs to Hatch</label>
+                    <input type="number" id="hatchAmount" class="form-input" placeholder="100" min="100">
+                    <div class="amount-buttons">
+                        <div class="amount-btn" onclick="setHatchPercent(0.25)">25%</div>
+                        <div class="amount-btn" onclick="setHatchPercent(0.5)">50%</div>
+                        <div class="amount-btn" onclick="setHatchPercent(0.75)">75%</div>
+                        <div class="amount-btn" onclick="setHatchMax()">MAX</div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255, 183, 77, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Base eggs:</span>
+                        <span style="font-weight: 600;" id="baseEggs">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Craft fee (5%):</span>
+                        <span style="font-weight: 600; color: var(--warning);" id="craftFee">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: var(--text-secondary);">Total required:</span>
+                        <span style="font-weight: 600; color: var(--success);" id="totalRequired">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-secondary);">You receive:</span>
+                        <span style="font-weight: 600; color: var(--primary-purple);" id="youReceive">0 Squids</span>
+                    </div>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <i class="fas fa-info-circle"></i>
+                    Minimum 100 eggs. 5% fee is distributed to the referral system.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeHatchModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="hatchSquids()" id="hatchConfirmBtn">
+                    Hatch Squids
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addTonModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus-circle"></i>
+                    Add TON
+                </h2>
+                <button class="close-modal" onclick="closeAddTonModal()">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚡</div>
+                    <div style="font-size: 14px; color: var(--text-secondary);">
+                        Deposit TON to your game wallet
+                    </div>
+                </div>
+                
+                <div style="background: rgba(0, 136, 204, 0.1); padding: 16px; border-radius: 12px; margin-bottom: 20px; text-align: center;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 8px;">
+                        Your Deposit Address
+                    </div>
+                    <div style="font-family: monospace; font-size: 14px; word-break: break-all; padding: 12px; background: rgba(0, 0, 0, 0.2); border-radius: 8px;">
+                        EQD...DEPOSIT_ADDRESS_HERE
+                    </div>
+                </div>
+                
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Send only TON to this address. Deposits are automatic.
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="copyDepositAddress()" style="flex: 1;">
+                    <i class="fas fa-copy"></i>
+                    Copy Address
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // Telegram WebApp Integration (FIXED)
+        // ============================================
+        
+        // التحقق من وجود Telegram WebApp
+        const telegramWebApp = window.Telegram?.WebApp;
+        
+        if (!telegramWebApp) {
+            console.warn('Telegram WebApp not detected! Running in demo mode.');
+            // يمكنك إضافة تحذير للمستخدم هنا إذا أردت
+        } else {
+            // تهيئة Telegram WebApp بشكل صحيح
+            telegramWebApp.ready();
+            telegramWebApp.expand();
+            
+            // تعيين ألوان لتتناسب مع سمة اللعبة
+            telegramWebApp.setBackgroundColor('#0A0A0F');
+            telegramWebApp.setHeaderColor('#12121F');
+            
+            // تمكين زر الرجوع
+            telegramWebApp.BackButton.show();
+            telegramWebApp.BackButton.onClick(() => {
+                history.back();
             });
         }
         
-        const url = new URL(request.url);
-        const path = url.pathname;
+        // الحصول على بيانات Telegram للمصادقة
+        const TELEGRAM_INIT_DATA = telegramWebApp?.initData || '';
+        const TELEGRAM_INIT_DATA_UNSAFE = telegramWebApp?.initDataUnsafe || {};
+        const TELEGRAM_USER = TELEGRAM_INIT_DATA_UNSAFE.user;
         
-        // التحقق من المسار
-        if (path !== '/api') {
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Invalid endpoint'
-            }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
+        // استخدام user_id من Telegram أو وضع تجريبي
+        const TELEGRAM_USER_ID = TELEGRAM_USER?.id?.toString() || 'demo_user_' + Math.random().toString(36).substr(2, 9);
+        
+        // إعداد هيدر المصادقة
+        const TELEGRAM_AUTH_HEADER = TELEGRAM_INIT_DATA ? `tma ${TELEGRAM_INIT_DATA}` : '';
+        
+        // ============================================
+        // Game State
+        // ============================================
+        let gameState = {
+            user: {
+                squids: 0,
+                eggs: 0,
+                tonBalance: 0,
+                mintUsed: false,
+                mintedSquids: 0,
+                referralCode: '',
+                referredBy: null,
+                telegramUserId: TELEGRAM_USER_ID,
+                telegramData: TELEGRAM_INIT_DATA_UNSAFE
+            },
+            global: {
+                totalSquids: 0,
+                mintedSoFar: 0,
+                mintProgress: 0
+            },
+            market: {
+                bestBuy: 0,
+                bestSell: 0
+            }
+        };
+
+        // UI State
+        let currentMarketTab = 'buy';
+        let eggTimer = 0;
+        let eggTimerInterval;
+
+        // API Configuration
+        const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
+        
+        // ============================================
+        // Utility Functions
+        // ============================================
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            }
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toLocaleString();
         }
-        
-        try {
-            // استخراج البيانات من الطلب
-            const requestData = await request.json();
-            const action = request.headers.get('X-Action') || requestData.action;
-            const data = requestData.data || {};
-            const userId = request.headers.get('X-User-ID');
-            const telegramData = request.headers.get('X-Telegram-Data');
-            
-            console.log(`Request received: action=${action}, userId=${userId}`);
-            
-            // التحقق من المصادقة
-            if (!userId || !telegramData) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Authentication required',
-                    errorCode: 'AUTH_REQUIRED'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            // التحقق من بيانات Telegram
-            if (!isValidTelegramData(telegramData, userId)) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Invalid Telegram data',
-                    errorCode: 'INVALID_TELEGRAM_DATA'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            // معالجة الإجراءات
-            let result;
-            switch (action) {
-                case 'getState':
-                    result = await handleGetState(env, userId);
-                    break;
-                    
-                case 'mintSquids':
-                    result = await handleMintSquids(env, userId, data);
-                    break;
-                    
-                case 'hatchSquids':
-                    result = await handleHatchSquids(env, userId, data);
-                    break;
-                    
-                case 'createOrder':
-                    result = await handleCreateOrder(env, userId, data);
-                    break;
-                    
-                case 'buyOrder':
-                    result = await handleBuyOrder(env, userId, data);
-                    break;
-                    
-                case 'withdrawTON':
-                    result = await handleWithdrawTON(env, userId, data);
-                    break;
-                    
-                case 'getUserData':
-                    result = await handleGetUserData(env, userId);
-                    break;
-                    
-                case 'getMarketOrders':
-                    result = await handleGetMarketOrders(env);
-                    break;
-                    
-                default:
-                    result = {
-                        success: false,
-                        error: 'Unknown action',
-                        errorCode: 'UNKNOWN_ACTION'
-                    };
-            }
-            
-            // إرجاع النتيجة
-            return new Response(JSON.stringify(result), {
-                headers: {
+
+        function formatTON(amount) {
+            return parseFloat(amount).toFixed(4);
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ============================================
+        // API Functions (FIXED Telegram Auth)
+        // ============================================
+        async function callAPI(action, data = {}) {
+            try {
+                // إعداد الهيدرات مع مصادقة Telegram
+                const headers = {
                     'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                    'X-Action': action,
+                    'X-Platform': 'telegram-webapp',
+                    'X-User-ID': TELEGRAM_USER_ID
+                };
+                
+                // إضافة مصادقة Telegram إذا كانت متوفرة
+                if (TELEGRAM_INIT_DATA) {
+                    headers['Authorization'] = `tma ${TELEGRAM_INIT_DATA}`;
                 }
-            });
-            
-        } catch (error) {
-            console.error('Worker error:', error);
-            
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Internal server error',
-                errorCode: 'INTERNAL_SERVER_ERROR',
-                details: error.message
-            }), {
-                status: 500,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
+                
+                // تضمين بيانات Telegram في الـ payload
+                const payload = {
+                    ...data,
+                    telegramUserId: TELEGRAM_USER_ID,
+                    telegramInitData: TELEGRAM_INIT_DATA,
+                    telegramUser: TELEGRAM_USER
+                };
+                
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    return result.data;
+                } else {
+                    console.error(`API Error (${action}):`, result.error);
+                    
+                    // عرض رسالة خطأ مناسبة للمستخدم
+                    if (result.error === 'Invalid Telegram authentication') {
+                        alert('⚠️ Authentication error. Please try refreshing the app.');
+                    } else {
+                        alert(result.error || 'An error occurred. Please try again.');
+                    }
+                    
+                    throw new Error(result.error || 'API Error');
                 }
-            });
+            } catch (error) {
+                console.error('API call failed:', error);
+                
+                // في حالة الفشل، استخدام بيانات تجريبية للعرض
+                if (action === 'getState') {
+                    return getDemoState();
+                }
+                
+                throw error;
+            }
         }
-    }
-};
 
-// ==================== SquidPEPE Game Engine ====================
-
-// Global Constants
-const GAME_CONSTANTS = {
-    MINT_RATE: 3000, // 1 TON = 3000 Squids
-    MINT_GLOBAL_CAP: 90000000, // 90 مليون سكويد كحد أقصى للـ Mint
-    DAILY_EGG_CAP: 30000000, // 30 مليون بيضة يومياً كحد أقصى
-    MIN_HATCH_AMOUNT: 100, // الحد الأدنى للفقس
-    HATCH_FEE_PERCENT: 5, // رسوم الحرف 5%
-    MARKET_SELLER_FEE_PERCENT: 5, // رسوم البائع 5% TON
-    MARKET_BUYER_FEE_PERCENT: 5, // رسوم المشتري 5% Eggs
-    MIN_WITHDRAW_AMOUNT: 0.1, // الحد الأدنى للسحب 0.1 TON
-    WITHDRAW_FEE_PERCENT: 5, // رسوم السحب 5%
-    REFERRAL_MINT_REWARD_PERCENT: 10, // 10% من TON للمُحيل
-    REFERRAL_HATCH_REWARD_PERCENT: 5, // 5% من البيض للمُحيل
-    MIN_ORDER_AMOUNT: 100 // الحد الأدنى للطلب في السوق
-};
-
-// Get Global State
-async function handleGetState(env, userId) {
-    try {
-        const [globalState, userState] = await Promise.all([
-            handleDbGet(env, 'game/global'),
-            handleDbGet(env, `users/${userId}`)
-        ]);
-        
-        const global = globalState.data || await initializeGlobalState(env);
-        const user = userState.data || await initializeUser(env, userId);
-        
-        // حساب الإنتاج اليومي للبيض
-        const eggProduction = calculateDailyEggProduction(global);
-        
-        // حساب البيض للمستخدم
-        const userEggs = calculateUserEggs(user, global);
-        
-        // تحديث إذا كان الوقت مر
-        if (Date.now() - (user.lastEggCalc || 0) > 60000) { // كل دقيقة
-            await updateUserEggs(env, userId, userEggs);
-        }
-        
-        return {
-            success: true,
-            data: {
+        // ============================================
+        // Demo State for Testing
+        // ============================================
+        function getDemoState() {
+            return {
                 user: {
-                    squids: user.squids || 0,
-                    eggs: userEggs,
-                    tonBalance: user.tonBalance || 0,
-                    mintUsed: user.mintUsed || false,
-                    mintedSquids: user.mintedSquids || 0,
-                    referralCode: user.referralCode || generateReferralCode(userId),
-                    referredBy: user.referredBy || null
+                    squids: 1500,
+                    eggs: 250,
+                    tonBalance: 2.5,
+                    mintUsed: false,
+                    mintedSquids: 0,
+                    referralCode: 'DEMO' + Math.random().toString(36).substr(2, 6),
+                    referredBy: null
                 },
                 global: {
-                    totalSquids: global.totalSquids || 0,
-                    mintedSoFar: global.mintedSoFar || 0,
-                    dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
-                    totalEggsToday: global.totalEggsToday || 0,
-                    lastDailyReset: global.lastDailyReset || Date.now(),
-                    eggProduction: eggProduction,
-                    availableEggs: Math.max(0, eggProduction - (global.totalEggsToday || 0))
+                    totalSquids: 1500000,
+                    mintedSoFar: 45000000,
+                    mintProgress: 50
                 },
-                constants: GAME_CONSTANTS,
-                marketStats: await getMarketStats(env)
-            }
-        };
-    } catch (error) {
-        console.error('Get state error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'GET_STATE_ERROR'
-        };
-    }
-}
-
-// Mint Squids
-async function handleMintSquids(env, userId, data) {
-    try {
-        const { amount, referredBy } = data;
-        
-        // التحقق من البيانات
-        if (!amount || parseFloat(amount) !== 1) {
-            return {
-                success: false,
-                error: 'Mint amount must be exactly 1 TON',
-                errorCode: 'INVALID_MINT_AMOUNT'
-            };
-        }
-        
-        // جلب بيانات المستخدم والعالم
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
-        
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
-        
-        // التحقق مما إذا كان المستخدم قد استخدم Mint من قبل
-        if (user.mintUsed) {
-            return {
-                success: false,
-                error: 'You can only mint once per account',
-                errorCode: 'MINT_ALREADY_USED'
-            };
-        }
-        
-        // التحقق من الحد العالمي
-        const squidsToMint = GAME_CONSTANTS.MINT_RATE;
-        if (global.mintedSoFar + squidsToMint > GAME_CONSTANTS.MINT_GLOBAL_CAP) {
-            return {
-                success: false,
-                error: 'Global mint cap reached',
-                errorCode: 'GLOBAL_MINT_CAP_REACHED'
-            };
-        }
-        
-        // محاكاة استلام TON (في الواقع، يجب التحقق من المعاملة)
-        // هنا نعتبر أن المستخدم دفع بالفعل
-        
-        // تحديث المستخدم
-        const userUpdates = {
-            squids: (user.squids || 0) + squidsToMint,
-            tonBalance: (user.tonBalance || 0) - 1,
-            mintUsed: true,
-            mintedSquids: squidsToMint,
-            lastUpdated: Date.now()
-        };
-        
-        // إعداد الإحالة إذا كانت موجودة
-        let referralReward = 0;
-        if (referredBy && referredBy !== userId) {
-            const referrerResult = await handleDbGet(env, `users/${referredBy}`);
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralReward = 1 * (GAME_CONSTANTS.REFERRAL_MINT_REWARD_PERCENT / 100);
-                
-                // تحديث المُحيل
-                await handleDbUpdate(env, `users/${referredBy}`, {
-                    tonBalance: (referrer.tonBalance || 0) + referralReward,
-                    lastUpdated: Date.now()
-                });
-                
-                // تسجيل الإحالة
-                await handleDbPush(env, `users/${referredBy}/referrals`, {
-                    userId: userId,
-                    type: 'mint',
-                    reward: referralReward,
-                    timestamp: Date.now()
-                });
-                
-                userUpdates.referredBy = referredBy;
-            }
-        }
-        
-        // تحديث العالم
-        const globalUpdates = {
-            totalSquids: (global.totalSquids || 0) + squidsToMint,
-            mintedSoFar: (global.mintedSoFar || 0) + squidsToMint,
-            lastUpdated: Date.now()
-        };
-        
-        // تطبيق التحديثات
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
-        
-        // تسجيل العملية
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'mint',
-            amount: squidsToMint,
-            tonPaid: 1,
-            referralReward: referralReward,
-            timestamp: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                mintedSquids: squidsToMint,
-                newSquids: userUpdates.squids,
-                newTonBalance: userUpdates.tonBalance,
-                referralReward: referralReward,
-                globalMinted: globalUpdates.mintedSoFar
-            }
-        };
-    } catch (error) {
-        console.error('Mint squids error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'MINT_SQUIDS_ERROR'
-        };
-    }
-}
-
-// Hatch Squids from Eggs
-async function handleHatchSquids(env, userId, data) {
-    try {
-        const { amount } = data;
-        const eggsToHatch = parseInt(amount);
-        
-        // التحقق من البيانات
-        if (!eggsToHatch || eggsToHatch < GAME_CONSTANTS.MIN_HATCH_AMOUNT) {
-            return {
-                success: false,
-                error: `Minimum hatch amount is ${GAME_CONSTANTS.MIN_HATCH_AMOUNT} eggs`,
-                errorCode: 'INVALID_HATCH_AMOUNT'
-            };
-        }
-        
-        // جلب بيانات المستخدم والعالم
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
-        
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
-        
-        // حساب البيض الحقيقي للمستخدم
-        const userEggs = calculateUserEggs(user, global);
-        
-        // التحقق من الرصيد الكافي
-        if (userEggs < eggsToHatch) {
-            return {
-                success: false,
-                error: 'Insufficient eggs',
-                errorCode: 'INSUFFICIENT_EGGS'
-            };
-        }
-        
-        // حساب الرسوم والإنتاج
-        const hatchFee = eggsToHatch * (GAME_CONSTANTS.HATCH_FEE_PERCENT / 100);
-        const squidsProduced = eggsToHatch - hatchFee;
-        
-        // إعادة تعيين آخر حساب للبيض
-        const resetEggs = userEggs - eggsToHatch;
-        
-        // تحديث المستخدم
-        const userUpdates = {
-            squids: (user.squids || 0) + squidsProduced,
-            lastEggCalc: Date.now(),
-            lastUpdated: Date.now()
-        };
-        
-        // تحديث العالم
-        const globalUpdates = {
-            totalSquids: (global.totalSquids || 0) + squidsProduced,
-            totalEggsToday: (global.totalEggsToday || 0) + eggsToHatch,
-            lastUpdated: Date.now()
-        };
-        
-        // مكافأة الإحالة
-        let referralReward = 0;
-        if (user.referredBy) {
-            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralReward = eggsToHatch * (GAME_CONSTANTS.REFERRAL_HATCH_REWARD_PERCENT / 100);
-                
-                // تحديث بيض المُحيل
-                const referrerEggs = calculateUserEggs(referrer, global);
-                
-                await handleDbUpdate(env, `users/${user.referredBy}`, {
-                    lastEggCalc: Date.now(),
-                    lastUpdated: Date.now()
-                });
-                
-                // تسجيل الإحالة (سيتم احتساب البيض في الحساب التالي)
-                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
-                    userId: userId,
-                    type: 'hatch',
-                    eggsReward: referralReward,
-                    timestamp: Date.now()
-                });
-            }
-        }
-        
-        // تطبيق التحديثات
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
-        
-        // تسجيل العملية
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'hatch',
-            eggsUsed: eggsToHatch,
-            squidsProduced: squidsProduced,
-            hatchFee: hatchFee,
-            referralReward: referralReward,
-            timestamp: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                eggsUsed: eggsToHatch,
-                squidsProduced: squidsProduced,
-                hatchFee: hatchFee,
-                newSquids: userUpdates.squids,
-                referralReward: referralReward,
-                totalSquids: globalUpdates.totalSquids
-            }
-        };
-    } catch (error) {
-        console.error('Hatch squids error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'HATCH_SQUIDS_ERROR'
-        };
-    }
-}
-
-// Create Market Order
-async function handleCreateOrder(env, userId, data) {
-    try {
-        const { type, price, amount } = data;
-        
-        // التحقق من البيانات
-        if (!['sell', 'buy'].includes(type)) {
-            return {
-                success: false,
-                error: 'Invalid order type. Must be "sell" or "buy"',
-                errorCode: 'INVALID_ORDER_TYPE'
-            };
-        }
-        
-        if (!price || parseFloat(price) <= 0) {
-            return {
-                success: false,
-                error: 'Invalid price',
-                errorCode: 'INVALID_PRICE'
-            };
-        }
-        
-        const orderAmount = parseInt(amount);
-        if (!orderAmount || orderAmount < GAME_CONSTANTS.MIN_ORDER_AMOUNT) {
-            return {
-                success: false,
-                error: `Minimum order amount is ${GAME_CONSTANTS.MIN_ORDER_AMOUNT}`,
-                errorCode: 'INVALID_ORDER_AMOUNT'
-            };
-        }
-        
-        // جلب بيانات المستخدم
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data || await initializeUser(env, userId);
-        
-        // التحقق من الرصيد الكافي
-        if (type === 'sell') {
-            // بيع سكويدات
-            if ((user.squids || 0) < orderAmount) {
-                return {
-                    success: false,
-                    error: 'Insufficient squids',
-                    errorCode: 'INSUFFICIENT_SQUIDS'
-                };
-            }
-        } else {
-            // شراء سكويدات
-            const totalCost = orderAmount * parseFloat(price);
-            if ((user.tonBalance || 0) < totalCost) {
-                return {
-                    success: false,
-                    error: 'Insufficient TON balance',
-                    errorCode: 'INSUFFICIENT_TON_BALANCE'
-                };
-            }
-        }
-        
-        // تجميد الأصول
-        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const orderData = {
-            id: orderId,
-            userId: userId,
-            type: type,
-            price: parseFloat(price),
-            amount: orderAmount,
-            remaining: orderAmount,
-            status: 'active',
-            createdAt: Date.now(),
-            lastUpdated: Date.now()
-        };
-        
-        // حفظ الطلب
-        await handleDbSet(env, `market/orders/${orderId}`, orderData);
-        
-        // تجميد الأصول
-        const userUpdates = {};
-        if (type === 'sell') {
-            userUpdates.squids = (user.squids || 0) - orderAmount;
-        } else {
-            userUpdates.tonBalance = (user.tonBalance || 0) - (orderAmount * parseFloat(price));
-        }
-        userUpdates.lastUpdated = Date.now();
-        
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        // تسجيل الطلب المجمد
-        await handleDbSet(env, `users/${userId}/frozenAssets/${orderId}`, {
-            type: type,
-            amount: orderAmount,
-            price: parseFloat(price),
-            frozenAt: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                orderId: orderId,
-                order: orderData,
-                newBalance: type === 'sell' ? userUpdates.squids : userUpdates.tonBalance
-            }
-        };
-    } catch (error) {
-        console.error('Create order error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'CREATE_ORDER_ERROR'
-        };
-    }
-}
-
-// Buy from Market Order
-async function handleBuyOrder(env, userId, data) {
-    try {
-        const { orderId, amount } = data;
-        
-        // جلب بيانات الطلب
-        const orderResult = await handleDbGet(env, `market/orders/${orderId}`);
-        if (!orderResult.success || !orderResult.data) {
-            return {
-                success: false,
-                error: 'Order not found',
-                errorCode: 'ORDER_NOT_FOUND'
-            };
-        }
-        
-        const order = orderResult.data;
-        
-        // التحقق من حالة الطلب
-        if (order.status !== 'active') {
-            return {
-                success: false,
-                error: 'Order is not active',
-                errorCode: 'ORDER_NOT_ACTIVE'
-            };
-        }
-        
-        if (order.type !== 'sell') {
-            return {
-                success: false,
-                error: 'Can only buy from sell orders',
-                errorCode: 'INVALID_ORDER_TYPE'
-            };
-        }
-        
-        const buyAmount = parseInt(amount) || order.remaining;
-        if (buyAmount > order.remaining) {
-            return {
-                success: false,
-                error: 'Order does not have enough remaining',
-                errorCode: 'INSUFFICIENT_ORDER_AMOUNT'
-            };
-        }
-        
-        // جلب بيانات المشتري والبائع
-        const [buyerResult, sellerResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, `users/${order.userId}`)
-        ]);
-        
-        const buyer = buyerResult.data || await initializeUser(env, userId);
-        const seller = sellerResult.data || await initializeUser(env, order.userId);
-        
-        // حساب التكلفة والرسوم
-        const totalCost = buyAmount * order.price;
-        const sellerFee = totalCost * (GAME_CONSTANTS.MARKET_SELLER_FEE_PERCENT / 100);
-        const buyerFee = buyAmount * (GAME_CONSTANTS.MARKET_BUYER_FEE_PERCENT / 100);
-        
-        const sellerReceives = totalCost - sellerFee;
-        const buyerReceives = buyAmount - buyerFee;
-        
-        // التحقق من رصيد المشتري
-        if ((buyer.tonBalance || 0) < totalCost) {
-            return {
-                success: false,
-                error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON_BALANCE'
-            };
-        }
-        
-        // تنفيذ الصفقة
-        const sellerUpdates = {
-            tonBalance: (seller.tonBalance || 0) + sellerReceives,
-            lastUpdated: Date.now()
-        };
-        
-        const buyerUpdates = {
-            tonBalance: (buyer.tonBalance || 0) - totalCost,
-            squids: (buyer.squids || 0) + buyerReceives,
-            lastUpdated: Date.now()
-        };
-        
-        // تحديث الطلب
-        const newRemaining = order.remaining - buyAmount;
-        const orderUpdates = {
-            remaining: newRemaining,
-            status: newRemaining > 0 ? 'active' : 'filled',
-            lastUpdated: Date.now()
-        };
-        
-        // تطبيق التحديثات
-        await Promise.all([
-            handleDbUpdate(env, `users/${order.userId}`, sellerUpdates),
-            handleDbUpdate(env, `users/${userId}`, buyerUpdates),
-            handleDbUpdate(env, `market/orders/${orderId}`, orderUpdates)
-        ]);
-        
-        // تحرير الأصول المجمدة للبائع إذا اكتمل الطلب
-        if (newRemaining <= 0) {
-            await handleDbSet(env, `users/${order.userId}/frozenAssets/${orderId}`, null);
-        }
-        
-        // تسجيل المعاملة
-        const txId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        await Promise.all([
-            // سجل المشتري
-            handleDbPush(env, `users/${userId}/history`, {
-                type: 'market_buy',
-                orderId: orderId,
-                squidsBought: buyerReceives,
-                tonPaid: totalCost,
-                buyerFee: buyerFee,
-                sellerId: order.userId,
-                timestamp: Date.now(),
-                txId: txId
-            }),
-            
-            // سجل البائع
-            handleDbPush(env, `users/${order.userId}/history`, {
-                type: 'market_sell',
-                orderId: orderId,
-                squidsSold: buyAmount,
-                tonReceived: sellerReceives,
-                sellerFee: sellerFee,
-                buyerId: userId,
-                timestamp: Date.now(),
-                txId: txId
-            })
-        ]);
-        
-        return {
-            success: true,
-            data: {
-                txId: txId,
-                squidsBought: buyerReceives,
-                tonPaid: totalCost,
-                fees: {
-                    buyerFee: buyerFee,
-                    sellerFee: sellerFee
-                },
-                newBuyerBalance: buyerUpdates.tonBalance,
-                newBuyerSquids: buyerUpdates.squids,
-                newSellerBalance: sellerUpdates.tonBalance,
-                orderRemaining: newRemaining,
-                orderStatus: orderUpdates.status
-            }
-        };
-    } catch (error) {
-        console.error('Buy order error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'BUY_ORDER_ERROR'
-        };
-    }
-}
-
-// Withdraw TON
-async function handleWithdrawTON(env, userId, data) {
-    try {
-        const { amount, address } = data;
-        const withdrawAmount = parseFloat(amount);
-        
-        // التحقق من البيانات
-        if (!withdrawAmount || withdrawAmount < GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT) {
-            return {
-                success: false,
-                error: `Minimum withdrawal amount is ${GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT} TON`,
-                errorCode: 'INVALID_WITHDRAW_AMOUNT'
-            };
-        }
-        
-        if (!address || address.trim().length === 0) {
-            return {
-                success: false,
-                error: 'TON address is required',
-                errorCode: 'ADDRESS_REQUIRED'
-            };
-        }
-        
-        // جلب بيانات المستخدم
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data || await initializeUser(env, userId);
-        
-        // حساب الرسوم والمبلغ النهائي
-        const fee = withdrawAmount * (GAME_CONSTANTS.WITHDRAW_FEE_PERCENT / 100);
-        const netAmount = withdrawAmount - fee;
-        
-        // التحقق من الرصيد الكافي (بما في ذلك الرسوم)
-        if ((user.tonBalance || 0) < withdrawAmount) {
-            return {
-                success: false,
-                error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON_BALANCE'
-            };
-        }
-        
-        // تحديث رصيد المستخدم
-        const userUpdates = {
-            tonBalance: (user.tonBalance || 0) - withdrawAmount,
-            lastUpdated: Date.now()
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        // تسجيل طلب السحب
-        const withdrawalId = `withdraw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const withdrawalData = {
-            id: withdrawalId,
-            userId: userId,
-            amount: withdrawAmount,
-            fee: fee,
-            netAmount: netAmount,
-            address: address,
-            status: 'pending',
-            createdAt: Date.now(),
-            lastUpdated: Date.now()
-        };
-        
-        await handleDbSet(env, `withdrawals/pending/${withdrawalId}`, withdrawalData);
-        
-        // تسجيل في السجل
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'withdraw_request',
-            amount: withdrawAmount,
-            fee: fee,
-            netAmount: netAmount,
-            address: address,
-            status: 'pending',
-            timestamp: Date.now(),
-            withdrawalId: withdrawalId
-        });
-        
-        return {
-            success: true,
-            data: {
-                withdrawalId: withdrawalId,
-                amount: withdrawAmount,
-                fee: fee,
-                netAmount: netAmount,
-                newBalance: userUpdates.tonBalance,
-                message: 'Withdrawal request submitted. Will be processed within 24 hours.'
-            }
-        };
-    } catch (error) {
-        console.error('Withdraw TON error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'WITHDRAW_TON_ERROR'
-        };
-    }
-}
-
-// Get User Data
-async function handleGetUserData(env, userId) {
-    try {
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
-        
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
-        
-        // حساب البيض الحالي
-        const userEggs = calculateUserEggs(user, global);
-        
-        // جلب الطلبات النشطة للمستخدم
-        const ordersResult = await handleDbGet(env, 'market/orders');
-        const allOrders = ordersResult.data || {};
-        
-        const userOrders = [];
-        for (const [orderId, order] of Object.entries(allOrders)) {
-            if (order.userId === userId && order.status === 'active') {
-                userOrders.push(order);
-            }
-        }
-        
-        return {
-            success: true,
-            data: {
-                user: {
-                    squids: user.squids || 0,
-                    eggs: userEggs,
-                    tonBalance: user.tonBalance || 0,
-                    mintUsed: user.mintUsed || false,
-                    mintedSquids: user.mintedSquids || 0,
-                    referralCode: user.referralCode || generateReferralCode(userId),
-                    referredBy: user.referredBy || null,
-                    joinDate: user.joinDate || Date.now()
-                },
-                activeOrders: userOrders,
-                referralStats: await getReferralStats(env, userId)
-            }
-        };
-    } catch (error) {
-        console.error('Get user data error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'GET_USER_DATA_ERROR'
-        };
-    }
-}
-
-// Get Market Orders
-async function handleGetMarketOrders(env) {
-    try {
-        const ordersResult = await handleDbGet(env, 'market/orders');
-        const allOrders = ordersResult.data || {};
-        
-        const sellOrders = [];
-        const buyOrders = [];
-        
-        for (const [orderId, order] of Object.entries(allOrders)) {
-            if (order.status === 'active') {
-                if (order.type === 'sell') {
-                    sellOrders.push(order);
-                } else {
-                    buyOrders.push(order);
+                market: {
+                    bestBuy: 0.015,
+                    bestSell: 0.025
                 }
+            };
+        }
+
+        // ============================================
+        // Game State Management
+        // ============================================
+        async function loadGameState() {
+            try {
+                const data = await callAPI('getState');
+                gameState = data;
+                updateUI();
+            } catch (error) {
+                console.error('Failed to load game state:', error);
+                // استخدام بيانات تجريبية في حالة الخطأ
+                gameState = getDemoState();
+                updateUI();
             }
         }
-        
-        // ترتيب: البيع بالسعر الأدنى أولاً، الشراء بالسعر الأعلى أولاً
-        sellOrders.sort((a, b) => a.price - b.price);
-        buyOrders.sort((a, b) => b.price - a.price);
-        
-        return {
-            success: true,
-            data: {
-                sellOrders: sellOrders.slice(0, 50),
-                buyOrders: buyOrders.slice(0, 50),
-                totalSellOrders: sellOrders.length,
-                totalBuyOrders: buyOrders.length
-            }
-        };
-    } catch (error) {
-        console.error('Get market orders error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'GET_MARKET_ORDERS_ERROR'
-        };
-    }
-}
 
-// ==================== Helper Functions ====================
-
-// Initialize Global State
-async function initializeGlobalState(env) {
-    const now = Date.now();
-    const initialState = {
-        totalSquids: 0,
-        mintedSoFar: 0,
-        dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
-        totalEggsToday: 0,
-        lastDailyReset: now,
-        createdAt: now,
-        lastUpdated: now
-    };
-    
-    await handleDbSet(env, 'game/global', initialState);
-    return initialState;
-}
-
-// Initialize User
-async function initializeUser(env, userId) {
-    const now = Date.now();
-    const initialUser = {
-        squids: 0,
-        eggs: 0,
-        tonBalance: 0,
-        mintUsed: false,
-        mintedSquids: 0,
-        lastEggCalc: now,
-        referralCode: generateReferralCode(userId),
-        referredBy: null,
-        joinDate: now,
-        lastUpdated: now
-    };
-    
-    await handleDbSet(env, `users/${userId}`, initialUser);
-    return initialUser;
-}
-
-// Calculate Daily Egg Production
-function calculateDailyEggProduction(global) {
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    // إعادة تعيين الإنتاج اليومي إذا مر يوم
-    if (now - global.lastDailyReset > oneDay) {
-        return 0; // سيتم إعادة التعيين في التحديث التالي
-    }
-    
-    // حساب الإنتاج اليومي بناءً على إجمالي السكويدات
-    const totalSquids = global.totalSquids || 0;
-    const maxEggs = GAME_CONSTANTS.DAILY_EGG_CAP;
-    
-    if (totalSquids <= 0) return 0;
-    
-    // الإنتاج يتناسب مع نسبة إجمالي السكويدات إلى الحد الأقصى
-    const productionRatio = Math.min(1, totalSquids / GAME_CONSTANTS.MINT_GLOBAL_CAP);
-    const dailyProduction = Math.floor(productionRatio * maxEggs);
-    
-    return dailyProduction;
-}
-
-// Calculate User Eggs
-function calculateUserEggs(user, global) {
-    const now = Date.now();
-    
-    // إعادة تعيين الإنتاج اليومي إذا مر يوم
-    if (now - global.lastDailyReset > 24 * 60 * 60 * 1000) {
-        global.totalEggsToday = 0;
-        global.lastDailyReset = now;
-    }
-    
-    // حساب الإنتاج اليومي
-    const dailyProduction = calculateDailyEggProduction(global);
-    const availableEggs = Math.max(0, dailyProduction - (global.totalEggsToday || 0));
-    
-    if (availableEggs <= 0) return 0;
-    
-    // حساب نصيب المستخدم بناءً على سكويداته
-    const userSquids = user.squids || 0;
-    const totalSquids = global.totalSquids || 1;
-    const userShare = userSquids / totalSquids;
-    
-    // البيض المنتج منذ آخر حساب
-    const timeSinceLastCalc = Math.max(0, now - (user.lastEggCalc || now));
-    const timeFactor = Math.min(1, timeSinceLastCalc / (24 * 60 * 60 * 1000));
-    
-    const eggsProduced = Math.floor(userShare * availableEggs * timeFactor);
-    
-    return eggsProduced;
-}
-
-// Update User Eggs
-async function updateUserEggs(env, userId, eggs) {
-    await handleDbUpdate(env, `users/${userId}`, {
-        lastEggCalc: Date.now(),
-        lastUpdated: Date.now()
-    });
-}
-
-// Get Market Stats
-async function getMarketStats(env) {
-    try {
-        const ordersResult = await handleDbGet(env, 'market/orders');
-        const allOrders = ordersResult.data || {};
-        
-        let totalVolume = 0;
-        let activeOrders = 0;
-        
-        for (const order of Object.values(allOrders)) {
-            if (order.status === 'active') {
-                activeOrders++;
-                totalVolume += order.amount * order.price;
+        async function mintSquids() {
+            try {
+                const data = await callAPI('mintSquids');
+                gameState.user.mintUsed = true;
+                gameState.user.tonBalance = data.newTonBalance;
+                gameState.user.squids = data.newSquids;
+                gameState.global.mintedSoFar = data.globalMinted;
+                gameState.global.mintProgress = data.mintProgress;
+                updateUI();
+                closeMintModal();
+                alert('✅ Successfully minted 3,000 Squids!');
+            } catch (error) {
+                console.error('Mint failed:', error);
+                alert('❌ Mint failed. Please try again.');
             }
         }
-        
-        return {
-            activeOrders,
-            totalVolume,
-            lastUpdated: Date.now()
-        };
-    } catch (error) {
-        return {
-            activeOrders: 0,
-            totalVolume: 0,
-            lastUpdated: Date.now()
-        };
-    }
-}
 
-// Get Referral Stats
-async function getReferralStats(env, userId) {
-    try {
-        const referralsResult = await handleDbGet(env, `users/${userId}/referrals`);
-        const referrals = referralsResult.data || {};
+        async function hatchSquids() {
+            const amount = parseInt(document.getElementById('hatchAmount').value);
+            if (amount < 100) {
+                alert('Minimum hatch amount is 100 eggs');
+                return;
+            }
+
+            try {
+                const data = await callAPI('hatchSquids', { amount });
+                gameState.user.eggs = data.newEggs;
+                gameState.user.squids = data.newSquids;
+                updateUI();
+                closeHatchModal();
+                alert(`✅ Successfully hatched ${data.squidsProduced} Squids!`);
+            } catch (error) {
+                console.error('Hatch failed:', error);
+                alert('❌ Hatch failed. Please check your egg balance.');
+            }
+        }
+
+        async function createBuyOrder() {
+            const price = parseFloat(document.getElementById('buyPrice').value);
+            const amount = parseInt(document.getElementById('buyAmount').value);
+            
+            if (!price || price <= 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+            
+            if (!amount || amount < 100) {
+                alert('Minimum order amount is 100 Squids');
+                return;
+            }
+
+            try {
+                const data = await callAPI('createOrder', {
+                    type: 'buy',
+                    price,
+                    amount
+                });
+                alert('✅ Buy order created successfully!');
+                loadGameState();
+            } catch (error) {
+                console.error('Create buy order failed:', error);
+                alert('❌ Failed to create buy order. Please try again.');
+            }
+        }
+
+        async function createSellOrder() {
+            const price = parseFloat(document.getElementById('sellPrice').value);
+            const amount = parseInt(document.getElementById('sellAmount').value);
+            
+            if (!price || price <= 0) {
+                alert('Please enter a valid price');
+                return;
+            }
+            
+            if (!amount || amount < 100) {
+                alert('Minimum order amount is 100 Squids');
+                return;
+            }
+
+            try {
+                const data = await callAPI('createOrder', {
+                    type: 'sell',
+                    price,
+                    amount
+                });
+                alert('✅ Sell order created successfully!');
+                loadGameState();
+            } catch (error) {
+                console.error('Create sell order failed:', error);
+                alert('❌ Failed to create sell order. Please try again.');
+            }
+        }
+
+        async function withdrawTON() {
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const address = document.getElementById('withdrawAddress').value.trim();
+            
+            if (!amount || amount < 0.1) {
+                alert('Minimum withdrawal amount is 0.1 TON');
+                return;
+            }
+            
+            if (!address || address.length < 10 || !address.startsWith('EQ') || !address.startsWith('UQ')) {
+                alert('Please enter a valid TON wallet address (should start with EQ or UQ)');
+                return;
+            }
+
+            const confirmWithdraw = confirm(`Are you sure you want to withdraw ${amount} TON to ${address}? (5% fee will apply)`);
+            if (!confirmWithdraw) return;
+
+            try {
+                const data = await callAPI('withdrawTON', { amount, address });
+                alert('✅ Withdrawal request submitted! It will be processed within 24 hours.');
+                loadGameState();
+            } catch (error) {
+                console.error('Withdrawal failed:', error);
+                alert('❌ Withdrawal failed. Please check your balance and try again.');
+            }
+        }
+
+        // ============================================
+        // UI Update Functions
+        // ============================================
+        function updateUI() {
+            // Update status bar
+            document.getElementById('statusSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('statusEggs').textContent = formatNumber(gameState.user.eggs);
+            document.getElementById('statusTon').textContent = formatTON(gameState.user.tonBalance);
+            
+            // Update mint progress
+            const progressPercent = (gameState.global.mintedSoFar / 90000000) * 100;
+            document.getElementById('mintProgressFill').style.width = `${progressPercent}%`;
+            document.getElementById('mintProgressText').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000`;
+            document.getElementById('mintAvailable').textContent = 
+                `${formatNumber(90000000 - gameState.global.mintedSoFar)} available`;
+            document.getElementById('mintUsed').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)} used`;
+            
+            // Update market stats
+            document.getElementById('bestBuyPrice').textContent = 
+                gameState.market.bestBuy ? formatTON(gameState.market.bestBuy) : '0.0000';
+            document.getElementById('bestSellPrice').textContent = 
+                gameState.market.bestSell ? formatTON(gameState.market.bestSell) : '0.0000';
+            
+            // Update craft station
+            document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('craftEggs').textContent = formatNumber(gameState.user.eggs);
+            
+            // Update profile
+            document.getElementById('profileSquids').textContent = formatNumber(gameState.user.squids);
+            document.getElementById('profileEggs').textContent = formatNumber(gameState.user.eggs);
+            document.getElementById('profileTon').textContent = formatTON(gameState.user.tonBalance);
+            
+            // Update mint button state
+            const mintBtn = document.getElementById('mintButton');
+            if (gameState.user.mintUsed || gameState.global.mintedSoFar >= 90000000) {
+                mintBtn.disabled = true;
+                mintBtn.innerHTML = '<i class="fas fa-check"></i> Minted';
+            } else {
+                mintBtn.disabled = false;
+                mintBtn.innerHTML = '<i class="fas fa-coins"></i> Mint';
+            }
+            
+            // Update mint modal
+            document.getElementById('mintBalance').textContent = `${formatTON(gameState.user.tonBalance)} TON`;
+            document.getElementById('mintLimitBar').style.width = `${progressPercent}%`;
+            document.getElementById('mintLimitText').textContent = 
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000 minted`;
+            
+            // Update mint confirm button
+            const mintConfirmBtn = document.getElementById('mintConfirmBtn');
+            if (gameState.user.mintUsed) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Already Minted';
+            } else if (gameState.user.tonBalance < 1) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Insufficient TON';
+            } else if (gameState.global.mintedSoFar >= 90000000) {
+                mintConfirmBtn.disabled = true;
+                mintConfirmBtn.textContent = 'Mint Limit Reached';
+            } else {
+                mintConfirmBtn.disabled = false;
+                mintConfirmBtn.textContent = 'Mint 3,000 Squids';
+            }
+            
+            // Update referral link
+            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
+            document.getElementById('referralLink').value = referralLink;
+            
+            // Update profile name from Telegram
+            if (TELEGRAM_USER) {
+                const name = `${TELEGRAM_USER.first_name || ''} ${TELEGRAM_USER.last_name || ''}`.trim();
+                const username = TELEGRAM_USER.username ? `@${TELEGRAM_USER.username}` : '';
+                
+                if (name) document.getElementById('profileName').textContent = name;
+                if (username) document.getElementById('profileUsername').textContent = username;
+            }
+        }
+
+        // ============================================
+        // Modal Functions
+        // ============================================
+        function showMintModal() {
+            if (gameState.user.mintUsed) {
+                alert('You have already minted your initial Squids.');
+                return;
+            }
+            document.getElementById('mintModal').classList.add('active');
+        }
+
+        function closeMintModal() {
+            document.getElementById('mintModal').classList.remove('active');
+        }
+
+        function showHatchModal() {
+            document.getElementById('hatchAmount').value = '100';
+            updateHatchEstimate();
+            document.getElementById('hatchModal').classList.add('active');
+        }
+
+        function closeHatchModal() {
+            document.getElementById('hatchModal').classList.remove('active');
+        }
+
+        function showAddTonModal() {
+            document.getElementById('addTonModal').classList.add('active');
+        }
+
+        function closeAddTonModal() {
+            document.getElementById('addTonModal').classList.remove('active');
+        }
+
+        function copyDepositAddress() {
+            const address = 'EQD...DEPOSIT_ADDRESS_HERE';
+            navigator.clipboard.writeText(address).then(() => {
+                alert('✅ Deposit address copied to clipboard!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = address;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('✅ Deposit address copied to clipboard!');
+            });
+        }
+
+        function copyReferralLink() {
+            const input = document.getElementById('referralLink');
+            input.select();
+            input.setSelectionRange(0, 99999); // For mobile devices
+            
+            navigator.clipboard.writeText(input.value).then(() => {
+                alert('✅ Referral link copied to clipboard!');
+            }).catch(() => {
+                // Fallback
+                document.execCommand('copy');
+                alert('✅ Referral link copied to clipboard!');
+            });
+        }
+
+        // ============================================
+        // Hatch Modal Functions
+        // ============================================
+        function updateHatchEstimate() {
+            const amount = parseInt(document.getElementById('hatchAmount').value) || 0;
+            const fee = Math.ceil(amount * 0.05);
+            const total = amount + fee;
+            const receive = Math.floor(amount * 0.95);
+            
+            document.getElementById('baseEggs').textContent = formatNumber(amount);
+            document.getElementById('craftFee').textContent = formatNumber(fee);
+            document.getElementById('totalRequired').textContent = formatNumber(total);
+            document.getElementById('youReceive').textContent = `${formatNumber(receive)} Squids`;
+            
+            const btn = document.getElementById('hatchConfirmBtn');
+            if (total > gameState.user.eggs) {
+                btn.disabled = true;
+                btn.textContent = 'Insufficient Eggs';
+            } else {
+                btn.disabled = false;
+                btn.textContent = `Hatch ${formatNumber(receive)} Squids`;
+            }
+        }
+
+        function setHatchPercent(percent) {
+            const maxEggs = gameState.user.eggs;
+            const amount = Math.floor(maxEggs * percent / 1.05); // Account for 5% fee
+            document.getElementById('hatchAmount').value = Math.max(100, amount);
+            updateHatchEstimate();
+        }
+
+        function setHatchMax() {
+            const maxEggs = gameState.user.eggs;
+            const amount = Math.floor(maxEggs / 1.05); // Account for 5% fee
+            document.getElementById('hatchAmount').value = Math.max(100, amount);
+            updateHatchEstimate();
+        }
+
+        // ============================================
+        // Market Functions
+        // ============================================
+        function switchMarketTab(tab) {
+            currentMarketTab = tab;
+            
+            // Update tabs
+            document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.market-tab').forEach(t => t.style.display = 'none');
+            
+            // Show selected tab
+            const tabIndex = tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3;
+            document.querySelector(`.order-tab:nth-child(${tabIndex})`).classList.add('active');
+            document.getElementById(`${tab}Tab`).style.display = 'block';
+        }
+
+        function setBuyAmountPercent(percent) {
+            const maxTON = gameState.user.tonBalance;
+            const bestPrice = gameState.market.bestSell || 0.01;
+            const maxSquids = Math.floor(maxTON / bestPrice);
+            const amount = Math.floor(maxSquids * percent);
+            document.getElementById('buyAmount').value = Math.max(100, amount);
+        }
+
+        function setBuyAmountMax() {
+            const maxTON = gameState.user.tonBalance;
+            const bestPrice = gameState.market.bestSell || 0.01;
+            const maxSquids = Math.floor(maxTON / bestPrice);
+            document.getElementById('buyAmount').value = Math.max(100, maxSquids);
+        }
+
+        function setSellAmountPercent(percent) {
+            const amount = Math.floor(gameState.user.squids * percent);
+            document.getElementById('sellAmount').value = Math.max(100, amount);
+        }
+
+        function setSellAmountMax() {
+            document.getElementById('sellAmount').value = Math.max(100, gameState.user.squids);
+        }
+
+        // ============================================
+        // Navigation
+        // ============================================
+        function switchTab(tabId) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected section
+            document.getElementById(tabId).classList.add('active');
+            
+            // Activate corresponding nav item
+            const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+            if (navItem) {
+                navItem.classList.add('active');
+            }
+        }
+
+        // ============================================
+        // Initialize
+        // ============================================
+        async function initialize() {
+            // Setup event listeners
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => switchTab(item.dataset.tab));
+            });
+            
+            document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
+            
+            // إضافة حدث للسماح فقط بأرقام في حقول الإدخال
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('input', function(e) {
+                    // السماح فقط بالأرقام والنقاط العشرية
+                    this.value = this.value.replace(/[^0-9.]/g, '');
+                    
+                    // التأكد من وجود نقطة عشرية واحدة فقط
+                    if ((this.value.match(/\./g) || []).length > 1) {
+                        this.value = this.value.slice(0, -1);
+                    }
+                });
+            });
+            
+            // Simulate loading
+            let progress = 0;
+            const loadingInterval = setInterval(() => {
+                progress += 5;
+                document.getElementById('loadingProgress').style.width = `${progress}%`;
+                
+                if (progress >= 100) {
+                    clearInterval(loadingInterval);
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                    
+                    // Load initial data
+                    loadGameState();
+                    
+                    // Start auto-refresh
+                    setInterval(loadGameState, 30000); // Refresh every 30 seconds
+                    
+                    // Start egg timer simulation
+                    startEggTimer();
+                    
+                    // Initialize user with Telegram
+                    initializeTelegramUser();
+                }
+            }, 100);
+        }
+
+        function startEggTimer() {
+            // Simulate egg production timer
+            eggTimer = 3600; // 1 hour in seconds
+            eggTimerInterval = setInterval(() => {
+                eggTimer--;
+                if (eggTimer <= 0) {
+                    eggTimer = 3600;
+                    // في التطبيق الحقيقي، هذا سيتحقق من السيرفر
+                    if (gameState.user.squids > 0) {
+                        gameState.user.eggs += Math.floor(gameState.user.squids / 1000);
+                        updateUI();
+                    }
+                }
+                document.getElementById('statusEggsTimer').textContent = formatTime(eggTimer);
+            }, 1000);
+        }
+
+        // ============================================
+        // Telegram User Initialization
+        // ============================================
+        async function initializeTelegramUser() {
+            if (!TELEGRAM_USER) {
+                console.log('Running in demo mode - no Telegram user detected');
+                return;
+            }
+            
+            try {
+                // إرسال بيانات Telegram للمستخدم إلى السيرفر
+                await callAPI('initializeUser', {
+                    user: {
+                        id: TELEGRAM_USER.id,
+                        first_name: TELEGRAM_USER.first_name,
+                        last_name: TELEGRAM_USER.last_name || '',
+                        username: TELEGRAM_USER.username || '',
+                        language_code: TELEGRAM_USER.language_code || 'en'
+                    }
+                });
+                console.log('Telegram user initialized successfully');
+            } catch (error) {
+                console.warn('Failed to initialize Telegram user:', error);
+                // يمكن الاستمرار في وضع التجربة
+            }
+        }
+
+        // ============================================
+        // Start the app
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            initialize();
+        });
         
-        let totalMintReward = 0;
-        let totalHatchReward = 0;
-        let referralCount = 0;
-        
-        const referralList = Object.values(referrals);
-        
-        referralList.forEach(ref => {
-            if (ref.type === 'mint') {
-                totalMintReward += ref.reward || 0;
-            } else if (ref.type === 'hatch') {
-                totalHatchReward += ref.eggsReward || 0;
+        // إضافة دعم لوحة المفاتيح للأزرار النمطية
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                // إغلاق أي مودال مفتوح عند الضغط على Esc
+                document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                    modal.classList.remove('active');
+                });
             }
         });
-        
-        referralCount = referralList.length;
-        
-        return {
-            totalReferrals: referralCount,
-            totalMintReward,
-            totalHatchReward,
-            lastReferral: referralList.length > 0 ? Math.max(...referralList.map(r => r.timestamp)) : null
-        };
-    } catch (error) {
-        return {
-            totalReferrals: 0,
-            totalMintReward: 0,
-            totalHatchReward: 0,
-            lastReferral: null
-        };
-    }
-}
-
-// Generate Referral Code
-function generateReferralCode(userId) {
-    return `SQUID_${userId.substring(0, 8).toUpperCase()}_${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-}
-
-// Validate Telegram Data
-function isValidTelegramData(telegramData, userId) {
-    try {
-        const params = new URLSearchParams(telegramData);
-        const userParam = params.get('user');
-        
-        if (!userParam) return false;
-        
-        const userData = JSON.parse(decodeURIComponent(userParam));
-        return userData.id.toString() === userId;
-        
-    } catch (error) {
-        console.error('Telegram data validation error:', error);
-        return false;
-    }
-}
-
-// ==================== Database Functions ====================
-
-async function getFirebaseUrl(env, path) {
-    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-    const cleanPath = path.replace(/^\//, '');
-    const apiKey = env.FIREBASE_API_KEY;
-    
-    if (!apiKey) {
-        throw new Error('FIREBASE_API_KEY is not configured');
-    }
-    
-    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
-}
-
-async function handleDbGet(env, path) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        
-        return {
-            success: true,
-            data: data
-        };
-    } catch (error) {
-        console.error('Database GET error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_GET_ERROR'
-        };
-    }
-}
-
-async function handleDbSet(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database SET error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_SET_ERROR'
-        };
-    }
-}
-
-async function handleDbUpdate(env, path, updates) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database UPDATE error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_UPDATE_ERROR'
-        };
-    }
-}
-
-async function handleDbPush(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: { name: result.name }
-        };
-    } catch (error) {
-        console.error('Database PUSH error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_PUSH_ERROR'
-        };
-    }
-}
-
-// ==================== End of Code ====================
+    </script>
+</body>
+</html>
