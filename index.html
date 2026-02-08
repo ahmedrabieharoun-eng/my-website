@@ -2,1310 +2,1910 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>مزرعة الدجاج - Chicken Farm</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>SquidPEPE - Real Game</title>
     
-    <!-- ✅ Font Awesome -->
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
+    <!-- Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <style>
-        /* أنماط الصفحة */
-        :root{
-            --primary-green:#a855f7;
-            --deep-Galaxy:#202020;
-            --gold:#d6bcfa;
-            --gold-glow:rgba(168,85,247,0.4);
-            --glass-bg:rgba(32,32,32,0.7);
-            --glass-border:rgba(255,255,255,0.1);
-            --text-color:#ffffff;
-            --text-muted:#b0b0b0;
-            --nav-bg:rgba(40,40,40,0.98);
-            --success-color:#a855f7;
+        /* ====== VARIABLES ====== */
+        :root {
+            --primary-color: #FF6B8B;
+            --secondary-color: #4ECDC4;
+            --dark-bg: #0A0A1A;
+            --card-bg: rgba(20, 20, 40, 0.8);
+            --text-color: #FFFFFF;
+            --text-muted: #B0B0D0;
+            --success-color: #4ECDC4;
+            --warning-color: #FFD166;
+            --danger-color: #EF476F;
+            --ton-color: #0088CC;
+            --ocean-blue: #1A5F7A;
+            --ocean-light: #57CC99;
+            --gradient-primary: linear-gradient(135deg, #FF6B8B, #FF8E53);
+            --gradient-secondary: linear-gradient(135deg, #4ECDC4, #2A9D8F);
+            --gradient-ocean: linear-gradient(135deg, #1A5F7A, #57CC99);
         }
         
-        *{
-            margin:0;
-            padding:0;
-            box-sizing:border-box;
-            -webkit-tap-highlight-color:transparent;
+        /* ====== RESET ====== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
         
-        body{
-            font-family:'Outfit', sans-serif;
-            color:var(--text-color);
-            overflow-x:hidden;
-            background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');
-            background-size:cover;
-            background-position:center;
-            background-attachment:fixed;
-            min-height:100vh;
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            overflow-x: hidden;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(86, 207, 225, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 107, 139, 0.1) 0%, transparent 50%);
         }
         
-        body::before{
-            content:'';
-            position:fixed;
-            top:0;
-            left:0;
-            width:100%;
-            height:100%;
-            background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);
-            z-index:-1;
-        }
-        
-        /* ✅ أنماط الصفحة الرئيسية */
-        .app-container{
-            padding:20px;
-            padding-bottom:110px;
-            max-width:500px;
-            margin:0 auto;
-            min-height:100vh;
-            display:flex;
-            flex-direction:column;
-        }
-        
-        .content-section{
-            display:none;
-            animation:fadeIn 0.4s ease;
-            flex-direction:column;
-            flex:1;
-        }
-        
-        .content-section.active{
-            display:flex;
-        }
-        
-        @keyframes fadeIn{
-            from{opacity:0;transform:translateY(10px);}
-            to{opacity:1;transform:translateY(0);}
-        }
-        
-        .page-header{
-            text-align:center;
-            margin-bottom:20px;
-            padding-top:10px;
-        }
-        
-        h1{
-            font-size:26px;
-            font-weight:800;
-            color:#fff;
-            margin-bottom:5px;
-            text-transform:uppercase;
-            letter-spacing:1px;
-        }
-        
-        h2{
-            font-size:18px;
-            font-weight:700;
-            margin:20px 0 10px;
-            color:var(--gold);
-            display:flex;
-            align-items:center;
-            gap:8px;
-        }
-        
-        p{
-            font-size:13px;
-            color:var(--text-muted);
-            line-height:1.4;
-        }
-        
-        .card{
-            background:var(--glass-bg);
-            backdrop-filter:blur(15px);
-            -webkit-backdrop-filter:blur(15px);
-            border-radius:24px;
-            padding:20px;
-            margin-bottom:12px;
-            border:1px solid var(--glass-border);
-            box-shadow:0 4px 20px rgba(0,0,0,0.4);
-        }
-        
-        /* ✅ إحصاءات اللعبة */
-        .stats-grid{
-            display:grid;
-            grid-template-columns:repeat(2, 1fr);
-            gap:15px;
-            margin-bottom:20px;
-        }
-        
-        .stat-card{
-            background:rgba(168,85,247,0.1);
-            padding:15px;
-            border-radius:12px;
-            text-align:center;
-            border:1px solid rgba(168,85,247,0.3);
-        }
-        
-        .stat-value{
-            font-size:24px;
-            font-weight:800;
-            color:var(--primary-green);
-            margin-top:5px;
-        }
-        
-        .stat-label{
-            font-size:12px;
-            color:var(--text-muted);
-        }
-        
-        /* ✅ أزرار اللعبة */
-        .btn{
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            width:100%;
-            padding:16px;
-            border-radius:18px;
-            font-size:16px;
-            font-weight:800;
-            cursor:pointer;
-            border:none;
-            outline:none;
-            gap:8px;
-            text-transform:uppercase;
-            letter-spacing:0.5px;
-            transition:transform 0.1s;
-            margin-bottom:10px;
-        }
-        
-        .btn:active{
-            transform:scale(0.96);
-        }
-        
-        .btn:disabled{
-            opacity:0.5;
-            cursor:not-allowed;
-            filter:grayscale(1);
-        }
-        
-        .btn-primary{
-            background:linear-gradient(90deg,#a855f7,#7c3aed);
-            color:#fff;
-            box-shadow:0 0 15px rgba(168,85,247,0.4);
-        }
-        
-        .btn-action{
-            background:rgba(0,0,0,0.3)!important;
-            backdrop-filter:blur(15px);
-            -webkit-backdrop-filter:blur(15px);
-            border:1px solid rgba(255,255,255,0.1)!important;
-            color:#b0b0b0!important;
-            flex-direction:column;
-            padding:12px;
-            font-size:12px;
-            gap:5px;
-            border-radius:12px;
-            box-shadow:0 4px 15px rgba(0,0,0,0.2);
-            transition:all 0.3s ease;
-        }
-        
-        /* ✅ متجر الدجاج */
-        .shop-item{
-            display:flex;
-            align-items:center;
-            background:rgba(0,0,0,0.3);
-            border-radius:16px;
-            padding:12px;
-            margin-bottom:8px;
-            border:1px solid rgba(255,255,255,0.05);
-            cursor:pointer;
-            transition:all 0.3s ease;
-        }
-        
-        .shop-item:hover{
-            background:rgba(168,85,247,0.1);
-            transform:translateY(-2px);
-        }
-        
-        .shop-icon{
-            width:42px;
-            height:42px;
-            border-radius:12px;
-            background:rgba(255,255,255,0.05);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            margin-right:12px;
-            flex-shrink:0;
-            font-size:20px;
-        }
-        
-        .shop-content{
-            flex:1;
-        }
-        
-        .shop-title{
-            font-size:14px;
-            font-weight:600;
-            margin-bottom:2px;
-        }
-        
-        .shop-description{
-            font-size:11px;
-            color:var(--text-muted);
-        }
-        
-        .shop-price{
-            text-align:right;
-            font-weight:700;
-            color:var(--primary-green);
-            font-size:14px;
-        }
-        
-        /* ✅ رأس الصفحة */
-        .hud-container{
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            background:rgba(0,0,0,0.5);
-            border-radius:50px;
-            padding:10px 15px;
-            margin-bottom:20px;
-            border:1px solid rgba(255,255,255,0.05);
-        }
-        
-        .user-name{
-            font-weight:700;
-            font-size:14px;
-        }
-        
-        .hud-avatar{
-            width:50px;
-            height:50px;
-            border-radius:50%;
-            overflow:hidden;
-            border:2px solid var(--primary-green);
-        }
-        
-        .hud-avatar img{
-            width:100%;
-            height:100%;
-            object-fit:cover;
-        }
-        
-        /* ✅ التبويب السفلي */
-        .bottom-nav{
-            position:fixed;
-            bottom:20px;
-            left:50%;
-            transform:translateX(-50%);
-            width:90%;
-            max-width:400px;
-            height:65px;
-            background:var(--nav-bg);
-            border-radius:32px;
-            display:flex;
-            justify-content:space-around;
-            align-items:center;
-            box-shadow:0 10px 30px rgba(0,0,0,0.5);
-            z-index:100;
-            border:1px solid rgba(255,255,255,0.1);
-        }
-        
-        .nav-item{
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            color:#666;
-            transition:0.3s;
-            cursor:pointer;
-            position:relative;
-            width:50px;
-        }
-        
-        .nav-item svg{
-            width:22px;
-            height:22px;
-            margin-bottom:4px;
-            stroke:currentColor;
-            fill:none;
-            stroke-width:2.5;
-            transition:all 0.3s;
-        }
-        
-        .nav-item.active{
-            color:var(--primary-green);
-            transform:translateY(-2px);
-        }
-        
-        .nav-item.active svg{
-            stroke:var(--primary-green);
-            filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));
-        }
-        
-        .nav-text{
-            font-size:9px;
-            font-weight:700;
-            text-transform:uppercase;
-        }
-        
-        /* ✅ تحسينات للهواتف */
-        @media (max-width:480px){
-            .app-container{
-                padding:10px;
-                padding-bottom:80px;
-            }
-            
-            .stats-grid{
-                grid-template-columns:repeat(2, 1fr);
-                gap:10px;
-            }
-            
-            .stat-card{
-                padding:12px;
-            }
-            
-            .stat-value{
-                font-size:20px;
-            }
-            
-            .bottom-nav{
-                width:95%;
-                height:60px;
-            }
-            
-            .nav-text{
-                font-size:8px;
-            }
-        }
-        
-        /* ✅ الإشعارات */
-        .notification-message{
-            position:fixed;
-            top:100px;
-            left:50%;
-            transform:translateX(-50%);
-            z-index:1000;
-            background:var(--glass-bg);
-            backdrop-filter:blur(20px);
-            border:1px solid var(--glass-border);
-            border-radius:15px;
-            padding:15px 20px;
-            max-width:90%;
-            width:400px;
-            text-align:center;
-            box-shadow:0 5px 20px rgba(0,0,0,0.3);
-            animation:fadeIn 0.3s ease;
-        }
-        
-        .notification-success{
-            border-color:#27ae60;
-            background:rgba(39,174,96,0.1);
-        }
-        
-        .notification-error{
-            border-color:#e74c3c;
-            background:rgba(231,76,60,0.1);
-        }
-        
-        .notification-warning{
-            border-color:#FFC107;
-            background:rgba(255,193,7,0.1);
-        }
-        
-        .notification-info{
-            border-color:#3498db;
-            background:rgba(52,152,219,0.1);
-        }
-        
-        @keyframes fadeOut{
-            from{opacity:1;}
-            to{opacity:0;}
-        }
-        
-        /* ✅ صفحة التحميل */
-        #global-loading-page {
+        /* ====== LOADING SCREEN ====== */
+        #loading-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            background: var(--dark-bg);
             display: flex;
             flex-direction: column;
-            align-items: center;
             justify-content: center;
-            z-index: 999999;
-            text-align: center;
-            padding: 20px;
+            align-items: center;
+            z-index: 9999;
         }
         
         .loading-logo {
             width: 120px;
             height: 120px;
             border-radius: 50%;
-            margin-bottom: 25px;
-            border: 4px solid var(--primary-green);
+            background: var(--gradient-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
             animation: float 2s ease-in-out infinite;
         }
         
-        .loading-title {
-            font-size: 32px;
+        .loading-logo img {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .loading-text {
+            font-size: 24px;
             font-weight: 800;
-            color: #fff;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            background: linear-gradient(90deg, #a855f7, #7c3aed);
+            margin-bottom: 20px;
+            background: var(--gradient-primary);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         
-        .loading-subtitle {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin-bottom: 30px;
-            max-width: 300px;
-            line-height: 1.5;
-        }
-        
-        .loading-progress-container {
-            width: 80%;
-            max-width: 300px;
-            height: 6px;
+        .loading-progress {
+            width: 200px;
+            height: 4px;
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
+            border-radius: 2px;
             overflow: hidden;
             margin: 20px 0;
         }
         
         .loading-progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary-green), #7c3aed);
-            border-radius: 3px;
+            background: var(--gradient-primary);
             width: 0%;
             transition: width 0.3s ease;
         }
         
-        .loading-timer {
-            font-size: 12px;
+        /* ====== TOP STATUS BAR ====== */
+        .top-status-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(30, 30, 60, 0.6);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 100px;
+        }
+        
+        .status-item img {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+        }
+        
+        .status-item .value {
+            font-size: 18px;
+            font-weight: 800;
+            line-height: 1;
+        }
+        
+        .status-item .rate,
+        .status-item .timer {
+            font-size: 11px;
             color: var(--text-muted);
-            margin-top: 10px;
-            font-family: 'Courier New', monospace;
+            margin-top: 2px;
+        }
+        
+        .ton-balance {
+            color: var(--ton-color);
+        }
+        
+        .plus-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-primary);
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(255, 107, 139, 0.4);
+            transition: transform 0.2s;
+        }
+        
+        .plus-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* ====== MAIN CONTAINER ====== */
+        .app-container {
+            padding-top: 80px;
+            padding-bottom: 80px;
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            display: none; /* مخفي حتى التحميل */
+        }
+        
+        /* ====== SCREENS ====== */
+        .screen {
+            display: none;
+            animation: fadeIn 0.3s ease;
+            padding: 16px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .screen.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         
         @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(2deg);
+            }
         }
         
-        /* ✅ تحسينات عامة */
-        .hidden{
-            display:none!important;
-        }
-        
-        /* ✅ أنماط لعبة الدجاج */
-        .egg-production-indicator {
-            background: rgba(39,174,96,0.1);
-            border: 1px solid rgba(39,174,96,0.3);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 15px;
+        /* ====== HOME SCREEN ====== */
+        .squid-character {
             text-align: center;
+            margin: 40px 0;
+            position: relative;
         }
         
-        .progress-bar-container {
-            width: 100%;
-            height: 8px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 10px 0;
+        .squid-character img {
+            width: 200px;
+            height: 200px;
+            animation: float 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 30px rgba(86, 207, 225, 0.5));
+        }
+        
+        .mint-progress {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+        
+        .progress-header span:first-child {
+            font-weight: 600;
+        }
+        
+        .progress-header span:last-child {
+            color: var(--success-color);
+            font-weight: 800;
         }
         
         .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-green), #27ae60);
-            border-radius: 4px;
-            transition: width 0.5s ease;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
         }
         
-        .chicken-price-info {
-            background: rgba(255,193,7,0.1);
-            border: 1px solid rgba(255,193,7,0.3);
-            border-radius: 12px;
-            padding: 10px;
-            margin-top: 10px;
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-ocean);
+            border-radius: 6px;
+            transition: width 1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 16px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 18px 20px;
+            border-radius: 16px;
+            border: none;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .hatch-btn {
+            background: var(--gradient-secondary);
+            color: white;
+            box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+        }
+        
+        .mint-btn {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 8px 25px rgba(255, 107, 139, 0.3);
+        }
+        
+        /* ====== MODALS ====== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: modalSlide 0.3s ease;
+        }
+        
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .close-modal {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-muted);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        /* MINT MODAL STYLES */
+        .price-display {
             text-align: center;
+            margin: 20px 0;
+        }
+        
+        .price-label {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .price-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+        
+        .price-subtext {
+            font-size: 14px;
+            color: var(--success-color);
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .modal-action-btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .modal-action-btn.primary {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 139, 0.3);
+        }
+        
+        .modal-action-btn.primary:disabled {
+            background: linear-gradient(135deg, #666, #888);
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        .modal-action-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* HATCH MODAL STYLES */
+        .input-group {
+            margin: 20px 0;
+        }
+        
+        .input-label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .input-with-max {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .amount-input {
+            flex: 1;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            outline: none;
+            font-family: inherit;
+        }
+        
+        .amount-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 107, 139, 0.1);
+        }
+        
+        .max-btn {
+            padding: 12px 16px;
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+            border-radius: 10px;
+            color: var(--success-color);
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+        
+        /* ====== MARKET SCREEN ====== */
+        .market-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .filter-btn.active {
+            background: var(--gradient-primary);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .order-book {
+            background: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .order-header {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        .order-row {
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.3s;
+        }
+        
+        .order-row:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .order-type.buy {
+            color: var(--success-color);
+        }
+        
+        .order-type.sell {
+            color: var(--danger-color);
+        }
+        
+        .order-amount {
+            font-weight: 700;
+        }
+        
+        .order-price {
+            font-weight: 600;
+            color: var(--warning-color);
+        }
+        
+        .create-order-form {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* ====== FRIENDS SCREEN ====== */
+        .referral-card {
+            background: var(--gradient-primary);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(255, 107, 139, 0.3);
+        }
+        
+        .referral-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: white;
+        }
+        
+        .referral-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .referral-link-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .referral-link {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            color: var(--text-color);
+            margin-bottom: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-group .btn {
+            flex: 1;
+            padding: 12px;
+        }
+        
+        /* ====== PROFILE SCREEN ====== */
+        .profile-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            border: 4px solid var(--gradient-primary);
+            background: var(--card-bg);
+            overflow: hidden;
+        }
+        
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .balance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 25px 0;
+        }
+        
+        .balance-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .balance-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .balance-value {
+            font-size: 20px;
+            font-weight: 800;
+            margin: 5px 0;
+        }
+        
+        .balance-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+        
+        /* ====== BOTTOM NAVIGATION ====== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            z-index: 1000;
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 8px 16px;
+            border-radius: 12px;
+            min-width: 70px;
+        }
+        
+        .nav-item i {
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        
+        .nav-item span {
             font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+            background: rgba(255, 107, 139, 0.1);
+        }
+        
+        .nav-item.active i {
+            color: var(--primary-color);
+            filter: drop-shadow(0 0 8px rgba(255, 107, 139, 0.6));
+        }
+        
+        /* ====== NOTIFICATIONS ====== */
+        .notification {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 300px;
+            max-width: 90%;
+            z-index: 3000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideDown 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        
+        .notification.success {
+            border-color: var(--success-color);
+            background: rgba(78, 205, 196, 0.1);
+        }
+        
+        .notification.error {
+            border-color: var(--danger-color);
+            background: rgba(239, 71, 111, 0.1);
+        }
+        
+        .notification.warning {
+            border-color: var(--warning-color);
+            background: rgba(255, 209, 102, 0.1);
+        }
+        
+        /* ====== LOADING SPINNER ====== */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* ====== RESPONSIVE ====== */
+        @media (max-width: 480px) {
+            .app-container {
+                padding: 80px 10px 80px 10px;
+            }
+            
+            .status-item {
+                min-width: 85px;
+                padding: 6px 8px;
+            }
+            
+            .status-item .value {
+                font-size: 16px;
+            }
+            
+            .squid-character img {
+                width: 160px;
+                height: 160px;
+            }
+            
+            .btn {
+                padding: 16px;
+                font-size: 14px;
+            }
+            
+            .balance-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .modal {
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
-<!-- ✅ صفحة التحميل العالمية -->
-<div id="global-loading-page">
-    <div style="width:120px;height:120px;border-radius:50%;margin-bottom:25px;border:4px solid var(--primary-green);background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:48px;">
-        🐔
+    <!-- 🔄 LOADING SCREEN -->
+    <div id="loading-screen">
+        <div class="loading-logo">
+            <img src="https://img.icons8.com/color/96/squid.png" alt="SquidPEPE">
+        </div>
+        <div class="loading-text">SquidPEPE</div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loading-progress"></div>
+        </div>
+        <div style="color: var(--text-muted); font-size: 14px;" id="loading-message">Initializing game...</div>
     </div>
-    <h1 class="loading-title">مزرعة الدجاج</h1>
-    <p class="loading-subtitle">جارٍ تحميل المزرعة الخاصة بك...</p>
     
-    <div class="loading-progress-container">
-        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+    <!-- 🔝 TOP STATUS BAR -->
+    <div class="top-status-bar">
+        <div class="status-item">
+            <img src="https://img.icons8.com/color/96/squid.png" alt="Squid">
+            <div>
+                <div class="value" id="squids-count">0</div>
+                <div class="rate" id="squids-per-hour">0/hr</div>
+            </div>
+        </div>
+        
+        <div class="status-item">
+            <img src="https://img.icons8.com/color/96/egg.png" alt="Egg">
+            <div>
+                <div class="value" id="eggs-count">0</div>
+                <div class="timer" id="next-egg-timer">00:00</div>
+            </div>
+        </div>
+        
+        <div class="status-item">
+            <img src="https://i.ibb.co/8DsyHqwK/toncoin-ton-logo.png" alt="TON">
+            <div class="value ton-balance" id="ton-balance">0.00</div>
+        </div>
+        
+        <button class="plus-btn" id="plus-btn">+</button>
     </div>
     
-    <div class="loading-timer" id="loading-timer">3 ثواني</div>
-</div>
-
-<!-- ✅ التطبيق الرئيسي -->
-<div class="app-container" style="display:none;" id="app-container">
-    <!-- رأس الصفحة -->
-    <div class="hud-container">
-        <div>
-            <div class="user-name" id="home-username">جار التحميل...</div>
-            <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
-                <div class="stats-pill" style="margin:0;padding:6px 12px;background:rgba(255,255,255,0.05);border-radius:20px;">
-                    <span style="color:var(--gold);">💰:</span>
-                    <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
+    <!-- 🏠 MAIN CONTAINER -->
+    <div class="app-container">
+        <!-- ====== HOME SCREEN ====== -->
+        <div id="home-screen" class="screen active">
+            <div class="squid-character">
+                <img src="https://img.icons8.com/color/256/squid.png" alt="SquidPEPE">
+            </div>
+            
+            <div class="mint-progress">
+                <div class="progress-header">
+                    <span>Limited Mint Progress</span>
+                    <span id="minted-count">0</span>/<span id="mint-global-cap">90,000,000</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="mint-progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn hatch-btn" onclick="openHatchModal()">
+                    <i class="fas fa-egg"></i>
+                    Hatch
+                </button>
+                
+                <button class="btn mint-btn" onclick="openMintModal()">
+                    <i class="fas fa-fire"></i>
+                    Mint
+                </button>
+            </div>
+        </div>
+        
+        <!-- ====== FRIENDS SCREEN ====== -->
+        <div id="friends-screen" class="screen">
+            <div class="referral-card">
+                <div class="referral-title">👥 Invite Friends</div>
+                <div class="referral-subtitle">Earn 10% of their mint rewards!</div>
+                
+                <div class="referral-stats">
+                    <div style="font-size: 48px; font-weight: 800; margin: 10px 0;" id="total-referral-earnings">0.00</div>
+                    <div style="font-size: 14px; opacity: 0.9;">TON earned from referrals</div>
+                </div>
+            </div>
+            
+            <div class="referral-link-box">
+                <div class="referral-label" style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Your Referral Link:</div>
+                <div class="referral-link" id="referral-link">Loading...</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">Share this link with your friends</div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn" onclick="copyReferralLink()" style="background: var(--gradient-secondary);">
+                    <i class="fas fa-copy"></i>
+                    Copy
+                </button>
+                <button class="btn" onclick="shareReferralLink()" style="background: var(--gradient-primary);">
+                    <i class="fas fa-share"></i>
+                    Share
+                </button>
+            </div>
+            
+            <div class="history-list">
+                <h3 style="margin-bottom: 15px; color: var(--text-color);">Referral History</h3>
+                <div id="referral-history-list">
+                    <!-- Will be populated by JavaScript -->
                 </div>
             </div>
         </div>
-        <div class="hud-avatar">
-            <div id="user-avatar" style="width:100%;height:100%;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:24px;">
-                🐔
+        
+        <!-- ====== MARKET SCREEN ====== -->
+        <div id="market-screen" class="screen">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <h1 style="font-size: 24px; margin-bottom: 8px;">🎪 Market</h1>
+                <p style="color: var(--text-muted);">Trade Squids and Eggs with other players</p>
+            </div>
+            
+            <div class="market-filters">
+                <button class="filter-btn active" data-filter="all" onclick="filterOrders('all')">All Orders</button>
+                <button class="filter-btn" data-filter="buy" onclick="filterOrders('buy')">Buy Orders</button>
+                <button class="filter-btn" data-filter="sell" onclick="filterOrders('sell')">Sell Orders</button>
+                <button class="filter-btn" data-filter="yours" onclick="filterOrders('yours')">Your Orders</button>
+            </div>
+            
+            <div class="order-book">
+                <div class="order-header">
+                    <span>Type</span>
+                    <span>Amount</span>
+                    <span>Price</span>
+                </div>
+                <div id="order-book-list">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="create-order-form">
+                <h3 style="margin-bottom: 15px; color: var(--text-color);">Create Order</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <select id="order-type" style="width: 100%; padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                        <option value="buy">Buy Squids</option>
+                        <option value="sell">Sell Squids</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <input type="number" id="order-amount" placeholder="Amount (min: 100)" style="width: 100%; padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <input type="number" id="order-price" placeholder="Price per Squid (TON)" step="0.0001" style="width: 100%; padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white;">
+                </div>
+                
+                <button class="modal-action-btn primary" onclick="createOrder()" id="create-order-btn">
+                    Create Order
+                </button>
+            </div>
+        </div>
+        
+        <!-- ====== MINT SCREEN ====== -->
+        <div id="mint-screen" class="screen">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 24px; margin-bottom: 8px;">🔥 Mint Squids</h1>
+                <p style="color: var(--text-muted);">Convert TON to Squids at a fixed rate</p>
+            </div>
+            
+            <div class="info-card" style="background: var(--gradient-primary); border-radius: 20px; padding: 25px; text-align: center; margin-bottom: 25px;">
+                <div style="font-size: 14px; opacity: 0.9; margin-bottom: 10px;">Current Rate</div>
+                <div style="font-size: 36px; font-weight: 800;" id="mint-rate-value">1 TON</div>
+                <div style="font-size: 24px; margin: 10px 0;">=</div>
+                <div style="font-size: 36px; font-weight: 800;" id="squids-per-ton">3,000 Squids</div>
+            </div>
+            
+            <div class="mint-progress" style="margin-bottom: 25px;">
+                <div class="progress-header">
+                    <span>Your Daily Limit</span>
+                    <span id="daily-minted">0</span>/<span id="daily-limit">10,000</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="limit-fill" id="daily-limit-fill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <button class="modal-action-btn primary" style="width: 100%;" onclick="openMintModal()" id="mint-action-btn">
+                <i class="fas fa-fire"></i>
+                Mint Squids
+            </button>
+        </div>
+        
+        <!-- ====== PROFILE SCREEN ====== -->
+        <div id="profile-screen" class="screen">
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    <img src="https://img.icons8.com/color/256/squid.png" alt="Profile" id="user-avatar">
+                </div>
+                <h2 id="user-name">Loading...</h2>
+                <p style="color: var(--text-muted); font-size: 14px;" id="user-level">Level 1 • Explorer</p>
+            </div>
+            
+            <div class="balance-grid">
+                <div class="balance-card">
+                    <span class="balance-icon" style="color: var(--ton-color);">
+                        <i class="fas fa-coins"></i>
+                    </span>
+                    <div class="balance-value" id="profile-ton-balance">0.00</div>
+                    <div class="balance-label">TON Balance</div>
+                </div>
+                
+                <div class="balance-card">
+                    <span class="balance-icon" style="color: var(--secondary-color);">
+                        <i class="fas fa-egg"></i>
+                    </span>
+                    <div class="balance-value" id="profile-eggs-count">0</div>
+                    <div class="balance-label">Eggs</div>
+                </div>
+                
+                <div class="balance-card">
+                    <span class="balance-icon" style="color: var(--primary-color);">
+                        <i class="fas fa-fish"></i>
+                    </span>
+                    <div class="balance-value" id="profile-squids-count">0</div>
+                    <div class="balance-label">Squids</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px;">
+                <h3 style="margin-bottom: 15px; color: var(--text-color);">Stats</h3>
+                <div style="background: var(--card-bg); border-radius: 16px; padding: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="color: var(--text-muted);">Total Minted</span>
+                        <span style="font-weight: 700;" id="total-minted">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="color: var(--text-muted);">Total Hatched</span>
+                        <span style="font-weight: 700;" id="total-hatched">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <span style="color: var(--text-muted);">Total Referrals</span>
+                        <span style="font-weight: 700;" id="total-referrals">0</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Join Date</span>
+                        <span style="font-weight: 700;" id="join-date">Loading...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
     
-    <!-- الصفحة الرئيسية - مزرعة الدجاج -->
-    <main id="home" class="content-section active">
-        <div class="page-header">
-            <h1>🐔 مزرعة الدجاج</h1>
-            <p>إزرع، اجمع، واربح!</p>
-        </div>
-        
-        <!-- إحصاءات اللعبة -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">💰 الرصيد</div>
-                <div class="stat-value" id="balance">0</div>
+    <!-- ====== MODALS ====== -->
+    <!-- MINT MODAL -->
+    <div class="modal-overlay" id="mint-modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">🔥 Mint Squids</h2>
+                <button class="close-modal" onclick="closeMintModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             
-            <div class="stat-card">
-                <div class="stat-label">🐔 الدجاج</div>
-                <div class="stat-value" id="chickens">0</div>
+            <div class="price-display">
+                <div class="price-label">Price</div>
+                <div class="price-value" id="modal-mint-rate">1 TON</div>
+                <div class="price-subtext">You receive: <span id="modal-squids-received">3,000</span> Squids</div>
             </div>
             
-            <div class="stat-card">
-                <div class="stat-label">🥚 البيض</div>
-                <div class="stat-value" id="eggs">0</div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-label">⚡ الإنتاج/ساعة</div>
-                <div class="stat-value" id="production">0</div>
-            </div>
-        </div>
-        
-        <!-- مؤشر إنتاج البيض -->
-        <div class="egg-production-indicator" id="egg-production-indicator" style="display:none;">
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:5px;">الإنتاج التالي خلال:</div>
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="production-progress-bar" style="width:0%"></div>
-            </div>
-            <div style="font-size:11px;color:#27ae60;margin-top:5px;" id="next-production-time">حساب الوقت...</div>
-        </div>
-        
-        <!-- متجر الدجاج -->
-        <div class="card" style="margin-bottom:15px;">
-            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-store"></i> متجر الدجاج
-            </h3>
-            
-            <div class="shop-item" onclick="buyChicken()">
-                <div class="shop-icon">🐔</div>
-                <div class="shop-content">
-                    <div class="shop-title">شراء دجاجة جديدة</div>
-                    <div class="shop-description" id="chicken-production-info">تزيد إنتاجك بمقدار 1 بيضة/ساعة</div>
+            <div style="margin: 25px 0; text-align: center;">
+                <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 10px;">⚠️ One-time mint per account</div>
+                <div style="background: rgba(255, 209, 102, 0.1); border-radius: 12px; padding: 12px; font-size: 12px; color: var(--warning-color);">
+                    <i class="fas fa-exclamation-triangle"></i> This is your only chance to mint! You can't mint again.
                 </div>
-                <div class="shop-price" id="chicken-price">60</div>
             </div>
             
-            <div class="chicken-price-info">
-                <i class="fa-solid fa-info-circle" style="color:#FFC107;margin-right:5px;"></i>
-                <span>سعر الدجاجة التالية: <span id="next-chicken-price">70</span></span>
-            </div>
-        </div>
-        
-        <!-- أزرار الإجراءات -->
-        <div class="card">
-            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-play"></i> إجراءات
-            </h3>
-            
-            <button class="btn btn-primary" onclick="collectProduction()" id="collect-eggs-btn">
-                <i class="fa-solid fa-egg"></i> جمع الإنتاج
+            <button class="modal-action-btn primary" id="confirm-mint-btn" onclick="confirmMint()">
+                Confirm Mint (1 TON)
             </button>
             
-            <button class="btn btn-action" onclick="sellEggs()" id="sell-eggs-btn">
-                <i class="fa-solid fa-coins"></i> بيع كل البيض
-            </button>
-            
-            <div class="card" style="margin-top:10px;background:rgba(52,152,219,0.1);border-color:rgba(52,152,219,0.3);">
-                <h4 style="font-size:12px;color:#3498db;margin-bottom:8px;"><i class="fa-solid fa-exchange-alt"></i> تحويل البيض</h4>
-                <div style="display:flex;gap:8px;">
-                    <input type="number" id="convert-eggs-input" placeholder="عدد البيض" min="100" 
-                           style="flex:1;padding:10px;border-radius:8px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);color:white;font-size:14px;">
-                    <button class="btn btn-action" onclick="convertEggs()" style="width:auto;padding:10px 15px;">
-                        تحويل
-                    </button>
-                </div>
-                <div style="font-size:10px;color:var(--text-muted);margin-top:5px;">نسبة التحويل: 100 بيضة = 1 عملة</div>
-            </div>
-        </div>
-        
-        <!-- معلومات اللعبة -->
-        <div class="card" style="margin-top:10px;">
-            <h3 style="color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-circle-info"></i> معلومات اللعبة
-            </h3>
-            <p style="font-size:11px;color:var(--text-muted);line-height:1.5;">
-                • كل دجاجة تنتج 1 بيضة كل ساعة<br>
-                • يمكنك جمع الإنتاج عندما يكون جاهزًا<br>
-                • سعر البيضة: <span id="egg-sell-price">10</span> عملة للبيضة الواحدة<br>
-                • يمكن تحويل 100 بيضة إلى 1 عملة إضافية<br>
-                • سعر الدجاجة يزداد مع كل شراء
-            </p>
-        </div>
-    </main>
-    
-    <!-- صفحة السوق -->
-    <main id="market" class="content-section">
-        <div class="page-header">
-            <h1>🏪 السوق</h1>
-            <p>بيع وشراء المنتجات</p>
-        </div>
-        
-        <div class="card">
-            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-chart-line"></i> أسعار السوق
-            </h3>
-            
-            <div class="shop-item">
-                <div class="shop-icon">🥚</div>
-                <div class="shop-content">
-                    <div class="shop-title">بيع البيض</div>
-                    <div class="shop-description">سعر البيع الحالي للبيضة</div>
-                </div>
-                <div class="shop-price" id="market-egg-price">10</div>
-            </div>
-            
-            <div class="shop-item">
-                <div class="shop-icon">🐔</div>
-                <div class="shop-content">
-                    <div class="shop-title">شراء الدجاج</div>
-                    <div class="shop-description">السعر الحالي للدجاجة</div>
-                </div>
-                <div class="shop-price" id="market-chicken-price">60</div>
-            </div>
-            
-            <div class="shop-item">
-                <div class="shop-icon">💱</div>
-                <div class="shop-content">
-                    <div class="shop-title">تحويل البيض</div>
-                    <div class="shop-description">نسبة تحويل البيض لعملة</div>
-                </div>
-                <div class="shop-price" id="conversion-rate">100:1</div>
-            </div>
-            
-            <button class="btn btn-primary" onclick="sellAllEggs()" style="margin-top:15px;" id="sell-all-btn">
-                <i class="fa-solid fa-money-bill-wave"></i> بيع كل البيض (<span id="total-eggs-count">0</span> بيضة)
+            <button class="modal-action-btn secondary" onclick="closeMintModal()">
+                Cancel
             </button>
         </div>
-        
-        <div class="card" style="margin-top:15px;">
-            <h3 style="color:var(--gold);margin-bottom:15px;display:flex;align-items:center;gap:8px;">
-                <i class="fa-solid fa-history"></i> تاريخ المعاملات
-            </h3>
-            <div id="transaction-history" style="max-height:200px;overflow-y:auto;">
-                <p style="text-align:center;padding:20px;color:var(--text-muted);">جارٍ تحميل المعاملات...</p>
-            </div>
-        </div>
-    </main>
-</div>
-
-<!-- التبويب السفلي -->
-<nav class="bottom-nav">
-    <div class="nav-item active" data-target="home">
-        <svg viewBox="0 0 24 24">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-        </svg>
-        <span class="nav-text">الرئيسية</span>
     </div>
-    <div class="nav-item" data-target="market">
-        <svg viewBox="0 0 24 24">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-        </svg>
-        <span class="nav-text">السوق</span>
-    </div>
-</nav>
-
-<script>
-// ✅ المتغيرات الأساسية للعبة
-const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
-let currentUserId = null;
-let gameData = null;
-let gameState = null;
-let productionTimer = null;
-let autoUpdateInterval = null;
-
-// ✅ دالة عرض الإشعارات
-function showNotification(message, type = 'info', duration = 3000) {
-    const notification = document.createElement('div');
-    notification.className = `notification-message notification-${type}`;
-    notification.innerHTML = `<div style="font-size:14px;font-weight:600;">${message}</div>`;
-    document.body.appendChild(notification);
     
-    setTimeout(() => {
-        notification.style.animation = 'fadeOut 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, duration);
-}
-
-// ✅ دالة الاتصال بالسيرفر
-async function callAPI(action, data = {}) {
-    try {
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-Action': action
+    <!-- HATCH MODAL -->
+    <div class="modal-overlay" id="hatch-modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">🥚 Hatch Eggs</h2>
+                <button class="close-modal" onclick="closeHatchModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="price-display">
+                <div class="price-label">Conversion Rate</div>
+                <div class="price-value">1 Egg</div>
+                <div class="price-subtext">= 1 Squid (5% hatch fee)</div>
+            </div>
+            
+            <div class="input-group">
+                <div class="input-label">Number of Squids to Hatch</div>
+                <div class="input-with-max">
+                    <input type="number" id="hatch-amount" class="amount-input" value="100" min="100" step="1">
+                    <button class="max-btn" onclick="setMaxHatch()">MAX</button>
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); text-align: center; margin-top: 10px;">
+                    Eggs required: <span id="eggs-required">105</span> (including 5% fee)
+                </div>
+            </div>
+            
+            <div style="margin: 20px 0; font-size: 12px; color: var(--text-muted); text-align: center;">
+                <i class="fas fa-info-circle"></i>
+                Available Eggs: <span id="available-eggs-count">0</span>
+            </div>
+            
+            <button class="modal-action-btn primary" id="confirm-hatch-btn" onclick="confirmHatch()">
+                Confirm Hatch
+            </button>
+            
+            <button class="modal-action-btn secondary" onclick="closeHatchModal()">
+                Cancel
+            </button>
+        </div>
+    </div>
+    
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <div class="nav-item" data-target="friends">
+            <i class="fas fa-users"></i>
+            <span>Friends</span>
+        </div>
+        
+        <div class="nav-item active" data-target="home">
+            <i class="fas fa-home"></i>
+            <span>Home</span>
+        </div>
+        
+        <div class="nav-item" data-target="market">
+            <i class="fas fa-store"></i>
+            <span>Market</span>
+        </div>
+        
+        <div class="nav-item" data-target="mint">
+            <i class="fas fa-coins"></i>
+            <span>Mint</span>
+        </div>
+        
+        <div class="nav-item" data-target="profile">
+            <i class="fas fa-user"></i>
+            <span>Profile</span>
+        </div>
+    </nav>
+    
+    <!-- NOTIFICATION -->
+    <div class="notification" id="notification">
+        <div id="notification-message"></div>
+    </div>
+    
+    <script>
+        // ====== CONFIGURATION ======
+        const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev"; // ⚠️ Replace with your actual API URL
+        const FIREBASE_CONFIG = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
         
-        // إضافة ID المستخدم إذا كان موجوداً
-        if (currentUserId) {
-            headers['X-User-ID'] = currentUserId;
+        // ====== GLOBAL VARIABLES ======
+        let userData = null;
+        let gameConfig = null;
+        let marketData = null;
+        let referralData = null;
+        let currentScreen = 'home';
+        let currentUserId = null;
+        let telegramUser = null;
+        let db = null;
+        
+        // ====== TELEGRAM INTEGRATION ======
+        async function initializeTelegram() {
+            try {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    
+                    // Initialize Telegram WebApp
+                    tg.ready();
+                    tg.expand();
+                    
+                    // Get user data
+                    telegramUser = tg.initDataUnsafe?.user;
+                    if (telegramUser) {
+                        currentUserId = telegramUser.id.toString();
+                        
+                        // Update UI with user info
+                        if (telegramUser.first_name) {
+                            document.getElementById('user-name').textContent = telegramUser.first_name;
+                        }
+                        
+                        if (telegramUser.photo_url) {
+                            document.getElementById('user-avatar').src = telegramUser.photo_url;
+                        }
+                    }
+                    
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('Telegram initialization error:', error);
+                return false;
+            }
         }
         
-        // إضافة بيانات Telegram إذا كانت متوفرة
-        if (window.Telegram?.WebApp?.initData) {
-            headers['X-Telegram-Data'] = window.Telegram.WebApp.initData;
+        // ====== FIREBASE INITIALIZATION ======
+        async function initializeFirebase() {
+            try {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+                db = firebase.firestore();
+                console.log('Firebase initialized successfully');
+                return true;
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                return false;
+            }
         }
         
-        const response = await fetch(`${API_URL}/api`, {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({
-                action: action,
-                data: data,
-                userId: currentUserId,
-                timestamp: Date.now()
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
+        // ====== API FUNCTIONS ======
+        async function callAPI(action, data = {}) {
+            try {
+                updateLoadingMessage(`Calling API: ${action}...`);
+                
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'X-Action': action
+                };
+                
+                // Add Telegram data if available
+                if (currentUserId) {
+                    headers['X-User-ID'] = currentUserId;
+                }
+                
+                if (window.Telegram?.WebApp?.initData) {
+                    headers['X-Telegram-Data'] = window.Telegram.WebApp.initData;
+                }
+                
+                const response = await fetch(`${API_URL}/api`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        action: action,
+                        data: data,
+                        timestamp: Date.now()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error || `API Error: ${result.errorCode}`);
+                }
+                
+                return result.data;
+                
+            } catch (error) {
+                console.error(`API call failed (${action}):`, error);
+                showNotification(`API Error: ${error.message}`, 'error');
+                throw error;
+            }
         }
         
-        return await response.json();
+        // ====== GAME DATA FUNCTIONS ======
+        async function loadGameData() {
+            try {
+                updateLoadingMessage('Loading game data...');
+                
+                // Load game configuration
+                gameConfig = await callAPI('getGameConfig');
+                
+                // Load user data
+                userData = await callAPI('getUserData');
+                
+                // Load global stats
+                const globalStats = await callAPI('getGlobalStats');
+                
+                // Load market data
+                marketData = await callAPI('getMarketOrders');
+                
+                // Load referral data
+                referralData = await callAPI('getReferralStats');
+                
+                return true;
+            } catch (error) {
+                console.error('Failed to load game data:', error);
+                return false;
+            }
+        }
         
-    } catch (error) {
-        console.error('API call failed:', error);
-        showNotification("❌ خطأ في الاتصال بالسيرفر. حاول مرة أخرى.", "error");
-        return { success: false, error: error.message };
-    }
-}
-
-// ✅ دالة تهيئة المستخدم
-async function initializeUser() {
-    try {
-        // التحقق من Telegram Web App
-        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-            const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-            currentUserId = tgUser.id.toString();
+        // ====== UI UPDATE FUNCTIONS ======
+        function updateUI() {
+            if (!userData || !gameConfig) return;
             
-            // تحديث واجهة المستخدم
-            const fullName = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
-            document.getElementById('home-username').textContent = fullName || 'مزارع';
+            // Update status bar
+            document.getElementById('squids-count').textContent = userData.user.squids.toLocaleString();
+            document.getElementById('eggs-count').textContent = userData.user.eggs.toLocaleString();
+            document.getElementById('ton-balance').textContent = userData.user.tonBalance.toFixed(2);
+            document.getElementById('squids-per-hour').textContent = (userData.activeSquids || 0) + '/hr';
             
-            // تحديث الصورة إذا كانت متوفرة
-            if (tgUser.photo_url) {
-                document.getElementById('user-avatar').innerHTML = `<img src="${tgUser.photo_url}" style="width:100%;height:100%;object-fit:cover;">`;
+            // Update mint progress
+            const mintProgress = (userData.user.mintedSquids / gameConfig.constants.MINT_GLOBAL_CAP) * 100;
+            document.getElementById('mint-progress-fill').style.width = mintProgress + '%';
+            document.getElementById('minted-count').textContent = userData.user.mintedSquids.toLocaleString();
+            document.getElementById('mint-global-cap').textContent = gameConfig.constants.MINT_GLOBAL_CAP.toLocaleString();
+            
+            // Update profile screen
+            document.getElementById('profile-squids-count').textContent = userData.user.squids.toLocaleString();
+            document.getElementById('profile-eggs-count').textContent = userData.user.eggs.toLocaleString();
+            document.getElementById('profile-ton-balance').textContent = userData.user.tonBalance.toFixed(2);
+            document.getElementById('total-minted').textContent = userData.user.mintedSquids.toLocaleString();
+            document.getElementById('total-hatched').textContent = (userData.user.totalHatched || 0).toLocaleString();
+            document.getElementById('total-referrals').textContent = (referralData?.totalReferrals || 0).toLocaleString();
+            
+            // Update join date
+            if (userData.user.joinDate) {
+                const joinDate = new Date(userData.user.joinDate);
+                document.getElementById('join-date').textContent = joinDate.toLocaleDateString();
             }
             
-            // تهيئة المستخدم في السيرفر
-            const result = await callAPI('initializeUser', {
-                user: {
-                    id: tgUser.id,
-                    first_name: tgUser.first_name,
-                    last_name: tgUser.last_name || '',
-                    username: tgUser.username || ''
+            // Update referral data
+            if (referralData) {
+                document.getElementById('referral-link').textContent = referralData.referralLink;
+                document.getElementById('total-referral-earnings').textContent = referralData.estimatedEarnings.toFixed(2);
+            }
+            
+            // Update mint button state
+            const mintBtn = document.getElementById('mint-action-btn');
+            if (userData.user.mintUsed) {
+                mintBtn.disabled = true;
+                mintBtn.innerHTML = '<i class="fas fa-check"></i> Already Minted';
+                mintBtn.style.background = 'linear-gradient(135deg, #666, #888)';
+            }
+            
+            // Update market data
+            updateMarketUI();
+            
+            // Update referral history
+            updateReferralHistory();
+        }
+        
+        function updateMarketUI() {
+            if (!marketData) return;
+            
+            const orderList = document.getElementById('order-book-list');
+            orderList.innerHTML = '';
+            
+            // Combine buy and sell orders
+            const allOrders = [...(marketData.sellOrders || []), ...(marketData.buyOrders || [])];
+            
+            if (allOrders.length === 0) {
+                orderList.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                        <i class="fas fa-store" style="font-size: 40px; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p>No orders yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by creation date (newest first)
+            allOrders.sort((a, b) => b.createdAt - a.createdAt);
+            
+            // Display first 10 orders
+            allOrders.slice(0, 10).forEach(order => {
+                const orderType = order.type === 'sell' ? 'Sell' : 'Buy';
+                const typeClass = order.type === 'sell' ? 'sell' : 'buy';
+                
+                const orderElement = document.createElement('div');
+                orderElement.className = 'order-row';
+                orderElement.innerHTML = `
+                    <span class="order-type ${typeClass}">${orderType}</span>
+                    <span class="order-amount">${order.amount.toLocaleString()}</span>
+                    <span class="order-price">${order.price.toFixed(4)} TON</span>
+                `;
+                
+                // Add click handler for buy orders
+                if (order.type === 'sell') {
+                    orderElement.style.cursor = 'pointer';
+                    orderElement.onclick = () => buyOrder(order.id);
+                }
+                
+                orderList.appendChild(orderElement);
+            });
+        }
+        
+        function updateReferralHistory() {
+            if (!referralData) return;
+            
+            const historyList = document.getElementById('referral-history-list');
+            
+            if (!referralData.referrals || referralData.referrals.length === 0) {
+                historyList.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                        <i class="fas fa-users" style="font-size: 40px; margin-bottom: 15px; opacity: 0.3;"></i>
+                        <p>No referrals yet</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            historyList.innerHTML = '';
+            referralData.referrals.forEach(ref => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.style.cssText = `
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    padding: 12px;
+                    margin-bottom: 8px;
+                    border-left: 4px solid var(--success-color);
+                `;
+                
+                const rewardType = ref.type === 'mint' ? 'TON' : 'Squids';
+                const rewardAmount = ref.reward.toLocaleString();
+                
+                historyItem.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="font-weight: 700;">${ref.type === 'mint' ? '🎯 Mint' : '🥚 Hatch'}</span>
+                        <span style="color: var(--success-color);">+${rewardAmount} ${rewardType}</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-muted);">
+                        ${new Date(ref.timestamp).toLocaleDateString()}
+                    </div>
+                `;
+                
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // ====== GAME ACTIONS ======
+        async function confirmMint() {
+            try {
+                const mintBtn = document.getElementById('confirm-mint-btn');
+                mintBtn.disabled = true;
+                mintBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+                
+                // Check if already minted
+                if (userData.user.mintUsed) {
+                    showNotification('You have already minted!', 'error');
+                    closeMintModal();
+                    return;
+                }
+                
+                // Call mint API
+                const result = await callAPI('mintSquids', {});
+                
+                // Update user data
+                userData = await callAPI('getUserData');
+                const globalStats = await callAPI('getGlobalStats');
+                
+                // Update UI
+                updateUI();
+                
+                // Show success message
+                showNotification(`Successfully minted ${result.mintedSquids.toLocaleString()} Squids!`, 'success');
+                
+                // Close modal
+                closeMintModal();
+                
+            } catch (error) {
+                console.error('Mint error:', error);
+                showNotification(`Mint failed: ${error.message}`, 'error');
+            } finally {
+                const mintBtn = document.getElementById('confirm-mint-btn');
+                mintBtn.disabled = false;
+                mintBtn.textContent = 'Confirm Mint (1 TON)';
+            }
+        }
+        
+        async function confirmHatch() {
+            try {
+                const hatchAmount = parseInt(document.getElementById('hatch-amount').value);
+                
+                if (!hatchAmount || hatchAmount < 100) {
+                    showNotification('Minimum hatch amount is 100 Squids', 'error');
+                    return;
+                }
+                
+                const hatchBtn = document.getElementById('confirm-hatch-btn');
+                hatchBtn.disabled = true;
+                hatchBtn.innerHTML = '<div class="loading-spinner"></div> Processing...';
+                
+                // Call hatch API
+                const result = await callAPI('hatchSquids', {
+                    amount: hatchAmount
+                });
+                
+                // Update user data
+                userData = await callAPI('getUserData');
+                
+                // Update UI
+                updateUI();
+                
+                // Show success message
+                showNotification(`Successfully hatched ${result.squidsProduced.toLocaleString()} Squids!`, 'success');
+                
+                // Close modal
+                closeHatchModal();
+                
+            } catch (error) {
+                console.error('Hatch error:', error);
+                showNotification(`Hatch failed: ${error.message}`, 'error');
+            } finally {
+                const hatchBtn = document.getElementById('confirm-hatch-btn');
+                hatchBtn.disabled = false;
+                hatchBtn.textContent = 'Confirm Hatch';
+            }
+        }
+        
+        async function createOrder() {
+            try {
+                const orderType = document.getElementById('order-type').value;
+                const amount = parseInt(document.getElementById('order-amount').value);
+                const price = parseFloat(document.getElementById('order-price').value);
+                
+                // Validation
+                if (!amount || amount < 100) {
+                    showNotification('Minimum order amount is 100 Squids', 'error');
+                    return;
+                }
+                
+                if (!price || price <= 0) {
+                    showNotification('Please enter a valid price', 'error');
+                    return;
+                }
+                
+                const createBtn = document.getElementById('create-order-btn');
+                createBtn.disabled = true;
+                createBtn.innerHTML = '<div class="loading-spinner"></div> Creating...';
+                
+                // Call create order API
+                const result = await callAPI('createOrder', {
+                    type: orderType,
+                    price: price,
+                    amount: amount
+                });
+                
+                // Update market data
+                marketData = await callAPI('getMarketOrders');
+                userData = await callAPI('getUserData');
+                
+                // Update UI
+                updateUI();
+                updateMarketUI();
+                
+                // Show success message
+                showNotification(`Order created successfully!`, 'success');
+                
+                // Clear form
+                document.getElementById('order-amount').value = '';
+                document.getElementById('order-price').value = '';
+                
+            } catch (error) {
+                console.error('Create order error:', error);
+                showNotification(`Order creation failed: ${error.message}`, 'error');
+            } finally {
+                const createBtn = document.getElementById('create-order-btn');
+                createBtn.disabled = false;
+                createBtn.textContent = 'Create Order';
+            }
+        }
+        
+        async function buyOrder(orderId) {
+            try {
+                if (!confirm('Buy this order?')) return;
+                
+                showNotification('Processing purchase...', 'warning');
+                
+                // Call buy order API
+                const result = await callAPI('buyOrder', {
+                    orderId: orderId
+                });
+                
+                // Update data
+                marketData = await callAPI('getMarketOrders');
+                userData = await callAPI('getUserData');
+                
+                // Update UI
+                updateUI();
+                updateMarketUI();
+                
+                // Show success message
+                showNotification(`Purchased ${result.squidsBought.toLocaleString()} Squids!`, 'success');
+                
+            } catch (error) {
+                console.error('Buy order error:', error);
+                showNotification(`Purchase failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // ====== MODAL FUNCTIONS ======
+        function openMintModal() {
+            document.getElementById('mint-modal-overlay').classList.add('active');
+            
+            // Update modal content
+            if (gameConfig) {
+                document.getElementById('modal-squids-received').textContent = 
+                    gameConfig.constants.MINT_RATE.toLocaleString();
+            }
+            
+            // Disable button if already minted
+            const mintBtn = document.getElementById('confirm-mint-btn');
+            if (userData && userData.user.mintUsed) {
+                mintBtn.disabled = true;
+                mintBtn.textContent = 'Already Minted';
+            } else {
+                mintBtn.disabled = false;
+                mintBtn.textContent = 'Confirm Mint (1 TON)';
+            }
+        }
+        
+        function closeMintModal() {
+            document.getElementById('mint-modal-overlay').classList.remove('active');
+        }
+        
+        function openHatchModal() {
+            document.getElementById('hatch-modal-overlay').classList.add('active');
+            
+            // Update available eggs
+            if (userData) {
+                document.getElementById('available-eggs-count').textContent = userData.user.eggs.toLocaleString();
+                
+                // Calculate max hatchable
+                const maxHatchable = Math.floor(userData.user.eggs / 1.05);
+                document.getElementById('hatch-amount').max = maxHatchable;
+                
+                // Update required eggs display
+                updateHatchCalculation();
+            }
+        }
+        
+        function closeHatchModal() {
+            document.getElementById('hatch-modal-overlay').classList.remove('active');
+        }
+        
+        function setMaxHatch() {
+            if (!userData) return;
+            
+            const maxHatchable = Math.floor(userData.user.eggs / 1.05);
+            document.getElementById('hatch-amount').value = maxHatchable;
+            updateHatchCalculation();
+        }
+        
+        function updateHatchCalculation() {
+            const hatchAmount = parseInt(document.getElementById('hatch-amount').value) || 0;
+            const eggsRequired = Math.ceil(hatchAmount * 1.05);
+            
+            document.getElementById('eggs-required').textContent = eggsRequired.toLocaleString();
+        }
+        
+        // ====== REFERRAL FUNCTIONS ======
+        function copyReferralLink() {
+            const link = document.getElementById('referral-link').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                showNotification('Referral link copied to clipboard!', 'success');
+            });
+        }
+        
+        function shareReferralLink() {
+            const link = document.getElementById('referral-link').textContent;
+            const text = 'Join me in SquidPEPE and earn rewards!';
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'SquidPEPE',
+                    text: text,
+                    url: link
+                });
+            } else {
+                navigator.clipboard.writeText(link).then(() => {
+                    showNotification('Link copied. You can now share it!', 'success');
+                });
+            }
+        }
+        
+        // ====== UI UTILITY FUNCTIONS ======
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            const messageElement = document.getElementById('notification-message');
+            
+            messageElement.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            // Auto hide after 3 seconds
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 3000);
+        }
+        
+        function updateLoadingMessage(message) {
+            const loadingMessage = document.getElementById('loading-message');
+            if (loadingMessage) {
+                loadingMessage.textContent = message;
+            }
+        }
+        
+        function updateLoadingProgress(percent) {
+            const progressBar = document.getElementById('loading-progress');
+            if (progressBar) {
+                progressBar.style.width = percent + '%';
+            }
+        }
+        
+        function setupNavigation() {
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const target = this.dataset.target;
+                    
+                    // Update active state
+                    document.querySelectorAll('.nav-item').forEach(nav => {
+                        nav.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // Switch screen
+                    document.querySelectorAll('.screen').forEach(screen => {
+                        screen.classList.remove('active');
+                    });
+                    document.getElementById(target + '-screen').classList.add('active');
+                    
+                    currentScreen = target;
+                });
+            });
+        }
+        
+        function filterOrders(filterType) {
+            // Update active filter button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filterType) {
+                    btn.classList.add('active');
                 }
             });
             
-            if (!result.success && result.error !== 'USER_ALREADY_EXISTS') {
-                console.error("User initialization failed:", result.error);
+            // In a real implementation, this would filter the order book
+            // For now, just update the display
+            updateMarketUI();
+        }
+        
+        // ====== INITIALIZATION ======
+        async function initializeApp() {
+            try {
+                updateLoadingProgress(10);
+                updateLoadingMessage('Initializing Telegram...');
+                
+                // Initialize Telegram
+                const telegramInitialized = await initializeTelegram();
+                if (!telegramInitialized) {
+                    showNotification('Please open in Telegram for full functionality', 'warning');
+                }
+                
+                updateLoadingProgress(30);
+                updateLoadingMessage('Initializing Firebase...');
+                
+                // Initialize Firebase
+                const firebaseInitialized = await initializeFirebase();
+                if (!firebaseInitialized) {
+                    console.warn('Firebase not available, using API only');
+                }
+                
+                updateLoadingProgress(50);
+                updateLoadingMessage('Loading game data...');
+                
+                // Load game data
+                const dataLoaded = await loadGameData();
+                if (!dataLoaded) {
+                    throw new Error('Failed to load game data');
+                }
+                
+                updateLoadingProgress(80);
+                updateLoadingMessage('Setting up UI...');
+                
+                // Setup UI
+                setupNavigation();
+                updateUI();
+                
+                // Setup event listeners for hatch amount input
+                const hatchAmountInput = document.getElementById('hatch-amount');
+                if (hatchAmountInput) {
+                    hatchAmountInput.addEventListener('input', updateHatchCalculation);
+                }
+                
+                updateLoadingProgress(100);
+                updateLoadingMessage('Ready!');
+                
+                // Hide loading screen, show app
+                setTimeout(() => {
+                    document.getElementById('loading-screen').style.display = 'none';
+                    document.getElementById('app-container').style.display = 'block';
+                    
+                    // Show welcome message
+                    if (telegramUser) {
+                        showNotification(`Welcome ${telegramUser.first_name}! 🦑`, 'success');
+                    } else {
+                        showNotification('Welcome to SquidPEPE! 🦑', 'success');
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error('App initialization failed:', error);
+                updateLoadingMessage(`Initialization failed: ${error.message}`);
+                showNotification(`Initialization failed: ${error.message}`, 'error');
             }
-        } else {
-            // إذا لم يكن هناك مستخدم Telegram، استخدم معرف افتراضي
-            currentUserId = 'guest_' + Math.random().toString(36).substr(2, 9);
-            document.getElementById('home-username').textContent = 'مزارع';
         }
         
-        return currentUserId;
+        // ====== START APP ======
+        document.addEventListener('DOMContentLoaded', initializeApp);
         
-    } catch (error) {
-        console.error("User initialization error:", error);
-        // استخدام معرف ضيف كبديل
-        currentUserId = 'guest_' + Math.random().toString(36).substr(2, 9);
-        document.getElementById('home-username').textContent = 'مزارع';
-        return currentUserId;
-    }
-}
-
-// ✅ دالة تحميل حالة اللعبة
-async function loadGameState() {
-    if (!currentUserId) {
-        await initializeUser();
-    }
-    
-    try {
-        const result = await callAPI('getGameState');
-        
-        if (result.success) {
-            gameData = result.data;
-            gameState = gameData.user || {};
-            
-            // تحديث واجهة اللعبة
-            updateGameUI();
-            
-            // بدء مؤقت الإنتاج إذا كان متاحاً
-            if (gameData.production) {
-                startProductionTimer(gameData.production.nextProductionIn);
-            }
-            
-            return true;
-        } else {
-            showNotification("❌ فشل تحميل حالة اللعبة: " + result.error, "error");
-            return false;
-        }
-    } catch (error) {
-        console.error("Error loading game state:", error);
-        showNotification("❌ خطأ في تحميل اللعبة. حاول مرة أخرى.", "error");
-        return false;
-    }
-}
-
-// ✅ دالة تحديث واجهة اللعبة
-function updateGameUI() {
-    if (!gameState || !gameData) return;
-    
-    // تحديث الإحصاءات الرئيسية
-    document.getElementById('balance').textContent = gameState.balance || 0;
-    document.getElementById('chickens').textContent = gameState.chickens || 0;
-    document.getElementById('eggs').textContent = gameState.eggs || 0;
-    document.getElementById('production').textContent = gameData.production?.eggsPerHour || 0;
-    
-    // تحديث رأس الصفحة
-    document.getElementById('hud-glx-balance').textContent = gameState.balance || 0;
-    
-    // تحديث أسعار المتجر
-    if (gameData.prices) {
-        document.getElementById('chicken-price').textContent = gameData.prices.chicken || 60;
-        document.getElementById('next-chicken-price').textContent = gameData.prices.chicken || 60;
-        document.getElementById('market-egg-price').textContent = gameData.prices.egg || 10;
-        document.getElementById('market-chicken-price').textContent = gameData.prices.chicken || 60;
-        document.getElementById('egg-sell-price').textContent = gameData.prices.egg || 10;
-        document.getElementById('conversion-rate').textContent = `${gameData.prices.conversionRate || 100}:1`;
-    }
-    
-    // تحديث معلومات الدجاج
-    const productionRate = gameData.production?.eggsPerHour || 0;
-    document.getElementById('chicken-production-info').textContent = 
-        `تزيد إنتاجك بمقدار 1 بيضة/ساعة (الإنتاج الحالي: ${productionRate}/ساعة)`;
-    
-    // تحديث زر بيع كل البيض
-    document.getElementById('total-eggs-count').textContent = gameState.eggs || 0;
-    
-    // التحقق من توفر الإنتاج للجمع
-    updateCollectButtonState();
-    
-    // تحديث صفحة السوق إذا كانت مفتوحة
-    if (document.getElementById('market').classList.contains('active')) {
-        updateMarketPage();
-    }
-}
-
-// ✅ دالة تحديث حالة زر الجمع
-function updateCollectButtonState() {
-    const collectBtn = document.getElementById('collect-eggs-btn');
-    const eggProductionIndicator = document.getElementById('egg-production-indicator');
-    
-    if (!gameData?.production) {
-        collectBtn.disabled = true;
-        collectBtn.innerHTML = '<i class="fa-solid fa-egg"></i> لا يوجد إنتاج';
-        eggProductionIndicator.style.display = 'none';
-        return;
-    }
-    
-    const nextProductionIn = gameData.production.nextProductionIn || 0;
-    
-    if (nextProductionIn <= 0) {
-        collectBtn.disabled = false;
-        collectBtn.innerHTML = '<i class="fa-solid fa-egg"></i> جمع الإنتاج';
-        eggProductionIndicator.style.display = 'none';
-    } else {
-        collectBtn.disabled = true;
-        collectBtn.innerHTML = `<i class="fa-solid fa-clock"></i> انتظر ${formatTime(nextProductionIn)}`;
-        eggProductionIndicator.style.display = 'block';
-        
-        // تحديث شريط التقدم
-        const totalTime = 3600; // 1 ساعة = 3600 ثانية
-        const progress = ((totalTime - nextProductionIn) / totalTime) * 100;
-        document.getElementById('production-progress-bar').style.width = progress + '%';
-        document.getElementById('next-production-time').textContent = 
-            `متبقي: ${formatTime(nextProductionIn)}`;
-    }
-}
-
-// ✅ دالة تنسيق الوقت
-function formatTime(seconds) {
-    if (seconds < 60) {
-        return `${seconds} ثانية`;
-    } else if (seconds < 3600) {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-    } else {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        return `${hours} ساعة ${minutes} دقيقة`;
-    }
-}
-
-// ✅ دالة بدء مؤقت الإنتاج
-function startProductionTimer(seconds) {
-    if (productionTimer) clearInterval(productionTimer);
-    
-    if (!seconds || seconds <= 0) {
-        updateCollectButtonState();
-        return;
-    }
-    
-    let remainingSeconds = seconds;
-    
-    productionTimer = setInterval(async () => {
-        remainingSeconds--;
-        
-        if (remainingSeconds <= 0) {
-            clearInterval(productionTimer);
-            productionTimer = null;
-            
-            // تحديث حالة اللعبة
-            await loadGameState();
-        } else {
-            // تحديث العرض فقط
-            document.getElementById('next-production-time').textContent = 
-                `متبقي: ${formatTime(remainingSeconds)}`;
-            
-            const totalTime = 3600;
-            const progress = ((totalTime - remainingSeconds) / totalTime) * 100;
-            document.getElementById('production-progress-bar').style.width = progress + '%';
-            
-            document.getElementById('collect-eggs-btn').innerHTML = 
-                `<i class="fa-solid fa-clock"></i> انتظر ${formatTime(remainingSeconds)}`;
-        }
-    }, 1000);
-}
-
-// ✅ دالة جمع الإنتاج
-async function collectProduction() {
-    if (!currentUserId) return;
-    
-    const collectBtn = document.getElementById('collect-eggs-btn');
-    const originalText = collectBtn.innerHTML;
-    
-    collectBtn.disabled = true;
-    collectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الجمع...';
-    
-    try {
-        const result = await callAPI('collectProduction');
-        
-        if (result.success) {
-            showNotification(`✅ تم جمع ${result.data.eggsCollected || 0} بيضة!`, "success");
-            await loadGameState();
-        } else {
-            showNotification("❌ فشل جمع الإنتاج: " + result.error, "error");
-            collectBtn.innerHTML = originalText;
-            collectBtn.disabled = false;
-        }
-    } catch (error) {
-        console.error("Collect production error:", error);
-        showNotification("❌ خطأ في جمع الإنتاج. حاول مرة أخرى.", "error");
-        collectBtn.innerHTML = originalText;
-        collectBtn.disabled = false;
-    }
-}
-
-// ✅ دالة شراء دجاج
-async function buyChicken() {
-    if (!currentUserId) {
-        showNotification("❌ يجب تهيئة المستخدم أولاً", "error");
-        return;
-    }
-    
-    const chickenPrice = gameData?.prices?.chicken || 60;
-    
-    if (confirm(`هل تريد شراء دجاجة جديدة بسعر ${chickenPrice} عملة؟\n\nسيزيد إنتاجك بمقدار 1 بيضة/ساعة`)) {
-        const result = await callAPI('buyChicken');
-        
-        if (result.success) {
-            showNotification(`✅ تم شراء دجاجة جديدة بنجاح!`, "success");
-            await loadGameState();
-        } else {
-            showNotification("❌ فشل شراء الدجاجة: " + result.error, "error");
-        }
-    }
-}
-
-// ✅ دالة بيع كل البيض
-async function sellEggs() {
-    if (!currentUserId) return;
-    
-    const totalEggs = gameState?.eggs || 0;
-    const eggPrice = gameData?.prices?.egg || 10;
-    const totalAmount = totalEggs * eggPrice;
-    
-    if (totalEggs <= 0) {
-        showNotification("❌ لا تمتلك بيضًا للبيع!", "error");
-        return;
-    }
-    
-    if (confirm(`هل تريد بيع كل البيض (${totalEggs} بيضة) بسعر ${totalAmount} عملة؟\n\nسعر البيضة: ${eggPrice} عملة`)) {
-        const result = await callAPI('sellEggs');
-        
-        if (result.success) {
-            showNotification(`💰 تم بيع ${result.data.eggsSold || 0} بيضة بـ ${result.data.totalAmount || 0} عملة!`, "success");
-            await loadGameState();
-        } else {
-            showNotification("❌ فشل بيع البيض: " + result.error, "error");
-        }
-    }
-}
-
-// ✅ دالة تحويل البيض
-async function convertEggs() {
-    if (!currentUserId) return;
-    
-    const eggsToConvert = parseInt(document.getElementById('convert-eggs-input').value) || 0;
-    const conversionRate = gameData?.prices?.conversionRate || 100;
-    
-    if (eggsToConvert < conversionRate) {
-        showNotification(`❌ تحتاج ${conversionRate} بيضة على الأقل للتحويل!`, "error");
-        return;
-    }
-    
-    if (eggsToConvert > (gameState?.eggs || 0)) {
-        showNotification("❌ لا تمتلك هذا العدد من البيض!", "error");
-        return;
-    }
-    
-    if (confirm(`هل تريد تحويل ${eggsToConvert} بيضة إلى ${Math.floor(eggsToConvert / conversionRate)} عملة؟\n\nنسبة التحويل: ${conversionRate} بيضة = 1 عملة`)) {
-        const result = await callAPI('convertEggs', {
-            eggsToConvert: eggsToConvert
-        });
-        
-        if (result.success) {
-            showNotification(`✅ تم تحويل ${result.data.eggsConverted || 0} بيضة إلى ${result.data.amountReceived || 0} عملة!`, "success");
-            document.getElementById('convert-eggs-input').value = '';
-            await loadGameState();
-        } else {
-            showNotification("❌ فشل تحويل البيض: " + result.error, "error");
-        }
-    }
-}
-
-// ✅ دالة بيع كل البيض (من صفحة السوق)
-async function sellAllEggs() {
-    await sellEggs();
-}
-
-// ✅ دالة تحديث صفحة السوق
-function updateMarketPage() {
-    if (!gameData || !gameState) return;
-    
-    // تحديث الأسعار
-    if (gameData.prices) {
-        document.getElementById('market-egg-price').textContent = gameData.prices.egg || 10;
-        document.getElementById('market-chicken-price').textContent = gameData.prices.chicken || 60;
-        document.getElementById('conversion-rate').textContent = `${gameData.prices.conversionRate || 100}:1`;
-    }
-    
-    // تحديث عدد البيض
-    document.getElementById('total-eggs-count').textContent = gameState.eggs || 0;
-    
-    // تحديث تاريخ المعاملات
-    updateTransactionHistory();
-}
-
-// ✅ دالة تحديث تاريخ المعاملات
-async function updateTransactionHistory() {
-    if (!currentUserId) return;
-    
-    try {
-        // جلب آخر المعاملات (يمكن إضافة API خاص لذلك)
-        const historyContainer = document.getElementById('transaction-history');
-        
-        // محاكاة للمعاملات حتى يتم إضافة API خاص
-        const sampleTransactions = [
-            { type: 'شراء', item: 'دجاجة', amount: '60', time: 'منذ 5 دقائق' },
-            { type: 'بيع', item: '50 بيضة', amount: '500', time: 'منذ ساعة' },
-            { type: 'تحويل', item: '200 بيضة', amount: '2', time: 'منذ يومين' }
-        ];
-        
-        historyContainer.innerHTML = '';
-        
-        if (sampleTransactions.length === 0) {
-            historyContainer.innerHTML = '<p style="text-align:center;padding:20px;color:var(--text-muted);">لا توجد معاملات بعد</p>';
-            return;
-        }
-        
-        sampleTransactions.forEach(transaction => {
-            const transactionEl = document.createElement('div');
-            transactionEl.className = 'shop-item';
-            transactionEl.style.padding = '8px';
-            transactionEl.style.marginBottom = '5px';
-            transactionEl.style.fontSize = '11px';
-            
-            const typeIcon = transaction.type === 'شراء' ? '🐔' : transaction.type === 'بيع' ? '💰' : '💱';
-            transactionEl.innerHTML = `
-                <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <div>${typeIcon}</div>
-                        <div>${transaction.type} ${transaction.item}</div>
-                    </div>
-                    <div style="color:var(--primary-green);font-weight:bold;">${transaction.amount}</div>
-                    <div style="font-size:9px;color:var(--text-muted);">${transaction.time}</div>
-                </div>
-            `;
-            historyContainer.appendChild(transactionEl);
-        });
-    } catch (error) {
-        console.error("Error updating transaction history:", error);
-    }
-}
-
-// ✅ دالة التبديل بين الصفحات
-function switchTab(tabId) {
-    document.querySelectorAll('.content-section').forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    document.getElementById(tabId).classList.add('active');
-    document.querySelector(`.nav-item[data-target="${tabId}"]`).classList.add('active');
-    
-    if (tabId === 'market') {
-        updateMarketPage();
-    }
-}
-
-// ✅ دالة تحميل الصفحة
-function startGlobalLoading() {
-    const loadingPage = document.getElementById('global-loading-page');
-    const progressBar = document.getElementById('loading-progress-bar');
-    const timerElement = document.getElementById('loading-timer');
-    
-    if (!loadingPage || !progressBar || !timerElement) return;
-    
-    // إخفاء التطبيق الرئيسي
-    document.getElementById('app-container').style.display = 'none';
-    
-    // إظهار صفحة التحميل
-    loadingPage.style.display = 'flex';
-    
-    let loadingSeconds = 3;
-    let loadingProgress = 0;
-    
-    const loadingTimerInterval = setInterval(() => {
-        loadingSeconds--;
-        
-        if (loadingSeconds <= 0) {
-            loadingSeconds = 0;
-            timerElement.textContent = "جاهز!";
-        } else {
-            timerElement.textContent = loadingSeconds + " ثانية";
-        }
-        
-        // تحديث شريط التقدم
-        loadingProgress = ((3 - loadingSeconds) / 3) * 100;
-        progressBar.style.width = loadingProgress + '%';
-        
-        // عند انتهاء الوقت
-        if (loadingSeconds <= 0) {
-            clearInterval(loadingTimerInterval);
-            finishLoading();
-        }
-    }, 1000);
-}
-
-// ✅ دالة إنهاء التحميل
-async function finishLoading() {
-    const loadingPage = document.getElementById('global-loading-page');
-    
-    try {
-        // ✅ تهيئة المستخدم
-        await initializeUser();
-        
-        // ✅ تحميل حالة اللعبة
-        const loaded = await loadGameState();
-        
-        if (loaded) {
-            // ✅ عرض التطبيق الرئيسي
-            document.getElementById('app-container').style.display = 'block';
-            
-            // ✅ بدء التحديث التلقائي
-            startAutoUpdate();
-            
-            showNotification("✅ تم تحميل المزرعة بنجاح! أهلاً بك!", "success");
-        } else {
-            showNotification("❌ فشل تحميل اللعبة. يرجى تحديث الصفحة.", "error");
-        }
-        
-    } catch (error) {
-        console.error("Loading error:", error);
-        showNotification("⚠️ حدث خطأ أثناء التحميل. حاول مرة أخرى.", "warning");
-    } finally {
-        if (loadingPage) {
-            loadingPage.style.display = 'none';
-        }
-    }
-}
-
-// ✅ دالة التحديث التلقائي
-function startAutoUpdate() {
-    if (autoUpdateInterval) clearInterval(autoUpdateInterval);
-    
-    // تحديث حالة اللعبة كل 30 ثانية
-    autoUpdateInterval = setInterval(async () => {
-        await loadGameState();
-    }, 30000);
-}
-
-// ✅ تهيئة التطبيق
-document.addEventListener('DOMContentLoaded', function() {
-    // إعداد مستمعي الأحداث
-    document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.target));
-    });
-    
-    // إعداد حقل تحويل البيض
-    document.getElementById('convert-eggs-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            convertEggs();
-        }
-    });
-    
-    // بدء التحميل
-    startGlobalLoading();
-});
-</script>
+        // ====== EXPORT FUNCTIONS TO GLOBAL SCOPE ======
+        window.openMintModal = openMintModal;
+        window.closeMintModal = closeMintModal;
+        window.openHatchModal = openHatchModal;
+        window.closeHatchModal = closeHatchModal;
+        window.setMaxHatch = setMaxHatch;
+        window.confirmMint = confirmMint;
+        window.confirmHatch = confirmHatch;
+        window.createOrder = createOrder;
+        window.buyOrder = buyOrder;
+        window.copyReferralLink = copyReferralLink;
+        window.shareReferralLink = shareReferralLink;
+        window.filterOrders = filterOrders;
+    </script>
 </body>
 </html>
