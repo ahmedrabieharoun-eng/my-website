@@ -1,2280 +1,398 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Galaxy Farm - مزرعة المجرة</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+    <title>GLX Galaxy</title>
     
-    <!-- مكتبات Firebase -->
+    <!-- ✅ مكتبة Firebase فقط -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
     
-    <!-- Font Awesome -->
+    <!-- ✅ Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- خطوط عربية -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
     <style>
-        /* أنماط الصفحة - تصميم عربي متكامل */
-        :root {
-            --primary-green: #27ae60;
-            --earth-brown: #8b4513;
-            --wheat-yellow: #f39c12;
-            --flour-white: #f8f9fa;
-            --milk-blue: #3498db;
-            --ghee-gold: #ffd700;
-            --dark-bg: #121212;
-            --card-bg: rgba(255, 255, 255, 0.05);
-            --card-border: rgba(255, 255, 255, 0.1);
-            --text-color: #ffffff;
-            --text-muted: #b0b0b0;
-            --nav-bg: rgba(40, 40, 40, 0.98);
-            --success: #27ae60;
-            --warning: #f39c12;
-            --danger: #e74c3c;
-            --info: #3498db;
+        /* أنماط الصفحة الأساسية فقط */
+        :root{--primary-green:#a855f7;--deep-Galaxy:#202020;--gold:#d6bcfa;--gold-glow:rgba(168,85,247,0.4);--glass-bg:rgba(32,32,32,0.7);--glass-border:rgba(255,255,255,0.1);--text-color:#ffffff;--text-muted:#b0b0b0;--nav-bg:rgba(40,40,40,0.98);--success-color:#a855f7;}
+        *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        body{font-family:'Outfit',sans-serif;color:var(--text-color);overflow-x:hidden;background-image:url('https://i.ibb.co/RGFp67kJ/121.jpg');background-size:cover;background-position:center;background-attachment:fixed;min-height:100vh;}
+        body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:radial-gradient(circle at center,rgba(50,50,50,0.3)0%,rgba(30,30,30,0.85)100%);z-index:-1;}
+        
+        .app-container{padding:20px;padding-bottom:110px;max-width:500px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+        .content-section{display:none;animation:fadeIn 0.4s ease;}
+        .content-section.active{display:flex;flex-direction:column;flex:1;}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+        h1{font-size:26px;font-weight:800;color:#fff;margin-bottom:5px;text-transform:uppercase;letter-spacing:1px;}
+        h2{font-size:18px;font-weight:700;margin:20px 0 10px;color:var(--gold);display:flex;align-items:center;gap:8px;}
+        p{font-size:13px;color:var(--text-muted);line-height:1.4;}
+        .page-header{text-align:center;margin-bottom:20px;padding-top:10px;}
+        .card{background:var(--glass-bg);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border-radius:24px;padding:20px;margin-bottom:12px;border:1px solid var(--glass-border);box-shadow:0 4px 20px rgba(0,0,0,0.4);}
+        
+        .btn{display:flex;align-items:center;justify-content:center;width:100%;padding:16px;border-radius:18px;font-size:16px;font-weight:800;cursor:pointer;border:none;outline:none;gap:8px;text-transform:uppercase;letter-spacing:0.5px;transition:transform 0.1s;}
+        .btn:active{transform:scale(0.96);}
+        .btn:disabled{opacity:0.5;cursor:not-allowed;filter:grayscale(1);}
+        
+        .hud-container{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.5);border-radius:50px;padding:10px 15px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.05);}
+        .user-name{font-weight:700;font-size:14px;}
+        .hud-avatar{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px solid var(--primary-green);}
+        .hud-avatar img{width:100%;height:100%;object-fit:cover;}
+        
+        .main-coin-section{text-align:center;margin:10px 0 30px;position:relative;}
+        .main-coin-img{width:160px;height:160px;border-radius:50%;box-shadow:0 0 50px rgba(168,85,247,0.3);animation:float 4s ease-in-out infinite;object-fit:cover;border:4px solid var(--primary-green);}
+        @keyframes float{0%{transform:translateY(0px);}50%{transform:translateY(-10px);}100%{transform:translateY(0px);}}
+        .balance-display{margin-top:15px;}
+        .balance-amount{font-size:48px;font-weight:800;background:linear-gradient(to bottom,#fff,#b3b3b3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;}
+        .balance-unit{font-size:16px;color:var(--primary-green);font-weight:700;letter-spacing:2px;}
+        .stats-pill{display:inline-flex;align-items:center;gap:15px;background:rgba(255,255,255,0.05);padding:8px 16px;border-radius:20px;margin-top:10px;font-size:12px;font-weight:600;}
+        
+        .support-channel-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:15px;margin-bottom:10px;cursor:pointer;transition:all 0.3s;border:1px solid rgba(255,255,255,0.1);}
+        .support-channel-card:hover{background:rgba(255,255,255,0.08);transform:translateY(-2px);border-color:rgba(168,85,247,0.4);}
+        
+        .bottom-nav{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:90%;max-width:400px;height:65px;background:var(--nav-bg);border-radius:32px;display:flex;justify-content:space-around;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,0.5);z-index:100;border:1px solid rgba(255,255,255,0.1);}
+        .nav-item{display:flex;flex-direction:column;align-items:center;color:#666;transition:0.3s;cursor:pointer;position:relative;width:50px;}
+        .nav-item svg{width:22px;height:22px;margin-bottom:4px;stroke:currentColor;fill:none;stroke-width:2.5;transition:all 0.3s;}
+        .nav-item.active{color:var(--primary-green);transform:translateY(-2px);}
+        .nav-item.active svg{stroke:var(--primary-green);filter:drop-shadow(0 0 8px rgba(168,85,247,0.6));}
+        .nav-text{font-size:9px;font-weight:700;text-transform:uppercase;}
+        
+        @media (max-width:480px){
+            .app-container{padding:10px;padding-bottom:80px;}
+            .main-coin-img{width:120px;height:120px;}
+            .balance-amount{font-size:36px;}
+            .bottom-nav{width:95%;height:60px;}
+            .nav-text{font-size:8px;}
+            .bottom-nav{width:96%;padding:0 5px;}
+            .nav-item{width:45px;}
+            .nav-text{font-size:7px;}
         }
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            font-family: 'Cairo', sans-serif;
-        }
-        
-        body {
-            background-color: var(--dark-bg);
-            color: var(--text-color);
-            overflow-x: hidden;
-            min-height: 100vh;
-            background-image: 
-                radial-gradient(circle at 20% 80%, rgba(39, 174, 96, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 80% 20%, rgba(139, 69, 19, 0.1) 0%, transparent 20%),
-                radial-gradient(circle at 40% 40%, rgba(52, 152, 219, 0.05) 0%, transparent 30%);
-        }
-        
-        /* الهيدر الرئيسي */
-        .app-header {
-            background: linear-gradient(135deg, rgba(39, 174, 96, 0.2), rgba(139, 69, 19, 0.2));
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--card-border);
-            position: sticky;
+        /* ✅ صفحة التحميل العالمية */
+        #global-loading-page {
+            position: fixed;
             top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-        }
-        
-        .user-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: 2px solid var(--primary-green);
-            overflow: hidden;
-        }
-        
-        .user-avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .user-balance {
-            text-align: left;
-        }
-        
-        .balance-main {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--text-color);
-        }
-        
-        .balance-label {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-        
-        .user-level {
-            background: rgba(255, 215, 0, 0.2);
-            border-radius: 20px;
-            padding: 3px 10px;
-            font-size: 11px;
-            color: var(--ghee-gold);
-            font-weight: 700;
-        }
-        
-        /* الحاوية الرئيسية */
-        .app-container {
-            padding: 20px;
-            padding-bottom: 100px;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
-        /* بطاقة القسم */
-        .section-card {
-            background: var(--card-bg);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 15px;
-            border: 1px solid var(--card-border);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-color);
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .section-title i {
-            font-size: 20px;
-        }
-        
-        /* شبكة المعدات */
-        .equipment-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .equipment-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .equipment-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary-green);
-        }
-        
-        .equipment-icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-        
-        .equipment-name {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        
-        .equipment-count {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary-green);
-        }
-        
-        /* شبكة المخزون */
-        .inventory-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        
-        .inventory-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-right: 4px solid transparent;
-        }
-        
-        .inventory-item.wheat {
-            border-right-color: var(--wheat-yellow);
-        }
-        
-        .inventory-item.flour {
-            border-right-color: var(--flour-white);
-        }
-        
-        .inventory-item.milk {
-            border-right-color: var(--milk-blue);
-        }
-        
-        .inventory-item.ghee {
-            border-right-color: var(--ghee-gold);
-        }
-        
-        .inventory-icon {
-            font-size: 24px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-        }
-        
-        .inventory-item.wheat .inventory-icon {
-            background: rgba(243, 156, 18, 0.2);
-            color: var(--wheat-yellow);
-        }
-        
-        .inventory-item.flour .inventory-icon {
-            background: rgba(248, 249, 250, 0.2);
-            color: var(--flour-white);
-        }
-        
-        .inventory-item.milk .inventory-icon {
-            background: rgba(52, 152, 219, 0.2);
-            color: var(--milk-blue);
-        }
-        
-        .inventory-item.ghee .inventory-icon {
-            background: rgba(255, 215, 0, 0.2);
-            color: var(--ghee-gold);
-        }
-        
-        .inventory-info {
-            flex: 1;
-        }
-        
-        .inventory-name {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 2px;
-        }
-        
-        .inventory-amount {
-            font-size: 16px;
-            font-weight: 700;
-        }
-        
-        .inventory-price {
-            font-size: 11px;
-            color: var(--primary-green);
-        }
-        
-        /* أزرار العمل */
-        .action-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .btn {
-            padding: 15px;
-            border-radius: 15px;
-            border: none;
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        
-        .btn:active {
-            transform: scale(0.98);
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-green), #2ecc71);
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-color);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .btn-success {
-            background: linear-gradient(135deg, var(--success), #2ecc71);
-            color: white;
-        }
-        
-        .btn-warning {
-            background: linear-gradient(135deg, var(--warning), #f1c40f);
-            color: white;
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, var(--danger), #c0392b);
-            color: white;
-        }
-        
-        /* صفحات المحتوى */
-        .content-page {
-            display: none;
-            animation: fadeIn 0.4s ease;
-        }
-        
-        .content-page.active {
-            display: block;
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        /* صفحة الإنتاج */
-        .production-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .production-item {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .production-info {
-            flex: 1;
-        }
-        
-        .production-title {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        
-        .production-desc {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        
-        .production-timer {
-            font-size: 12px;
-            color: var(--warning);
-            font-family: 'Courier New', monospace;
-        }
-        
-        .production-complete {
-            color: var(--success);
-        }
-        
-        /* صفحة السوق */
-        .market-tabs {
-            display: flex;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 50px;
-            padding: 4px;
-            margin-bottom: 20px;
-        }
-        
-        .market-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .market-tab.active {
-            background: var(--primary-green);
-            color: white;
-        }
-        
-        .market-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .market-order {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 8px;
-            border-left: 4px solid transparent;
-        }
-        
-        .market-order.buy {
-            border-left-color: var(--success);
-            background: rgba(39, 174, 96, 0.1);
-        }
-        
-        .market-order.sell {
-            border-left-color: var(--danger);
-            background: rgba(231, 76, 60, 0.1);
-        }
-        
-        .order-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        
-        .order-user {
-            font-size: 12px;
-            font-weight: 700;
-        }
-        
-        .order-amount {
-            font-size: 14px;
-            font-weight: 800;
-        }
-        
-        .order-details {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        
-        .order-price {
-            color: var(--primary-green);
-            font-weight: 700;
-        }
-        
-        /* نموذج البيع/الشراء */
-        .market-form {
-            margin-top: 20px;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 5px;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 12px 15px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            color: white;
-            font-size: 16px;
-            font-weight: 700;
-            outline: none;
-            font-family: 'Cairo', sans-serif;
-        }
-        
-        .form-input:focus {
-            border-color: var(--primary-green);
-        }
-        
-        .form-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .max-btn {
-            background: rgba(39, 174, 96, 0.2);
-            border: 1px solid rgba(39, 174, 96, 0.5);
-            color: var(--success);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        
-        /* صفحة الإحالات */
-        .referral-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--primary-green);
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        
-        .referral-link-box {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: center;
-            font-family: 'Courier New', monospace;
-            word-break: break-all;
-            font-size: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .referral-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .referral-item {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .referral-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-left: 10px;
-            border: 2px solid var(--primary-green);
-        }
-        
-        .referral-info {
-            flex: 1;
-        }
-        
-        .referral-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .referral-date {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        
-        .referral-earned {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--primary-green);
-        }
-        
-        /* صفحة المسابقات */
-        .competition-timer {
-            background: linear-gradient(135deg, rgba(39, 174, 96, 0.2), rgba(52, 152, 219, 0.2));
-            border-radius: 20px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            border: 2px solid rgba(39, 174, 96, 0.3);
-        }
-        
-        .timer-display {
-            font-size: 36px;
-            font-weight: 800;
-            color: white;
-            margin-bottom: 5px;
-            font-family: 'Courier New', monospace;
-            text-shadow: 0 0 10px rgba(39, 174, 96, 0.5);
-        }
-        
-        .timer-label {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-        
-        .leaderboard {
-            margin-top: 20px;
-        }
-        
-        .leaderboard-item {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .leaderboard-rank {
-            width: 30px;
-            height: 30px;
-            background: var(--primary-green);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            margin-left: 10px;
-        }
-        
-        .rank-1 .leaderboard-rank {
-            background: var(--ghee-gold);
-            color: black;
-        }
-        
-        .rank-2 .leaderboard-rank {
-            background: silver;
-            color: black;
-        }
-        
-        .rank-3 .leaderboard-rank {
-            background: #cd7f32;
-            color: black;
-        }
-        
-        .leaderboard-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            margin-left: 10px;
-            border: 2px solid var(--primary-green);
-        }
-        
-        .leaderboard-info {
-            flex: 1;
-        }
-        
-        .leaderboard-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .leaderboard-score {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-        
-        .leaderboard-points {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--primary-green);
-        }
-        
-        /* صفحة الإيداع والسحب */
-        .wallet-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .wallet-action {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }
-        
-        .wallet-action:hover {
-            border-color: var(--primary-green);
-            transform: translateY(-5px);
-        }
-        
-        .wallet-action.deposit {
-            background: rgba(39, 174, 96, 0.1);
-        }
-        
-        .wallet-action.withdraw {
-            background: rgba(231, 76, 60, 0.1);
-        }
-        
-        .wallet-icon {
-            font-size: 30px;
-            margin-bottom: 10px;
-        }
-        
-        .wallet-label {
-            font-size: 14px;
-            font-weight: 700;
-        }
-        
-        .deposit-form, .withdraw-form {
-            display: none;
-        }
-        
-        .deposit-form.active, .withdraw-form.active {
-            display: block;
-        }
-        
-        .qr-container {
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        .qr-code {
-            width: 200px;
-            height: 200px;
-            background: white;
-            padding: 10px;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        
-        .wallet-address {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 15px;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            word-break: break-all;
-            margin: 15px 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        /* النافذة السفلية */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            right: 0;
             left: 0;
-            height: 70px;
-            background: var(--nav-bg);
-            backdrop-filter: blur(20px);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            border-top: 1px solid var(--card-border);
-            z-index: 1000;
-            padding: 0 10px;
-        }
-        
-        .nav-item {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
             display: flex;
             flex-direction: column;
             align-items: center;
-            color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.3s;
-            padding: 8px 15px;
-            border-radius: 15px;
-            min-width: 70px;
-        }
-        
-        .nav-item.active {
-            color: var(--primary-green);
-            background: rgba(39, 174, 96, 0.1);
-        }
-        
-        .nav-icon {
-            font-size: 20px;
-            margin-bottom: 4px;
-        }
-        
-        .nav-label {
-            font-size: 10px;
-            font-weight: 700;
-        }
-        
-        /* الإشعارات */
-        .notification {
-            position: fixed;
-            top: 100px;
-            right: 20px;
-            background: var(--card-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--card-border);
-            border-radius: 15px;
-            padding: 15px 20px;
-            max-width: 300px;
-            z-index: 10000;
-            animation: slideIn 0.3s ease;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-        
-        .notification.success {
-            border-right: 4px solid var(--success);
-            background: rgba(39, 174, 96, 0.1);
-        }
-        
-        .notification.error {
-            border-right: 4px solid var(--danger);
-            background: rgba(231, 76, 60, 0.1);
-        }
-        
-        .notification.warning {
-            border-right: 4px solid var(--warning);
-            background: rgba(243, 156, 18, 0.1);
-        }
-        
-        .notification.info {
-            border-right: 4px solid var(--info);
-            background: rgba(52, 152, 219, 0.1);
-        }
-        
-        .notification-title {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-        
-        .notification-message {
-            font-size: 12px;
-            color: var(--text-muted);
-        }
-        
-        /* التكيف مع الهواتف */
-        @media (max-width: 480px) {
-            .app-container {
-                padding: 10px;
-                padding-bottom: 80px;
-            }
-            
-            .equipment-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .inventory-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .action-buttons {
-                grid-template-columns: 1fr;
-            }
-            
-            .balance-main {
-                font-size: 20px;
-            }
-            
-            .timer-display {
-                font-size: 28px;
-            }
-            
-            .qr-code {
-                width: 150px;
-                height: 150px;
-            }
-            
-            .nav-item {
-                min-width: 60px;
-                padding: 6px 10px;
-            }
-            
-            .nav-icon {
-                font-size: 18px;
-            }
-            
-            .nav-label {
-                font-size: 9px;
-            }
-        }
-        
-        /* شريط التقدم */
-        .progress-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-            margin: 10px 0;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-green), #2ecc71);
-            border-radius: 3px;
-            transition: width 0.5s ease;
-        }
-        
-        /* شعار */
-        .logo {
+            justify-content: center;
+            z-index: 999999;
             text-align: center;
-            margin-bottom: 20px;
+            padding: 20px;
         }
         
-        .logo-img {
-            width: 80px;
-            height: 80px;
+        .loading-logo {
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
-            border: 3px solid var(--primary-green);
-            margin-bottom: 10px;
+            margin-bottom: 25px;
+            border: 4px solid var(--primary-green);
+            animation: float 2s ease-in-out infinite;
         }
         
-        .logo-text {
-            font-size: 24px;
-            font-weight: 900;
-            background: linear-gradient(135deg, var(--primary-green), var(--earth-brown));
+        .loading-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #a855f7, #7c3aed);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
+        
+        .loading-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+        
+        .loading-progress-container {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-green), #7c3aed);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .loading-timer {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @media (max-width: 480px) {
+            .loading-logo {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .loading-title {
+                font-size: 24px;
+            }
+            
+            .loading-subtitle {
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- صفحة التحميل -->
-    <div id="loading-page" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark-bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;">
-        <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="Galaxy Farm" class="logo-img">
-        <h1 class="logo-text" style="margin-bottom: 20px;">Galaxy Farm</h1>
-        <div class="progress-bar" style="width: 200px;">
-            <div id="loading-progress" class="progress-fill" style="width: 0%"></div>
+<!-- ✅ صفحة التحميل العالمية -->
+<div id="global-loading-page">
+    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="GLX Galaxy" class="loading-logo">
+    <h1 class="loading-title">GLX GALAXY</h1>
+    <p class="loading-subtitle">Loading your cosmic experience...</p>
+    
+    <div class="loading-progress-container">
+        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+    </div>
+    
+    <div class="loading-timer" id="loading-timer">10 seconds</div>
+    
+    <div style="margin-top: 30px; font-size: 11px; color: var(--text-muted); max-width: 300px;">
+        <i class="fas fa-shield-alt" style="margin-right: 5px;"></i>
+        Performing security checks & loading your data
+    </div>
+</div>
+
+<!-- ✅ الصفحة الرئيسية فقط -->
+<div class="app-container" style="display:none;" id="app-container">
+    <div class="hud-container">
+        <div>
+            <div class="user-name" id="home-username">Explorer</div>
+            <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
+                <div class="stats-pill" style="margin:0;padding:6px 12px;">
+                    <span style="color:var(--gold);">GLX:</span>
+                    <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
+                </div>
+                <div class="stats-pill" style="margin:0;padding:6px 12px;">
+                    <span style="color:var(--gold);">TON:</span>
+                    <span id="hud-ton-balance" style="color:#fff;font-weight:700;">0.0000</span>
+                </div>
+            </div>
         </div>
-        <p style="margin-top: 20px; color: var(--text-muted); font-size: 14px;">جاري تحميل المزرعة...</p>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div class="hud-avatar">
+                <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
+            </div>
+        </div>
     </div>
 
-    <!-- التطبيق الرئيسي -->
-    <div id="main-app" style="display: none;">
-        <!-- الهيدر -->
-        <header class="app-header">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="المستخدم">
-                </div>
-                
-                <div class="user-balance">
-                    <div class="balance-main" id="balance-ton">0.0000</div>
-                    <div class="balance-label">رصيد TON</div>
-                </div>
-                
-                <div class="user-level">
-                    <span id="user-level">مبتدئ</span>
-                </div>
+    <main id="home" class="content-section active">
+        <div class="main-coin-section">
+            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="main-coin-img" alt="GLX">
+            <div class="balance-display">
+                <div class="balance-amount" id="total-GLX-balance">0</div>
+                <div class="balance-unit">GLX</div>
             </div>
-        </header>
-
-        <!-- المحتوى الرئيسي -->
-        <div class="app-container">
-            <!-- الصفحة الرئيسية -->
-            <div id="home-page" class="content-page active">
-                <div class="logo">
-                    <h1 class="logo-text">🌾 مزرعة المجرة</h1>
-                    <p style="color: var(--text-muted); font-size: 14px; margin-top: 5px;">أنتج، تاجر، اربح</p>
-                </div>
-
-                <!-- معداتي -->
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-tractor"></i> معداتي</h2>
-                    <div class="equipment-grid">
-                        <div class="equipment-card" onclick="openPage('equipment', 'land')">
-                            <div class="equipment-icon">🏞️</div>
-                            <div class="equipment-name">الأرض</div>
-                            <div class="equipment-count" id="land-count">0</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">تنتج زرع</div>
-                        </div>
-                        
-                        <div class="equipment-card" onclick="openPage('equipment', 'mill')">
-                            <div class="equipment-icon">🏭</div>
-                            <div class="equipment-name">المطحنة</div>
-                            <div class="equipment-count" id="mill-count">0</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">تحول زرع إلى دقيق</div>
-                        </div>
-                        
-                        <div class="equipment-card" onclick="openPage('equipment', 'farm')">
-                            <div class="equipment-icon">🐄</div>
-                            <div class="equipment-name">المزرعة</div>
-                            <div class="equipment-count" id="farm-count">0</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">تحول دقيق إلى لبن</div>
-                        </div>
-                        
-                        <div class="equipment-card" onclick="openPage('equipment', 'factory')">
-                            <div class="equipment-icon">🏢</div>
-                            <div class="equipment-name">المصنع</div>
-                            <div class="equipment-count" id="factory-count">0</div>
-                            <div style="font-size: 11px; color: var(--text-muted);">تحول لبن إلى سمن</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- مخزوني -->
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-warehouse"></i> مخزوني</h2>
-                    <div class="inventory-grid">
-                        <div class="inventory-item wheat">
-                            <div class="inventory-icon">🌾</div>
-                            <div class="inventory-info">
-                                <div class="inventory-name">الزرع</div>
-                                <div class="inventory-amount" id="wheat-amount">0</div>
-                                <div class="inventory-price" id="wheat-price">0.0001 TON</div>
-                            </div>
-                        </div>
-                        
-                        <div class="inventory-item flour">
-                            <div class="inventory-icon">🍞</div>
-                            <div class="inventory-info">
-                                <div class="inventory-name">الدقيق</div>
-                                <div class="inventory-amount" id="flour-amount">0</div>
-                                <div class="inventory-price" id="flour-price">0.0002 TON</div>
-                            </div>
-                        </div>
-                        
-                        <div class="inventory-item milk">
-                            <div class="inventory-icon">🥛</div>
-                            <div class="inventory-info">
-                                <div class="inventory-name">اللبن</div>
-                                <div class="inventory-amount" id="milk-amount">0</div>
-                                <div class="inventory-price" id="milk-price">0.0004 TON</div>
-                            </div>
-                        </div>
-                        
-                        <div class="inventory-item ghee">
-                            <div class="inventory-icon">🧈</div>
-                            <div class="inventory-info">
-                                <div class="inventory-name">السمن</div>
-                                <div class="inventory-amount" id="ghee-amount">0</div>
-                                <div class="inventory-price" id="ghee-price">0.0010 TON</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- أزرار سريعة -->
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="openPage('production')">
-                        <i class="fas fa-play"></i> بدء الإنتاج
-                    </button>
-                    
-                    <button class="btn btn-success" onclick="openPage('market')">
-                        <i class="fas fa-store"></i> السوق
-                    </button>
-                    
-                    <button class="btn btn-warning" onclick="openPage('deposit')">
-                        <i class="fas fa-money-bill-wave"></i> إيداع
-                    </button>
-                    
-                    <button class="btn btn-danger" onclick="openPage('withdraw')">
-                        <i class="fas fa-wallet"></i> سحب
-                    </button>
-                </div>
+            <div class="stats-pill">
+                <span style="font-size:10px;opacity:0.8;">Welcome to GLX Galaxy</span>
             </div>
+        </div>
 
-            <!-- صفحة الإنتاج -->
-            <div id="production-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-play-circle"></i> عمليات الإنتاج</h2>
-                    
-                    <div class="production-list" id="production-list">
-                        <!-- ستضاف العمليات ديناميكياً -->
+        <!-- 🔄 قسم الأخبار -->
+        <div class="card" style="margin-top:12px;">
+            <h2 style="display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-bullhorn"></i>Updates & News
+            </h2>
+            <div class="support-channel-card" onclick="window.open('https://t.me/earnmoney174688','_blank')" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#9b59b6,#8e44ad);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+                        <i class="fa-solid fa-bell"></i>
                     </div>
-                    
-                    <button class="btn btn-primary" onclick="startAllProduction()" style="width: 100%; margin-top: 15px;">
-                        <i class="fas fa-rocket"></i> تشغيل كل العمليات
-                    </button>
-                </div>
-            </div>
-
-            <!-- صفحة السوق -->
-            <div id="market-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-store"></i> سوق المزرعة</h2>
-                    
-                    <div class="market-tabs">
-                        <div class="market-tab active" onclick="switchMarketTab('buy')">عروض الشراء</div>
-                        <div class="market-tab" onclick="switchMarketTab('sell')">عروض البيع</div>
-                        <div class="market-tab" onclick="switchMarketTab('history')">سجل الصفقات</div>
-                    </div>
-                    
-                    <div class="market-list" id="market-orders">
-                        <!-- ستضاف الطلبات ديناميكياً -->
-                    </div>
-                    
-                    <!-- نموذج البيع -->
-                    <div class="market-form" id="sell-form" style="display: none;">
-                        <div class="form-group">
-                            <label class="form-label">اختر المادة:</label>
-                            <select class="form-input" id="sell-material">
-                                <option value="wheat">🌾 الزرع</option>
-                                <option value="flour">🍞 الدقيق</option>
-                                <option value="milk">🥛 اللبن</option>
-                                <option value="ghee">🧈 السمن</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">الكمية:</label>
-                            <div class="form-row">
-                                <input type="number" class="form-input" id="sell-amount" placeholder="الكمية" min="1">
-                                <button class="max-btn" onclick="setMaxSell()">الحد الأقصى</button>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">السعر لكل وحدة (TON):</label>
-                            <input type="number" class="form-input" id="sell-price" placeholder="0.0001" step="0.0001" min="0.0001">
-                        </div>
-                        
-                        <button class="btn btn-success" onclick="submitSellOrder()" style="width: 100%;">
-                            <i class="fas fa-hand-holding-usd"></i> عرض للبيع
-                        </button>
-                    </div>
-                    
-                    <!-- نموذج الشراء -->
-                    <div class="market-form" id="buy-form">
-                        <div class="form-group">
-                            <label class="form-label">اختر المادة:</label>
-                            <select class="form-input" id="buy-material">
-                                <option value="wheat">🌾 الزرع</option>
-                                <option value="flour">🍞 الدقيق</option>
-                                <option value="milk">🥛 اللبن</option>
-                                <option value="ghee">🧈 السمن</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">الكمية:</label>
-                            <input type="number" class="form-input" id="buy-amount" placeholder="الكمية" min="1">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">السعر لكل وحدة (TON):</label>
-                            <input type="number" class="form-input" id="buy-price" placeholder="0.0001" step="0.0001" min="0.0001">
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="submitBuyOrder()" style="width: 100%;">
-                            <i class="fas fa-shopping-cart"></i> عرض للشراء
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- صفحة الإحالات -->
-            <div id="referrals-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-users"></i> نظام الإحالات</h2>
-                    
-                    <div class="referral-stats">
-                        <div class="stat-card">
-                            <div class="stat-value" id="total-ref">0</div>
-                            <div class="stat-label">إجمالي الإحالات</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value" id="active-ref">0</div>
-                            <div class="stat-label">نشطين</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value" id="earned-ref">0 TON</div>
-                            <div class="stat-label">أرباح الإحالات</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value" id="pending-ref">0 TON</div>
-                            <div class="stat-label">في الانتظار</div>
+                    <div style="flex:1;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Bot Updates & News</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Latest updates, announcements, and news about the bot</div>
+                        <div style="font-size:10px;color:#9b59b6;margin-top:5px;">
+                            <i class="fa-solid fa-users"></i> @earnmoney174688
                         </div>
                     </div>
-                    
-                    <div class="referral-link-box" id="referral-link">
-                        جاري تحميل رابط الدعوة...
+                    <div style="color:#9b59b6;font-size:18px;">
+                        <i class="fa-solid fa-arrow-right"></i>
                     </div>
-                    
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" onclick="shareReferral()">
-                            <i class="fas fa-share-alt"></i> مشاركة الرابط
-                        </button>
-                        
-                        <button class="btn btn-secondary" onclick="copyReferralLink()">
-                            <i class="fas fa-copy"></i> نسخ الرابط
-                        </button>
-                    </div>
-                    
-                    <h3 style="margin-top: 20px; margin-bottom: 10px; color: var(--text-color);">الإحالات المباشرة</h3>
-                    <div class="referral-list" id="referral-list">
-                        <!-- ستضاف الإحالات ديناميكياً -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- صفحة المسابقات -->
-            <div id="competitions-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-trophy"></i> المسابقات</h2>
-                    
-                    <div class="competition-timer">
-                        <div class="timer-display" id="competition-timer">24:00:00</div>
-                        <div class="timer-label">الوقت المتبقي للمسابقة الأسبوعية</div>
-                    </div>
-                    
-                    <div class="leaderboard">
-                        <h3 style="margin-bottom: 15px; color: var(--text-color);">🏆 المتصدرون الحاليون</h3>
-                        <div id="leaderboard-list">
-                            <!-- ستضاف المتصدرون ديناميكياً -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- صفحة الإيداع -->
-            <div id="deposit-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-money-bill-wave"></i> إيداع TON</h2>
-                    
-                    <div class="qr-container">
-                        <div class="qr-code" id="qr-code">
-                            <!-- سيتم إنشاء QR Code هنا -->
-                        </div>
-                    </div>
-                    
-                    <div class="wallet-address" id="deposit-address">
-                        جاري تحميل عنوان المحفظة...
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">الحد الأدنى للإيداع: 0.01 TON</label>
-                        <input type="number" class="form-input" id="deposit-amount" placeholder="0.01" step="0.01" min="0.01" value="0.01">
-                    </div>
-                    
-                    <button class="btn btn-primary" onclick="copyDepositAddress()" style="width: 100%; margin-bottom: 10px;">
-                        <i class="fas fa-copy"></i> نسخ العنوان
-                    </button>
-                    
-                    <button class="btn btn-success" onclick="checkDeposit()" style="width: 100%;">
-                        <i class="fas fa-sync-alt"></i> التحقق من الإيداع
-                    </button>
-                </div>
-            </div>
-
-            <!-- صفحة السحب -->
-            <div id="withdraw-page" class="content-page">
-                <div class="section-card">
-                    <h2 class="section-title"><i class="fas fa-wallet"></i> سحب TON</h2>
-                    
-                    <div style="background: rgba(231, 76, 60, 0.1); border-radius: 12px; padding: 12px; margin-bottom: 20px; border: 1px solid rgba(231, 76, 60, 0.3);">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="color: var(--danger); font-size: 18px;"><i class="fas fa-exclamation-triangle"></i></div>
-                            <div style="font-size: 12px; color: var(--danger);">
-                                <strong>ملاحظة:</strong> يمكنك السحب مرتين فقط يومياً. الحد الأدنى للسحب: 0.05 TON
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">عنوان محفظة TON:</label>
-                        <input type="text" class="form-input" id="withdraw-address" placeholder="UQ... أو EQ... أو kQ...">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">مبلغ السحب (TON):</label>
-                        <div class="form-row">
-                            <input type="number" class="form-input" id="withdraw-amount" placeholder="0.05" step="0.01" min="0.05" value="0.05">
-                            <button class="max-btn" onclick="setMaxWithdraw()">الحد الأقصى</button>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Memo (اختياري):</label>
-                        <input type="text" class="form-input" id="withdraw-memo" placeholder="لإيداع البورصات فقط">
-                    </div>
-                    
-                    <button class="btn btn-danger" onclick="submitWithdrawal()" style="width: 100%;">
-                        <i class="fas fa-paper-plane"></i> طلب السحب
-                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- التنقل السفلي -->
-        <nav class="bottom-nav">
-            <div class="nav-item active" onclick="openPage('home')">
-                <div class="nav-icon">🏠</div>
-                <div class="nav-label">الرئيسية</div>
+        <!-- 🔄 قسم الدعم -->
+        <div class="card" style="margin-top:12px;">
+            <h2 style="display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid fa-headset"></i>Support & Help
+            </h2>
+            <div class="support-channel-card" onclick="window.open('https://t.me/aborabie777','_blank')" style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#3498db,#2980b9);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+                        <i class="fa-solid fa-user-gear"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">Technical Support</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Get help with technical issues and account problems</div>
+                    </div>
+                    <div style="color:#3498db;font-size:18px;">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="nav-item" onclick="openPage('production')">
-                <div class="nav-icon">🏭</div>
-                <div class="nav-label">الإنتاج</div>
+            <div class="support-channel-card" onclick="window.open('https://t.me/Elsayed_1_Elgohary','_blank')">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:50px;height:50px;background:linear-gradient(135deg,#27ae60,#2ecc71);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;color:white;">
+                        <i class="fa-solid fa-circle-question"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <div style="font-size:14px;font-weight:700;color:white;margin-bottom:5px;">General Support & FAQ</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Get answers to common questions and general help</div>
+                    </div>
+                    <div style="color:#27ae60;font-size:18px;">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
             </div>
-            
-            <div class="nav-item" onclick="openPage('market')">
-                <div class="nav-icon">📊</div>
-                <div class="nav-label">السوق</div>
-            </div>
-            
-            <div class="nav-item" onclick="openPage('referrals')">
-                <div class="nav-icon">👥</div>
-                <div class="nav-label">الإحالات</div>
-            </div>
-            
-            <div class="nav-item" onclick="openPage('competitions')">
-                <div class="nav-icon">🏆</div>
-                <div class="nav-label">المسابقات</div>
-            </div>
-        </nav>
-    </div>
+        </div>
+    </main>
+</div>
 
-    <script>
-        // تهيئة Firebase
-        const firebaseConfig = {
-  apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
-  authDomain: "earnmoney124553.firebaseapp.com",
-  databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
-  projectId: "earnmoney124553",
-  storageBucket: "earnmoney124553.firebasestorage.app",
-  messagingSenderId: "325528918523",
-  appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e",
-  measurementId: "G-G1H96Q5XCJ"
-        };
+<nav class="bottom-nav">
+    <div class="nav-item active" data-target="home">
+        <svg viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        </svg>
+        <span class="nav-text">Home</span>
+    </div>
+</nav>
+
+<script>
+// ✅ دالة صفحة التحميل العالمية (10 ثوانٍ)
+let loadingProgress = 0;
+let loadingSeconds = 10;
+let loadingTimerInterval;
+
+function startGlobalLoading() {
+    const loadingPage = document.getElementById('global-loading-page');
+    const progressBar = document.getElementById('loading-progress-bar');
+    const timerElement = document.getElementById('loading-timer');
+    
+    if (!loadingPage || !progressBar || !timerElement) return;
+    
+    // إظهار صفحة التحميل
+    loadingPage.style.display = 'flex';
+    
+    // بدء المؤقت
+    loadingTimerInterval = setInterval(() => {
+        loadingSeconds--;
         
-        // تهيئة Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        // متغيرات التطبيق
-        let userData = {
-            id: null,
-            balance: 0,
-            level: 1,
-            equipment: {
-                land: 0,
-                mill: 0,
-                farm: 0,
-                factory: 0
-            },
-            inventory: {
-                wheat: 0,
-                flour: 0,
-                milk: 0,
-                ghee: 0
-            },
-            production: [],
-            referrals: 0,
-            referralsList: [],
-            dailyWithdrawals: 0
-        };
-        
-        let marketPrices = {
-            wheat: 0.0001,
-            flour: 0.0002,
-            milk: 0.0004,
-            ghee: 0.0010
-        };
-        
-        let competitionEndTime = Date.now() + (7 * 24 * 60 * 60 * 1000); // أسبوع من الآن
-        let productionTimers = {};
-        
-        // دالة إظهار الإشعار
-        function showNotification(title, message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.innerHTML = `
-                <div class="notification-title">${title}</div>
-                <div class="notification-message">${message}</div>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            // إزالة الإشعار بعد 5 ثوانٍ
-            setTimeout(() => {
-                notification.style.animation = 'slideIn 0.3s ease reverse';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.parentNode.removeChild(notification);
-                    }
-                }, 300);
-            }, 5000);
+        if (loadingSeconds <= 0) {
+            loadingSeconds = 0;
+            timerElement.textContent = "Complete!";
+        } else {
+            timerElement.textContent = loadingSeconds + " second" + (loadingSeconds !== 1 ? 's' : '');
         }
         
-        // دالة فتح صفحة
-        function openPage(page, subpage = null) {
-            // إخفاء كل الصفحات
-            document.querySelectorAll('.content-page').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // إخفاء كل عناصر التنقل
-            document.querySelectorAll('.nav-item').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // إظهار الصفحة المطلوبة
-            document.getElementById(`${page}-page`).classList.add('active');
-            
-            // تفعيل عنصر التنقل المقابل
-            if (page !== 'deposit' && page !== 'withdraw') {
-                document.querySelector(`.nav-item[onclick="openPage('${page}')"]`).classList.add('active');
-            }
-            
-            // تحميل بيانات الصفحة
-            switch(page) {
-                case 'home':
-                    loadHomeData();
-                    break;
-                case 'production':
-                    loadProductionData();
-                    break;
-                case 'market':
-                    loadMarketData();
-                    break;
-                case 'referrals':
-                    loadReferralsData();
-                    break;
-                case 'competitions':
-                    loadCompetitionsData();
-                    break;
-                case 'deposit':
-                    loadDepositData();
-                    break;
-                case 'withdraw':
-                    loadWithdrawData();
-                    break;
-            }
-        }
+        // تحديث شريط التقدم
+        loadingProgress = ((10 - loadingSeconds) / 10) * 100;
+        progressBar.style.width = loadingProgress + '%';
         
-        // دالة التبديل بين تبويبات السوق
-        function switchMarketTab(tab) {
-            document.querySelectorAll('.market-tab').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            document.querySelector(`.market-tab[onclick="switchMarketTab('${tab}')"]`).classList.add('active');
-            
-            if (tab === 'buy') {
-                document.getElementById('buy-form').style.display = 'block';
-                document.getElementById('sell-form').style.display = 'none';
-                loadBuyOrders();
-            } else if (tab === 'sell') {
-                document.getElementById('buy-form').style.display = 'none';
-                document.getElementById('sell-form').style.display = 'block';
-                loadSellOrders();
-            } else {
-                document.getElementById('buy-form').style.display = 'none';
-                document.getElementById('sell-form').style.display = 'none';
-                loadMarketHistory();
-            }
+        // عند انتهاء الوقت
+        if (loadingSeconds <= 0) {
+            clearInterval(loadingTimerInterval);
+            finishLoading();
         }
+    }, 1000);
+}
+
+async function finishLoading() {
+    const loadingPage = document.getElementById('global-loading-page');
+    
+    try {
+        // ✅ عرض التطبيق الرئيسي فقط
+        showMainApp();
         
-        // دالة تحميل بيانات الرئيسية
-        function loadHomeData() {
-            // تحديث الرصيد
-            document.getElementById('balance-ton').textContent = userData.balance.toFixed(4);
-            
-            // تحديث المستوى
-            document.getElementById('user-level').textContent = getLevelName(userData.level);
-            
-            // تحديث المعدات
-            document.getElementById('land-count').textContent = userData.equipment.land;
-            document.getElementById('mill-count').textContent = userData.equipment.mill;
-            document.getElementById('farm-count').textContent = userData.equipment.farm;
-            document.getElementById('factory-count').textContent = userData.equipment.factory;
-            
-            // تحديث المخزون
-            document.getElementById('wheat-amount').textContent = userData.inventory.wheat;
-            document.getElementById('flour-amount').textContent = userData.inventory.flour;
-            document.getElementById('milk-amount').textContent = userData.inventory.milk;
-            document.getElementById('ghee-amount').textContent = userData.inventory.ghee;
-            
-            // تحديث الأسعار
-            document.getElementById('wheat-price').textContent = marketPrices.wheat.toFixed(4) + ' TON';
-            document.getElementById('flour-price').textContent = marketPrices.flour.toFixed(4) + ' TON';
-            document.getElementById('milk-price').textContent = marketPrices.milk.toFixed(4) + ' TON';
-            document.getElementById('ghee-price').textContent = marketPrices.ghee.toFixed(4) + ' TON';
+    } catch (error) {
+        console.error("Loading error:", error);
+        showMainApp();
+    } finally {
+        if (loadingPage) {
+            loadingPage.style.display = 'none';
         }
+    }
+}
+
+function showMainApp() {
+    document.getElementById('global-loading-page').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
+}
+
+// ✅ الإعدادات الأساسية
+const APP_CONFIG = {
+    botUsername: 'RealEarnBot_bot'
+};
+
+// ✅ دالة التبديل بين الصفحات (مبسطة)
+function switchTab(tabId) {
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    document.getElementById(tabId).classList.add('active');
+    document.querySelector(`.nav-item[data-target="${tabId}"]`).classList.add('active');
+}
+
+// ✅ تهيئة التطبيق
+function initializeApp() {
+    // إعداد المستخدم إذا كان في Telegram
+    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+        const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+        const fullName = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
+        document.getElementById('home-username').textContent = fullName || 'Explorer';
         
-        // دالة تحميل بيانات الإنتاج
-        function loadProductionData() {
-            const container = document.getElementById('production-list');
-            container.innerHTML = '';
-            
-            // إنتاج الزرع من الأرض
-            if (userData.equipment.land > 0) {
-                const landProduction = userData.production.find(p => p.type === 'land') || {
-                    type: 'land',
-                    startTime: null,
-                    duration: 24 * 60 * 60 * 1000, // 24 ساعة
-                    amount: userData.equipment.land * 100
-                };
-                
-                let status = 'جديد';
-                let button = `<button class="btn btn-primary" onclick="startProduction('land')" style="padding: 8px 12px; font-size: 12px;">
-                    <i class="fas fa-play"></i> بدء
-                </button>`;
-                
-                if (landProduction.startTime) {
-                    const now = Date.now();
-                    const endTime = landProduction.startTime + landProduction.duration;
-                    
-                    if (now >= endTime) {
-                        status = 'مكتمل';
-                        button = `<button class="btn btn-success" onclick="collectProduction('land')" style="padding: 8px 12px; font-size: 12px;">
-                            <i class="fas fa-check"></i> جني
-                        </button>`;
-                    } else {
-                        const remaining = endTime - now;
-                        const hours = Math.floor(remaining / (1000 * 60 * 60));
-                        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                        status = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        button = `<div class="production-timer">${status}</div>`;
-                    }
-                }
-                
-                container.innerHTML += `
-                    <div class="production-item">
-                        <div class="production-info">
-                            <div class="production-title">🌾 إنتاج الزرع</div>
-                            <div class="production-desc">${userData.equipment.land} أرض × 100 زرع/يوم</div>
-                        </div>
-                        <div>
-                            ${button}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // تحويل الزرع إلى دقيق
-            if (userData.equipment.mill > 0 && userData.inventory.wheat >= 100) {
-                const millProduction = userData.production.find(p => p.type === 'mill') || {
-                    type: 'mill',
-                    startTime: null,
-                    duration: 12 * 60 * 60 * 1000, // 12 ساعة
-                    amount: Math.floor(userData.inventory.wheat / 100) * 70
-                };
-                
-                let status = 'جديد';
-                let button = `<button class="btn btn-primary" onclick="startProduction('mill')" style="padding: 8px 12px; font-size: 12px;">
-                    <i class="fas fa-play"></i> بدء
-                </button>`;
-                
-                if (millProduction.startTime) {
-                    const now = Date.now();
-                    const endTime = millProduction.startTime + millProduction.duration;
-                    
-                    if (now >= endTime) {
-                        status = 'مكتمل';
-                        button = `<button class="btn btn-success" onclick="collectProduction('mill')" style="padding: 8px 12px; font-size: 12px;">
-                            <i class="fas fa-check"></i> جني
-                        </button>`;
-                    } else {
-                        const remaining = endTime - now;
-                        const hours = Math.floor(remaining / (1000 * 60 * 60));
-                        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                        status = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        button = `<div class="production-timer">${status}</div>`;
-                    }
-                }
-                
-                container.innerHTML += `
-                    <div class="production-item">
-                        <div class="production-info">
-                            <div class="production-title">🏭 طحن الدقيق</div>
-                            <div class="production-desc">100 زرع → 70 دقيق</div>
-                        </div>
-                        <div>
-                            ${button}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // تحويل الدقيق إلى لبن
-            if (userData.equipment.farm > 0 && userData.inventory.flour >= 70) {
-                const farmProduction = userData.production.find(p => p.type === 'farm') || {
-                    type: 'farm',
-                    startTime: null,
-                    duration: 8 * 60 * 60 * 1000, // 8 ساعات
-                    amount: Math.floor(userData.inventory.flour / 70) * 50
-                };
-                
-                let status = 'جديد';
-                let button = `<button class="btn btn-primary" onclick="startProduction('farm')" style="padding: 8px 12px; font-size: 12px;">
-                    <i class="fas fa-play"></i> بدء
-                </button>`;
-                
-                if (farmProduction.startTime) {
-                    const now = Date.now();
-                    const endTime = farmProduction.startTime + farmProduction.duration;
-                    
-                    if (now >= endTime) {
-                        status = 'مكتمل';
-                        button = `<button class="btn btn-success" onclick="collectProduction('farm')" style="padding: 8px 12px; font-size: 12px;">
-                            <i class="fas fa-check"></i> جني
-                        </button>`;
-                    } else {
-                        const remaining = endTime - now;
-                        const hours = Math.floor(remaining / (1000 * 60 * 60));
-                        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                        status = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        button = `<div class="production-timer">${status}</div>`;
-                    }
-                }
-                
-                container.innerHTML += `
-                    <div class="production-item">
-                        <div class="production-info">
-                            <div class="production-title">🐄 إنتاج اللبن</div>
-                            <div class="production-desc">70 دقيق → 50 لبن</div>
-                        </div>
-                        <div>
-                            ${button}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // تحويل اللبن إلى سمن
-            if (userData.equipment.factory > 0 && userData.inventory.milk >= 50) {
-                const factoryProduction = userData.production.find(p => p.type === 'factory') || {
-                    type: 'factory',
-                    startTime: null,
-                    duration: 6 * 60 * 60 * 1000, // 6 ساعات
-                    amount: Math.floor(userData.inventory.milk / 50) * 30
-                };
-                
-                let status = 'جديد';
-                let button = `<button class="btn btn-primary" onclick="startProduction('factory')" style="padding: 8px 12px; font-size: 12px;">
-                    <i class="fas fa-play"></i> بدء
-                </button>`;
-                
-                if (factoryProduction.startTime) {
-                    const now = Date.now();
-                    const endTime = factoryProduction.startTime + factoryProduction.duration;
-                    
-                    if (now >= endTime) {
-                        status = 'مكتمل';
-                        button = `<button class="btn btn-success" onclick="collectProduction('factory')" style="padding: 8px 12px; font-size: 12px;">
-                            <i class="fas fa-check"></i> جني
-                        </button>`;
-                    } else {
-                        const remaining = endTime - now;
-                        const hours = Math.floor(remaining / (1000 * 60 * 60));
-                        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                        status = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                        button = `<div class="production-timer">${status}</div>`;
-                    }
-                }
-                
-                container.innerHTML += `
-                    <div class="production-item">
-                        <div class="production-info">
-                            <div class="production-title">🏢 تصنيع السمن</div>
-                            <div class="production-desc">50 لبن → 30 سمن</div>
-                        </div>
-                        <div>
-                            ${button}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            if (container.innerHTML === '') {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                        <i class="fas fa-tractor" style="font-size: 40px; margin-bottom: 10px;"></i>
-                        <p>لا توجد عمليات إنتاج متاحة</p>
-                        <p style="font-size: 12px;">قم بشراء المعدات أولاً من الصفحة الرئيسية</p>
-                    </div>
-                `;
-            }
-        }
-        
-        // دالة بدء الإنتاج
-        function startProduction(type) {
-            let requiredMaterial = 0;
-            let consumption = 0;
-            let production = 0;
-            
-            switch(type) {
-                case 'land':
-                    production = userData.equipment.land * 100;
-                    break;
-                case 'mill':
-                    requiredMaterial = 'wheat';
-                    consumption = 100;
-                    production = Math.floor(userData.inventory.wheat / 100) * 70;
-                    break;
-                case 'farm':
-                    requiredMaterial = 'flour';
-                    consumption = 70;
-                    production = Math.floor(userData.inventory.flour / 70) * 50;
-                    break;
-                case 'factory':
-                    requiredMaterial = 'milk';
-                    consumption = 50;
-                    production = Math.floor(userData.inventory.milk / 50) * 30;
-                    break;
-            }
-            
-            // التحقق من المواد المطلوبة
-            if (requiredMaterial && userData.inventory[requiredMaterial] < consumption) {
-                showNotification('خطأ', `تحتاج إلى ${consumption} ${getMaterialName(requiredMaterial)}`, 'error');
-                return;
-            }
-            
-            // استهلاك المواد
-            if (requiredMaterial) {
-                userData.inventory[requiredMaterial] -= consumption;
-            }
-            
-            // بدء عملية الإنتاج
-            const productionData = {
-                type: type,
-                startTime: Date.now(),
-                duration: getProductionDuration(type),
-                amount: production
-            };
-            
-            userData.production = userData.production.filter(p => p.type !== type);
-            userData.production.push(productionData);
-            
-            // حفظ في Firebase
-            saveUserData();
-            
-            // تحديث الواجهة
-            loadProductionData();
-            loadHomeData();
-            
-            showNotification('تم البدء', `بدأت عملية ${getProductionName(type)}`, 'success');
-        }
-        
-        // دالة جمع الإنتاج
-        function collectProduction(type) {
-            const production = userData.production.find(p => p.type === type);
-            if (!production) return;
-            
-            // إضافة المنتج إلى المخزون
-            switch(type) {
-                case 'land':
-                    userData.inventory.wheat += production.amount;
-                    break;
-                case 'mill':
-                    userData.inventory.flour += production.amount;
-                    break;
-                case 'farm':
-                    userData.inventory.milk += production.amount;
-                    break;
-                case 'factory':
-                    userData.inventory.ghee += production.amount;
-                    break;
-            }
-            
-            // حذف العملية
-            userData.production = userData.production.filter(p => p.type !== type);
-            
-            // حفظ في Firebase
-            saveUserData();
-            
-            // تحديث الواجهة
-            loadProductionData();
-            loadHomeData();
-            
-            showNotification('تم الجني', `جمعت ${production.amount} ${getProductionName(type)}`, 'success');
-        }
-        
-        // دالة تحميل بيانات السوق
-        function loadMarketData() {
-            switchMarketTab('buy');
-        }
-        
-        // دالة تحميل عروض الشراء
-        function loadBuyOrders() {
-            // في النسخة الحقيقية، سيتم جلب البيانات من Firebase
-            const container = document.getElementById('market-orders');
-            container.innerHTML = `
-                <div class="market-order buy">
-                    <div class="order-header">
-                        <div class="order-user">👤 أحمد</div>
-                        <div class="order-amount">🌾 1000 زرع</div>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-price">0.0001 TON/وحدة</div>
-                        <div>المجموع: 0.1 TON</div>
-                    </div>
-                </div>
-                <div class="market-order buy">
-                    <div class="order-header">
-                        <div class="order-user">👤 محمد</div>
-                        <div class="order-amount">🧈 200 سمن</div>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-price">0.0010 TON/وحدة</div>
-                        <div>المجموع: 0.2 TON</div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // دالة تحميل عروض البيع
-        function loadSellOrders() {
-            // في النسخة الحقيقية، سيتم جلب البيانات من Firebase
-            const container = document.getElementById('market-orders');
-            container.innerHTML = `
-                <div class="market-order sell">
-                    <div class="order-header">
-                        <div class="order-user">👤 سارة</div>
-                        <div class="order-amount">🥛 500 لبن</div>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-price">0.0004 TON/وحدة</div>
-                        <div>المجموع: 0.2 TON</div>
-                    </div>
-                </div>
-                <div class="market-order sell">
-                    <div class="order-header">
-                        <div class="order-user">👤 خالد</div>
-                        <div class="order-amount">🍞 1000 دقيق</div>
-                    </div>
-                    <div class="order-details">
-                        <div class="order-price">0.0002 TON/وحدة</div>
-                        <div>المجموع: 0.2 TON</div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // دالة تحميل سجل الصفقات
-        function loadMarketHistory() {
-            const container = document.getElementById('market-orders');
-            container.innerHTML = `
-                <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                    <i class="fas fa-history" style="font-size: 40px; margin-bottom: 10px;"></i>
-                    <p>سجل الصفقات</p>
-                    <p style="font-size: 12px;">سيظهر هنا تاريخ صفقاتك</p>
-                </div>
-            `;
-        }
-        
-        // دالة تقديم عرض للبيع
-        function submitSellOrder() {
-            const material = document.getElementById('sell-material').value;
-            const amount = parseInt(document.getElementById('sell-amount').value);
-            const price = parseFloat(document.getElementById('sell-price').value);
-            
-            if (!amount || amount < 1) {
-                showNotification('خطأ', 'الرجاء إدخال كمية صحيحة', 'error');
-                return;
-            }
-            
-            if (!price || price < 0.0001) {
-                showNotification('خطأ', 'الرجاء إدخال سعر صحيح (0.0001 كحد أدنى)', 'error');
-                return;
-            }
-            
-            // التحقق من المخزون
-            if (userData.inventory[material] < amount) {
-                showNotification('خطأ', `لا تملك كمية كافية من ${getMaterialName(material)}`, 'error');
-                return;
-            }
-            
-            // في النسخة الحقيقية، سيتم حفظ الطلب في Firebase
-            showNotification('تم', `تم تقديم عرض البيع بنجاح`, 'success');
-            
-            // مسح الحقول
-            document.getElementById('sell-amount').value = '';
-            document.getElementById('sell-price').value = '';
-        }
-        
-        // دالة تحديد الحد الأقصى للبيع
-        function setMaxSell() {
-            const material = document.getElementById('sell-material').value;
-            document.getElementById('sell-amount').value = userData.inventory[material];
-            document.getElementById('sell-price').value = marketPrices[material];
-        }
-        
-        // دالة تقديم عرض للشراء
-        function submitBuyOrder() {
-            const material = document.getElementById('buy-material').value;
-            const amount = parseInt(document.getElementById('buy-amount').value);
-            const price = parseFloat(document.getElementById('buy-price').value);
-            
-            if (!amount || amount < 1) {
-                showNotification('خطأ', 'الرجاء إدخال كمية صحيحة', 'error');
-                return;
-            }
-            
-            if (!price || price < 0.0001) {
-                showNotification('خطأ', 'الرجاء إدخال سعر صحيح (0.0001 كحد أدنى)', 'error');
-                return;
-            }
-            
-            const totalCost = amount * price;
-            
-            if (userData.balance < totalCost) {
-                showNotification('خطأ', `رصيدك غير كافي. تحتاج ${totalCost.toFixed(4)} TON`, 'error');
-                return;
-            }
-            
-            // في النسخة الحقيقية، سيتم حفظ الطلب في Firebase
-            showNotification('تم', `تم تقديم عرض الشراء بنجاح`, 'success');
-            
-            // مسح الحقول
-            document.getElementById('buy-amount').value = '';
-            document.getElementById('buy-price').value = '';
-        }
-        
-        // دالة تحميل بيانات الإحالات
-        function loadReferralsData() {
-            document.getElementById('total-ref').textContent = userData.referrals;
-            document.getElementById('active-ref').textContent = Math.floor(userData.referrals * 0.7); // مثال
-            document.getElementById('earned-ref').textContent = (userData.referrals * 0.1).toFixed(4) + ' TON';
-            document.getElementById('pending-ref').textContent = (userData.referrals * 0.05).toFixed(4) + ' TON';
-            
-            // رابط الإحالة
-            document.getElementById('referral-link').textContent = `https://t.me/GalaxyFarmBot?start=ref${userData.id}`;
-            
-            // قائمة الإحالات
-            const container = document.getElementById('referral-list');
-            container.innerHTML = '';
-            
-            if (userData.referralsList.length === 0) {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-                        <i class="fas fa-user-plus" style="font-size: 40px; margin-bottom: 10px;"></i>
-                        <p>لا توجد إحالات بعد</p>
-                        <p style="font-size: 12px;">شارك رابط الدعوة لكسب المزيد</p>
-                    </div>
-                `;
-            } else {
-                userData.referralsList.forEach(ref => {
-                    container.innerHTML += `
-                        <div class="referral-item">
-                            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="referral-avatar">
-                            <div class="referral-info">
-                                <div class="referral-name">${ref.name}</div>
-                                <div class="referral-date">${new Date(ref.date).toLocaleDateString('ar-SA')}</div>
-                            </div>
-                            <div class="referral-earned">+${ref.earned.toFixed(4)} TON</div>
-                        </div>
-                    `;
-                });
-            }
-        }
-        
-        // دالة مشاركة رابط الإحالة
-        function shareReferral() {
-            const link = document.getElementById('referral-link').textContent;
-            const text = `انضم إلى Galaxy Farm واكسب معي! ${link}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Galaxy Farm',
-                    text: text,
-                    url: link
-                });
-            } else {
-                navigator.clipboard.writeText(text).then(() => {
-                    showNotification('تم النسخ', 'تم نسخ رابط الدعوة إلى الحافظة', 'success');
-                });
-            }
-        }
-        
-        // دالة نسخ رابط الإحالة
-        function copyReferralLink() {
-            const link = document.getElementById('referral-link').textContent;
-            navigator.clipboard.writeText(link).then(() => {
-                showNotification('تم النسخ', 'تم نسخ الرابط إلى الحافظة', 'success');
-            });
-        }
-        
-        // دالة تحميل بيانات المسابقات
-        function loadCompetitionsData() {
-            // تحديث المؤقت
-            updateCompetitionTimer();
-            
-            // تحميل المتصدرين
-            const container = document.getElementById('leaderboard-list');
-            container.innerHTML = `
-                <div class="leaderboard-item rank-1">
-                    <div class="leaderboard-rank">🥇</div>
-                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="leaderboard-avatar">
-                    <div class="leaderboard-info">
-                        <div class="leaderboard-name">أحمد</div>
-                        <div class="leaderboard-score">مزارع الشهر</div>
-                    </div>
-                    <div class="leaderboard-points">2.5 TON</div>
-                </div>
-                <div class="leaderboard-item rank-2">
-                    <div class="leaderboard-rank">🥈</div>
-                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="leaderboard-avatar">
-                    <div class="leaderboard-info">
-                        <div class="leaderboard-name">محمد</div>
-                        <div class="leaderboard-score">أكثر منتج</div>
-                    </div>
-                    <div class="leaderboard-points">1.8 TON</div>
-                </div>
-                <div class="leaderboard-item rank-3">
-                    <div class="leaderboard-rank">🥉</div>
-                    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" class="leaderboard-avatar">
-                    <div class="leaderboard-info">
-                        <div class="leaderboard-name">سارة</div>
-                        <div class="leaderboard-score">أفضل تاجر</div>
-                    </div>
-                    <div class="leaderboard-points">1.2 TON</div>
-                </div>
-            `;
-        }
-        
-        // دالة تحديث مؤقت المسابقة
-        function updateCompetitionTimer() {
-            const now = Date.now();
-            const remaining = competitionEndTime - now;
-            
-            if (remaining <= 0) {
-                document.getElementById('competition-timer').textContent = '00:00:00';
-                return;
-            }
-            
-            const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-            
-            if (days > 0) {
-                document.getElementById('competition-timer').textContent = 
-                    `${days} يوم ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-                document.getElementById('competition-timer').textContent = 
-                    `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-        }
-        
-        // دالة تحميل بيانات الإيداع
-        function loadDepositData() {
-            // في النسخة الحقيقية، سيتم إنشاء QR Code ديناميكياً
-            document.getElementById('deposit-address').textContent = 'UQB2IqqJtC8NtRgxksq80c_FC8RqShxpGDKA3e4aJFwjvwgv';
-        }
-        
-        // دالة نسخ عنوان الإيداع
-        function copyDepositAddress() {
-            const address = document.getElementById('deposit-address').textContent;
-            navigator.clipboard.writeText(address).then(() => {
-                showNotification('تم النسخ', 'تم نسخ عنوان المحفظة إلى الحافظة', 'success');
-            });
-        }
-        
-        // دالة التحقق من الإيداع
-        function checkDeposit() {
-            const amount = parseFloat(document.getElementById('deposit-amount').value) || 0.01;
-            
-            if (amount < 0.01) {
-                showNotification('خطأ', 'الحد الأدنى للإيداع هو 0.01 TON', 'error');
-                return;
-            }
-            
-            showNotification('جاري التحقق', 'جاري التحقق من الإيداع على البلوكشين...', 'info');
-            
-            // في النسخة الحقيقية، سيتم الاتصال بالـ API للتحقق
-            setTimeout(() => {
-                showNotification('تم', 'لم يتم العثور على إيداع جديد', 'info');
-            }, 3000);
-        }
-        
-        // دالة تحميل بيانات السحب
-        function loadWithdrawData() {
-            // تحديث الحد اليومي
-            document.querySelector('.withdraw-form .form-label').innerHTML = 
-                `مبلغ السحب (TON) <span style="color: var(--danger); font-size: 10px;">(${userData.dailyWithdrawals}/2 اليوم)</span>`;
-        }
-        
-        // دالة تحديد الحد الأقصى للسحب
-        function setMaxWithdraw() {
-            document.getElementById('withdraw-amount').value = Math.max(0.05, userData.balance - 0.001).toFixed(2);
-        }
-        
-        // دالة طلب السحب
-        function submitWithdrawal() {
-            const address = document.getElementById('withdraw-address').value.trim();
-            const amount = parseFloat(document.getElementById('withdraw-amount').value);
-            const memo = document.getElementById('withdraw-memo').value.trim();
-            
-            if (!address || address.length < 10) {
-                showNotification('خطأ', 'الرجاء إدخال عنوان محفظة صحيح', 'error');
-                return;
-            }
-            
-            if (!amount || amount < 0.05) {
-                showNotification('خطأ', 'الحد الأدنى للسحب هو 0.05 TON', 'error');
-                return;
-            }
-            
-            if (userData.dailyWithdrawals >= 2) {
-                showNotification('خطأ', 'لقد استنفدت حد السحب اليومي (2 مرات فقط)', 'error');
-                return;
-            }
-            
-            if (userData.balance < amount + 0.001) {
-                showNotification('خطأ', `رصيدك غير كافي. تحتاج ${(amount + 0.001).toFixed(4)} TON (بما فيها العمولة)`, 'error');
-                return;
-            }
-            
-            // في النسخة الحقيقية، سيتم إرسال الطلب إلى السيرفر
-            showNotification('تم الإرسال', 'تم تقديم طلب السحب بنجاح. ستصلك الأموال خلال 24 ساعة.', 'success');
-            
-            // تحديث الحد اليومي
-            userData.dailyWithdrawals++;
-            userData.balance -= amount;
-            
-            // مسح الحقول
-            document.getElementById('withdraw-address').value = '';
-            document.getElementById('withdraw-amount').value = '0.05';
-            document.getElementById('withdraw-memo').value = '';
-            
-            // تحديث الواجهة
-            loadWithdrawData();
-            loadHomeData();
-        }
-        
-        // دالة بدء كل عمليات الإنتاج
-        function startAllProduction() {
-            const productions = ['land', 'mill', 'farm', 'factory'];
-            let started = 0;
-            
-            productions.forEach(type => {
-                const production = userData.production.find(p => p.type === type);
-                if (!production || !production.startTime) {
-                    startProduction(type);
-                    started++;
-                }
-            });
-            
-            if (started === 0) {
-                showNotification('معلومة', 'كل عمليات الإنتاج قيد التشغيل بالفعل', 'info');
-            }
-        }
-        
-        // دالات مساعدة
-        function getLevelName(level) {
-            const levels = ['مبتدئ', 'مزارع', 'محترف', 'خبير', 'رائد', 'أسطورة'];
-            return levels[Math.min(level - 1, levels.length - 1)] || 'مبتدئ';
-        }
-        
-        function getMaterialName(material) {
-            const names = {
-                wheat: 'الزرع',
-                flour: 'الدقيق',
-                milk: 'اللبن',
-                ghee: 'السمن'
-            };
-            return names[material] || material;
-        }
-        
-        function getProductionName(type) {
-            const names = {
-                land: 'إنتاج الزرع',
-                mill: 'طحن الدقيق',
-                farm: 'إنتاج اللبن',
-                factory: 'تصنيع السمن'
-            };
-            return names[type] || type;
-        }
-        
-        function getProductionDuration(type) {
-            const durations = {
-                land: 24 * 60 * 60 * 1000,
-                mill: 12 * 60 * 60 * 1000,
-                farm: 8 * 60 * 60 * 1000,
-                factory: 6 * 60 * 60 * 1000
-            };
-            return durations[type] || 0;
-        }
-        
-        // دالة حفظ بيانات المستخدم في Firebase
-        async function saveUserData() {
-            try {
-                await db.collection('users').doc(userData.id).set(userData, { merge: true });
-            } catch (error) {
-                console.error('Error saving user data:', error);
-            }
-        }
-        
-        // دالة تحميل بيانات المستخدم من Firebase
-        async function loadUserData() {
-            try {
-                const doc = await db.collection('users').doc(userData.id).get();
-                if (doc.exists) {
-                    Object.assign(userData, doc.data());
-                } else {
-                    // إنشاء مستخدم جديد
-                    await saveUserData();
-                }
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
-        }
-        
-        // دالة تهيئة التطبيق
-        async function initializeApp() {
-            // محاكاة تحميل البيانات
-            const progressBar = document.getElementById('loading-progress');
-            let progress = 0;
-            
-            const interval = setInterval(() => {
-                progress += 10;
-                progressBar.style.width = `${progress}%`;
-                
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    
-                    // إخفاء صفحة التحميل
-                    document.getElementById('loading-page').style.display = 'none';
-                    
-                    // إظهار التطبيق الرئيسي
-                    document.getElementById('main-app').style.display = 'block';
-                    
-                    // تهيئة بيانات المستخدم (في النسخة الحقيقية، سيتم جلبها من Telegram)
-                    userData.id = 'user_' + Math.floor(Math.random() * 1000000);
-                    userData.balance = 1.5;
-                    userData.equipment.land = 2;
-                    userData.equipment.mill = 1;
-                    userData.equipment.farm = 1;
-                    userData.inventory.wheat = 1500;
-                    userData.inventory.flour = 300;
-                    userData.inventory.milk = 100;
-                    userData.referrals = 5;
-                    userData.referralsList = [
-                        { name: 'محمد', date: Date.now() - 86400000, earned: 0.1 },
-                        { name: 'سارة', date: Date.now() - 172800000, earned: 0.08 },
-                        { name: 'خالد', date: Date.now() - 259200000, earned: 0.12 }
-                    ];
-                    
-                    // تحميل البيانات
-                    loadHomeData();
-                    
-                    // بدء مؤقت المسابقة
-                    setInterval(updateCompetitionTimer, 1000);
-                }
-            }, 200);
-        }
-        
-        // بدء التطبيق عند تحميل الصفحة
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    </script>
+        // تحديث الأرقام الأساسية
+        document.getElementById('hud-glx-balance').textContent = '0';
+        document.getElementById('hud-ton-balance').textContent = '0.0000';
+        document.getElementById('total-GLX-balance').textContent = '0';
+    }
+    
+    // إعداد مستمعي الأحداث
+    setupEventListeners();
+}
+
+// ✅ إعداد مستمعي الأحداث
+function setupEventListeners() {
+    document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.target));
+    });
+}
+
+// ✅ بدء التطبيق
+document.addEventListener('DOMContentLoaded', function() {
+    startGlobalLoading();
+    
+    // بدء تهيئة التطبيق بعد انتهاء التحميل
+    setTimeout(() => {
+        initializeApp();
+    }, 11000); // بعد 11 ثانية (10 للتحميل + 1 تأخير)
+});
+</script>
 </body>
 </html>
