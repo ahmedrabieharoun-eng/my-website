@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
     <title>مزرعة الدجاج - Chicken Farm</title>
     
-    <!-- ✅ مكتبة Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-    
     <!-- ✅ Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
@@ -213,6 +209,13 @@
             padding:12px;
             margin-bottom:8px;
             border:1px solid rgba(255,255,255,0.05);
+            cursor:pointer;
+            transition:all 0.3s ease;
+        }
+        
+        .shop-item:hover{
+            background:rgba(168,85,247,0.1);
+            transform:translateY(-2px);
         }
         
         .shop-icon{
@@ -411,6 +414,83 @@
             to{opacity:0;}
         }
         
+        /* ✅ صفحة التحميل */
+        #global-loading-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a, #0a0a0a);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading-logo {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            margin-bottom: 25px;
+            border: 4px solid var(--primary-green);
+            animation: float 2s ease-in-out infinite;
+        }
+        
+        .loading-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #a855f7, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .loading-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+        
+        .loading-progress-container {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-green), #7c3aed);
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .loading-timer {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
         /* ✅ تحسينات عامة */
         .hidden{
             display:none!important;
@@ -420,20 +500,17 @@
 <body>
 <!-- ✅ صفحة التحميل العالمية -->
 <div id="global-loading-page">
-    <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="مزرعة الدجاج" class="loading-logo">
-    <h1 class="loading-title">🐔 مزرعة الدجاج</h1>
+    <div style="width:120px;height:120px;border-radius:50%;margin-bottom:25px;border:4px solid var(--primary-green);background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:48px;">
+        🐔
+    </div>
+    <h1 class="loading-title">مزرعة الدجاج</h1>
     <p class="loading-subtitle">جارٍ تحميل المزرعة الخاصة بك...</p>
     
     <div class="loading-progress-container">
         <div class="loading-progress-bar" id="loading-progress-bar"></div>
     </div>
     
-    <div class="loading-timer" id="loading-timer">5 seconds</div>
-    
-    <div style="margin-top:30px;font-size:11px;color:var(--text-muted);max-width:300px;">
-        <i class="fas fa-shield-alt" style="margin-right:5px;"></i>
-        جارٍ تحميل بيانات المزرعة
-    </div>
+    <div class="loading-timer" id="loading-timer">3 ثواني</div>
 </div>
 
 <!-- ✅ التطبيق الرئيسي -->
@@ -443,14 +520,16 @@
         <div>
             <div class="user-name" id="home-username">مزارع</div>
             <div style="display:flex;align-items:center;gap:15px;margin-top:5px;">
-                <div class="stats-pill" style="margin:0;padding:6px 12px;">
+                <div class="stats-pill" style="margin:0;padding:6px 12px;background:rgba(255,255,255,0.05);border-radius:20px;">
                     <span style="color:var(--gold);">💰:</span>
                     <span id="hud-glx-balance" style="color:#fff;font-weight:700;">0</span>
                 </div>
             </div>
         </div>
         <div class="hud-avatar">
-            <img src="https://i.ibb.co/tTkJX1Qy/logo.png" alt="User">
+            <div style="width:100%;height:100%;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:24px;">
+                🐔
+            </div>
         </div>
     </div>
     
@@ -465,7 +544,7 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">💰 الرصيد</div>
-                <div class="stat-value" id="balance">0</div>
+                <div class="stat-value" id="balance">1000</div>
             </div>
             
             <div class="stat-card">
@@ -544,7 +623,7 @@
             </h3>
             <p style="font-size:11px;color:var(--text-muted);line-height:1.5;">
                 • كل دجاجة تنتج بيضًا تلقائيًا مع مرور الوقت<br>
-                • يمكنك جمع البيض يدويًا كل 5 دقائق<br>
+                • يمكنك جمع البيض يدويًا عندما يكون جاهزًا<br>
                 • بيع البيض لتحصل على العملة<br>
                 • استخدم العملة لشراء دجاج أكثر<br>
                 • كلما زاد عدد الدجاج، زاد إنتاجك!
@@ -615,15 +694,20 @@
 </nav>
 
 <script>
-// ✅ المتغيرات الأساسية
-const API_URL = "https://silent-block-bedf.ahmedrabieharoun.workers.dev";
+// ✅ المتغيرات الأساسية للعبة
 let gameState = {
     balance: 1000,
     chickens: 0,
     eggs: 0,
     production: 0,
     lastCollectTime: Date.now(),
-    transactions: []
+    lastProductionTime: Date.now(),
+    transactions: [],
+    chickenTypes: {
+        basic: { count: 0, production: 1 },
+        golden: { count: 0, production: 3 },
+        diamond: { count: 0, production: 10 }
+    }
 };
 
 // ✅ دالة عرض الإشعارات
@@ -661,38 +745,29 @@ function switchTab(tabId) {
     }
 }
 
-// ✅ دالة تحميل اللعبة
-async function loadGame() {
-    try {
-        const result = await callAPI('getGameState');
-        if (result.success) {
-            gameState = result.data;
-            updateGameUI();
-        }
-    } catch (error) {
-        console.error("Error loading game:", error);
-    }
-}
-
 // ✅ دالة تحديث واجهة اللعبة
 function updateGameUI() {
     // تحديث الإحصاءات
     document.getElementById('balance').textContent = gameState.balance;
     document.getElementById('chickens').textContent = gameState.chickens;
     document.getElementById('eggs').textContent = gameState.eggs;
-    document.getElementById('production').textContent = gameState.production || 0;
+    document.getElementById('production').textContent = gameState.production;
     
     // تحديث رأس الصفحة
     document.getElementById('hud-glx-balance').textContent = gameState.balance;
     
-    // حساب البيض المتاح للجمع
+    // حساب البيض المنتج منذ آخر جمع
     const now = Date.now();
-    const timeDiff = now - gameState.lastCollectTime;
+    const timeDiff = now - gameState.lastProductionTime;
     const hoursPassed = timeDiff / (1000 * 60 * 60);
-    const eggsProduced = Math.floor(gameState.production * hoursPassed);
     
-    if (eggsProduced > 0) {
-        showNotification(`⚠️ لديك ${eggsProduced} بيضة جاهزة للجمع!`, 'warning');
+    if (gameState.production > 0 && hoursPassed > 0) {
+        const eggsProduced = Math.floor(gameState.production * hoursPassed);
+        if (eggsProduced > 0) {
+            // تحديث مؤقت فقط للعرض
+            document.getElementById('eggs').textContent = gameState.eggs + eggsProduced;
+            showNotification(`⚠️ هناك ${eggsProduced} بيضة جاهزة للجمع!`, 'warning');
+        }
     }
 }
 
@@ -711,11 +786,12 @@ function updateMarketPage() {
             transactionEl.style.fontSize = '11px';
             
             const typeIcon = transaction.type === 'sell' ? '💰' : '🐔';
+            const typeText = transaction.type === 'sell' ? 'بيع' : 'شراء';
             transactionEl.innerHTML = `
                 <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div>${typeIcon}</div>
-                        <div>${transaction.description}</div>
+                        <div>${typeText}: ${transaction.description}</div>
                     </div>
                     <div style="color:var(--primary-green);font-weight:bold;">${transaction.amount}</div>
                 </div>
@@ -726,7 +802,7 @@ function updateMarketPage() {
 }
 
 // ✅ دالة شراء دجاج
-async function buyChicken(type) {
+function buyChicken(type) {
     const prices = {
         'basic': 100,
         'golden': 300,
@@ -739,40 +815,49 @@ async function buyChicken(type) {
         'diamond': 10
     };
     
+    const names = {
+        'basic': 'عادية',
+        'golden': 'ذهبية',
+        'diamond': 'ماسية'
+    };
+    
     const price = prices[type];
     const production = productions[type];
+    const name = names[type];
     
     if (gameState.balance < price) {
         showNotification("❌ رصيدك غير كافي!", 'error');
         return;
     }
     
-    const result = await callAPI('buyChicken', {
-        type: type,
-        price: price,
-        production: production
+    // تأكيد الشراء
+    if (!confirm(`هل تريد شراء دجاجة ${name} بسعر ${price} عملة؟\n\nستنتج هذه الدجاجة ${production} بيضة/ساعة`)) {
+        return;
+    }
+    
+    // تنفيذ الشراء
+    gameState.balance -= price;
+    gameState.chickens += 1;
+    gameState.production += production;
+    gameState.chickenTypes[type].count += 1;
+    
+    // إضافة إلى السجلات
+    gameState.transactions.push({
+        type: 'buy',
+        description: `شراء دجاجة ${name}`,
+        amount: `-${price}`,
+        timestamp: Date.now()
     });
     
-    if (result.success) {
-        gameState = result.data;
-        updateGameUI();
-        
-        const chickenNames = {
-            'basic': 'عادية',
-            'golden': 'ذهبية',
-            'diamond': 'ماسية'
-        };
-        
-        showNotification(`✅ تم شراء دجاجة ${chickenNames[type]} بنجاح!`, 'success');
-    } else {
-        showNotification("❌ حدث خطأ: " + result.error, 'error');
-    }
+    // تحديث الواجهة
+    updateGameUI();
+    showNotification(`✅ تم شراء دجاجة ${name} بنجاح!`, 'success');
 }
 
 // ✅ دالة جمع البيض
-async function collectEggs() {
+function collectEggs() {
     const now = Date.now();
-    const timeDiff = now - gameState.lastCollectTime;
+    const timeDiff = now - gameState.lastProductionTime;
     const hoursPassed = timeDiff / (1000 * 60 * 60);
     const eggsProduced = Math.floor(gameState.production * hoursPassed);
     
@@ -781,129 +866,122 @@ async function collectEggs() {
         return;
     }
     
-    const result = await callAPI('collectEggs', {
-        eggsProduced: eggsProduced
+    // جمع البيض
+    gameState.eggs += eggsProduced;
+    gameState.lastProductionTime = now;
+    
+    // إضافة إلى السجلات
+    gameState.transactions.push({
+        type: 'collect',
+        description: `جمع البيض`,
+        amount: `+${eggsProduced} 🥚`,
+        timestamp: now
     });
     
-    if (result.success) {
-        gameState = result.data;
-        updateGameUI();
-        showNotification(`✅ تم جمع ${eggsProduced} بيضة!`, 'success');
-    } else {
-        showNotification("❌ حدث خطأ: " + result.error, 'error');
-    }
+    // تحديث الواجهة
+    updateGameUI();
+    showNotification(`✅ تم جمع ${eggsProduced} بيضة!`, 'success');
 }
 
 // ✅ دالة بيع البيض
-async function sellEggs() {
+function sellEggs() {
     if (gameState.eggs <= 0) {
         showNotification("❌ لا تمتلك بيضًا للبيع!", 'error');
         return;
     }
     
     const eggPrice = 5;
-    const totalPrice = gameState.eggs * eggPrice;
+    const eggsToSell = gameState.eggs;
+    const totalPrice = eggsToSell * eggPrice;
     
-    const result = await callAPI('sellEggs', {
-        eggs: gameState.eggs,
-        price: totalPrice
+    // تأكيد البيع
+    if (!confirm(`هل تريد بيع ${eggsToSell} بيضة بسعر ${totalPrice} عملة؟\n\nسعر البيضة: ${eggPrice} عملة`)) {
+        return;
+    }
+    
+    // تنفيذ البيع
+    gameState.balance += totalPrice;
+    const eggsSold = gameState.eggs;
+    gameState.eggs = 0;
+    
+    // إضافة إلى السجلات
+    gameState.transactions.push({
+        type: 'sell',
+        description: `بيع ${eggsSold} بيضة`,
+        amount: `+${totalPrice} 💰`,
+        timestamp: Date.now()
     });
     
-    if (result.success) {
-        gameState = result.data;
-        updateGameUI();
-        showNotification(`💰 تم بيع ${gameState.lastSoldEggs || 0} بيضة بـ ${totalPrice} عملة!`, 'success');
-    } else {
-        showNotification("❌ حدث خطأ: " + result.error, 'error');
-    }
+    // تحديث الواجهة
+    updateGameUI();
+    showNotification(`💰 تم بيع ${eggsSold} بيضة بـ ${totalPrice} عملة!`, 'success');
 }
 
 // ✅ دالة بيع كل البيض
-async function sellAllEggs() {
+function sellAllEggs() {
     if (gameState.eggs <= 0) {
         showNotification("❌ لا تمتلك بيضًا للبيع!", 'error');
         return;
     }
     
     const eggPrice = 5;
-    const totalPrice = gameState.eggs * eggPrice;
+    const eggsToSell = gameState.eggs;
+    const totalPrice = eggsToSell * eggPrice;
     
-    if (!confirm(`هل تريد بيع كل البيض (${gameState.eggs} بيضة) بـ ${totalPrice} عملة؟`)) {
+    if (!confirm(`هل تريد بيع كل البيض (${eggsToSell} بيضة) بـ ${totalPrice} عملة؟`)) {
         return;
     }
     
-    const result = await callAPI('sellEggs', {
-        eggs: gameState.eggs,
-        price: totalPrice
+    gameState.balance += totalPrice;
+    const eggsSold = gameState.eggs;
+    gameState.eggs = 0;
+    
+    // إضافة إلى السجلات
+    gameState.transactions.push({
+        type: 'sell',
+        description: `بيع كل البيض (${eggsSold})`,
+        amount: `+${totalPrice} 💰`,
+        timestamp: Date.now()
     });
     
-    if (result.success) {
-        gameState = result.data;
-        updateGameUI();
-        showNotification(`💰 تم بيع ${gameState.lastSoldEggs || 0} بيضة بـ ${totalPrice} عملة!`, 'success');
-        updateMarketPage();
-    } else {
-        showNotification("❌ حدث خطأ: " + result.error, 'error');
-    }
+    // تحديث الواجهة
+    updateGameUI();
+    updateMarketPage();
+    showNotification(`💰 تم بيع ${eggsSold} بيضة بـ ${totalPrice} عملة!`, 'success');
 }
 
 // ✅ دالة تحويل البيض لدجاج
-async function convertEggs() {
-    if (gameState.eggs < 100) {
-        showNotification("❌ تحتاج 100 بيضة على الأقل لتحويلها لدجاجة!", 'error');
-        return;
-    }
-    
+function convertEggs() {
     const eggsNeeded = 100;
-    const chickensToAdd = Math.floor(gameState.eggs / eggsNeeded);
     
-    if (!confirm(`هل تريد تحويل ${chickensToAdd * eggsNeeded} بيضة لـ ${chickensToAdd} دجاجة؟`)) {
+    if (gameState.eggs < eggsNeeded) {
+        showNotification(`❌ تحتاج ${eggsNeeded} بيضة على الأقل لتحويلها لدجاجة!`, 'error');
         return;
     }
     
-    const result = await callAPI('convertEggs', {
-        eggs: chickensToAdd * eggsNeeded,
-        chickens: chickensToAdd
+    const chickensToAdd = Math.floor(gameState.eggs / eggsNeeded);
+    const eggsUsed = chickensToAdd * eggsNeeded;
+    
+    if (!confirm(`هل تريد تحويل ${eggsUsed} بيضة لـ ${chickensToAdd} دجاجة؟\n\n(كل 100 بيضة = 1 دجاجة)`)) {
+        return;
+    }
+    
+    // التنفيذ
+    gameState.eggs -= eggsUsed;
+    gameState.chickens += chickensToAdd;
+    gameState.production += chickensToAdd; // كل دجاجة جديدة تنتج 1 بيضة/ساعة
+    
+    // إضافة إلى السجلات
+    gameState.transactions.push({
+        type: 'convert',
+        description: `تحويل ${eggsUsed} بيضة لدجاج`,
+        amount: `+${chickensToAdd} 🐔`,
+        timestamp: Date.now()
     });
     
-    if (result.success) {
-        gameState = result.data;
-        updateGameUI();
-        showNotification(`✅ تم تحويل ${chickensToAdd * eggsNeeded} بيضة لـ ${chickensToAdd} دجاجة!`, 'success');
-    } else {
-        showNotification("❌ حدث خطأ: " + result.error, 'error');
-    }
-}
-
-// ✅ دالة الاتصال بالسيرفر
-async function callAPI(action, data = {}) {
-    try {
-        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'guest';
-        const response = await fetch(`${API_URL}/api`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-User-ID': userId,
-                'X-Action': action
-            },
-            body: JSON.stringify({
-                action: action,
-                data: data,
-                userId: userId,
-                timestamp: Date.now()
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status}`);
-        }
-        
-        return await response.json();
-    } catch (error) {
-        console.error('API call failed:', error);
-        showNotification("❌ خطأ في الاتصال. حاول مرة أخرى.", "error");
-        return { success: false, error: error.message };
-    }
+    // تحديث الواجهة
+    updateGameUI();
+    showNotification(`✅ تم تحويل ${eggsUsed} بيضة لـ ${chickensToAdd} دجاجة!`, 'success');
 }
 
 // ✅ دالة تحميل الصفحة
@@ -914,13 +992,13 @@ function startGlobalLoading() {
     
     if (!loadingPage || !progressBar || !timerElement) return;
     
-    // إخفاء كل الصفحات الأخرى
+    // إخفاء التطبيق الرئيسي
     document.getElementById('app-container').style.display = 'none';
     
     // إظهار صفحة التحميل
     loadingPage.style.display = 'flex';
     
-    let loadingSeconds = 5;
+    let loadingSeconds = 3;
     let loadingProgress = 0;
     
     const loadingTimerInterval = setInterval(() => {
@@ -934,7 +1012,7 @@ function startGlobalLoading() {
         }
         
         // تحديث شريط التقدم
-        loadingProgress = ((5 - loadingSeconds) / 5) * 100;
+        loadingProgress = ((3 - loadingSeconds) / 3) * 100;
         progressBar.style.width = loadingProgress + '%';
         
         // عند انتهاء الوقت
@@ -946,20 +1024,20 @@ function startGlobalLoading() {
 }
 
 // ✅ دالة إنهاء التحميل
-async function finishLoading() {
+function finishLoading() {
     const loadingPage = document.getElementById('global-loading-page');
     
     try {
         // ✅ عرض التطبيق الرئيسي
         document.getElementById('app-container').style.display = 'block';
         
-        // ✅ تحميل بيانات اللعبة
-        await loadGame();
-        
-        // ✅ بدء التحديث التلقائي
-        setInterval(loadGame, 30000); // تحديث كل 30 ثانية
+        // ✅ تحديث واجهة اللعبة
+        updateGameUI();
         
         showNotification("✅ تم تحميل المزرعة بنجاح! أهلاً بك!", "success");
+        
+        // ✅ تحميل البيانات المحفوظة من localStorage
+        loadSavedGame();
         
     } catch (error) {
         console.error("Loading error:", error);
@@ -971,14 +1049,49 @@ async function finishLoading() {
     }
 }
 
+// ✅ دالة تحميل اللعبة المحفوظة
+function loadSavedGame() {
+    try {
+        const savedGame = localStorage.getItem('chickenFarmGame');
+        if (savedGame) {
+            const parsedGame = JSON.parse(savedGame);
+            
+            // استعادة الوقت الماضي
+            const now = Date.now();
+            const timeDiff = now - (parsedGame.lastProductionTime || now);
+            const hoursPassed = timeDiff / (1000 * 60 * 60);
+            
+            // حساب البيض المنتج أثناء الغياب
+            if (parsedGame.production > 0 && hoursPassed > 0) {
+                const eggsProduced = Math.floor(parsedGame.production * hoursPassed);
+                parsedGame.eggs += eggsProduced;
+                parsedGame.lastProductionTime = now;
+            }
+            
+            gameState = { ...gameState, ...parsedGame };
+            updateGameUI();
+            showNotification(`تم تحميل مزرعتك السابقة! هناك ${gameState.eggs} بيضة.`, 'info');
+        }
+    } catch (error) {
+        console.error("Error loading saved game:", error);
+    }
+}
+
+// ✅ دالة حفظ اللعبة
+function saveGame() {
+    try {
+        gameState.lastSaveTime = Date.now();
+        localStorage.setItem('chickenFarmGame', JSON.stringify(gameState));
+    } catch (error) {
+        console.error("Error saving game:", error);
+    }
+}
+
 // ✅ تهيئة التطبيق
 document.addEventListener('DOMContentLoaded', function() {
     // إعداد المستخدم
-    if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-        const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
-        const fullName = `${tgUser.first_name} ${tgUser.last_name || ''}`.trim();
-        document.getElementById('home-username').textContent = fullName || 'مزارع';
-    }
+    const userName = "مزارع";
+    document.getElementById('home-username').textContent = userName;
     
     // إعداد مستمعي الأحداث
     document.querySelectorAll('.nav-item').forEach(btn => {
@@ -987,23 +1100,30 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // بدء التحميل
     startGlobalLoading();
-});
-
-// ✅ تحديث الإنتاج التلقائي كل دقيقة
-setInterval(() => {
-    if (gameState.production > 0) {
-        const now = Date.now();
-        const timeDiff = now - gameState.lastCollectTime;
-        const hoursPassed = timeDiff / (1000 * 60 * 60);
-        const eggsProduced = Math.floor(gameState.production * hoursPassed);
-        
-        if (eggsProduced > 0) {
-            // تحديث عدد البيض في الذاكرة المحلية فقط (ليس في السيرفر حتى يتم الجمع)
-            const tempEggs = gameState.eggs + eggsProduced;
-            document.getElementById('eggs').textContent = tempEggs;
+    
+    // حفظ اللعبة تلقائيًا كل 30 ثانية
+    setInterval(saveGame, 30000);
+    
+    // تحديث الإنتاج كل دقيقة
+    setInterval(() => {
+        if (gameState.production > 0) {
+            const now = Date.now();
+            const timeDiff = now - gameState.lastProductionTime;
+            const hoursPassed = timeDiff / (1000 * 60 * 60);
+            
+            if (hoursPassed >= 1) { // إذا مرت ساعة كاملة
+                const eggsProduced = Math.floor(gameState.production * hoursPassed);
+                if (eggsProduced > 0) {
+                    // تحديث العرض فقط
+                    const currentEggs = parseInt(document.getElementById('eggs').textContent);
+                    document.getElementById('eggs').textContent = currentEggs + eggsProduced;
+                    gameState.lastProductionTime = now;
+                    saveGame();
+                }
+            }
         }
-    }
-}, 60000); // كل دقيقة
+    }, 60000); // كل دقيقة
+});
 </script>
 </body>
 </html>
