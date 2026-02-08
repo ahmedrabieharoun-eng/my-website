@@ -1,4 +1,4 @@
-// SquidPEPE Game Engine - Complete Version
+// SquidPEPE Game Engine - Complete Version with Deposit/Withdraw
 export default {
     async fetch(request, env, ctx) {
         // إعداد CORS
@@ -26,7 +26,7 @@ export default {
             });
         }
         
-        // معالجة طلب معلومات الإيداع
+        // معالجة طلب معلومات الإيداع (القديم - للتوافق)
         if (path === '/getDepositInfo') {
             return handleGetDepositInfo(request, env);
         }
@@ -114,6 +114,18 @@ export default {
                     
                 case 'withdrawTON':
                     result = await handleWithdrawTON(env, userId, data);
+                    break;
+                    
+                case 'deposit/init':
+                    result = await handleInitDeposit(env, userId, data);
+                    break;
+                    
+                case 'checkDeposit':
+                    result = await handleCheckDeposit(env, userId, data);
+                    break;
+                    
+                case 'initializeUser':
+                    result = await initializeUserHandler(env, userId, data);
                     break;
                     
                 default:
@@ -855,7 +867,197 @@ async function handleWithdrawTON(env, userId, data) {
     }
 }
 
-// Get Deposit Information
+// ==================== New Deposit/Withdraw Handlers ====================
+
+// Initialize Deposit (New Method)
+async function handleInitDeposit(env, userId, data) {
+    try {
+        const { amount, wallet_address } = data;
+        
+        // Validate amount
+        if (!amount || amount < GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT) {
+            return {
+                success: false,
+                error: `Minimum deposit amount is ${GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT} TON`,
+                errorCode: 'MIN_DEPOSIT_AMOUNT'
+            };
+        }
+        
+        // Validate wallet address
+        if (!wallet_address || wallet_address.length < 10) {
+            return {
+                success: false,
+                error: 'Invalid wallet address',
+                errorCode: 'INVALID_WALLET_ADDRESS'
+            };
+        }
+        
+        // Generate unique comment
+        const comment = `deposit_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Get deposit address from environment
+        const depositAddress = env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG";
+        
+        // Store pending deposit
+        const depositId = `deposit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const depositData = {
+            id: depositId,
+            userId: userId,
+            amount: parseFloat(amount),
+            walletAddress: wallet_address,
+            depositAddress: depositAddress,
+            comment: comment,
+            status: 'pending',
+            createdAt: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbSet(env, `deposits/pending/${depositId}`, depositData);
+        
+        // Also store by user for easy retrieval
+        await handleDbPush(env, `users/${userId}/pendingDeposits`, {
+            depositId: depositId,
+            amount: amount,
+            comment: comment,
+            createdAt: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                address: depositAddress,
+                amount: amount,
+                comment: comment,
+                depositId: depositId
+            }
+        };
+        
+    } catch (error) {
+        console.error('Init deposit error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'INIT_DEPOSIT_ERROR'
+        };
+    }
+}
+
+// Check Deposit Status
+async function handleCheckDeposit(env, userId, data) {
+    try {
+        const { depositId } = data;
+        
+        if (!depositId) {
+            return {
+                success: false,
+                error: 'Deposit ID is required',
+                errorCode: 'DEPOSIT_ID_REQUIRED'
+            };
+        }
+        
+        // Get deposit record
+        const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
+        if (!depositResult.success || !depositResult.data) {
+            return {
+                success: false,
+                error: 'Deposit not found',
+                errorCode: 'DEPOSIT_NOT_FOUND'
+            };
+        }
+        
+        const deposit = depositResult.data;
+        
+        // Check if user owns this deposit
+        if (deposit.userId !== userId) {
+            return {
+                success: false,
+                error: 'Unauthorized access',
+                errorCode: 'UNAUTHORIZED_ACCESS'
+            };
+        }
+        
+        return {
+            success: true,
+            data: {
+                status: deposit.status,
+                amount: deposit.amount,
+                comment: deposit.comment,
+                createdAt: deposit.createdAt,
+                lastUpdated: deposit.lastUpdated
+            }
+        };
+        
+    } catch (error) {
+        console.error('Check deposit error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CHECK_DEPOSIT_ERROR'
+        };
+    }
+}
+
+// Initialize User with Telegram Data
+async function initializeUserHandler(env, userId, data) {
+    try {
+        const { user } = data;
+        
+        // Check if user already exists
+        const existingUser = await handleDbGet(env, `users/${userId}`);
+        if (existingUser.success && existingUser.data) {
+            return {
+                success: true,
+                data: {
+                    message: 'User already exists',
+                    user: existingUser.data
+                }
+            };
+        }
+        
+        // Create new user with Telegram data
+        const now = Date.now();
+        const userData = {
+            squids: 0,
+            eggs: 0,
+            tonBalance: 0,
+            mintUsed: false,
+            mintedSquids: 0,
+            lastEggCalc: now,
+            referralCode: generateReferralCode(userId),
+            referredBy: null,
+            telegramData: {
+                first_name: user?.first_name || '',
+                last_name: user?.last_name || '',
+                username: user?.username || '',
+                language_code: user?.language_code || 'en'
+            },
+            joinDate: now,
+            lastUpdated: now
+        };
+        
+        await handleDbSet(env, `users/${userId}`, userData);
+        
+        return {
+            success: true,
+            data: {
+                message: 'User initialized successfully',
+                user: userData
+            }
+        };
+        
+    } catch (error) {
+        console.error('Initialize user error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'INITIALIZE_USER_ERROR'
+        };
+    }
+}
+
+// ==================== Old Deposit Handlers (for compatibility) ====================
+
+// Get Deposit Information (Old Method - for compatibility)
 async function handleGetDepositInfo(request, env) {
     try {
         const userId = request.headers.get('X-User-ID');
