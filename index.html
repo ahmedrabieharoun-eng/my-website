@@ -944,46 +944,9 @@
         .fee-value {
             font-weight: 600;
         }
-        
-        /* Toast Notifications */
-        .toast {
-            position: fixed;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--dark-card);
-            border: 1px solid var(--dark-border);
-            border-radius: 12px;
-            padding: 12px 20px;
-            color: var(--text-primary);
-            font-weight: 600;
-            z-index: 3000;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            display: none;
-            max-width: 90%;
-        }
-        
-        .toast.success {
-            border-left: 4px solid var(--success);
-        }
-        
-        .toast.error {
-            border-left: 4px solid var(--danger);
-        }
-        
-        .toast.warning {
-            border-left: 4px solid var(--warning);
-        }
-        
-        .toast.info {
-            border-left: 4px solid var(--primary-blue);
-        }
     </style>
 </head>
 <body>
-    <!-- Toast Notifications -->
-    <div class="toast" id="toast"></div>
-
     <!-- Loading Screen -->
     <div class="loading-screen" id="loadingScreen">
         <div class="loading-logo">🦑</div>
@@ -1156,10 +1119,7 @@
                             <i class="fas fa-list"></i> Sell Orders
                         </h3>
                         <div class="order-list" id="sellOrdersList">
-                            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-                                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
-                                <p>No sell orders available</p>
-                            </div>
+                            <!-- Sell orders will be populated here -->
                         </div>
                     </div>
                     
@@ -1170,12 +1130,12 @@
                         
                         <div class="form-group">
                             <label class="form-label">Price per Squid (TON)</label>
-                            <input type="number" id="buyPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001" value="0.01">
+                            <input type="number" id="buyPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">Amount (Squids)</label>
-                            <input type="number" id="buyAmount" class="form-input" placeholder="100" min="100" value="100">
+                            <input type="number" id="buyAmount" class="form-input" placeholder="100" min="100">
                             <div class="amount-buttons">
                                 <div class="amount-btn" onclick="setBuyAmountPercent(0.25)">25%</div>
                                 <div class="amount-btn" onclick="setBuyAmountPercent(0.5)">50%</div>
@@ -1205,10 +1165,7 @@
                             <i class="fas fa-list"></i> Buy Orders
                         </h3>
                         <div class="order-list" id="buyOrdersList">
-                            <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
-                                <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
-                                <p>No buy orders available</p>
-                            </div>
+                            <!-- Buy orders will be populated here -->
                         </div>
                     </div>
                     
@@ -1219,12 +1176,12 @@
                         
                         <div class="form-group">
                             <label class="form-label">Price per Squid (TON)</label>
-                            <input type="number" id="sellPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001" value="0.02">
+                            <input type="number" id="sellPrice" class="form-input" placeholder="0.01" step="0.0001" min="0.0001">
                         </div>
                         
                         <div class="form-group">
                             <label class="form-label">Amount (Squids)</label>
-                            <input type="number" id="sellAmount" class="form-input" placeholder="100" min="100" value="100">
+                            <input type="number" id="sellAmount" class="form-input" placeholder="100" min="100">
                             <div class="amount-buttons">
                                 <div class="amount-btn" onclick="setSellAmountPercent(0.25)">25%</div>
                                 <div class="amount-btn" onclick="setSellAmountPercent(0.5)">50%</div>
@@ -1713,139 +1670,143 @@
         let eggTimerInterval;
         let connectedWallet = null;
         let currentDepositInfo = null;
+        let TELEGRAM_DATA = '';
 
         // API Configuration
         const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
-        let USER_ID = 'demo_user_' + Math.random().toString(36).substr(2, 9);
-        let TELEGRAM_DATA = '';
 
-        // Toast Notification
-        function showToast(message, type = 'info', duration = 3000) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = 'toast ' + type;
-            toast.style.display = 'block';
-            
-            setTimeout(() => {
-                toast.style.display = 'none';
-            }, duration);
-        }
-
-        // Telegram Integration
+        // Telegram Integration - UPDATED
         async function setupTelegramAuth() {
-            console.log('Setting up Telegram auth...');
+            // تأكد من أننا داخل Telegram WebApp
+            if (!window.Telegram?.WebApp) {
+                console.error('Not running inside Telegram WebApp');
+                alert('Please open this game through Telegram to play.');
+                throw new Error('Telegram WebApp not detected');
+            }
             
-            if (window.Telegram?.WebApp?.initData) {
-                TELEGRAM_DATA = window.Telegram.WebApp.initData;
-                console.log('Telegram init data found');
-                
-                // Extract user ID properly
+            // تهيئة WebApp
+            Telegram.WebApp.ready();
+            
+            // الحصول على initData
+            TELEGRAM_DATA = Telegram.WebApp.initData;
+            
+            if (!TELEGRAM_DATA) {
+                console.error('Telegram initData is empty');
+                alert('Telegram authentication failed. Please try refreshing.');
+                throw new Error('Telegram initData is empty');
+            }
+            
+            console.log('Telegram auth initialized successfully');
+            
+            // استخراج بيانات المستخدم للعرض فقط
+            try {
                 const initData = new URLSearchParams(TELEGRAM_DATA);
                 const userParam = initData.get('user');
                 if (userParam) {
-                    try {
-                        const userData = JSON.parse(decodeURIComponent(userParam));
-                        USER_ID = String(userData.id);
+                    const userData = JSON.parse(decodeURIComponent(userParam));
+                    
+                    // تحديث واجهة المستخدم
+                    document.getElementById('profileName').textContent = 
+                        `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Player';
+                    document.getElementById('profileUsername').textContent = 
+                        userData.username ? `@${userData.username}` : 'User';
                         
-                        // Update UI with actual user data
-                        document.getElementById('profileName').textContent = 
-                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
-                        document.getElementById('profileUsername').textContent = 
-                            userData.username ? `@${userData.username}` : 'User';
-                            
-                        console.log('Authenticated Telegram User:', userData);
-                        
-                        // Initialize user in backend
-                        try {
-                            await callAPI('initializeUser', { user: userData });
-                            showToast('Welcome to SquidPEPE!', 'success');
-                        } catch (error) {
-                            console.log('User already exists or initialization failed:', error);
-                        }
-                        
-                        return userData;
-                    } catch (error) {
-                        console.error('Failed to parse Telegram user data:', error);
-                    }
+                    return userData;
                 }
+            } catch (error) {
+                console.warn('Could not parse Telegram user data:', error);
             }
             
-            // Fallback for testing
-            console.warn('Using demo mode - no Telegram auth');
-            showToast('Running in demo mode', 'warning');
             return null;
         }
 
-        // API Functions
-        async function callAPI(action, data = {}) {
-            try {
-                console.log(`Calling API: ${action}`, data);
-                
-                const API_URL = API_BASE + '/api';
-                
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'X-User-ID': USER_ID,
-                    'X-Action': action
-                };
-                
-                // Add Telegram authentication if available
-                if (TELEGRAM_DATA) {
-                    headers['Authorization'] = `Telegram ${TELEGRAM_DATA}`;
-                }
-                
-                const requestBody = {
-                    action: action,
-                    data: data,
-                    userId: USER_ID
-                };
-                
-                console.log('Request URL:', API_URL);
-                console.log('Request headers:', headers);
-                console.log('Request body:', requestBody);
-                
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(requestBody)
-                });
+        // دالة لإنشاء headers المصادقة - NEW FUNCTION
+        function getAuthHeaders(action) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Action': action
+            };
+            
+            // إضافة مصادقة Telegram إذا كانت متوفرة
+            if (TELEGRAM_DATA) {
+                headers['Authorization'] = `Telegram ${TELEGRAM_DATA}`;
+            } else {
+                console.warn('No Telegram auth data available');
+            }
+            
+            return headers;
+        }
 
-                console.log('Response status:', response.status);
-                console.log('Response headers:', Object.fromEntries(response.headers));
+        // اختبار اتصال الـ API - NEW FUNCTION
+        async function testAPIConnection() {
+            try {
+                console.log('Testing API connection...');
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: getAuthHeaders('ping'),
+                    body: JSON.stringify({ action: 'ping' })
+                });
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('HTTP error response:', errorText);
-                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                    throw new Error(`Server returned ${response.status}`);
                 }
                 
                 const result = await response.json();
-                console.log('API Response:', result);
+                console.log('API connection test successful:', result);
+                return true;
+            } catch (error) {
+                console.error('API connection test failed:', error);
+                throw new Error('Cannot connect to game server. Please try again later.');
+            }
+        }
+
+        // API Functions - UPDATED
+        async function callAPI(action, data = {}) {
+            try {
+                const response = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: getAuthHeaders(action),
+                    body: JSON.stringify({ 
+                        action, 
+                        data
+                        // لا ترسل userId هنا - الـ Worker يستخلصه من Telegram auth
+                    })
+                });
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Authentication failed - Please refresh or reopen in Telegram');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
                 
                 if (result.success) {
                     return result.data;
                 } else {
                     console.error(`API Error (${result.errorCode}):`, result.error);
                     
-                    // Show user-friendly error message
-                    let errorMessage = result.error || 'An error occurred';
+                    // معالجة أخطاء محددة
                     if (result.errorCode === 'AUTH_REQUIRED') {
-                        errorMessage = 'Please open this game through Telegram to play.';
+                        alert('❌ Authentication required\nPlease open this game through Telegram to play.');
+                        // يمكنك إعادة تحميل الصفحة
+                        setTimeout(() => location.reload(), 2000);
+                    } else if (result.errorCode === 'INVALID_AUTH') {
+                        alert('⚠️ Invalid authentication\nPlease refresh the page.');
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        alert(result.error || 'An error occurred');
                     }
                     
-                    showToast(`❌ ${errorMessage}`, 'error', 5000);
-                    throw new Error(result.error);
+                    throw new Error(result.error || 'API error');
                 }
             } catch (error) {
                 console.error('API call failed:', error);
                 
-                // Show user-friendly error message
-                if (error.message.includes('Network') || error.message.includes('Failed to fetch')) {
-                    showToast('🌐 Network error. Please check your connection.', 'error');
-                } else if (error.message.includes('401')) {
-                    showToast('🔐 Authentication failed. Please refresh.', 'error');
-                } else {
-                    showToast(`⚠️ ${error.message}`, 'error');
+                // لا تعرض alert لأخطاء الشبكة في production
+                if (!error.message.includes('Network')) {
+                    alert(`Error: ${error.message}`);
                 }
                 
                 throw error;
@@ -1877,53 +1838,49 @@
         // Game State Management
         async function loadGameState() {
             try {
-                console.log('Loading game state...');
+                console.log('Loading game state with Telegram auth...');
                 const data = await callAPI('getState');
                 gameState = data;
                 updateUI();
-                console.log('Game state loaded:', gameState);
+                console.log('Game state loaded successfully');
             } catch (error) {
                 console.error('Failed to load game state:', error);
-                showToast('Failed to load game data', 'error');
+                // لا تظهر alert هنا لتجنب الإزعاج
             }
         }
 
         async function mintSquids() {
             try {
-                showToast('Processing mint...', 'info');
                 const data = await callAPI('mintSquids');
                 gameState.user.mintUsed = true;
-                gameState.user.tonBalance = data.newTonBalance || (gameState.user.tonBalance - 1);
+                gameState.user.tonBalance = data.newTonBalance;
                 gameState.user.squids = data.newSquids;
                 gameState.global.mintedSoFar = data.globalMinted;
                 gameState.global.mintProgress = data.mintProgress;
                 updateUI();
                 closeMintModal();
-                showToast('✅ Successfully minted 3,000 Squids!', 'success');
+                alert('Successfully minted 3,000 Squids!');
             } catch (error) {
                 console.error('Mint failed:', error);
-                showToast('Failed to mint squids', 'error');
             }
         }
 
         async function hatchSquids() {
             const amount = parseInt(document.getElementById('hatchAmount').value);
             if (amount < 100) {
-                showToast('Minimum hatch amount is 100 eggs', 'warning');
+                alert('Minimum hatch amount is 100 eggs');
                 return;
             }
 
             try {
-                showToast('Processing hatch...', 'info');
                 const data = await callAPI('hatchSquids', { amount });
                 gameState.user.eggs = data.newEggs;
                 gameState.user.squids = data.newSquids;
                 updateUI();
                 closeHatchModal();
-                showToast(`✅ Successfully hatched ${data.squidsProduced} Squids!`, 'success');
+                alert(`Successfully hatched ${data.squidsProduced} Squids!`);
             } catch (error) {
                 console.error('Hatch failed:', error);
-                showToast('Failed to hatch squids', 'error');
             }
         }
 
@@ -1932,27 +1889,25 @@
             const amount = parseInt(document.getElementById('buyAmount').value);
             
             if (!price || price <= 0) {
-                showToast('Please enter a valid price', 'warning');
+                alert('Please enter a valid price');
                 return;
             }
             
             if (!amount || amount < 100) {
-                showToast('Minimum order amount is 100 Squids', 'warning');
+                alert('Minimum order amount is 100 Squids');
                 return;
             }
 
             try {
-                showToast('Creating buy order...', 'info');
                 const data = await callAPI('createOrder', {
                     type: 'buy',
                     price,
                     amount
                 });
-                showToast('✅ Buy order created successfully!', 'success');
+                alert('Buy order created successfully!');
                 loadGameState();
             } catch (error) {
                 console.error('Create buy order failed:', error);
-                showToast('Failed to create buy order', 'error');
             }
         }
 
@@ -1961,27 +1916,25 @@
             const amount = parseInt(document.getElementById('sellAmount').value);
             
             if (!price || price <= 0) {
-                showToast('Please enter a valid price', 'warning');
+                alert('Please enter a valid price');
                 return;
             }
             
             if (!amount || amount < 100) {
-                showToast('Minimum order amount is 100 Squids', 'warning');
+                alert('Minimum order amount is 100 Squids');
                 return;
             }
 
             try {
-                showToast('Creating sell order...', 'info');
                 const data = await callAPI('createOrder', {
                     type: 'sell',
                     price,
                     amount
                 });
-                showToast('✅ Sell order created successfully!', 'success');
+                alert('Sell order created successfully!');
                 loadGameState();
             } catch (error) {
                 console.error('Create sell order failed:', error);
-                showToast('Failed to create sell order', 'error');
             }
         }
 
@@ -1990,23 +1943,21 @@
             const address = document.getElementById('withdrawAddress').value;
             
             if (!amount || amount < 0.1) {
-                showToast('Minimum withdrawal amount is 0.1 TON', 'warning');
+                alert('Minimum withdrawal amount is 0.1 TON');
                 return;
             }
             
             if (!address || address.length < 10) {
-                showToast('Please enter a valid TON wallet address', 'warning');
+                alert('Please enter a valid TON wallet address');
                 return;
             }
 
             try {
-                showToast('Processing withdrawal...', 'info');
                 const data = await callAPI('withdrawTON', { amount, address });
-                showToast('✅ Withdrawal request submitted! It will be processed within 24 hours.', 'success');
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
                 loadGameState();
             } catch (error) {
                 console.error('Withdrawal failed:', error);
-                showToast('Failed to process withdrawal', 'error');
             }
         }
 
@@ -2035,15 +1986,23 @@
         // Wallet Connection
         async function connectWallet() {
             try {
+                // In a real implementation, use TON Connect SDK
                 // For demo purposes, we'll simulate wallet connection
-                showToast('Connecting wallet...', 'info');
                 
-                // Simulate a TON wallet address
-                const walletAddress = 'EQD' + Math.random().toString(36).substr(2, 30).toUpperCase();
+                const walletAddress = prompt('Enter your TON wallet address:');
+                if (!walletAddress) {
+                    return;
+                }
+                
+                // Validate wallet address format
+                if (walletAddress.length < 10) {
+                    alert('Invalid wallet address format');
+                    return;
+                }
                 
                 connectedWallet = {
                     address: walletAddress,
-                    type: 'tonkeeper'
+                    type: 'tonkeeper' // or 'tonhub', 'mytonwallet', etc.
                 };
                 
                 // Update UI
@@ -2063,11 +2022,11 @@
                 // Enable deposit button
                 document.getElementById('initiateDepositBtn').disabled = false;
                 
-                showToast('✅ Wallet connected successfully!', 'success');
+                alert('Wallet connected successfully!');
                 
             } catch (error) {
                 console.error('Failed to connect wallet:', error);
-                showToast('Failed to connect wallet', 'error');
+                alert('Failed to connect wallet. Please try again.');
             }
         }
 
@@ -2094,7 +2053,7 @@
             // Hide deposit details
             document.getElementById('depositDetailsCard').style.display = 'none';
             
-            showToast('Wallet disconnected', 'info');
+            alert('Wallet disconnected.');
         }
 
         function setDepositAmount(amount) {
@@ -2104,19 +2063,17 @@
         // Deposit Functions
         async function initiateDeposit() {
             if (!connectedWallet) {
-                showToast('Please connect your wallet first', 'warning');
+                alert('Please connect your wallet first.');
                 return;
             }
             
             const amount = parseFloat(document.getElementById('depositAmount').value);
             if (!amount || amount < 0.1) {
-                showToast('Minimum deposit amount is 0.1 TON', 'warning');
+                alert('Minimum deposit amount is 0.1 TON');
                 return;
             }
             
             try {
-                showToast('Preparing deposit...', 'info');
-                
                 // Call backend to initialize deposit
                 const depositData = await callAPI('deposit/init', {
                     amount: amount,
@@ -2133,17 +2090,15 @@
                 // Show deposit details
                 document.getElementById('depositDetailsCard').style.display = 'block';
                 
-                showToast('Deposit prepared! Please send the exact amount with the comment.', 'success');
-                
             } catch (error) {
                 console.error('Failed to initiate deposit:', error);
-                showToast('Failed to prepare deposit', 'error');
+                alert('Failed to prepare deposit. Please try again.');
             }
         }
 
         function openTonkeeper() {
             if (!currentDepositInfo) {
-                showToast('Please initiate a deposit first', 'warning');
+                alert('Please initiate a deposit first.');
                 return;
             }
             
@@ -2152,35 +2107,35 @@
             
             // Open in new tab
             window.open(tonkeeperURL, '_blank');
-            showToast('Opening Tonkeeper...', 'info');
         }
 
         async function sendDepositTransaction() {
             if (!currentDepositInfo) {
-                showToast('Please initiate a deposit first', 'warning');
+                alert('Please initiate a deposit first.');
                 return;
             }
             
             try {
-                showToast('Processing transaction...', 'info');
+                // In a real implementation, this would use TON Connect SDK
+                // For now, we'll simulate the transaction
                 
-                // Simulate transaction success
+                alert(`Transaction prepared!\n\nSend ${currentDepositInfo.amount} TON to:\n${currentDepositInfo.address}\n\nWith comment: ${currentDepositInfo.comment}\n\nPlease complete the transaction in your wallet.`);
+                
+                // Hide deposit details
+                document.getElementById('depositDetailsCard').style.display = 'none';
+                
+                // Reset form
+                document.getElementById('depositAmount').value = '';
+                
+                // Start checking for deposit confirmation
                 setTimeout(() => {
-                    // Hide deposit details
-                    document.getElementById('depositDetailsCard').style.display = 'none';
-                    
-                    // Reset form
-                    document.getElementById('depositAmount').value = '';
-                    
-                    // Load updated game state
                     loadGameState();
-                    
-                    showToast('✅ Deposit simulated successfully! In production, please complete the transaction in your wallet.', 'success');
-                }, 2000);
+                    alert('Checking for deposit confirmation... Please wait a moment.');
+                }, 5000);
                 
             } catch (error) {
                 console.error('Failed to send transaction:', error);
-                showToast('Failed to send transaction', 'error');
+                alert('Failed to send transaction. Please try again.');
             }
         }
 
@@ -2217,28 +2172,27 @@
             const address = document.getElementById('withdrawAddressFinance').value;
             
             if (!amount || amount < 0.5) {
-                showToast('Minimum withdrawal amount is 0.5 TON', 'warning');
+                alert('Minimum withdrawal amount is 0.5 TON');
                 return;
             }
             
             if (!address || address.length < 10) {
-                showToast('Please enter a valid TON wallet address', 'warning');
+                alert('Please enter a valid TON wallet address');
                 return;
             }
             
             if (amount > gameState.user.tonBalance) {
-                showToast('Insufficient balance', 'warning');
+                alert('Insufficient balance');
                 return;
             }
 
             try {
-                showToast('Processing withdrawal...', 'info');
                 const data = await callAPI('withdrawTON', { 
                     amount: amount, 
                     address: address 
                 });
                 
-                showToast('✅ Withdrawal request submitted! It will be processed within 24 hours.', 'success');
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
                 
                 // Reset form
                 document.getElementById('withdrawAmountFinance').value = '';
@@ -2250,21 +2204,18 @@
                 
             } catch (error) {
                 console.error('Withdrawal failed:', error);
-                showToast('Failed to process withdrawal', 'error');
             }
         }
 
         // UI Update Functions
         function updateUI() {
-            console.log('Updating UI with game state:', gameState);
-            
             // Update status bar
             document.getElementById('statusSquids').textContent = formatNumber(gameState.user.squids);
             document.getElementById('statusEggs').textContent = formatNumber(gameState.user.eggs);
             document.getElementById('statusTon').textContent = formatTON(gameState.user.tonBalance);
             
             // Update mint progress
-            const progressPercent = gameState.global.mintProgress || 0;
+            const progressPercent = (gameState.global.mintedSoFar / 90000000) * 100;
             document.getElementById('mintProgressFill').style.width = `${progressPercent}%`;
             document.getElementById('mintProgressText').textContent = 
                 `${formatNumber(gameState.global.mintedSoFar)}/90,000,000`;
@@ -2275,9 +2226,9 @@
             
             // Update market stats
             document.getElementById('bestBuyPrice').textContent = 
-                gameState.marketStats?.bestBuy ? formatTON(gameState.marketStats.bestBuy) : '0.0100';
+                gameState.market.bestBuy ? formatTON(gameState.market.bestBuy) : '0.0000';
             document.getElementById('bestSellPrice').textContent = 
-                gameState.marketStats?.bestSell ? formatTON(gameState.marketStats.bestSell) : '0.0200';
+                gameState.market.bestSell ? formatTON(gameState.market.bestSell) : '0.0000';
             
             // Update craft station
             document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
@@ -2287,10 +2238,6 @@
             document.getElementById('profileSquids').textContent = formatNumber(gameState.user.squids);
             document.getElementById('profileEggs').textContent = formatNumber(gameState.user.eggs);
             document.getElementById('profileTon').textContent = formatTON(gameState.user.tonBalance);
-            
-            // Update production stats
-            document.getElementById('activeSquids').textContent = formatNumber(gameState.user.squids);
-            document.getElementById('eggsPerDay').textContent = formatNumber(gameState.user.eggsPerDay || 0);
             
             // Update mint button state
             const mintBtn = document.getElementById('mintButton');
@@ -2319,41 +2266,19 @@
             }
             
             // Update referral link
-            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode || USER_ID}`;
+            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
             document.getElementById('referralLink').value = referralLink;
             
             // Update finance page if active
             if (currentFinanceTab === 'withdraw') {
                 updateWithdrawUI();
             }
-            
-            // Update wallet connection status if connected
-            if (gameState.user.walletConnected && gameState.user.walletAddress) {
-                connectedWallet = {
-                    address: gameState.user.walletAddress,
-                    type: 'tonkeeper'
-                };
-                
-                const walletStatus = document.getElementById('walletStatus');
-                walletStatus.innerHTML = `
-                    <div style="flex: 1;">
-                        <div style="font-size: 14px; font-weight: 600; color: var(--success);">Wallet Connected</div>
-                        <div class="wallet-address">${gameState.user.walletAddress.substring(0, 20)}...${gameState.user.walletAddress.substring(gameState.user.walletAddress.length - 6)}</div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="disconnectWallet()">
-                        <i class="fas fa-unplug"></i> Disconnect
-                    </button>
-                `;
-                walletStatus.classList.remove('disconnected');
-                walletStatus.classList.add('connected');
-                document.getElementById('initiateDepositBtn').disabled = false;
-            }
         }
 
         // Modal Functions
         function showMintModal() {
             if (gameState.user.mintUsed) {
-                showToast('You have already minted your initial Squids.', 'warning');
+                alert('You have already minted your initial Squids.');
                 return;
             }
             document.getElementById('mintModal').classList.add('active');
@@ -2377,7 +2302,7 @@
             const input = document.getElementById('referralLink');
             input.select();
             navigator.clipboard.writeText(input.value);
-            showToast('Referral link copied to clipboard!', 'success');
+            alert('Referral link copied to clipboard!');
         }
 
         // Hatch Modal Functions
@@ -2431,7 +2356,7 @@
 
         function setBuyAmountPercent(percent) {
             const maxTON = gameState.user.tonBalance;
-            const bestPrice = gameState.marketStats?.bestSell || 0.02;
+            const bestPrice = gameState.market.bestSell || 0.01;
             const maxSquids = Math.floor(maxTON / bestPrice);
             const amount = Math.floor(maxSquids * percent);
             document.getElementById('buyAmount').value = Math.max(100, amount);
@@ -2439,7 +2364,7 @@
 
         function setBuyAmountMax() {
             const maxTON = gameState.user.tonBalance;
-            const bestPrice = gameState.marketStats?.bestSell || 0.02;
+            const bestPrice = gameState.market.bestSell || 0.01;
             const maxSquids = Math.floor(maxTON / bestPrice);
             document.getElementById('buyAmount').value = Math.max(100, maxSquids);
         }
@@ -2455,8 +2380,6 @@
 
         // Navigation
         function switchTab(tabId) {
-            console.log('Switching to tab:', tabId);
-            
             // Hide all sections
             document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
@@ -2474,43 +2397,79 @@
             document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
         }
 
-        // Initialize
+        // Initialize - UPDATED
         async function initialize() {
-            console.log('Initializing SquidPEPE game...');
-            
-            // Setup event listeners
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.addEventListener('click', () => switchTab(item.dataset.tab));
-            });
-            
-            document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
-            
-            // Setup Telegram authentication
-            await setupTelegramAuth();
-            
-            // Simulate loading
-            let progress = 0;
-            const loadingInterval = setInterval(() => {
-                progress += 5;
-                document.getElementById('loadingProgress').style.width = `${progress}%`;
+            try {
+                // 1. إعداد مصادقة Telegram (هذا إجباري)
+                await setupTelegramAuth();
                 
-                if (progress >= 100) {
-                    clearInterval(loadingInterval);
-                    document.getElementById('loadingScreen').style.display = 'none';
-                    document.getElementById('appContainer').style.display = 'block';
+                // 2. إعداد مستمعي الأحداث
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.addEventListener('click', () => switchTab(item.dataset.tab));
+                });
+                
+                document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
+                
+                // 3. محاكاة التحميل
+                let progress = 0;
+                const loadingInterval = setInterval(() => {
+                    progress += 5;
+                    document.getElementById('loadingProgress').style.width = `${progress}%`;
                     
-                    // Load initial data
-                    loadGameState();
-                    
-                    // Start auto-refresh
-                    setInterval(loadGameState, 30000); // Refresh every 30 seconds
-                    
-                    // Start egg timer simulation
-                    startEggTimer();
-                    
-                    showToast('Game loaded successfully!', 'success');
-                }
-            }, 100);
+                    if (progress >= 100) {
+                        clearInterval(loadingInterval);
+                        
+                        // 4. بعد التحميل، اختبار الاتصال بالـ API
+                        testAPIConnection()
+                            .then(() => {
+                                // إخفاء شاشة التحميل وعرض التطبيق
+                                document.getElementById('loadingScreen').style.display = 'none';
+                                document.getElementById('appContainer').style.display = 'block';
+                                
+                                // تحميل البيانات الأولية
+                                loadGameState();
+                                
+                                // بدء التحديث التلقائي
+                                setInterval(loadGameState, 30000);
+                                
+                                // بدء مؤقت البيض
+                                startEggTimer();
+                            })
+                            .catch(error => {
+                                console.error('Failed to connect to API:', error);
+                                document.getElementById('loadingScreen').innerHTML = `
+                                    <div style="text-align: center; padding: 20px;">
+                                        <div style="font-size: 48px;">❌</div>
+                                        <h2 style="color: var(--danger); margin-bottom: 10px;">Connection Failed</h2>
+                                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                                            ${error.message || 'Cannot connect to server'}
+                                        </p>
+                                        <button onclick="location.reload()" class="btn btn-primary">
+                                            <i class="fas fa-redo"></i> Try Again
+                                        </button>
+                                        <p style="margin-top: 20px; font-size: 12px; color: var(--text-muted);">
+                                            Make sure you're opening this inside Telegram
+                                        </p>
+                                    </div>
+                                `;
+                            });
+                    }
+                }, 100);
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                document.getElementById('loadingScreen').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 48px;">⚠️</div>
+                        <h2 style="color: var(--warning); margin-bottom: 10px;">Initialization Error</h2>
+                        <p style="color: var(--text-secondary); margin-bottom: 20px;">
+                            ${error.message || 'Failed to initialize the game'}
+                        </p>
+                        <button onclick="location.reload()" class="btn btn-primary">
+                            <i class="fas fa-redo"></i> Reload
+                        </button>
+                    </div>
+                `;
+            }
         }
 
         function startEggTimer() {
@@ -2520,32 +2479,14 @@
                 eggTimer--;
                 if (eggTimer <= 0) {
                     eggTimer = 3600;
-                    // Simulate egg production
-                    if (gameState.user.squids > 0) {
-                        const eggsProduced = Math.floor(gameState.user.squids * 0.01); // 1% per hour
-                        gameState.user.eggs += eggsProduced;
-                        updateUI();
-                    }
+                    // In real implementation, this would update from server
                 }
                 document.getElementById('statusEggsTimer').textContent = formatTime(eggTimer);
-                document.getElementById('nextEggTimer').textContent = formatTime(eggTimer);
             }, 1000);
         }
 
         // Start the app
         document.addEventListener('DOMContentLoaded', initialize);
-        
-        // Add global error handler
-        window.addEventListener('error', function(event) {
-            console.error('Global error:', event.error);
-            showToast(`Unexpected error: ${event.message}`, 'error');
-        });
-        
-        // Handle unhandled promise rejections
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('Unhandled promise rejection:', event.reason);
-            showToast(`Promise error: ${event.reason}`, 'error');
-        });
     </script>
 </body>
 </html>
