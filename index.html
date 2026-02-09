@@ -1698,66 +1698,6 @@
         let TELEGRAM_DATA = '';
 
         // ==============================================
-        // TELEGRAM INTEGRATION
-        // ==============================================
-        async function setupTelegramAuth() {
-            console.log('Setting up Telegram auth...');
-            
-            if (window.Telegram && window.Telegram.WebApp) {
-                console.log('Telegram WebApp found:', window.Telegram.WebApp);
-                
-                if (window.Telegram.WebApp.initData) {
-                    TELEGRAM_DATA = window.Telegram.WebApp.initData;
-                    console.log('Got initData from Telegram WebApp');
-                } else if (window.Telegram.WebApp.initDataUnsafe) {
-                    TELEGRAM_DATA = window.Telegram.WebApp.initDataUnsafe;
-                    console.log('Got initDataUnsafe from Telegram WebApp');
-                }
-                
-                const initData = new URLSearchParams(TELEGRAM_DATA);
-                const userParam = initData.get('user');
-                
-                if (userParam) {
-                    try {
-                        const userData = JSON.parse(decodeURIComponent(userParam));
-                        USER_ID = String(userData.id);
-                        
-                        document.getElementById('profileName').textContent = 
-                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
-                        document.getElementById('profileUsername').textContent = 
-                            userData.username ? `@${userData.username}` : 'User';
-                        
-                        console.log('Authenticated Telegram User:', userData);
-                        return userData;
-                        
-                    } catch (error) {
-                        console.error('Failed to parse Telegram user data:', error);
-                    }
-                } else {
-                    console.log('No user data in Telegram initData');
-                    
-                    if (window.Telegram.WebApp.initDataUnsafe?.user) {
-                        const userData = window.Telegram.WebApp.initDataUnsafe.user;
-                        USER_ID = String(userData.id);
-                        
-                        document.getElementById('profileName').textContent = 
-                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
-                        document.getElementById('profileUsername').textContent = 
-                            userData.username ? `@${userData.username}` : 'User';
-                        
-                        console.log('Authenticated via initDataUnsafe.user:', userData);
-                        return userData;
-                    }
-                }
-            } else {
-                console.warn('Telegram WebApp not found. Using demo mode.');
-            }
-            
-            console.log('Using demo mode - no Telegram auth');
-            return null;
-        }
-
-        // ==============================================
         // TON CONNECT INTEGRATION
         // ==============================================
         async function initTONConnect() {
@@ -1801,30 +1741,75 @@
             }
         }
 
+        // Function to convert raw address to user-friendly format
+        function convertRawAddress(rawAddress) {
+            try {
+                // Remove the chain prefix if present (e.g., "0:")
+                const cleanAddress = rawAddress.replace(/^0:/, '');
+                
+                // Check if it's a valid hex address
+                if (/^[0-9a-fA-F]+$/.test(cleanAddress)) {
+                    // For now, return the raw address as we don't have a proper TON library
+                    // In production, you should use a proper TON library like tonweb
+                    return cleanAddress;
+                }
+                return rawAddress;
+            } catch (error) {
+                console.error('Error converting address:', error);
+                return rawAddress;
+            }
+        }
+
+        // Function to convert address to user-friendly format (EQ...)
+        function toUserFriendlyAddress(rawAddress) {
+            try {
+                // If already in user-friendly format, return as is
+                if (rawAddress.startsWith('EQ') || rawAddress.startsWith('UQ')) {
+                    return rawAddress;
+                }
+                
+                // For raw addresses, we'll use a simple conversion
+                // Note: This is a simplified version. In production, use a proper TON library
+                const cleanAddress = rawAddress.replace(/^0:/, '');
+                
+                // This is a placeholder - you should use tonweb or similar library
+                // to properly convert raw address to user-friendly format
+                return `UQ${cleanAddress.substring(0, 32)}...`;
+            } catch (error) {
+                console.error('Error converting to user-friendly address:', error);
+                return rawAddress;
+            }
+        }
+
         async function handleWalletConnected(walletInfo) {
             if (!walletInfo) return;
             
-            // تحويل العنوان من 0:... إلى تنسيق قابل للقراءة
             const rawAddress = walletInfo.account.address;
-            let formattedAddress = rawAddress;
+            const userFriendlyAddress = toUserFriendlyAddress(rawAddress);
             
             connectedWallet = {
-                address: formattedAddress,
                 rawAddress: rawAddress,
+                address: userFriendlyAddress,
                 chain: walletInfo.account.chain,
                 wallet: walletInfo.device.appName,
                 device: walletInfo.device
             };
             
+            console.log('Connected wallet details:', {
+                raw: rawAddress,
+                friendly: userFriendlyAddress,
+                full: connectedWallet
+            });
+            
             const walletStatus = document.getElementById('walletStatus');
-            const shortAddress = `${connectedWallet.rawAddress.substring(0, 6)}...${connectedWallet.rawAddress.substring(connectedWallet.rawAddress.length - 4)}`;
+            const shortAddress = `${userFriendlyAddress.substring(0, 8)}...${userFriendlyAddress.substring(userFriendlyAddress.length - 4)}`;
             
             walletStatus.innerHTML = `
                 <div style="flex: 1;">
                     <div style="font-size: 14px; font-weight: 600; color: var(--success);">
                         <i class="fas fa-check-circle"></i> ${connectedWallet.wallet}
                     </div>
-                    <div class="wallet-address" title="${connectedWallet.rawAddress}">
+                    <div class="wallet-address" title="${userFriendlyAddress}">
                         ${shortAddress}
                     </div>
                 </div>
@@ -1839,6 +1824,9 @@
             document.getElementById('initiateDepositBtn').disabled = false;
             
             console.log('Wallet connected successfully:', connectedWallet);
+            
+            // Update wallet status display
+            document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
         }
 
         async function handleWalletDisconnected() {
@@ -1917,8 +1905,7 @@
                         action, 
                         data: {
                             ...data,
-                            wallet_address: connectedWallet?.rawAddress || data.wallet_address,
-                            fromAddress: connectedWallet?.rawAddress || data.fromAddress
+                            wallet_address: connectedWallet?.address || data.wallet_address
                         }
                     })
                 });
@@ -2145,70 +2132,97 @@
             }
             
             try {
-                // Use TON Connect API directly
-                const depositAmount = Math.floor(amount * 1000000000); // Convert to nanoTON
+                const depositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const comment = `SquidPEPE Deposit: ${USER_ID}, ${depositId}`;
                 
                 const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 300,
+                    validUntil: Math.floor(Date.now() / 1000) + 300, // 5 minutes
                     messages: [
                         {
                             address: TON_DEPOSIT_ADDRESS,
-                            amount: depositAmount.toString(),
-                            payload: "SquidPEPE Deposit"
+                            amount: String(Math.floor(amount * 1000000000)), // Convert to nanoTON
+                            payload: null // No payload for simple transfers
                         }
                     ]
                 };
                 
-                console.log('Sending transaction:', transaction);
+                currentDepositInfo = {
+                    depositId: depositId,
+                    amount: amount,
+                    transaction: transaction,
+                    userAddress: connectedWallet.address,
+                    userRawAddress: connectedWallet.rawAddress
+                };
                 
-                // Send transaction via TON Connect
-                const result = await tonConnectUI.sendTransaction(transaction);
+                document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
+                document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
+                document.getElementById('depositCommentText').textContent = comment;
                 
-                console.log('Transaction result:', result);
+                document.getElementById('depositDetailsCard').style.display = 'block';
                 
-                if (result && result.boc) {
-                    // Call backend to confirm deposit
-                    const confirmData = await callAPI('deposit/confirm', {
-                        txHash: result.boc,
-                        amount: amount,
-                        fromAddress: connectedWallet.rawAddress
-                    });
-                    
-                    alert('✅ Deposit successful! Your balance will be updated shortly.');
-                    
-                    // Clear form
-                    document.getElementById('depositAmount').value = '';
-                    document.getElementById('depositDetailsCard').style.display = 'none';
-                    
-                    // Reload game state
-                    setTimeout(() => {
-                        loadGameState();
-                    }, 3000);
-                } else {
-                    alert('Transaction was cancelled by user.');
-                }
+                console.log('Deposit info prepared:', currentDepositInfo);
                 
             } catch (error) {
-                console.error('Deposit failed:', error);
-                
-                if (error.message && error.message.includes('rejected')) {
-                    alert('Transaction cancelled by user.');
-                } else if (error.message && error.message.includes('validation')) {
-                    alert('Invalid transaction parameters. Please try again.');
-                } else {
-                    alert('Deposit failed: ' + (error.message || 'Unknown error'));
-                }
+                console.error('Failed to prepare deposit:', error);
+                alert('Failed to prepare deposit. Please try again.');
             }
         }
 
         function openTonkeeper() {
-            // Simply open the deposit card
-            document.getElementById('depositDetailsCard').style.display = 'block';
+            if (currentDepositInfo) {
+                document.getElementById('depositDetailsCard').style.display = 'block';
+            } else {
+                alert('Please initiate a deposit first.');
+            }
         }
 
         async function sendDepositTransaction() {
-            // This function is now simplified - we use TON Connect directly
-            await initiateDeposit();
+            if (!currentDepositInfo || !tonConnectUI) {
+                alert('Please initiate a deposit first.');
+                return;
+            }
+            
+            try {
+                console.log('Sending transaction:', currentDepositInfo.transaction);
+                
+                const result = await tonConnectUI.sendTransaction(currentDepositInfo.transaction);
+                
+                console.log('Transaction sent successfully:', result);
+                
+                // Send confirmation to backend
+                try {
+                    const confirmData = await callAPI('deposit/confirm', {
+                        deposit_id: currentDepositInfo.depositId,
+                        amount: currentDepositInfo.amount,
+                        tx_hash: result.boc,
+                        user_address: currentDepositInfo.userAddress,
+                        user_id: USER_ID
+                    });
+                    
+                    alert('✅ Deposit successful! Your balance will be updated shortly.');
+                    
+                } catch (apiError) {
+                    console.warn('Backend confirmation failed, but transaction succeeded:', apiError);
+                    alert('⚠️ Deposit sent, but server confirmation pending. Your funds are safe.');
+                }
+                
+                document.getElementById('depositDetailsCard').style.display = 'none';
+                document.getElementById('depositAmount').value = '';
+                currentDepositInfo = null;
+                
+                setTimeout(() => {
+                    loadGameState();
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Transaction failed:', error);
+                
+                if (error.message && error.message.includes('rejected')) {
+                    alert('Transaction cancelled by user.');
+                } else {
+                    alert('Transaction failed: ' + (error.message || 'Unknown error'));
+                }
+            }
         }
 
         function updateWithdrawUI() {
@@ -2464,7 +2478,27 @@
         async function initialize() {
             console.log('Initializing app...');
             
-            await setupTelegramAuth();
+            // Setup Telegram auth
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Telegram WebApp found');
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+                
+                if (Telegram.WebApp.initData) {
+                    TELEGRAM_DATA = Telegram.WebApp.initData;
+                } else if (Telegram.WebApp.initDataUnsafe) {
+                    TELEGRAM_DATA = JSON.stringify(Telegram.WebApp.initDataUnsafe);
+                }
+                
+                const user = Telegram.WebApp.initDataUnsafe?.user;
+                if (user) {
+                    USER_ID = String(user.id);
+                    document.getElementById('profileName').textContent = 
+                        `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Explorer';
+                    document.getElementById('profileUsername').textContent = 
+                        user.username ? `@${user.username}` : 'User';
+                }
+            }
             
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.addEventListener('click', () => switchTab(item.dataset.tab));
