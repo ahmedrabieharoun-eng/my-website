@@ -214,6 +214,24 @@ const GAME_CONSTANTS = {
     MIN_DEPOSIT_AMOUNT: 0.1 // الحد الأدنى للإيداع
 };
 
+// ==================== Helper Functions ====================
+
+// ✅ NEW: Helper to format wallet address
+function formatWalletAddress(rawAddress) {
+    try {
+        // Convert from "0:..." format to user-friendly format if possible
+        if (rawAddress.startsWith('0:')) {
+            // For now, return the original - in production you would convert it
+            // using TON libraries
+            return rawAddress;
+        }
+        return rawAddress;
+    } catch (error) {
+        console.error('Error formatting address:', error);
+        return rawAddress;
+    }
+}
+
 // ==================== Main Handlers ====================
 
 // Get Game State
@@ -937,7 +955,7 @@ async function handleInitDeposit(env, userId, data) {
             id: depositId,
             userId: userId,
             amount: parseFloat(amount),
-            walletAddress: wallet_address,
+            walletAddress: formatWalletAddress(wallet_address), // ✅ Format address
             depositAddress: depositAddress,
             comment: comment,
             status: 'pending',
@@ -978,7 +996,7 @@ async function handleInitDeposit(env, userId, data) {
 // ✅ NEW: Handle Deposit Confirmation via TON Connect
 async function handleConfirmDeposit(env, userId, data) {
     try {
-        const { txHash, amount, fromAddress } = data;
+        const { txHash, amount, user_address, comment } = data;
         
         // Validate input
         if (!txHash || !amount) {
@@ -1025,8 +1043,9 @@ async function handleConfirmDeposit(env, userId, data) {
         const depositRecord = {
             userId: userId,
             amount: depositAmount,
-            fromAddress: fromAddress || 'TON Connect',
+            fromAddress: formatWalletAddress(user_address || 'TON Connect'), // ✅ Format address
             txHash: txHash,
+            comment: comment || 'TON Connect deposit',
             status: 'completed',
             processedAt: now,
             method: 'TON Connect'
@@ -1039,10 +1058,11 @@ async function handleConfirmDeposit(env, userId, data) {
             type: 'deposit',
             amount: depositAmount,
             txHash: txHash,
-            fromAddress: fromAddress || 'TON Connect',
+            fromAddress: user_address || 'TON Connect',
             newBalance: newBalance,
             timestamp: now,
-            method: 'TON Connect'
+            method: 'TON Connect',
+            comment: comment
         });
         
         return {
