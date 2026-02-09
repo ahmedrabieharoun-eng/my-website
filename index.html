@@ -11,6 +11,9 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <!-- TON Connect SDK -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     
@@ -930,6 +933,42 @@
         .fee-value {
             font-weight: 600;
         }
+        
+        /* Deposit Status */
+        .deposit-status {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(0, 212, 170, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 212, 170, 0.3);
+            display: none;
+        }
+        
+        .deposit-status.pending {
+            background: rgba(255, 183, 77, 0.1);
+            border: 1px solid rgba(255, 183, 77, 0.3);
+        }
+        
+        .deposit-status.error {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        
+        .deposit-status .status-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .deposit-status .status-message {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .deposit-status .status-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -1383,32 +1422,56 @@
                         </div>
                     </div>
                     
+                    <!-- Deposit Status Indicator -->
+                    <div id="depositStatus" class="deposit-status" style="display: none;">
+                        <div class="status-icon"></div>
+                        <div class="status-message"></div>
+                        <div class="status-details"></div>
+                    </div>
+                    
                     <div class="card" style="margin-top: 20px;">
                         <h3 class="card-title">
                             <i class="fas fa-wallet"></i>
-                            Deposit with TON Connect
+                            Payment Method
                         </h3>
                         
                         <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-secondary" onclick="openTonkeeper()" style="flex: 1;">
+                                <i class="fas fa-external-link-alt"></i>
+                                Open Tonkeeper
+                            </button>
                             <button class="btn btn-primary" onclick="initiateDeposit()" id="initiateDepositBtn" style="flex: 1;" disabled>
                                 <i class="fas fa-paper-plane"></i>
-                                Deposit TON
+                                Deposit
                             </button>
                         </div>
+                    </div>
+                    
+                    <div class="card" style="margin-top: 20px; display: none;" id="depositDetailsCard">
+                        <h3 class="card-title">
+                            <i class="fas fa-info-circle"></i>
+                            Deposit Details
+                        </h3>
                         
-                        <div style="margin-top: 16px; padding: 12px; background: rgba(0, 180, 216, 0.1); border-radius: 12px;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <i class="fas fa-info-circle" style="color: var(--primary-blue);"></i>
-                                <span style="font-weight: 600;">How to deposit:</span>
-                            </div>
-                            <ol style="margin-left: 20px; font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-                                <li>Connect your TON wallet (Tonkeeper, Tonhub, etc.)</li>
-                                <li>Enter deposit amount</li>
-                                <li>Click "Deposit TON"</li>
-                                <li>Sign the transaction in your wallet</li>
-                                <li>Wait for confirmation (usually 5-10 seconds)</li>
-                            </ol>
+                        <div style="margin-top: 16px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Send exactly:</div>
+                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="depositExactAmount">0 TON</div>
                         </div>
+                        
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">To address:</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--text-primary); word-break: break-all; margin-top: 4px;" id="depositTargetAddress"></div>
+                        </div>
+                        
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText"></div>
+                        </div>
+                        
+                        <button class="btn btn-primary" onclick="sendDepositTransaction()" id="sendDepositBtn" style="width: 100%; margin-top: 16px;">
+                            <i class="fas fa-check-circle"></i>
+                            Confirm & Send
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1614,6 +1677,7 @@
         const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
         const TON_DEPOSIT_ADDRESS = 'UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG';
         const TELEGRAM_BOT_USERNAME = '@testtt1257bot';
+        const TON_API_KEY = '79be296d7c02051b77d54285a2a61b0a73b2f0095d873de9d2b19970d5468e21';
 
         // ==============================================
         // GAME STATE
@@ -1649,8 +1713,11 @@
         let eggTimer = 0;
         let eggTimerInterval;
         let connectedWallet = null;
+        let currentDepositInfo = null;
         let tonConnectUI = null;
         let isTONConnectInitialized = false;
+        let depositCheckInterval = null;
+        let currentDepositId = null;
 
         // ==============================================
         // USER MANAGEMENT
@@ -1799,6 +1866,7 @@
 
         async function handleWalletDisconnected() {
             connectedWallet = null;
+            currentDepositInfo = null;
             
             const walletStatus = document.getElementById('walletStatus');
             walletStatus.innerHTML = `
@@ -1815,6 +1883,7 @@
             walletStatus.classList.add('disconnected');
             
             document.getElementById('initiateDepositBtn').disabled = true;
+            document.getElementById('depositDetailsCard').style.display = 'none';
             
             console.log('Wallet disconnected');
         }
@@ -1939,6 +2008,11 @@
                 gameState = data;
                 console.log('Game state loaded:', gameState);
                 updateUI();
+                
+                // التحقق من الإيداعات المعلقة
+                if (data.pendingDeposits && data.pendingDeposits.length > 0) {
+                    checkPendingDeposits(data.pendingDeposits);
+                }
             } catch (error) {
                 console.error('Failed to load game state:', error);
             }
@@ -2098,72 +2172,198 @@
             }
             
             try {
-                // 1. إنشاء سجل إيداع في السيرفر
-                const depositData = await callAPI('deposit/init', {
-                    amount: amount,
-                    wallet_address: connectedWallet.address
-                });
+                // إنشاء معرف فريد للإيداع
+                currentDepositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const comment = `SquidPEPE:${USER_ID}:${currentDepositId}`;
                 
-                if (!depositData.success) {
-                    throw new Error(depositData.error || 'Failed to create deposit');
-                }
-                
-                const depositId = depositData.data.depositId;
-                const depositAddress = depositData.data.address || TON_DEPOSIT_ADDRESS;
-                const comment = depositData.data.comment;
-                
-                // 2. إنشاء معاملة TON Connect
+                // إعداد معاملة TON Connect بدون payload
                 const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 300,
+                    validUntil: Math.floor(Date.now() / 1000) + 300, // 5 دقائق
                     messages: [
                         {
-                            address: depositAddress,
-                            amount: String(Math.floor(amount * 1000000000)),
-                            payload: comment
+                            address: TON_DEPOSIT_ADDRESS,
+                            amount: String(Math.floor(amount * 1000000000)) // تحويل إلى nanoTON
                         }
                     ]
                 };
                 
-                console.log('Transaction to sign:', transaction);
-                
-                // 3. إرسال للمحفظة للتوقيع
-                const result = await tonConnectUI.sendTransaction(transaction);
-                
-                console.log('Transaction signed successfully:', result);
-                
-                // 4. تأكيد الإيداع للسيرفر
-                const confirmData = await callAPI('deposit/confirm', {
-                    deposit_id: depositId,
-                    tx_hash: result.boc,
-                    user_address: connectedWallet.address,
+                currentDepositInfo = {
+                    depositId: currentDepositId,
                     amount: amount,
+                    transaction: transaction,
+                    userAddress: connectedWallet.address,
                     comment: comment
-                });
+                };
                 
-                if (confirmData.success) {
-                    alert('✅ Deposit successful! Your balance will be updated in a few moments.');
+                // عرض تفاصيل الإيداع
+                document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
+                document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
+                document.getElementById('depositCommentText').textContent = comment;
+                
+                document.getElementById('depositDetailsCard').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Failed to prepare deposit:', error);
+                alert('Failed to prepare deposit. Please try again.');
+            }
+        }
+
+        function openTonkeeper() {
+            if (currentDepositInfo) {
+                document.getElementById('depositDetailsCard').style.display = 'block';
+            } else {
+                alert('Please initiate a deposit first.');
+            }
+        }
+
+        async function sendDepositTransaction() {
+            if (!currentDepositInfo || !tonConnectUI) {
+                alert('Please initiate a deposit first.');
+                return;
+            }
+            
+            try {
+                console.log('Sending transaction:', currentDepositInfo.transaction);
+                
+                const result = await tonConnectUI.sendTransaction(currentDepositInfo.transaction);
+                
+                console.log('Transaction sent successfully:', result);
+                
+                // تحديث واجهة حالة الإيداع
+                showDepositStatus('pending', 'Transaction sent! Waiting for confirmation...', result.boc);
+                
+                // إرسال تأكيد للخادم
+                try {
+                    const confirmData = await callAPI('deposit/confirm', {
+                        depositId: currentDepositInfo.depositId,
+                        amount: currentDepositInfo.amount,
+                        txHash: result.boc,
+                        user_address: currentDepositInfo.userAddress,
+                        comment: currentDepositInfo.comment
+                    });
                     
-                    // تحديث الرصيد بعد 5 ثواني
-                    setTimeout(() => {
-                        loadGameState();
-                    }, 5000);
-                } else {
-                    alert('⚠️ Deposit sent, but server confirmation pending. Your funds are safe.');
+                    console.log('Deposit confirmed on server:', confirmData);
+                    
+                    // بدء التحقق الدوري
+                    startDepositVerification(currentDepositInfo.depositId, result.boc);
+                    
+                } catch (apiError) {
+                    console.warn('Backend confirmation failed:', apiError);
+                    // حتى لو فشل التأكيد، نواصل التحقق
+                    startDepositVerification(currentDepositInfo.depositId, result.boc);
                 }
                 
-                // إعادة تعيين الحقول
+                // إخفاء تفاصيل الإيداع
+                document.getElementById('depositDetailsCard').style.display = 'none';
                 document.getElementById('depositAmount').value = '';
                 
             } catch (error) {
-                console.error('Deposit failed:', error);
+                console.error('Transaction failed:', error);
                 
                 if (error.message && error.message.includes('rejected')) {
-                    alert('Transaction cancelled by user.');
-                } else if (error.message && error.message.includes('payload')) {
-                    alert('Transaction error: Invalid payload format. Please try again.');
+                    showDepositStatus('error', 'Transaction cancelled by user.');
                 } else {
-                    alert('Deposit failed: ' + (error.message || 'Unknown error'));
+                    showDepositStatus('error', 'Transaction failed: ' + (error.message || 'Unknown error'));
                 }
+            }
+        }
+
+        function startDepositVerification(depositId, txHash) {
+            if (depositCheckInterval) {
+                clearInterval(depositCheckInterval);
+            }
+            
+            let attempts = 0;
+            const maxAttempts = 30; // 5 دقائق (10 ثواني × 30)
+            
+            depositCheckInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const verifyData = await callAPI('deposit/verify', {
+                        depositId: depositId,
+                        txHash: txHash
+                    });
+                    
+                    if (verifyData.status === 'completed') {
+                        // الإيداع مكتمل
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('success', 
+                            `Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
+                            `New balance: ${formatTON(verifyData.newBalance || gameState.user.tonBalance + verifyData.amount)} TON`
+                        );
+                        
+                        // تحديث حالة اللعبة
+                        setTimeout(() => {
+                            loadGameState();
+                        }, 2000);
+                        
+                    } else if (attempts >= maxAttempts) {
+                        // تجاوز الحد الأقصى للمحاولات
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('pending', 
+                            'Deposit still pending. It may take a few minutes to confirm.',
+                            'You can check your balance later or contact support.'
+                        );
+                    }
+                    
+                } catch (error) {
+                    console.error('Verification error:', error);
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('error', 
+                            'Verification failed. Please check your transaction manually.',
+                            `TX Hash: ${txHash.substring(0, 20)}...`
+                        );
+                    }
+                }
+            }, 10000); // التحقق كل 10 ثواني
+        }
+
+        function showDepositStatus(type, message, details = '') {
+            const statusDiv = document.getElementById('depositStatus');
+            const icon = statusDiv.querySelector('.status-icon');
+            const msg = statusDiv.querySelector('.status-message');
+            const det = statusDiv.querySelector('.status-details');
+            
+            statusDiv.className = 'deposit-status';
+            
+            switch (type) {
+                case 'success':
+                    statusDiv.classList.add('success');
+                    icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i>';
+                    break;
+                case 'pending':
+                    statusDiv.classList.add('pending');
+                    icon.innerHTML = '<i class="fas fa-clock" style="color: var(--warning);"></i>';
+                    break;
+                case 'error':
+                    statusDiv.classList.add('error');
+                    icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>';
+                    break;
+            }
+            
+            msg.textContent = message;
+            det.textContent = details;
+            statusDiv.style.display = 'block';
+            
+            // إخفاء الرسالة بعد 10 ثواني للنجاح
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 10000);
+            }
+        }
+
+        function checkPendingDeposits(pendingDeposits) {
+            if (pendingDeposits && pendingDeposits.length > 0) {
+                // إذا كان هناك إيداعات معلقة، نبدأ التحقق
+                pendingDeposits.forEach(deposit => {
+                    if (deposit.status === 'pending' || deposit.status === 'sent') {
+                        startDepositVerification(deposit.depositId, deposit.txHash);
+                    }
+                });
             }
         }
 
@@ -2250,9 +2450,9 @@
             
             if (gameState.marketStats) {
                 document.getElementById('bestBuyPrice').textContent = 
-                    gameState.marketStats.bestBuy ? formatTON(gameState.marketStats.bestBuy) : '0.0000';
+                    gameState.marketStats.bestBuyPrice ? formatTON(gameState.marketStats.bestBuyPrice) : '0.0000';
                 document.getElementById('bestSellPrice').textContent = 
-                    gameState.marketStats.bestSell ? formatTON(gameState.marketStats.bestSell) : '0.0000';
+                    gameState.marketStats.bestSellPrice ? formatTON(gameState.marketStats.bestSellPrice) : '0.0000';
             }
             
             document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
