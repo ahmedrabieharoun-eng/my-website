@@ -14,6 +14,9 @@
     <!-- QR Code Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
     <style>
         /* Reset & Base Styles */
         * {
@@ -1673,116 +1676,119 @@
 
         // API Configuration
         const API_BASE = 'https://silent-block-bedf.ahmedrabieharoun.workers.dev';
-
-        // Telegram Authentication
-        let TELEGRAM_AUTH_HEADER = null;
-        let USER_ID = null;
+        let USER_ID = 'demo_user';
+        let TELEGRAM_DATA = '';
 
         // Telegram Integration
-        function setupTelegramAuth() {
-            // Check if running inside Telegram WebApp
-            if (window.Telegram && Telegram.WebApp) {
-                console.log('Telegram WebApp detected');
+        async function setupTelegramAuth() {
+            console.log('Setting up Telegram auth...');
+            
+            // جرب عدة طرق للحصول على بيانات Telegram
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('Telegram WebApp found:', window.Telegram.WebApp);
                 
-                // Initialize Telegram WebApp
-                Telegram.WebApp.ready();
-                Telegram.WebApp.expand();
+                // الطريقة الأولى: initData
+                if (window.Telegram.WebApp.initData) {
+                    TELEGRAM_DATA = window.Telegram.WebApp.initData;
+                    console.log('Got initData from Telegram WebApp');
+                } 
+                // الطريقة الثانية: initDataUnsafe
+                else if (window.Telegram.WebApp.initDataUnsafe) {
+                    TELEGRAM_DATA = window.Telegram.WebApp.initDataUnsafe;
+                    console.log('Got initDataUnsafe from Telegram WebApp');
+                }
                 
-                const initData = Telegram.WebApp.initData;
-                console.log('Telegram initData:', initData ? 'Exists' : 'Missing');
+                // استخراج بيانات المستخدم
+                const initData = new URLSearchParams(TELEGRAM_DATA);
+                const userParam = initData.get('user');
                 
-                if (initData && initData.length > 0) {
-                    TELEGRAM_AUTH_HEADER = `Telegram ${initData}`;
-                    
-                    // Extract user ID from initData
+                if (userParam) {
                     try {
-                        const urlParams = new URLSearchParams(initData);
-                        const userParam = urlParams.get('user');
+                        const userData = JSON.parse(decodeURIComponent(userParam));
+                        USER_ID = String(userData.id);
                         
-                        if (userParam) {
-                            const userData = JSON.parse(decodeURIComponent(userParam));
-                            USER_ID = String(userData.id);
-                            
-                            // Update UI with actual user data
-                            document.getElementById('profileName').textContent = 
-                                `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
-                            document.getElementById('profileUsername').textContent = 
-                                userData.username ? `@${userData.username}` : 'User';
-                                
-                            console.log('Authenticated Telegram User:', userData);
-                            console.log('Auth Header set:', TELEGRAM_AUTH_HEADER.substring(0, 50) + '...');
-                            
-                            return true;
-                        } else {
-                            console.warn('No user data in initData');
-                            USER_ID = 'demo_user';
-                            return false;
-                        }
+                        // تحديث واجهة المستخدم
+                        document.getElementById('profileName').textContent = 
+                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
+                        document.getElementById('profileUsername').textContent = 
+                            userData.username ? `@${userData.username}` : 'User';
+                        
+                        console.log('Authenticated Telegram User:', userData);
+                        return userData;
+                        
                     } catch (error) {
                         console.error('Failed to parse Telegram user data:', error);
-                        USER_ID = 'demo_user';
-                        return false;
                     }
                 } else {
-                    console.warn('No initData found in Telegram WebApp');
-                    USER_ID = 'demo_user';
-                    return false;
+                    console.log('No user data in Telegram initData');
+                    
+                    // جرب طريقة أخرى لاستخراج user id
+                    if (window.Telegram.WebApp.initDataUnsafe?.user) {
+                        const userData = window.Telegram.WebApp.initDataUnsafe.user;
+                        USER_ID = String(userData.id);
+                        
+                        document.getElementById('profileName').textContent = 
+                            `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Explorer';
+                        document.getElementById('profileUsername').textContent = 
+                            userData.username ? `@${userData.username}` : 'User';
+                        
+                        console.log('Authenticated via initDataUnsafe.user:', userData);
+                        return userData;
+                    }
                 }
             } else {
-                // Fallback for testing
-                console.warn('Not running inside Telegram - using demo mode');
-                USER_ID = 'demo_user';
-                
-                // Show warning to user
-                setTimeout(function() {
-                    if (confirm('This game works best inside Telegram. Open in Telegram?')) {
-                        window.location.href = 'https://t.me/yourbot';
-                    }
-                }, 1000);
-                
-                return false;
+                console.warn('Telegram WebApp not found. Using demo mode.');
             }
+            
+            // في حال عدم وجود بيانات Telegram، استعمل وضع التجريبي
+            console.log('Using demo mode - no Telegram auth');
+            return null;
         }
 
         // API Functions
         async function callAPI(action, data = {}) {
             try {
-                // Prepare headers
+                console.log(`Calling API: ${action}`, data);
+                
                 const headers = {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-Action': action
                 };
                 
-                // Add Authorization header if Telegram auth is available
-                if (TELEGRAM_AUTH_HEADER) {
-                    headers['Authorization'] = TELEGRAM_AUTH_HEADER;
-                }
-                
-                // Add User ID if available
-                if (USER_ID) {
+                // إضافة مصادقة Telegram إذا كانت متوفرة
+                if (TELEGRAM_DATA) {
+                    headers['Authorization'] = `Telegram ${TELEGRAM_DATA}`;
+                    console.log('Sending Telegram authentication');
+                } else {
+                    // إذا لم تكن هناك بيانات Telegram، استعمل وضع التجريبي
+                    headers['X-Demo-Mode'] = 'true';
                     headers['X-User-ID'] = USER_ID;
+                    console.log('Using demo mode, user ID:', USER_ID);
                 }
                 
-                console.log('API Call:', action, 'Headers:', headers);
+                console.log('Request headers:', headers);
                 
-                const response = await fetch(API_BASE, {
+                const response = await fetch(`${API_BASE}/api`, {
                     method: 'POST',
                     headers: headers,
                     body: JSON.stringify({ 
-                        action: action, 
-                        data: data,
-                        userId: USER_ID 
+                        action, 
+                        data
                     })
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
                 const result = await response.json();
-                console.log('API Response:', result);
+                console.log('Response data:', result);
                 
                 if (result.success) {
                     return result.data;
                 } else {
                     console.error(`API Error (${result.errorCode}):`, result.error);
                     
-                    // Handle specific errors
+                    // التعامل مع أخطاء محددة
                     if (result.errorCode === 'AUTH_REQUIRED') {
                         alert('Please open this game through Telegram to play.');
                     } else {
@@ -1794,7 +1800,7 @@
             } catch (error) {
                 console.error('API call failed:', error);
                 
-                // Don't show alert for network errors in production
+                // لا تظهر تنبيه لأخطاء الشبكة في البيئة الإنتاجية
                 if (!error.message.includes('Network')) {
                     alert('Network error. Please check your connection and try again.');
                 }
@@ -1828,8 +1834,10 @@
         // Game State Management
         async function loadGameState() {
             try {
+                console.log('Loading game state...');
                 const data = await callAPI('getState');
                 gameState = data;
+                console.log('Game state loaded:', gameState);
                 updateUI();
             } catch (error) {
                 console.error('Failed to load game state:', error);
@@ -1840,10 +1848,9 @@
             try {
                 const data = await callAPI('mintSquids');
                 gameState.user.mintUsed = true;
-                gameState.user.tonBalance = data.newTonBalance;
-                gameState.user.squids = data.newSquids;
-                gameState.global.mintedSoFar = data.globalMinted;
-                gameState.global.mintProgress = data.mintProgress;
+                gameState.user.tonBalance = data.newTonBalance || gameState.user.tonBalance;
+                gameState.user.squids = data.newSquids || gameState.user.squids;
+                gameState.global.mintedSoFar = data.globalMinted || gameState.global.mintedSoFar;
                 updateUI();
                 closeMintModal();
                 alert('Successfully minted 3,000 Squids!');
@@ -1860,9 +1867,9 @@
             }
 
             try {
-                const data = await callAPI('hatchSquids', { amount: amount });
-                gameState.user.eggs = data.newEggs;
-                gameState.user.squids = data.newSquids;
+                const data = await callAPI('hatchSquids', { amount });
+                gameState.user.eggs = data.newEggs || gameState.user.eggs;
+                gameState.user.squids = data.newSquids || gameState.user.squids;
                 updateUI();
                 closeHatchModal();
                 alert(`Successfully hatched ${data.squidsProduced} Squids!`);
@@ -1888,8 +1895,8 @@
             try {
                 const data = await callAPI('createOrder', {
                     type: 'buy',
-                    price: price,
-                    amount: amount
+                    price,
+                    amount
                 });
                 alert('Buy order created successfully!');
                 loadGameState();
@@ -1915,8 +1922,8 @@
             try {
                 const data = await callAPI('createOrder', {
                     type: 'sell',
-                    price: price,
-                    amount: amount
+                    price,
+                    amount
                 });
                 alert('Sell order created successfully!');
                 loadGameState();
@@ -1940,7 +1947,7 @@
             }
 
             try {
-                const data = await callAPI('withdrawTON', { amount: amount, address: address });
+                const data = await callAPI('withdrawTON', { amount, address });
                 alert('Withdrawal request submitted! It will be processed within 24 hours.');
                 loadGameState();
             } catch (error) {
@@ -1957,22 +1964,12 @@
             currentFinanceTab = tab;
             
             // Update tabs
-            document.querySelectorAll('.finance-tab').forEach(function(t) {
-                t.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.finance-content').forEach(function(t) {
-                t.classList.remove('active');
-            });
+            document.querySelectorAll('.finance-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.finance-content').forEach(t => t.classList.remove('active'));
             
             // Show selected tab
-            if (tab === 'deposit') {
-                document.querySelector('.finance-tab:nth-child(1)').classList.add('active');
-            } else {
-                document.querySelector('.finance-tab:nth-child(2)').classList.add('active');
-            }
-            
-            document.getElementById(tab + 'Tab').classList.add('active');
+            document.querySelector(`.finance-tab:nth-child(${tab === 'deposit' ? 1 : 2})`).classList.add('active');
+            document.getElementById(`${tab}Tab`).classList.add('active');
             
             // Update UI based on tab
             if (tab === 'withdraw') {
@@ -2080,7 +2077,7 @@
                 currentDepositInfo = depositData;
                 
                 // Update UI with deposit details
-                document.getElementById('depositExactAmount').textContent = formatTON(amount) + ' TON';
+                document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
                 document.getElementById('depositTargetAddress').textContent = depositData.address;
                 document.getElementById('depositCommentText').textContent = depositData.comment;
                 
@@ -2125,7 +2122,7 @@
                 document.getElementById('depositAmount').value = '';
                 
                 // Start checking for deposit confirmation
-                setTimeout(function() {
+                setTimeout(() => {
                     loadGameState();
                     alert('Checking for deposit confirmation... Please wait a moment.');
                 }, 5000);
@@ -2154,9 +2151,9 @@
                 const fee = amount * 0.05;
                 const netAmount = amount - fee;
                 
-                document.getElementById('withdrawAmountDisplay').textContent = formatTON(amount) + ' TON';
-                document.getElementById('withdrawFeeDisplay').textContent = formatTON(fee) + ' TON';
-                document.getElementById('withdrawNetAmountDisplay').textContent = formatTON(netAmount) + ' TON';
+                document.getElementById('withdrawAmountDisplay').textContent = `${formatTON(amount)} TON`;
+                document.getElementById('withdrawFeeDisplay').textContent = `${formatTON(fee)} TON`;
+                document.getElementById('withdrawNetAmountDisplay').textContent = `${formatTON(netAmount)} TON`;
                 
                 feeDetails.style.display = 'block';
             } else {
@@ -2213,19 +2210,21 @@
             
             // Update mint progress
             const progressPercent = (gameState.global.mintedSoFar / 90000000) * 100;
-            document.getElementById('mintProgressFill').style.width = progressPercent + '%';
+            document.getElementById('mintProgressFill').style.width = `${progressPercent}%`;
             document.getElementById('mintProgressText').textContent = 
-                formatNumber(gameState.global.mintedSoFar) + '/90,000,000';
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000`;
             document.getElementById('mintAvailable').textContent = 
-                formatNumber(90000000 - gameState.global.mintedSoFar) + ' available';
+                `${formatNumber(90000000 - gameState.global.mintedSoFar)} available`;
             document.getElementById('mintUsed').textContent = 
-                formatNumber(gameState.global.mintedSoFar) + ' used';
+                `${formatNumber(gameState.global.mintedSoFar)} used`;
             
             // Update market stats
-            document.getElementById('bestBuyPrice').textContent = 
-                gameState.market.bestBuy ? formatTON(gameState.market.bestBuy) : '0.0000';
-            document.getElementById('bestSellPrice').textContent = 
-                gameState.market.bestSell ? formatTON(gameState.market.bestSell) : '0.0000';
+            if (gameState.marketStats) {
+                document.getElementById('bestBuyPrice').textContent = 
+                    gameState.marketStats.bestBuy ? formatTON(gameState.marketStats.bestBuy) : '0.0000';
+                document.getElementById('bestSellPrice').textContent = 
+                    gameState.marketStats.bestSell ? formatTON(gameState.marketStats.bestSell) : '0.0000';
+            }
             
             // Update craft station
             document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
@@ -2244,10 +2243,10 @@
             }
             
             // Update mint modal
-            document.getElementById('mintBalance').textContent = formatTON(gameState.user.tonBalance) + ' TON';
-            document.getElementById('mintLimitBar').style.width = progressPercent + '%';
+            document.getElementById('mintBalance').textContent = `${formatTON(gameState.user.tonBalance)} TON`;
+            document.getElementById('mintLimitBar').style.width = `${progressPercent}%`;
             document.getElementById('mintLimitText').textContent = 
-                formatNumber(gameState.global.mintedSoFar) + '/90,000,000 minted';
+                `${formatNumber(gameState.global.mintedSoFar)}/90,000,000 minted`;
             
             // Update mint confirm button
             const mintConfirmBtn = document.getElementById('mintConfirmBtn');
@@ -2263,7 +2262,8 @@
             }
             
             // Update referral link
-            const referralLink = `https://t.me/yourbot?start=ref_${gameState.user.referralCode}`;
+            const referralCode = gameState.user.referralCode || 'demo_code';
+            const referralLink = `https://t.me/yourbot?start=ref_${referralCode}`;
             document.getElementById('referralLink').value = referralLink;
             
             // Update finance page if active
@@ -2312,7 +2312,7 @@
             document.getElementById('baseEggs').textContent = formatNumber(amount);
             document.getElementById('craftFee').textContent = formatNumber(fee);
             document.getElementById('totalRequired').textContent = formatNumber(total);
-            document.getElementById('youReceive').textContent = formatNumber(receive) + ' Squids';
+            document.getElementById('youReceive').textContent = `${formatNumber(receive)} Squids`;
             
             const btn = document.getElementById('hatchConfirmBtn');
             if (total > gameState.user.eggs) {
@@ -2320,7 +2320,7 @@
                 btn.textContent = 'Insufficient Eggs';
             } else {
                 btn.disabled = false;
-                btn.textContent = 'Hatch ' + formatNumber(receive) + ' Squids';
+                btn.textContent = `Hatch ${formatNumber(receive)} Squids`;
             }
         }
 
@@ -2343,30 +2343,17 @@
             currentMarketTab = tab;
             
             // Update tabs
-            document.querySelectorAll('.order-tab').forEach(function(t) {
-                t.classList.remove('active');
-            });
-            
-            document.querySelectorAll('.market-tab').forEach(function(t) {
-                t.style.display = 'none';
-            });
+            document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.market-tab').forEach(t => t.style.display = 'none');
             
             // Show selected tab
-            if (tab === 'buy') {
-                document.querySelector('.order-tab:nth-child(1)').classList.add('active');
-                document.getElementById('buyTab').style.display = 'block';
-            } else if (tab === 'sell') {
-                document.querySelector('.order-tab:nth-child(2)').classList.add('active');
-                document.getElementById('sellTab').style.display = 'block';
-            } else {
-                document.querySelector('.order-tab:nth-child(3)').classList.add('active');
-                document.getElementById('ordersTab').style.display = 'block';
-            }
+            document.querySelector(`.order-tab:nth-child(${tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3})`).classList.add('active');
+            document.getElementById(`${tab}Tab`).style.display = 'block';
         }
 
         function setBuyAmountPercent(percent) {
             const maxTON = gameState.user.tonBalance;
-            const bestPrice = gameState.market.bestSell || 0.01;
+            const bestPrice = gameState.market?.bestSell || 0.01;
             const maxSquids = Math.floor(maxTON / bestPrice);
             const amount = Math.floor(maxSquids * percent);
             document.getElementById('buyAmount').value = Math.max(100, amount);
@@ -2374,7 +2361,7 @@
 
         function setBuyAmountMax() {
             const maxTON = gameState.user.tonBalance;
-            const bestPrice = gameState.market.bestSell || 0.01;
+            const bestPrice = gameState.market?.bestSell || 0.01;
             const maxSquids = Math.floor(maxTON / bestPrice);
             document.getElementById('buyAmount').value = Math.max(100, maxSquids);
         }
@@ -2391,12 +2378,12 @@
         // Navigation
         function switchTab(tabId) {
             // Hide all sections
-            document.querySelectorAll('.content-section').forEach(function(section) {
+            document.querySelectorAll('.content-section').forEach(section => {
                 section.classList.remove('active');
             });
             
             // Remove active class from all nav items
-            document.querySelectorAll('.nav-item').forEach(function(item) {
+            document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
             });
             
@@ -2404,33 +2391,28 @@
             document.getElementById(tabId).classList.add('active');
             
             // Activate corresponding nav item
-            document.querySelector('.nav-item[data-tab="' + tabId + '"]').classList.add('active');
+            document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
         }
 
         // Initialize
         async function initialize() {
-            // Setup Telegram authentication
-            const isTelegramAuth = setupTelegramAuth();
+            console.log('Initializing app...');
             
-            if (!isTelegramAuth && !TELEGRAM_AUTH_HEADER) {
-                // Show warning but continue in demo mode
-                console.warn('Running in demo mode without Telegram auth');
-            }
+            // Setup Telegram authentication
+            await setupTelegramAuth();
             
             // Setup event listeners
-            document.querySelectorAll('.nav-item').forEach(function(item) {
-                item.addEventListener('click', function() {
-                    switchTab(item.dataset.tab);
-                });
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.addEventListener('click', () => switchTab(item.dataset.tab));
             });
             
             document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
             
             // Simulate loading
             let progress = 0;
-            const loadingInterval = setInterval(function() {
+            const loadingInterval = setInterval(() => {
                 progress += 5;
-                document.getElementById('loadingProgress').style.width = progress + '%';
+                document.getElementById('loadingProgress').style.width = `${progress}%`;
                 
                 if (progress >= 100) {
                     clearInterval(loadingInterval);
@@ -2445,6 +2427,8 @@
                     
                     // Start egg timer simulation
                     startEggTimer();
+                    
+                    console.log('App initialized successfully');
                 }
             }, 100);
         }
@@ -2452,7 +2436,7 @@
         function startEggTimer() {
             // Simulate egg production timer
             eggTimer = 3600; // 1 hour in seconds
-            eggTimerInterval = setInterval(function() {
+            eggTimerInterval = setInterval(() => {
                 eggTimer--;
                 if (eggTimer <= 0) {
                     eggTimer = 3600;
