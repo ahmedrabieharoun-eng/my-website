@@ -969,108 +969,6 @@
             color: var(--text-secondary);
             word-break: break-all;
         }
-        
-        /* Notification */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--dark-card);
-            border: 1px solid var(--dark-border);
-            border-radius: 12px;
-            padding: 16px;
-            max-width: 300px;
-            z-index: 4000;
-            display: none;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .notification.show {
-            display: block;
-            animation: slideIn 0.3s ease;
-        }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .notification.success {
-            border-left: 4px solid var(--success);
-        }
-        
-        .notification.error {
-            border-left: 4px solid var(--danger);
-        }
-        
-        .notification.warning {
-            border-left: 4px solid var(--warning);
-        }
-        
-        .notification-content {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-        }
-        
-        .notification-icon {
-            font-size: 20px;
-            margin-top: 2px;
-        }
-        
-        .notification-message {
-            flex: 1;
-        }
-        
-        .notification-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .notification-text {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-        
-        .notification-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 18px;
-        }
-        
-        /* QR Code */
-        .qr-container {
-            text-align: center;
-            margin: 20px 0;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-        }
-        
-        .qr-code {
-            width: 200px;
-            height: 200px;
-            margin: 0 auto 16px;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        
-        .manual-transfer {
-            background: rgba(255, 183, 77, 0.1);
-            border: 1px solid rgba(255, 183, 77, 0.3);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-        }
-        
-        .transfer-instruction {
-            font-size: 12px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-        }
     </style>
 </head>
 <body>
@@ -1081,18 +979,6 @@
         <p class="loading-subtitle">Loading your underwater adventure...</p>
         <div class="loading-progress">
             <div class="loading-progress-bar" id="loadingProgress"></div>
-        </div>
-    </div>
-
-    <!-- Notification -->
-    <div class="notification" id="notification">
-        <div class="notification-content">
-            <div class="notification-icon" id="notificationIcon"></div>
-            <div class="notification-message">
-                <div class="notification-title" id="notificationTitle"></div>
-                <div class="notification-text" id="notificationText"></div>
-            </div>
-            <button class="notification-close" onclick="hideNotification()">×</button>
         </div>
     </div>
 
@@ -1504,7 +1390,6 @@
             <div class="finance-tabs">
                 <div class="finance-tab active" onclick="switchFinanceTab('deposit')">Deposit</div>
                 <div class="finance-tab" onclick="switchFinanceTab('withdraw')">Withdraw</div>
-                <div class="finance-tab" onclick="switchFinanceTab('manual')">Manual</div>
             </div>
             
             <!-- Deposit Tab -->
@@ -1547,13 +1432,17 @@
                     <div class="card" style="margin-top: 20px;">
                         <h3 class="card-title">
                             <i class="fas fa-wallet"></i>
-                            TON Connect
+                            Payment Method
                         </h3>
                         
-                        <div style="margin-top: 16px;">
-                            <button class="btn btn-primary" onclick="initiateDeposit()" id="initiateDepositBtn" style="width: 100%;" disabled>
+                        <div style="display: flex; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-secondary" onclick="openTonkeeper()" style="flex: 1;">
+                                <i class="fas fa-external-link-alt"></i>
+                                Open Tonkeeper
+                            </button>
+                            <button class="btn btn-primary" onclick="initiateDeposit()" id="initiateDepositBtn" style="flex: 1;" disabled>
                                 <i class="fas fa-paper-plane"></i>
-                                Create Deposit with TON Connect
+                                Deposit
                             </button>
                         </div>
                     </div>
@@ -1575,16 +1464,13 @@
                         </div>
                         
                         <div style="margin-top: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (IMPORTANT):</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px; padding: 8px; background: rgba(255, 183, 77, 0.1); border-radius: 6px;" id="depositCommentText"></div>
-                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                                <i class="fas fa-exclamation-triangle"></i> You MUST include this comment in your transfer
-                            </div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText"></div>
                         </div>
                         
                         <button class="btn btn-primary" onclick="sendDepositTransaction()" id="sendDepositBtn" style="width: 100%; margin-top: 16px;">
                             <i class="fas fa-check-circle"></i>
-                            Confirm & Send via TON Connect
+                            Confirm & Send
                         </button>
                     </div>
                 </div>
@@ -1636,70 +1522,6 @@
                         <i class="fas fa-paper-plane"></i>
                         Withdraw TON
                     </button>
-                </div>
-            </div>
-            
-            <!-- Manual Deposit Tab -->
-            <div id="manualTab" class="finance-content">
-                <div class="card">
-                    <h2 class="card-title">
-                        <i class="fas fa-qrcode"></i>
-                        Manual Deposit
-                    </h2>
-                    
-                    <div class="qr-container">
-                        <div class="qr-code" id="qrCode">
-                            <!-- QR code will be generated here -->
-                            <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
-                                <i class="fas fa-qrcode" style="font-size: 48px; margin-bottom: 16px;"></i>
-                                <p>Generate deposit details</p>
-                            </div>
-                        </div>
-                        
-                        <div style="margin-top: 16px;">
-                            <button class="btn btn-primary" onclick="generateManualDeposit()" style="width: 100%;">
-                                <i class="fas fa-sync-alt"></i>
-                                Generate Deposit Details
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="manual-transfer" style="display: none;" id="manualDepositDetails">
-                        <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--warning);">
-                            <i class="fas fa-exclamation-circle"></i> Manual Transfer Instructions
-                        </h3>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Amount to send:</div>
-                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="manualAmount">0 TON</div>
-                        </div>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Destination address:</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--text-primary); word-break: break-all; margin-top: 4px;" id="manualAddress"></div>
-                        </div>
-                        
-                        <div style="margin-bottom: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px; padding: 8px; background: rgba(255, 183, 77, 0.1); border-radius: 6px;" id="manualComment"></div>
-                        </div>
-                        
-                        <div class="transfer-instruction">
-                            <p><strong>Steps:</strong></p>
-                            <p>1. Copy the address and comment</p>
-                            <p>2. Open your TON wallet app</p>
-                            <p>3. Send EXACT amount to the address</p>
-                            <p>4. Paste the comment in the transaction</p>
-                            <p>5. Wait 1-3 minutes for confirmation</p>
-                        </div>
-                        
-                        <div style="margin-top: 16px;">
-                            <button class="btn btn-secondary" onclick="copyManualDetails()" style="width: 100%;">
-                                <i class="fas fa-copy"></i>
-                                Copy All Details
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -1856,7 +1678,6 @@
         const TON_DEPOSIT_ADDRESS = 'UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG';
         const TELEGRAM_BOT_USERNAME = '@testtt1257bot';
         const TON_API_KEY = '79be296d7c02051b77d54285a2a61b0a73b2f0095d873de9d2b19970d5468e21';
-        const WATCHER_INTERVAL = 30000; // 30 seconds
 
         // ==============================================
         // GAME STATE
@@ -1897,51 +1718,12 @@
         let isTONConnectInitialized = false;
         let depositCheckInterval = null;
         let currentDepositId = null;
-        let watcherInterval = null;
 
         // ==============================================
         // USER MANAGEMENT
         // ==============================================
         let USER_ID = 'demo_user';
         let TELEGRAM_DATA = '';
-
-        // ==============================================
-        // NOTIFICATION SYSTEM
-        // ==============================================
-        function showNotification(type, title, message, duration = 5000) {
-            const notification = document.getElementById('notification');
-            const icon = document.getElementById('notificationIcon');
-            const titleEl = document.getElementById('notificationTitle');
-            const textEl = document.getElementById('notificationText');
-            
-            notification.className = `notification ${type}`;
-            
-            switch(type) {
-                case 'success':
-                    icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i>';
-                    break;
-                case 'error':
-                    icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>';
-                    break;
-                case 'warning':
-                    icon.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i>';
-                    break;
-            }
-            
-            titleEl.textContent = title;
-            textEl.textContent = message;
-            notification.classList.add('show');
-            
-            if (duration > 0) {
-                setTimeout(() => {
-                    notification.classList.remove('show');
-                }, duration);
-            }
-        }
-        
-        function hideNotification() {
-            document.getElementById('notification').classList.remove('show');
-        }
 
         // ==============================================
         // TELEGRAM INTEGRATION
@@ -2043,7 +1825,7 @@
                 
             } catch (error) {
                 console.error('Failed to initialize TON Connect:', error);
-                showNotification('error', 'TON Connect Failed', 'Please refresh the page and try again.');
+                alert('TON Connect initialization failed. Please refresh the page.');
             }
         }
 
@@ -2080,7 +1862,6 @@
             document.getElementById('initiateDepositBtn').disabled = false;
             
             console.log('Wallet connected successfully:', connectedWallet);
-            showNotification('success', 'Wallet Connected', `Connected to ${connectedWallet.wallet}`);
         }
 
         async function handleWalletDisconnected() {
@@ -2105,7 +1886,6 @@
             document.getElementById('depositDetailsCard').style.display = 'none';
             
             console.log('Wallet disconnected');
-            showNotification('warning', 'Wallet Disconnected', 'Your wallet has been disconnected');
         }
 
         async function connectWallet() {
@@ -2118,7 +1898,7 @@
                 
             } catch (error) {
                 console.error('Failed to connect wallet:', error);
-                showNotification('error', 'Connection Failed', 'Please make sure you have a TON wallet (Tonkeeper, Tonhub, etc.) installed.');
+                alert('Please make sure you have a TON wallet (Tonkeeper, Tonhub, etc.) installed.');
             }
         }
 
@@ -2176,9 +1956,9 @@
                     console.error(`API Error (${result.errorCode}):`, result.error);
                     
                     if (result.errorCode === 'AUTH_REQUIRED') {
-                        showNotification('error', 'Authentication Required', 'Please open this game through Telegram to play.');
+                        alert('Please open this game through Telegram to play.');
                     } else {
-                        showNotification('error', 'Error', result.error || 'An error occurred');
+                        alert(result.error || 'An error occurred');
                     }
                     
                     throw new Error(result.error);
@@ -2187,7 +1967,7 @@
                 console.error('API call failed:', error);
                 
                 if (!error.message.includes('Network')) {
-                    showNotification('error', 'Network Error', 'Please check your connection and try again.');
+                    alert('Network error. Please check your connection and try again.');
                 }
                 
                 throw error;
@@ -2247,7 +2027,7 @@
                 gameState.global.mintedSoFar = data.globalMinted || gameState.global.mintedSoFar;
                 updateUI();
                 closeMintModal();
-                showNotification('success', 'Success!', 'Successfully minted 3,000 Squids!');
+                alert('Successfully minted 3,000 Squids!');
             } catch (error) {
                 console.error('Mint failed:', error);
             }
@@ -2256,7 +2036,7 @@
         async function hatchSquids() {
             const amount = parseInt(document.getElementById('hatchAmount').value);
             if (amount < 100) {
-                showNotification('error', 'Minimum Amount', 'Minimum hatch amount is 100 eggs');
+                alert('Minimum hatch amount is 100 eggs');
                 return;
             }
 
@@ -2266,7 +2046,7 @@
                 gameState.user.squids = data.newSquids || gameState.user.squids;
                 updateUI();
                 closeHatchModal();
-                showNotification('success', 'Success!', `Successfully hatched ${data.squidsProduced} Squids!`);
+                alert(`Successfully hatched ${data.squidsProduced} Squids!`);
             } catch (error) {
                 console.error('Hatch failed:', error);
             }
@@ -2277,12 +2057,12 @@
             const amount = parseInt(document.getElementById('buyAmount').value);
             
             if (!price || price <= 0) {
-                showNotification('error', 'Invalid Price', 'Please enter a valid price');
+                alert('Please enter a valid price');
                 return;
             }
             
             if (!amount || amount < 100) {
-                showNotification('error', 'Invalid Amount', 'Minimum order amount is 100 Squids');
+                alert('Minimum order amount is 100 Squids');
                 return;
             }
 
@@ -2292,7 +2072,7 @@
                     price,
                     amount
                 });
-                showNotification('success', 'Order Created', 'Buy order created successfully!');
+                alert('Buy order created successfully!');
                 loadGameState();
             } catch (error) {
                 console.error('Create buy order failed:', error);
@@ -2304,12 +2084,12 @@
             const amount = parseInt(document.getElementById('sellAmount').value);
             
             if (!price || price <= 0) {
-                showNotification('error', 'Invalid Price', 'Please enter a valid price');
+                alert('Please enter a valid price');
                 return;
             }
             
             if (!amount || amount < 100) {
-                showNotification('error', 'Invalid Amount', 'Minimum order amount is 100 Squids');
+                alert('Minimum order amount is 100 Squids');
                 return;
             }
 
@@ -2319,7 +2099,7 @@
                     price,
                     amount
                 });
-                showNotification('success', 'Order Created', 'Sell order created successfully!');
+                alert('Sell order created successfully!');
                 loadGameState();
             } catch (error) {
                 console.error('Create sell order failed:', error);
@@ -2331,18 +2111,18 @@
             const address = document.getElementById('withdrawAddress').value;
             
             if (!amount || amount < 0.1) {
-                showNotification('error', 'Minimum Amount', 'Minimum withdrawal amount is 0.1 TON');
+                alert('Minimum withdrawal amount is 0.1 TON');
                 return;
             }
             
             if (!address || address.length < 10) {
-                showNotification('error', 'Invalid Address', 'Please enter a valid TON wallet address');
+                alert('Please enter a valid TON wallet address');
                 return;
             }
 
             try {
                 const data = await callAPI('withdrawTON', { amount, address });
-                showNotification('success', 'Withdrawal Submitted', 'Withdrawal request submitted! It will be processed within 24 hours.');
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
                 loadGameState();
             } catch (error) {
                 console.error('Withdrawal failed:', error);
@@ -2350,7 +2130,7 @@
         }
 
         // ==============================================
-        // FINANCE FUNCTIONS - IMPROVED DEPOSIT SYSTEM
+        // FINANCE FUNCTIONS
         // ==============================================
         function showFinancePage() {
             switchTab('financeTab');
@@ -2362,14 +2142,11 @@
             document.querySelectorAll('.finance-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.finance-content').forEach(t => t.classList.remove('active'));
             
-            document.querySelector(`.finance-tab:nth-child(${tab === 'deposit' ? 1 : tab === 'withdraw' ? 2 : 3})`).classList.add('active');
+            document.querySelector(`.finance-tab:nth-child(${tab === 'deposit' ? 1 : 2})`).classList.add('active');
             document.getElementById(`${tab}Tab`).classList.add('active');
             
             if (tab === 'withdraw') {
                 updateWithdrawUI();
-            } else if (tab === 'manual') {
-                // Reset manual deposit UI
-                document.getElementById('manualDepositDetails').style.display = 'none';
             }
         }
 
@@ -2379,18 +2156,18 @@
 
         async function initiateDeposit() {
             if (!connectedWallet) {
-                showNotification('error', 'Wallet Required', 'Please connect your wallet first.');
+                alert('Please connect your wallet first.');
                 return;
             }
             
             const amount = parseFloat(document.getElementById('depositAmount').value);
             if (!amount || amount < 0.1) {
-                showNotification('error', 'Minimum Amount', 'Minimum deposit amount is 0.1 TON');
+                alert('Minimum deposit amount is 0.1 TON');
                 return;
             }
             
             if (amount > 1000) {
-                showNotification('error', 'Maximum Amount', 'Maximum deposit amount is 1000 TON');
+                alert('Maximum deposit amount is 1000 TON');
                 return;
             }
             
@@ -2398,116 +2175,199 @@
                 // إنشاء معرف فريد للإيداع
                 currentDepositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 
-                // الحصول على userId
-                const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-                const userId = tgUser?.id || USER_ID;
-                
-                // إنشاء comment فريد
-                const comment = `SQUIDPEPE:${userId}:${currentDepositId}`;
+                // إعداد معاملة TON Connect مع كومنت
+                const comment = `SquidPEPE:${USER_ID}:${currentDepositId}`;
                 
                 currentDepositInfo = {
                     depositId: currentDepositId,
                     amount: amount,
                     userAddress: connectedWallet.address,
-                    comment: comment,
-                    userId: userId
+                    comment: comment
                 };
                 
-                // عرض تفاصيل الإيداع
+                // عرض تفاصيل الإيداع مع الكومنت
                 document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
                 document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
                 document.getElementById('depositCommentText').textContent = comment;
                 
                 document.getElementById('depositDetailsCard').style.display = 'block';
                 
-                showNotification('success', 'Deposit Prepared', 'Please send TON with the exact comment shown.');
-                
             } catch (error) {
                 console.error('Failed to prepare deposit:', error);
-                showNotification('error', 'Deposit Failed', 'Failed to prepare deposit. Please try again.');
+                alert('Failed to prepare deposit. Please try again.');
+            }
+        }
+
+        function openTonkeeper() {
+            if (currentDepositInfo) {
+                document.getElementById('depositDetailsCard').style.display = 'block';
+            } else {
+                alert('Please initiate a deposit first.');
+            }
+        }
+
+        // دالة لإنشاء payload الكومنت لـ TON (المصححة)
+        function createCommentPayload(comment) {
+            try {
+                // TON Connect يتطلب payload بهذا التنسيق:
+                // - 4 بايت أولى: opcode (0x00000000 للكومنت البسيط) - little endian
+                // - باقي البايتات: نص الكومنت UTF-8
+                
+                // تحويل opcode إلى bytes (0x00000000)
+                const opcodeBytes = new Uint8Array([0, 0, 0, 0]);
+                
+                // تحويل الكومنت إلى UTF-8 bytes
+                const encoder = new TextEncoder();
+                const commentBytes = encoder.encode(comment);
+                
+                // إنشاء payload كامل
+                const payload = new Uint8Array(opcodeBytes.length + commentBytes.length);
+                payload.set(opcodeBytes, 0);
+                payload.set(commentBytes, opcodeBytes.length);
+                
+                // تحويل إلى hex string
+                let hexString = '';
+                for (let i = 0; i < payload.length; i++) {
+                    hexString += payload[i].toString(16).padStart(2, '0');
+                }
+                
+                return hexString;
+                
+            } catch (error) {
+                console.error('Error creating comment payload:', error);
+                return '';
+            }
+        }
+
+        // طريقة بديلة أبسط
+        function createSimpleCommentPayload(comment) {
+            try {
+                // إنشاء payload يدوياً
+                // opcode: 00000000 (4 بايت)
+                let payload = '00000000';
+                
+                // إضافة كل حرف من الكومنت كـ hex
+                for (let i = 0; i < comment.length; i++) {
+                    const charCode = comment.charCodeAt(i);
+                    payload += charCode.toString(16).padStart(2, '0');
+                }
+                
+                return payload;
+                
+            } catch (error) {
+                console.error('Error in createSimpleCommentPayload:', error);
+                return '';
+            }
+        }
+
+        // الطريقة الأكثر أماناً - استخدام TextEncoder
+        function createCommentPayloadV2(comment) {
+            try {
+                // opcode للكومنت البسيط (0x00000000)
+                const opcode = new Uint8Array([0, 0, 0, 0]);
+                
+                // تحويل الكومنت إلى UTF-8
+                const encoder = new TextEncoder();
+                const commentBytes = encoder.encode(comment);
+                
+                // دمج opcode مع comment
+                const payload = new Uint8Array(opcode.length + commentBytes.length);
+                payload.set(opcode, 0);
+                payload.set(commentBytes, opcode.length);
+                
+                // تحويل إلى hex
+                return Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join('');
+                
+            } catch (error) {
+                console.error('Error in createCommentPayloadV2:', error);
+                return '';
             }
         }
 
         async function sendDepositTransaction() {
             if (!currentDepositInfo || !tonConnectUI) {
-                showNotification('error', 'Deposit Required', 'Please initiate a deposit first.');
+                alert('Please initiate a deposit first.');
                 return;
             }
             
             try {
-                // تحويل Comment إلى bytes باستخدام TextEncoder
-                const encoder = new TextEncoder();
-                const commentBytes = encoder.encode(currentDepositInfo.comment);
+                // إنشاء كومنت فريد يحتوي على userId
+                const comment = `SquidPEPE:${USER_ID}:${currentDepositInfo.depositId}`;
                 
-                // إنشاء payload صالح لـ TON Connect
-                // TON Connect يتطلب أن يكون payload في شكل bytes
+                console.log('Creating transaction with comment:', comment);
+                
+                // استخدام الدالة المصححة لإنشاء payload
+                const payload = createCommentPayloadV2(comment);
+                
+                if (!payload) {
+                    throw new Error('Failed to create comment payload');
+                }
+                
                 const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 300, // 5 دقائق
+                    validUntil: Math.floor(Date.now() / 1000) + 300,
                     messages: [
                         {
                             address: TON_DEPOSIT_ADDRESS,
-                            amount: String(Math.floor(currentDepositInfo.amount * 1000000000)), // تحويل إلى nanoTON
-                            payload: Array.from(commentBytes) // تحويل إلى array للتوافق مع TON Connect
+                            amount: String(Math.floor(currentDepositInfo.amount * 1000000000)),
+                            // إضافة payload
+                            payload: payload
                         }
                     ]
                 };
                 
-                console.log('Sending transaction with comment bytes:', commentBytes);
-                console.log('Comment text:', currentDepositInfo.comment);
+                console.log('Sending transaction with payload:', payload);
                 
                 const result = await tonConnectUI.sendTransaction(transaction);
                 
                 console.log('Transaction sent successfully:', result);
                 
-                // تسجيل المعاملة في قاعدة البيانات
+                // تحديث بيانات الإيداع بالكومنت
+                currentDepositInfo.comment = comment;
+                currentDepositInfo.txHash = result.boc;
+                
+                // تحديث واجهة حالة الإيداع
+                showDepositStatus('pending', 
+                    'Transaction sent! Waiting for confirmation...', 
+                    `Transaction ID: ${result.boc.substring(0, 20)}...\nComment: ${comment}\nPlease wait 1-3 minutes for verification.`
+                );
+                
+                // إرسال تأكيد للخادم مع الكومنت
                 try {
                     const confirmData = await callAPI('deposit/confirm', {
                         depositId: currentDepositInfo.depositId,
                         amount: currentDepositInfo.amount,
                         txHash: result.boc,
-                        user_address: currentDepositInfo.userAddress,
-                        comment: currentDepositInfo.comment,
-                        userId: currentDepositInfo.userId
+                        comment: comment, // إرسال الكومنت للخادم
+                        user_address: currentDepositInfo.userAddress
                     });
                     
                     console.log('Deposit confirmed on server:', confirmData);
                     
+                    // بدء التحقق الدوري
+                    startDepositVerification(currentDepositInfo.depositId, result.boc, comment);
+                    
                 } catch (apiError) {
                     console.warn('Backend confirmation failed:', apiError);
+                    // حتى لو فشل التأكيد، نواصل التحقق
+                    startDepositVerification(currentDepositInfo.depositId, result.boc, comment);
                 }
-                
-                // تحديث واجهة حالة الإيداع
-                showDepositStatus('pending', 
-                    'Transaction sent! Waiting for confirmation...', 
-                    `TX Hash: ${result.boc.substring(0, 20)}...\nPlease wait 1-3 minutes for confirmation.`
-                );
                 
                 // إخفاء تفاصيل الإيداع
                 document.getElementById('depositDetailsCard').style.display = 'none';
                 document.getElementById('depositAmount').value = '';
-                
-                // بدء التحقق الدوري
-                startDepositVerification(currentDepositInfo.depositId, result.boc);
-                
-                showNotification('success', 'Transaction Sent', 'Please wait for confirmation (1-3 minutes)');
                 
             } catch (error) {
                 console.error('Transaction failed:', error);
                 
                 if (error.message && error.message.includes('rejected')) {
                     showDepositStatus('error', 'Transaction cancelled by user.');
-                    showNotification('error', 'Transaction Cancelled', 'You cancelled the transaction.');
-                } else if (error.message && error.message.includes('payload')) {
-                    showDepositStatus('error', 'Transaction failed: Invalid payload format.');
-                    showNotification('error', 'Transaction Failed', 'Please try manual deposit method instead.');
                 } else {
                     showDepositStatus('error', 'Transaction failed: ' + (error.message || 'Unknown error'));
-                    showNotification('error', 'Transaction Failed', 'Please try again or contact support.');
                 }
             }
         }
 
-        function startDepositVerification(depositId, txHash) {
+        function startDepositVerification(depositId, txHash, comment) {
             if (depositCheckInterval) {
                 clearInterval(depositCheckInterval);
             }
@@ -2521,7 +2381,8 @@
                 try {
                     const verifyData = await callAPI('deposit/verify', {
                         depositId: depositId,
-                        txHash: txHash
+                        txHash: txHash,
+                        comment: comment // إرسال الكومنت للتحقق
                     });
                     
                     if (verifyData.status === 'completed') {
@@ -2529,7 +2390,7 @@
                         clearInterval(depositCheckInterval);
                         showDepositStatus('success', 
                             `Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
-                            `New balance: ${formatTON(verifyData.newBalance || gameState.user.tonBalance + verifyData.amount)} TON`
+                            `Comment verified: ${comment}\nNew balance: ${formatTON(verifyData.newBalance || gameState.user.tonBalance + verifyData.amount)} TON`
                         );
                         
                         // تحديث حالة اللعبة
@@ -2537,16 +2398,13 @@
                             loadGameState();
                         }, 2000);
                         
-                        showNotification('success', 'Deposit Confirmed', `${formatTON(verifyData.amount)} TON added to your balance!`);
-                        
                     } else if (attempts >= maxAttempts) {
                         // تجاوز الحد الأقصى للمحاولات
                         clearInterval(depositCheckInterval);
                         showDepositStatus('pending', 
                             'Deposit still pending. It may take a few minutes to confirm.',
-                            'You can check your balance later or contact support.'
+                            `Comment: ${comment}\nWe're checking your transaction...`
                         );
-                        showNotification('warning', 'Deposit Pending', 'Transaction taking longer than expected. Please check later.');
                     }
                     
                 } catch (error) {
@@ -2556,9 +2414,8 @@
                         clearInterval(depositCheckInterval);
                         showDepositStatus('error', 
                             'Verification failed. Please check your transaction manually.',
-                            `TX Hash: ${txHash.substring(0, 20)}...`
+                            `TX Hash: ${txHash.substring(0, 20)}...\nComment: ${comment}`
                         );
-                        showNotification('error', 'Verification Failed', 'Please contact support with your transaction hash.');
                     }
                 }
             }, 10000); // التحقق كل 10 ثواني
@@ -2599,102 +2456,15 @@
             }
         }
 
-        async function checkPendingDeposits(pendingDeposits) {
+        function checkPendingDeposits(pendingDeposits) {
             if (pendingDeposits && pendingDeposits.length > 0) {
+                // إذا كان هناك إيداعات معلقة، نبدأ التحقق
                 pendingDeposits.forEach(deposit => {
                     if (deposit.status === 'pending' || deposit.status === 'sent') {
-                        startDepositVerification(deposit.depositId, deposit.txHash);
+                        startDepositVerification(deposit.depositId, deposit.txHash, deposit.comment || '');
                     }
                 });
             }
-        }
-
-        // ==============================================
-        // MANUAL DEPOSIT FUNCTIONS
-        // ==============================================
-        async function generateManualDeposit() {
-            const amount = parseFloat(prompt('Enter deposit amount in TON (minimum 0.1 TON):', '0.5'));
-            
-            if (!amount || amount < 0.1) {
-                showNotification('error', 'Invalid Amount', 'Minimum deposit amount is 0.1 TON');
-                return;
-            }
-            
-            if (amount > 1000) {
-                showNotification('error', 'Maximum Amount', 'Maximum deposit amount is 1000 TON');
-                return;
-            }
-            
-            try {
-                // إنشاء معرف فريد للإيداع
-                const depositId = 'manual_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                // الحصول على userId
-                const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-                const userId = tgUser?.id || USER_ID;
-                
-                // إنشاء comment فريد
-                const comment = `SQUIDPEPE:${userId}:${depositId}`;
-                
-                // تسجيل الإيداع في قاعدة البيانات
-                const depositData = await callAPI('deposit/init', {
-                    amount: amount,
-                    wallet_address: 'manual',
-                    comment: comment,
-                    depositId: depositId
-                });
-                
-                // عرض تفاصيل الإيداع اليدوي
-                document.getElementById('manualAmount').textContent = `${formatTON(amount)} TON`;
-                document.getElementById('manualAddress').textContent = TON_DEPOSIT_ADDRESS;
-                document.getElementById('manualComment').textContent = comment;
-                
-                document.getElementById('manualDepositDetails').style.display = 'block';
-                
-                // إنشاء QR code
-                const qrData = `ton://transfer/${TON_DEPOSIT_ADDRESS}?amount=${Math.floor(amount * 1000000000)}&text=${encodeURIComponent(comment)}`;
-                generateQRCode(qrData);
-                
-                showNotification('success', 'Deposit Details Generated', 'Send TON with the exact comment to complete deposit.');
-                
-            } catch (error) {
-                console.error('Failed to generate manual deposit:', error);
-                showNotification('error', 'Generation Failed', 'Failed to generate deposit details. Please try again.');
-            }
-        }
-        
-        function generateQRCode(data) {
-            const qrContainer = document.getElementById('qrCode');
-            qrContainer.innerHTML = '';
-            
-            // استخدام API خارجي لإنشاء QR code
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}`;
-            
-            const img = document.createElement('img');
-            img.src = qrUrl;
-            img.alt = 'TON Deposit QR Code';
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.borderRadius = '4px';
-            
-            qrContainer.appendChild(img);
-        }
-        
-        function copyManualDetails() {
-            const address = TON_DEPOSIT_ADDRESS;
-            const amount = document.getElementById('manualAmount').textContent;
-            const comment = document.getElementById('manualComment').textContent;
-            
-            const details = `TON Deposit Details:\n\nAmount: ${amount}\nAddress: ${address}\nComment: ${comment}\n\nSend the exact amount with the comment to complete deposit.`;
-            
-            navigator.clipboard.writeText(details)
-                .then(() => {
-                    showNotification('success', 'Copied!', 'Deposit details copied to clipboard.');
-                })
-                .catch(err => {
-                    console.error('Failed to copy:', err);
-                    showNotification('error', 'Copy Failed', 'Failed to copy details. Please copy manually.');
-                });
         }
 
         function updateWithdrawUI() {
@@ -2728,17 +2498,17 @@
             const address = document.getElementById('withdrawAddressFinance').value;
             
             if (!amount || amount < 0.5) {
-                showNotification('error', 'Minimum Amount', 'Minimum withdrawal amount is 0.5 TON');
+                alert('Minimum withdrawal amount is 0.5 TON');
                 return;
             }
             
             if (!address || address.length < 10) {
-                showNotification('error', 'Invalid Address', 'Please enter a valid TON wallet address');
+                alert('Please enter a valid TON wallet address');
                 return;
             }
             
             if (amount > gameState.user.tonBalance) {
-                showNotification('error', 'Insufficient Balance', 'You don\'t have enough TON');
+                alert('Insufficient balance');
                 return;
             }
 
@@ -2748,7 +2518,7 @@
                     address: address 
                 });
                 
-                showNotification('success', 'Withdrawal Submitted', 'Withdrawal request submitted! It will be processed within 24 hours.');
+                alert('Withdrawal request submitted! It will be processed within 24 hours.');
                 
                 document.getElementById('withdrawAmountFinance').value = '';
                 document.getElementById('withdrawAddressFinance').value = '';
@@ -2758,54 +2528,6 @@
                 
             } catch (error) {
                 console.error('Withdrawal failed:', error);
-                showNotification('error', 'Withdrawal Failed', 'Please try again or contact support.');
-            }
-        }
-
-        // ==============================================
-        // WATCHER SYSTEM FOR AUTOMATIC DEPOSIT DETECTION
-        // ==============================================
-        async function startDepositWatcher() {
-            if (watcherInterval) {
-                clearInterval(watcherInterval);
-            }
-            
-            watcherInterval = setInterval(async () => {
-                try {
-                    await checkForNewDeposits();
-                } catch (error) {
-                    console.error('Watcher error:', error);
-                }
-            }, WATCHER_INTERVAL);
-            
-            console.log('Deposit watcher started');
-        }
-        
-        async function checkForNewDeposits() {
-            try {
-                const response = await fetch(`${API_BASE}/watcher/check`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': TELEGRAM_DATA ? `Telegram ${TELEGRAM_DATA}` : `X-Demo-Mode: true`,
-                        'X-User-ID': USER_ID
-                    }
-                });
-                
-                if (response.ok) {
-                    const result = await response.json();
-                    if (result.success && result.data && result.data.newDeposits > 0) {
-                        console.log(`Found ${result.data.newDeposits} new deposits`);
-                        loadGameState();
-                        
-                        if (result.data.newDeposits > 0) {
-                            showNotification('success', 'Deposit Detected', 
-                                `Found ${result.data.newDeposits} new deposit(s)! Your balance has been updated.`);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Failed to check deposits:', error);
             }
         }
 
@@ -2877,7 +2599,7 @@
         // ==============================================
         function showMintModal() {
             if (gameState.user.mintUsed) {
-                showNotification('warning', 'Already Minted', 'You have already minted your initial Squids.');
+                alert('You have already minted your initial Squids.');
                 return;
             }
             document.getElementById('mintModal').classList.add('active');
@@ -2901,7 +2623,7 @@
             const input = document.getElementById('referralLink');
             input.select();
             navigator.clipboard.writeText(input.value);
-            showNotification('success', 'Copied!', 'Referral link copied to clipboard!');
+            alert('Referral link copied to clipboard!');
         }
 
         function updateHatchEstimate() {
@@ -3022,17 +2744,11 @@
                     
                     loadGameState();
                     
-                    // تحديث اللعبة كل 30 ثانية
                     setInterval(loadGameState, 30000);
                     
-                    // بدء نظام المراقبة للإيداعات
-                    startDepositWatcher();
-                    
-                    // بدء مؤقت البيض
                     startEggTimer();
                     
                     console.log('App initialized successfully');
-                    showNotification('success', 'Welcome!', 'SquidPEPE game loaded successfully!');
                 }
             }, 100);
         }
