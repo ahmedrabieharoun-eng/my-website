@@ -2142,13 +2142,14 @@
                 const depositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 const comment = `SquidPEPE Deposit: ${USER_ID}, ${depositId}`;
                 
+                // ✅ FIXED: Remove payload to avoid validation error
                 const transaction = {
                     validUntil: Math.floor(Date.now() / 1000) + 300,
                     messages: [
                         {
                             address: TON_DEPOSIT_ADDRESS,
-                            amount: String(Math.floor(amount * 1000000000)),
-                            payload: comment
+                            amount: String(Math.floor(amount * 1000000000))
+                            // ❌ REMOVED: payload: comment
                         }
                     ]
                 };
@@ -2157,7 +2158,8 @@
                     depositId: depositId,
                     amount: amount,
                     transaction: transaction,
-                    userAddress: connectedWallet.address
+                    userAddress: connectedWallet.address,
+                    comment: comment
                 };
                 
                 document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
@@ -2187,16 +2189,20 @@
             }
             
             try {
+                console.log('Sending transaction:', currentDepositInfo.transaction);
+                
                 const result = await tonConnectUI.sendTransaction(currentDepositInfo.transaction);
                 
                 console.log('Transaction sent successfully:', result);
                 
+                // After successful transaction, confirm with backend
                 try {
                     const confirmData = await callAPI('deposit/confirm', {
                         deposit_id: currentDepositInfo.depositId,
                         amount: currentDepositInfo.amount,
                         tx_hash: result.boc,
                         user_address: currentDepositInfo.userAddress,
+                        comment: currentDepositInfo.comment,
                         user_id: USER_ID
                     });
                     
@@ -2220,6 +2226,8 @@
                 
                 if (error.message && error.message.includes('rejected')) {
                     alert('Transaction cancelled by user.');
+                } else if (error.message && error.message.includes('payload')) {
+                    alert('Transaction error: Invalid payload format. Please try again.');
                 } else {
                     alert('Transaction failed: ' + (error.message || 'Unknown error'));
                 }
