@@ -969,6 +969,54 @@
             color: var(--text-secondary);
             word-break: break-all;
         }
+        
+        /* Comment Display */
+        .comment-display {
+            background: rgba(255, 183, 77, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            margin: 16px 0;
+            border: 1px solid rgba(255, 183, 77, 0.3);
+        }
+        
+        .comment-label {
+            font-size: 12px;
+            color: var(--warning);
+            margin-bottom: 4px;
+        }
+        
+        .comment-value {
+            font-family: monospace;
+            font-size: 14px;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+        
+        /* Manual Deposit Instructions */
+        .manual-deposit-instructions {
+            background: rgba(0, 180, 216, 0.1);
+            padding: 16px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid rgba(0, 180, 216, 0.3);
+        }
+        
+        .manual-deposit-instructions h4 {
+            font-size: 16px;
+            margin-bottom: 12px;
+            color: var(--primary-blue);
+        }
+        
+        .manual-deposit-instructions ol {
+            margin-left: 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .manual-deposit-instructions li {
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -1390,6 +1438,7 @@
             <div class="finance-tabs">
                 <div class="finance-tab active" onclick="switchFinanceTab('deposit')">Deposit</div>
                 <div class="finance-tab" onclick="switchFinanceTab('withdraw')">Withdraw</div>
+                <div class="finance-tab" onclick="switchFinanceTab('manual')">Manual Deposit</div>
             </div>
             
             <!-- Deposit Tab -->
@@ -1397,7 +1446,7 @@
                 <div class="card">
                     <h2 class="card-title">
                         <i class="fas fa-money-bill-wave"></i>
-                        Deposit TON
+                        Deposit TON (TON Connect)
                     </h2>
                     
                     <div id="walletStatus" class="wallet-status disconnected">
@@ -1422,6 +1471,15 @@
                         </div>
                     </div>
                     
+                    <!-- Comment Display -->
+                    <div id="commentDisplay" class="comment-display" style="display: none;">
+                        <div class="comment-label">IMPORTANT: Include this comment in your transaction:</div>
+                        <div class="comment-value" id="depositCommentValue"></div>
+                        <div style="font-size: 11px; color: var(--warning); margin-top: 4px;">
+                            Without this comment, your deposit may not be credited automatically!
+                        </div>
+                    </div>
+                    
                     <!-- Deposit Status Indicator -->
                     <div id="depositStatus" class="deposit-status" style="display: none;">
                         <div class="status-icon"></div>
@@ -1429,62 +1487,76 @@
                         <div class="status-details"></div>
                     </div>
                     
-                    <div class="card" style="margin-top: 20px;">
-                        <h3 class="card-title">
-                            <i class="fas fa-wallet"></i>
-                            Payment Method
-                        </h3>
-                        
-                        <div style="display: flex; gap: 12px; margin-top: 16px;">
-                            <button class="btn btn-secondary" onclick="sendManualDeposit()" style="flex: 1;">
-                                <i class="fas fa-paper-plane"></i>
-                                Send TON
-                            </button>
-                        </div>
-                        
-                        <div style="margin-top: 16px; padding: 12px; background: rgba(0, 212, 170, 0.1); border-radius: 12px; display: none;" id="manualDepositInfo">
-                            <h4 style="font-size: 14px; margin-bottom: 8px; color: var(--success);">
-                                <i class="fas fa-info-circle"></i> How to Deposit
-                            </h4>
-                            <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
-                                <p><strong>Step 1:</strong> Send TON to this address:</p>
-                                <div style="background: rgba(0, 0, 0, 0.2); padding: 8px; border-radius: 6px; margin: 8px 0; font-family: monospace; word-break: break-all;">
-                                    UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG
-                                </div>
-                                <p><strong>Step 2:</strong> Add this comment (REQUIRED):</p>
-                                <div style="background: rgba(255, 183, 77, 0.2); padding: 8px; border-radius: 6px; margin: 8px 0; font-family: monospace; word-break: break-all;" id="depositComment">
-                                    Loading...
-                                </div>
-                                <p><strong>Step 3:</strong> Wait 1-3 minutes for confirmation</p>
-                            </div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn btn-primary" onclick="initiateTONConnectDeposit()" id="initiateDepositBtn" style="width: 100%;" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                            Deposit with TON Connect
+                        </button>
+                    </div>
+                    
+                    <div class="manual-deposit-instructions">
+                        <h4><i class="fas fa-info-circle"></i> How It Works:</h4>
+                        <ol>
+                            <li>Connect your TON wallet</li>
+                            <li>Enter the deposit amount</li>
+                            <li>Click "Deposit with TON Connect"</li>
+                            <li>Confirm the transaction in your wallet <strong>WITH THE COMMENT</strong></li>
+                            <li>Your balance will update automatically within 1-3 minutes</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manual Deposit Tab -->
+            <div id="manualTab" class="finance-content">
+                <div class="card">
+                    <h2 class="card-title">
+                        <i class="fas fa-hand-holding-usd"></i>
+                        Manual Deposit
+                    </h2>
+                    
+                    <div class="manual-deposit-instructions">
+                        <h4><i class="fas fa-info-circle"></i> How to Deposit Manually:</h4>
+                        <ol>
+                            <li>Open your TON wallet (Tonkeeper, Tonhub, etc.)</li>
+                            <li>Send TON to the address below</li>
+                            <li><strong>MUST include the comment exactly as shown</strong></li>
+                            <li>Your balance will update automatically within 1-3 minutes</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Amount to Deposit (TON)</label>
+                        <input type="number" id="manualDepositAmount" class="form-input" placeholder="0.00" step="0.1" min="0.1">
+                        <div class="preset-buttons">
+                            <div class="preset-btn" onclick="setManualDepositAmount(0.5)">0.5</div>
+                            <div class="preset-btn" onclick="setManualDepositAmount(1)">1</div>
+                            <div class="preset-btn" onclick="setManualDepositAmount(2)">2</div>
+                            <div class="preset-btn" onclick="setManualDepositAmount(5)">5</div>
+                            <div class="preset-btn" onclick="setManualDepositAmount(10)">10</div>
                         </div>
                     </div>
                     
-                    <div class="card" style="margin-top: 20px; display: none;" id="depositDetailsCard">
-                        <h3 class="card-title">
-                            <i class="fas fa-info-circle"></i>
-                            Deposit Details
-                        </h3>
-                        
-                        <div style="margin-top: 16px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Send exactly:</div>
-                            <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="depositExactAmount">0 TON</div>
-                        </div>
-                        
-                        <div style="margin-top: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">To address:</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--text-primary); word-break: break-all; margin-top: 4px;" id="depositTargetAddress"></div>
-                        </div>
-                        
-                        <div style="margin-top: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText"></div>
-                        </div>
-                        
-                        <button class="btn btn-primary" onclick="checkManualDeposit()" id="checkDepositBtn" style="width: 100%; margin-top: 16px;">
-                            <i class="fas fa-sync-alt"></i>
-                            Check Deposit Status
+                    <div class="comment-display">
+                        <div class="comment-label">DEPOSIT ADDRESS:</div>
+                        <div class="comment-value" id="manualDepositAddress">UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG</div>
+                        <button class="btn btn-secondary" onclick="copyToClipboard('manualDepositAddress')" style="width: 100%; margin-top: 8px;">
+                            <i class="fas fa-copy"></i> Copy Address
                         </button>
+                    </div>
+                    
+                    <div class="comment-display" style="margin-top: 16px;">
+                        <div class="comment-label">COMMENT (REQUIRED!):</div>
+                        <div class="comment-value" id="manualDepositComment"></div>
+                        <button class="btn btn-secondary" onclick="copyToClipboard('manualDepositComment')" style="width: 100%; margin-top: 8px;">
+                            <i class="fas fa-copy"></i> Copy Comment
+                        </button>
+                    </div>
+                    
+                    <div id="manualDepositStatus" class="deposit-status" style="display: none; margin-top: 20px;">
+                        <div class="status-icon"></div>
+                        <div class="status-message"></div>
+                        <div class="status-details"></div>
                     </div>
                 </div>
             </div>
@@ -1896,7 +1968,7 @@
             walletStatus.classList.add('disconnected');
             
             document.getElementById('initiateDepositBtn').disabled = true;
-            document.getElementById('depositDetailsCard').style.display = 'none';
+            document.getElementById('commentDisplay').style.display = 'none';
             
             console.log('Wallet disconnected');
         }
@@ -2011,6 +2083,17 @@
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent || element.value;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
         // ==============================================
         // GAME STATE MANAGEMENT
         // ==============================================
@@ -2021,9 +2104,31 @@
                 gameState = data;
                 console.log('Game state loaded:', gameState);
                 updateUI();
+                
+                // التحقق من الإيداعات المعلقة
+                if (data.pendingDeposits && data.pendingDeposits.length > 0) {
+                    checkPendingDeposits(data.pendingDeposits);
+                }
+                
+                // عرض الإشعارات
+                if (data.unreadNotifications && data.unreadNotifications.count > 0) {
+                    showNotifications(data.unreadNotifications.notifications);
+                }
             } catch (error) {
                 console.error('Failed to load game state:', error);
             }
+        }
+
+        function showNotifications(notifications) {
+            // عرض الإشعارات للمستخدم
+            notifications.forEach(notification => {
+                if (notification.type === 'deposit_completed') {
+                    showDepositStatus('success', 
+                        `✅ Deposit confirmed! ${formatTON(notification.amount)} TON added to your balance.`,
+                        `TX: ${notification.txHash.substring(0, 20)}...`
+                    );
+                }
+            });
         }
 
         async function mintSquids() {
@@ -2138,7 +2243,7 @@
         }
 
         // ==============================================
-        // FINANCE FUNCTIONS - MANUAL DEPOSIT
+        // FINANCE FUNCTIONS
         // ==============================================
         function showFinancePage() {
             switchTab('financeTab');
@@ -2150,11 +2255,14 @@
             document.querySelectorAll('.finance-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.finance-content').forEach(t => t.classList.remove('active'));
             
-            document.querySelector(`.finance-tab:nth-child(${tab === 'deposit' ? 1 : 2})`).classList.add('active');
+            const tabIndex = tab === 'deposit' ? 1 : tab === 'withdraw' ? 2 : 3;
+            document.querySelector(`.finance-tab:nth-child(${tabIndex})`).classList.add('active');
             document.getElementById(`${tab}Tab`).classList.add('active');
             
             if (tab === 'withdraw') {
                 updateWithdrawUI();
+            } else if (tab === 'manual') {
+                updateManualDepositUI();
             }
         }
 
@@ -2162,7 +2270,17 @@
             document.getElementById('depositAmount').value = amount;
         }
 
-        async function sendManualDeposit() {
+        function setManualDepositAmount(amount) {
+            document.getElementById('manualDepositAmount').value = amount;
+            updateManualDepositUI();
+        }
+
+        async function initiateTONConnectDeposit() {
+            if (!connectedWallet) {
+                alert('Please connect your wallet first.');
+                return;
+            }
+            
             const amount = parseFloat(document.getElementById('depositAmount').value);
             if (!amount || amount < 0.1) {
                 alert('Minimum deposit amount is 0.1 TON');
@@ -2175,59 +2293,79 @@
             }
             
             try {
-                // إنشاء تعليق فريد للإيداع
-                const comment = `SquidPEPE_${USER_ID}_${Date.now()}`;
+                // إنشاء comment بناءً على Telegram User ID
+                const comment = `tg:${USER_ID}`;
                 
-                // عرض معلومات الإيداع
-                document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
-                document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
-                document.getElementById('depositCommentText').textContent = comment;
-                document.getElementById('depositComment').textContent = comment;
+                // عرض الـ comment للمستخدم
+                document.getElementById('depositCommentValue').textContent = comment;
+                document.getElementById('commentDisplay').style.display = 'block';
                 
-                // عرض معلومات الإيداع اليدوي
-                document.getElementById('manualDepositInfo').style.display = 'block';
-                document.getElementById('depositDetailsCard').style.display = 'block';
+                // إعداد معاملة TON Connect
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 300, // 5 دقائق
+                    messages: [
+                        {
+                            address: TON_DEPOSIT_ADDRESS,
+                            amount: String(Math.floor(amount * 1000000000)), // تحويل إلى nanoTON
+                            payload: comment // 👈 COMMENT HERE
+                        }
+                    ]
+                };
                 
-                // إظهار رسالة تأكيد
+                console.log('Sending transaction with comment:', comment);
+                
+                // إرسال المعاملة
+                const result = await tonConnectUI.sendTransaction(transaction);
+                
+                console.log('Transaction sent successfully:', result);
+                
+                // تحديث واجهة حالة الإيداع
                 showDepositStatus('pending', 
-                    'Please send exactly ' + formatTON(amount) + ' TON to the address above with the comment.',
-                    'Waiting for transaction confirmation...'
+                    '✅ Transaction sent! Waiting for confirmation...', 
+                    'Your balance will update automatically within 1-3 minutes'
                 );
                 
-                // بدء التحقق الدوري للإيداع
-                startManualDepositCheck(comment, amount);
+                // بدء التحقق الدوري
+                startDepositVerification(null, result.boc, amount);
+                
+                // مسح حقل الإدخال
+                document.getElementById('depositAmount').value = '';
+                document.getElementById('commentDisplay').style.display = 'none';
                 
             } catch (error) {
-                console.error('Failed to prepare manual deposit:', error);
-                alert('Failed to prepare deposit. Please try again.');
+                console.error('Transaction failed:', error);
+                
+                if (error.message && error.message.includes('rejected')) {
+                    showDepositStatus('error', 'Transaction cancelled by user.');
+                } else {
+                    showDepositStatus('error', 'Transaction failed: ' + (error.message || 'Unknown error'));
+                }
             }
         }
 
-        function startManualDepositCheck(comment, amount) {
+        function startDepositVerification(depositId, txHash, amount) {
             if (depositCheckInterval) {
                 clearInterval(depositCheckInterval);
             }
             
             let attempts = 0;
-            const maxAttempts = 60; // 10 دقائق (10 ثواني × 60)
+            const maxAttempts = 30; // 5 دقائق (10 ثواني × 30)
             
             depositCheckInterval = setInterval(async () => {
                 attempts++;
                 
                 try {
                     const verifyData = await callAPI('deposit/verify', {
-                        comment: comment,
-                        amount: amount
+                        depositId: depositId,
+                        txHash: txHash
                     });
-                    
-                    console.log('Deposit verification result:', verifyData);
                     
                     if (verifyData.status === 'completed') {
                         // الإيداع مكتمل
                         clearInterval(depositCheckInterval);
                         showDepositStatus('success', 
-                            `Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
-                            `New balance: ${formatTON(verifyData.newBalance)} TON`
+                            `✅ Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
+                            `New balance: ${formatTON(verifyData.newBalance || gameState.user.tonBalance + verifyData.amount)} TON`
                         );
                         
                         // تحديث حالة اللعبة
@@ -2235,20 +2373,12 @@
                             loadGameState();
                         }, 2000);
                         
-                    } else if (verifyData.status === 'pending') {
-                        // لا يزال معلقاً
-                        if (attempts % 6 === 0) { // كل دقيقة
-                            showDepositStatus('pending', 
-                                `Still waiting for deposit confirmation... (${attempts}/60 checks)`,
-                                'This may take 1-3 minutes. Please wait.'
-                            );
-                        }
                     } else if (attempts >= maxAttempts) {
                         // تجاوز الحد الأقصى للمحاولات
                         clearInterval(depositCheckInterval);
-                        showDepositStatus('error', 
-                            'Deposit timeout. Please check your transaction and try again.',
-                            'If you sent the TON, contact support with your transaction hash.'
+                        showDepositStatus('pending', 
+                            '⏳ Deposit still pending. It may take a few minutes to confirm.',
+                            'You can check your balance later or contact support.'
                         );
                     }
                     
@@ -2258,58 +2388,12 @@
                     if (attempts >= maxAttempts) {
                         clearInterval(depositCheckInterval);
                         showDepositStatus('error', 
-                            'Verification failed. Please try again later.',
-                            'Error: ' + error.message
+                            '❌ Verification failed. Please check your transaction manually.',
+                            `TX Hash: ${txHash ? txHash.substring(0, 20) + '...' : 'N/A'}`
                         );
                     }
                 }
             }, 10000); // التحقق كل 10 ثواني
-        }
-
-        async function checkManualDeposit() {
-            try {
-                const comment = document.getElementById('depositCommentText').textContent;
-                const amount = parseFloat(document.getElementById('depositAmount').value);
-                
-                if (!comment || !amount) {
-                    alert('Please initiate a deposit first');
-                    return;
-                }
-                
-                const verifyData = await callAPI('deposit/verify', {
-                    comment: comment,
-                    amount: amount
-                });
-                
-                if (verifyData.status === 'completed') {
-                    showDepositStatus('success', 
-                        `Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
-                        `New balance: ${formatTON(verifyData.newBalance)} TON`
-                    );
-                    
-                    setTimeout(() => {
-                        loadGameState();
-                    }, 2000);
-                    
-                } else if (verifyData.status === 'pending') {
-                    showDepositStatus('pending', 
-                        'Deposit still pending. Please wait 1-3 minutes for confirmation.',
-                        'The system automatically checks every 30 seconds.'
-                    );
-                } else {
-                    showDepositStatus('error', 
-                        'Deposit not found. Please send TON with the exact comment.',
-                        'Comment: ' + comment
-                    );
-                }
-                
-            } catch (error) {
-                console.error('Check deposit error:', error);
-                showDepositStatus('error', 
-                    'Failed to check deposit status.',
-                    'Error: ' + error.message
-                );
-            }
         }
 
         function showDepositStatus(type, message, details = '') {
@@ -2344,6 +2428,28 @@
                 setTimeout(() => {
                     statusDiv.style.display = 'none';
                 }, 10000);
+            }
+        }
+
+        function updateManualDepositUI() {
+            const amount = parseFloat(document.getElementById('manualDepositAmount').value) || 0;
+            const comment = `tg:${USER_ID}`;
+            
+            document.getElementById('manualDepositComment').textContent = comment;
+            
+            if (amount >= 0.1) {
+                document.getElementById('manualDepositStatus').style.display = 'none';
+            }
+        }
+
+        function checkPendingDeposits(pendingDeposits) {
+            if (pendingDeposits && pendingDeposits.length > 0) {
+                // إذا كان هناك إيداعات معلقة، نبدأ التحقق
+                pendingDeposits.forEach(deposit => {
+                    if (deposit.status === 'pending' || deposit.status === 'sent') {
+                        startDepositVerification(deposit.depositId, deposit.txHash, deposit.amount);
+                    }
+                });
             }
         }
 
@@ -2471,6 +2577,8 @@
             
             if (currentFinanceTab === 'withdraw') {
                 updateWithdrawUI();
+            } else if (currentFinanceTab === 'manual') {
+                updateManualDepositUI();
             }
         }
 
@@ -2550,7 +2658,8 @@
             document.querySelectorAll('.order-tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.market-tab').forEach(t => t.style.display = 'none');
             
-            document.querySelector(`.order-tab:nth-child(${tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3})`).classList.add('active');
+            const tabIndex = tab === 'buy' ? 1 : tab === 'sell' ? 2 : 3;
+            document.querySelector(`.order-tab:nth-child(${tabIndex})`).classList.add('active');
             document.getElementById(`${tab}Tab`).style.display = 'block';
         }
 
@@ -2607,6 +2716,7 @@
             });
             
             document.getElementById('hatchAmount').addEventListener('input', updateHatchEstimate);
+            document.getElementById('manualDepositAmount').addEventListener('input', updateManualDepositUI);
             
             setTimeout(() => {
                 initTONConnect().catch(console.error);
