@@ -32,7 +32,8 @@ export default {
         }
         
         // التحقق من المسار
-        if (path !== '/api' && path !== '/getDepositInfo' && path !== '/process-deposit') {
+        const validPaths = ['/api', '/getDepositInfo', '/process-deposit', '/deposit/verify', '/deposit/status'];
+        if (!validPaths.includes(path)) {
             return new Response(JSON.stringify({
                 success: false,
                 error: 'Invalid endpoint'
@@ -42,7 +43,7 @@ export default {
             });
         }
         
-        // معالجة طلب معلومات الإيداع (القديم - للتوافق فقط، يمكن تعطيله لاحقاً)
+        // معالجة طلب معلومات الإيداع (القديم - للتوافق فقط)
         if (path === '/getDepositInfo') {
             return handleGetDepositInfo(request, env);
         }
@@ -50,6 +51,16 @@ export default {
         // معالجة إيداع من الـ watcher (القديم - للتوافق فقط)
         if (path === '/process-deposit') {
             return handleProcessDeposit(request, env);
+        }
+        
+        // التحقق من حالة الإيداع
+        if (path === '/deposit/status') {
+            return handleDepositStatus(request, env);
+        }
+        
+        // التحقق من المعاملة على السلسلة
+        if (path === '/deposit/verify') {
+            return handleVerifyDeposit(request, env);
         }
         
         // للمسار /api - التحقق من المصادقة أولاً
@@ -153,8 +164,8 @@ export default {
                     result = await handleConfirmDeposit(env, userId, data);
                     break;
                     
-                case 'checkDeposit':
-                    result = await handleCheckDeposit(env, userId, data);
+                case 'deposit/verify':
+                    result = await handleVerifyDepositAPI(env, userId, data);
                     break;
                     
                 case 'initializeUser':
@@ -216,19 +227,73 @@ const GAME_CONSTANTS = {
 
 // ==================== Helper Functions ====================
 
-// ✅ NEW: Helper to format wallet address
+// ✅ Helper to format wallet address
 function formatWalletAddress(rawAddress) {
     try {
+        if (!rawAddress) return '';
         // Convert from "0:..." format to user-friendly format if possible
         if (rawAddress.startsWith('0:')) {
-            // For now, return the original - in production you would convert it
-            // using TON libraries
             return rawAddress;
         }
         return rawAddress;
     } catch (error) {
         console.error('Error formatting address:', error);
         return rawAddress;
+    }
+}
+
+// ✅ التحقق من المعاملة على السلسلة
+async function verifyOnChainTransaction(env, txHash, fromAddress, amount) {
+    try {
+        if (!env.TON_API_KEY) {
+            console.log('No TON API key provided, skipping chain verification');
+            return true; // إذا لم يكن هناك API key، تخطي التحقق
+        }
+        
+        // استخدام toncenter API للتحقق من المعاملة
+        const response = await fetch(
+            `https://toncenter.com/api/v2/getTransaction?hash=${txHash}`,
+            {
+                headers: {
+                    'X-API-Key': env.TON_API_KEY
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            console.warn('Failed to fetch transaction from chain:', response.status);
+            return false;
+        }
+        
+        const data = await response.json();
+        
+        // تحقق من أن المعاملة صالحة
+        if (data.ok && data.result) {
+            const tx = data.result;
+            
+            // تحقق من أن المرسل مطابق
+            const sender = tx.in_msg?.source;
+            if (sender && fromAddress && !sender.includes(fromAddress)) {
+                console.warn('Sender address mismatch:', sender, fromAddress);
+                return false;
+            }
+            
+            // تحقق من أن القيمة كافية
+            const txAmount = parseFloat(tx.in_msg?.value || 0) / 1000000000;
+            if (txAmount < amount * 0.99) { // 1% tolerance
+                console.warn('Transaction amount mismatch:', txAmount, amount);
+                return false;
+            }
+            
+            console.log('Transaction verified on chain:', txHash);
+            return true;
+        }
+        
+        return false;
+        
+    } catch (error) {
+        console.error('Chain verification error:', error);
+        return false; // في حالة الخطأ، نفشل للتحقق يدوي
     }
 }
 
@@ -244,6 +309,9 @@ async function handleGetState(env, userId) {
         
         const global = globalState.data || await initializeGlobalState(env);
         const user = userState.data || await initializeUser(env, userId);
+        
+        // ✅ التحقق من الإيداعات المعلقة
+        const pendingDeposits = await checkPendingDeposits(env, userId);
         
         // مزامنة البيض المنتج
         const syncedUser = await syncEggs(user, global, env, userId);
@@ -291,7 +359,8 @@ async function handleGetState(env, userId) {
                     availableEggs: availableEggs
                 },
                 constants: GAME_CONSTANTS,
-                marketStats: await getMarketStats(env)
+                marketStats: await getMarketStats(env),
+                pendingDeposits: pendingDeposits // ✅ إضافة الإيداعات المعلقة
             }
         };
     } catch (error) {
@@ -301,6 +370,64 @@ async function handleGetState(env, userId) {
             error: error.message,
             errorCode: 'GET_STATE_ERROR'
         };
+    }
+}
+
+// ✅ التحقق من الإيداعات المعلقة
+async function checkPendingDeposits(env, userId) {
+    try {
+        // جلب جميع المعاملات للمستخدم
+        const depositsResult = await handleDbGet(env, `users/${userId}/deposits`);
+        const deposits = depositsResult.data || {};
+        
+        const pending = [];
+        const depositEntries = Object.entries(deposits);
+        
+        for (const [key, deposit] of depositEntries) {
+            if (deposit.status === 'pending' || deposit.status === 'sent') {
+                // التحقق من المعاملة على السلسلة إذا كانت معلقة لأكثر من 5 دقائق
+                const now = Date.now();
+                if (deposit.timestamp && now - deposit.timestamp > 5 * 60 * 1000) {
+                    if (deposit.txHash && env.TON_API_KEY) {
+                        const verified = await verifyOnChainTransaction(env, deposit.txHash, deposit.fromAddress, deposit.amount);
+                        if (verified) {
+                            // تحديث حالة المعاملة
+                            await handleDbUpdate(env, `users/${userId}/deposits/${key}`, {
+                                status: 'completed',
+                                verified: true,
+                                verifiedAt: now
+                            });
+                            
+                            // تحديث رصيد المستخدم
+                            const userResult = await handleDbGet(env, `users/${userId}`);
+                            const user = userResult.data;
+                            if (user) {
+                                await handleDbUpdate(env, `users/${userId}`, {
+                                    tonBalance: (user.tonBalance || 0) + deposit.amount,
+                                    lastUpdated: now
+                                });
+                            }
+                            
+                            continue; // تخطي بعد التحقق
+                        }
+                    }
+                }
+                
+                pending.push({
+                    depositId: key,
+                    amount: deposit.amount,
+                    timestamp: deposit.timestamp,
+                    status: deposit.status,
+                    txHash: deposit.txHash
+                });
+            }
+        }
+        
+        return pending;
+        
+    } catch (error) {
+        console.error('Check pending deposits error:', error);
+        return [];
     }
 }
 
@@ -334,9 +461,19 @@ async function handleMintSquids(env, userId, data) {
             };
         }
         
+        // التحقق من رصيد TON الكافي
+        if ((user.tonBalance || 0) < 1) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance. Need 1 TON to mint',
+                errorCode: 'INSUFFICIENT_TON_BALANCE'
+            };
+        }
+        
         // تحديث المستخدم
         const userUpdates = {
             squids: (user.squids || 0) + squidsToMint,
+            tonBalance: (user.tonBalance || 0) - 1, // خصم 1 TON
             mintUsed: true,
             mintedSquids: squidsToMint,
             lastUpdated: Date.now()
@@ -385,6 +522,7 @@ async function handleMintSquids(env, userId, data) {
         await handleDbPush(env, `users/${userId}/history`, {
             type: 'mint',
             amount: squidsToMint,
+            tonCost: 1,
             referralReward: referralReward,
             timestamp: Date.now()
         });
@@ -394,6 +532,7 @@ async function handleMintSquids(env, userId, data) {
             data: {
                 mintedSquids: squidsToMint,
                 newSquids: userUpdates.squids,
+                newTonBalance: userUpdates.tonBalance,
                 referralReward: referralReward,
                 globalMinted: globalUpdates.mintedSoFar
             }
@@ -943,19 +1082,19 @@ async function handleInitDeposit(env, userId, data) {
             };
         }
         
-        // Generate unique comment
+        // Generate unique comment for tracking
         const comment = `deposit_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         // Get deposit address from environment
         const depositAddress = env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG";
         
-        // Store pending deposit
+        // Create deposit record
         const depositId = `deposit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         const depositData = {
             id: depositId,
             userId: userId,
             amount: parseFloat(amount),
-            walletAddress: formatWalletAddress(wallet_address), // ✅ Format address
+            walletAddress: formatWalletAddress(wallet_address),
             depositAddress: depositAddress,
             comment: comment,
             status: 'pending',
@@ -963,13 +1102,15 @@ async function handleInitDeposit(env, userId, data) {
             lastUpdated: Date.now()
         };
         
+        // Store in main deposits
         await handleDbSet(env, `deposits/pending/${depositId}`, depositData);
         
-        // Also store by user for easy retrieval
-        await handleDbPush(env, `users/${userId}/pendingDeposits`, {
+        // Store in user's deposit history
+        await handleDbPush(env, `users/${userId}/deposits`, {
             depositId: depositId,
             amount: amount,
             comment: comment,
+            status: 'pending',
             createdAt: Date.now()
         });
         
@@ -979,7 +1120,8 @@ async function handleInitDeposit(env, userId, data) {
                 address: depositAddress,
                 amount: amount,
                 comment: comment,
-                depositId: depositId
+                depositId: depositId,
+                message: 'Send the exact amount with the comment to complete deposit'
             }
         };
         
@@ -993,10 +1135,10 @@ async function handleInitDeposit(env, userId, data) {
     }
 }
 
-// ✅ NEW: Handle Deposit Confirmation via TON Connect
+// ✅ Handle Deposit Confirmation via TON Connect
 async function handleConfirmDeposit(env, userId, data) {
     try {
-        const { txHash, amount, user_address, comment } = data;
+        const { txHash, amount, user_address, comment, depositId } = data;
         
         // Validate input
         if (!txHash || !amount) {
@@ -1018,13 +1160,27 @@ async function handleConfirmDeposit(env, userId, data) {
         }
         
         // Check if transaction was already processed
-        const existingDeposit = await handleDbGet(env, `deposits/${txHash}`);
-        if (existingDeposit.success && existingDeposit.data) {
+        const existingTx = await handleDbGet(env, `transactions/${txHash}`);
+        if (existingTx.success && existingTx.data) {
             return {
                 success: false,
                 error: 'Transaction already processed',
                 errorCode: 'DUPLICATE_TRANSACTION'
             };
+        }
+        
+        // Verify transaction on-chain if API key is available
+        let verified = false;
+        if (env.TON_API_KEY) {
+            verified = await verifyOnChainTransaction(env, txHash, user_address, depositAmount);
+            if (!verified) {
+                return {
+                    success: false,
+                    error: 'Transaction not found or invalid on chain',
+                    errorCode: 'CHAIN_VERIFICATION_FAILED',
+                    data: { txHash, amount: depositAmount }
+                };
+            }
         }
         
         // Get user data
@@ -1043,15 +1199,50 @@ async function handleConfirmDeposit(env, userId, data) {
         const depositRecord = {
             userId: userId,
             amount: depositAmount,
-            fromAddress: formatWalletAddress(user_address || 'TON Connect'), // ✅ Format address
+            fromAddress: formatWalletAddress(user_address || 'TON Connect'),
+            toAddress: env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG",
             txHash: txHash,
             comment: comment || 'TON Connect deposit',
             status: 'completed',
+            verified: verified,
             processedAt: now,
-            method: 'TON Connect'
+            method: 'TON Connect',
+            depositId: depositId || `dep_${now}_${userId}`
         };
         
-        await handleDbSet(env, `deposits/${txHash}`, depositRecord);
+        // Store transaction
+        await handleDbSet(env, `transactions/${txHash}`, depositRecord);
+        
+        // Update deposit record if exists
+        if (depositId) {
+            const depositRecordResult = await handleDbGet(env, `deposits/pending/${depositId}`);
+            if (depositRecordResult.success && depositRecordResult.data) {
+                await handleDbUpdate(env, `deposits/pending/${depositId}`, {
+                    status: 'completed',
+                    txHash: txHash,
+                    completedAt: now,
+                    verified: verified
+                });
+            }
+        }
+        
+        // Update user's deposit history
+        const userDeposits = await handleDbGet(env, `users/${userId}/deposits`);
+        if (userDeposits.success && userDeposits.data) {
+            const deposits = Object.entries(userDeposits.data);
+            for (const [key, deposit] of deposits) {
+                if (deposit.depositId === depositId || 
+                    (deposit.comment === comment && deposit.status === 'pending')) {
+                    await handleDbUpdate(env, `users/${userId}/deposits/${key}`, {
+                        status: 'completed',
+                        txHash: txHash,
+                        completedAt: now,
+                        verified: verified
+                    });
+                    break;
+                }
+            }
+        }
         
         // Add to user history
         await handleDbPush(env, `users/${userId}/history`, {
@@ -1062,7 +1253,8 @@ async function handleConfirmDeposit(env, userId, data) {
             newBalance: newBalance,
             timestamp: now,
             method: 'TON Connect',
-            comment: comment
+            comment: comment,
+            verified: verified
         });
         
         return {
@@ -1071,7 +1263,8 @@ async function handleConfirmDeposit(env, userId, data) {
                 amount: depositAmount,
                 newBalance: newBalance,
                 txHash: txHash,
-                timestamp: now
+                timestamp: now,
+                verified: verified
             }
         };
         
@@ -1085,58 +1278,226 @@ async function handleConfirmDeposit(env, userId, data) {
     }
 }
 
-// Check Deposit Status
-async function handleCheckDeposit(env, userId, data) {
+// ✅ Handle Deposit Verification (API endpoint)
+async function handleVerifyDepositAPI(env, userId, data) {
     try {
-        const { depositId } = data;
+        const { txHash, depositId } = data;
         
-        if (!depositId) {
+        if (!txHash && !depositId) {
             return {
                 success: false,
-                error: 'Deposit ID is required',
-                errorCode: 'DEPOSIT_ID_REQUIRED'
+                error: 'Transaction hash or deposit ID required',
+                errorCode: 'MISSING_IDENTIFIER'
             };
         }
         
-        // Get deposit record
-        const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
-        if (!depositResult.success || !depositResult.data) {
+        let depositRecord;
+        
+        // Find deposit record by txHash or depositId
+        if (txHash) {
+            const txResult = await handleDbGet(env, `transactions/${txHash}`);
+            if (txResult.success && txResult.data) {
+                depositRecord = txResult.data;
+            }
+        }
+        
+        if (!depositRecord && depositId) {
+            const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
+            if (depositResult.success && depositResult.data) {
+                depositRecord = depositResult.data;
+            }
+        }
+        
+        if (!depositRecord) {
             return {
                 success: false,
-                error: 'Deposit not found',
+                error: 'Deposit record not found',
                 errorCode: 'DEPOSIT_NOT_FOUND'
             };
         }
         
-        const deposit = depositResult.data;
-        
-        // Check if user owns this deposit
-        if (deposit.userId !== userId) {
+        // Check if deposit belongs to user
+        if (depositRecord.userId !== userId) {
             return {
                 success: false,
-                error: 'Unauthorized access',
+                error: 'Unauthorized access to deposit',
                 errorCode: 'UNAUTHORIZED_ACCESS'
+            };
+        }
+        
+        // If already completed, return status
+        if (depositRecord.status === 'completed') {
+            return {
+                success: true,
+                data: {
+                    status: 'completed',
+                    amount: depositRecord.amount,
+                    verified: depositRecord.verified || false,
+                    timestamp: depositRecord.processedAt || depositRecord.createdAt
+                }
+            };
+        }
+        
+        // Verify on chain if pending
+        if (depositRecord.status === 'pending' && env.TON_API_KEY && depositRecord.txHash) {
+            const verified = await verifyOnChainTransaction(
+                env, 
+                depositRecord.txHash, 
+                depositRecord.walletAddress || depositRecord.fromAddress, 
+                depositRecord.amount
+            );
+            
+            if (verified) {
+                // Update user balance
+                const userResult = await handleDbGet(env, `users/${userId}`);
+                const user = userResult.data;
+                
+                if (user) {
+                    const newBalance = (user.tonBalance || 0) + depositRecord.amount;
+                    await handleDbUpdate(env, `users/${userId}`, {
+                        tonBalance: newBalance,
+                        lastUpdated: Date.now()
+                    });
+                    
+                    // Update deposit record
+                    const now = Date.now();
+                    await handleDbUpdate(env, `deposits/pending/${depositId}`, {
+                        status: 'completed',
+                        verified: true,
+                        completedAt: now
+                    });
+                    
+                    // Add to transactions
+                    await handleDbSet(env, `transactions/${depositRecord.txHash}`, {
+                        ...depositRecord,
+                        status: 'completed',
+                        verified: true,
+                        processedAt: now
+                    });
+                    
+                    return {
+                        success: true,
+                        data: {
+                            status: 'completed',
+                            amount: depositRecord.amount,
+                            newBalance: newBalance,
+                            verified: true,
+                            timestamp: now
+                        }
+                    };
+                }
+            }
+            
+            return {
+                success: true,
+                data: {
+                    status: 'pending',
+                    amount: depositRecord.amount,
+                    verified: false,
+                    message: 'Transaction pending verification'
+                }
             };
         }
         
         return {
             success: true,
             data: {
-                status: deposit.status,
-                amount: deposit.amount,
-                comment: deposit.comment,
-                createdAt: deposit.createdAt,
-                lastUpdated: deposit.lastUpdated
+                status: depositRecord.status || 'pending',
+                amount: depositRecord.amount,
+                verified: depositRecord.verified || false,
+                timestamp: depositRecord.createdAt
             }
         };
         
     } catch (error) {
-        console.error('Check deposit error:', error);
+        console.error('Verify deposit error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'CHECK_DEPOSIT_ERROR'
+            errorCode: 'VERIFY_DEPOSIT_ERROR'
         };
+    }
+}
+
+// ✅ Handle Deposit Status (Public endpoint)
+async function handleDepositStatus(request, env) {
+    try {
+        const url = new URL(request.url);
+        const txHash = url.searchParams.get('tx');
+        const depositId = url.searchParams.get('id');
+        
+        if (!txHash && !depositId) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Transaction hash or deposit ID required'
+            }), {
+                status: 400,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+        
+        let depositRecord;
+        
+        // Find by transaction hash first
+        if (txHash) {
+            const txResult = await handleDbGet(env, `transactions/${txHash}`);
+            if (txResult.success && txResult.data) {
+                depositRecord = txResult.data;
+            }
+        }
+        
+        // Find by deposit ID if not found
+        if (!depositRecord && depositId) {
+            const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
+            if (depositResult.success && depositResult.data) {
+                depositRecord = depositResult.data;
+            }
+        }
+        
+        if (!depositRecord) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Deposit not found'
+            }), {
+                status: 404,
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
+        }
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: {
+                status: depositRecord.status || 'pending',
+                amount: depositRecord.amount,
+                fromAddress: depositRecord.fromAddress || depositRecord.walletAddress,
+                toAddress: depositRecord.toAddress || depositRecord.depositAddress,
+                txHash: depositRecord.txHash,
+                createdAt: depositRecord.createdAt,
+                processedAt: depositRecord.processedAt,
+                verified: depositRecord.verified || false
+            }
+        }), {
+            headers: { 
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            }
+        });
+        
+    } catch (error) {
+        console.error('Deposit status error:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
 
@@ -1383,23 +1744,39 @@ async function getMarketStats(env) {
         
         let totalVolume = 0;
         let activeOrders = 0;
+        let bestBuyPrice = 0;
+        let bestSellPrice = Infinity;
         
         for (const order of Object.values(allOrders)) {
             if (order.status === 'active') {
                 activeOrders++;
                 totalVolume += order.amount * order.price;
+                
+                if (order.type === 'buy' && order.price > bestBuyPrice) {
+                    bestBuyPrice = order.price;
+                }
+                
+                if (order.type === 'sell' && order.price < bestSellPrice) {
+                    bestSellPrice = order.price;
+                }
             }
         }
+        
+        if (bestSellPrice === Infinity) bestSellPrice = 0;
         
         return {
             activeOrders,
             totalVolume,
+            bestBuyPrice,
+            bestSellPrice,
             lastUpdated: Date.now()
         };
     } catch (error) {
         return {
             activeOrders: 0,
             totalVolume: 0,
+            bestBuyPrice: 0,
+            bestSellPrice: 0,
             lastUpdated: Date.now()
         };
     }
