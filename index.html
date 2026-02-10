@@ -2213,14 +2213,17 @@
             }
             
             try {
-                // ✅ استخدم text بسيط بدلاً من payload معقد
+                // ✅ تحويل المبلغ إلى nanoTON
+                const amountNano = String(Math.floor(currentDepositInfo.amount * 1000000000));
+                
+                // ✅ استخدام text فقط بدون أي خصائص إضافية
                 const transaction = {
                     validUntil: Math.floor(Date.now() / 1000) + 300, // 5 دقائق
                     messages: [
                         {
                             address: currentDepositInfo.depositAddress,
-                            amount: String(Math.floor(currentDepositInfo.amount * 1000000000)), // تحويل إلى nanoTON
-                            text: currentDepositInfo.comment // ✅ نص بسيط فقط
+                            amount: amountNano,
+                            text: currentDepositInfo.comment // ✅ نص الكومنت فقط
                         }
                     ]
                 };
@@ -2264,8 +2267,6 @@
                 
                 if (error.message && error.message.includes('rejected')) {
                     showDepositStatus('error', 'Transaction cancelled by user.');
-                } else if (error.message && error.message.includes('payload')) {
-                    showDepositStatus('error', 'Invalid payload format. Please try again or contact support.');
                 } else {
                     showDepositStatus('error', 'Transaction failed: ' + (error.message || 'Unknown error'));
                 }
