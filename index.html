@@ -11,9 +11,6 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-    
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
@@ -726,20 +723,6 @@
             flex: 1;
         }
         
-        /* Deposit QR Code */
-        .qrcode-container {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-        
-        .qrcode-wrapper {
-            background: white;
-            padding: 10px;
-            border-radius: 12px;
-            display: inline-block;
-        }
-        
         /* Responsive */
         @media (max-width: 480px) {
             .app-container {
@@ -951,30 +934,40 @@
             font-weight: 600;
         }
         
-        /* Network Warning */
-        .network-warning {
-            background: rgba(255, 82, 82, 0.1);
-            border: 1px solid rgba(255, 82, 82, 0.3);
-            padding: 12px;
+        /* Deposit Status */
+        .deposit-status {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(0, 212, 170, 0.1);
             border-radius: 12px;
-            margin-bottom: 16px;
+            border: 1px solid rgba(0, 212, 170, 0.3);
             display: none;
         }
         
-        .network-warning.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
+        .deposit-status.pending {
+            background: rgba(255, 183, 77, 0.1);
+            border: 1px solid rgba(255, 183, 77, 0.3);
         }
         
-        .network-warning-icon {
-            color: var(--danger);
-            font-size: 18px;
-            margin-right: 8px;
+        .deposit-status.error {
+            background: rgba(255, 82, 82, 0.1);
+            border: 1px solid rgba(255, 82, 82, 0.3);
         }
         
-        .network-warning-text {
-            font-size: 13px;
-            color: var(--text-primary);
+        .deposit-status .status-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .deposit-status .status-message {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .deposit-status .status-details {
+            font-size: 12px;
+            color: var(--text-secondary);
+            word-break: break-all;
         }
     </style>
 </head>
@@ -1019,16 +1012,6 @@
 
     <!-- Main Container -->
     <div class="app-container" id="appContainer" style="display: none;">
-        <!-- Network Warning -->
-        <div class="network-warning" id="networkWarning">
-            <div style="display: flex; align-items: center;">
-                <i class="fas fa-exclamation-triangle network-warning-icon"></i>
-                <div class="network-warning-text">
-                    <strong>Important:</strong> Only mainnet TON wallets are accepted. Testnet deposits will be rejected.
-                </div>
-            </div>
-        </div>
-
         <!-- Friends Tab -->
         <div id="friendsTab" class="content-section">
             <div class="card referral-card">
@@ -1397,7 +1380,7 @@
                 </button>
                 
                 <div style="font-size: 12px; color: var(--text-secondary); margin-top: 12px; text-align: center;">
-                    Minimum withdrawal: 0.1 TON (5% fee) - Mainnet only
+                    Minimum withdrawal: 0.1 TON (5% fee)
                 </div>
             </div>
         </div>
@@ -1427,16 +1410,6 @@
                         </button>
                     </div>
                     
-                    <div style="background: rgba(255, 82, 82, 0.1); padding: 12px; border-radius: 12px; margin-bottom: 16px; border: 1px solid rgba(255, 82, 82, 0.3);">
-                        <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                            <i class="fas fa-exclamation-triangle" style="color: var(--danger); margin-right: 8px;"></i>
-                            <strong style="font-size: 13px;">Important Notice</strong>
-                        </div>
-                        <div style="font-size: 12px; color: var(--text-primary);">
-                            Only mainnet TON wallets are accepted. Testnet deposits will be automatically rejected.
-                        </div>
-                    </div>
-                    
                     <div class="form-group">
                         <label class="form-label">Enter Amount (TON)</label>
                         <input type="number" id="depositAmount" class="form-input" placeholder="0.00" step="0.1" min="0.1">
@@ -1447,6 +1420,13 @@
                             <div class="preset-btn" onclick="setDepositAmount(5)">5</div>
                             <div class="preset-btn" onclick="setDepositAmount(10)">10</div>
                         </div>
+                    </div>
+                    
+                    <!-- Deposit Status Indicator -->
+                    <div id="depositStatus" class="deposit-status" style="display: none;">
+                        <div class="status-icon"></div>
+                        <div class="status-message"></div>
+                        <div class="status-details"></div>
                     </div>
                     
                     <div class="card" style="margin-top: 20px;">
@@ -1484,8 +1464,8 @@
                         </div>
                         
                         <div style="margin-top: 12px;">
-                            <div style="font-size: 12px; color: var(--text-secondary);">Comment (REQUIRED):</div>
-                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText"></div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">Comment:</div>
+                            <div style="font-size: 12px; font-family: monospace; color: var(--warning); word-break: break-all; margin-top: 4px;" id="depositCommentText">NO COMMENT REQUIRED</div>
                         </div>
                         
                         <button class="btn btn-primary" onclick="sendDepositTransaction()" id="sendDepositBtn" style="width: 100%; margin-top: 16px;">
@@ -1508,13 +1488,6 @@
                         <div style="font-size: 12px; color: var(--text-secondary);">Available Balance</div>
                         <div class="ton-amount" id="availableBalance">0.0000</div>
                         <div style="font-size: 12px; color: var(--text-secondary);">TON</div>
-                    </div>
-                    
-                    <div style="background: rgba(255, 82, 82, 0.1); padding: 12px; border-radius: 12px; margin-bottom: 16px; border: 1px solid rgba(255, 82, 82, 0.3);">
-                        <div style="font-size: 12px; color: var(--text-primary);">
-                            <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
-                            Withdrawals only to mainnet TON addresses. Testnet addresses will be rejected.
-                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -1542,7 +1515,7 @@
                     
                     <div class="form-group">
                         <label class="form-label">TON Wallet Address</label>
-                        <input type="text" id="withdrawAddressFinance" class="form-input" placeholder="EQD... (Mainnet only)">
+                        <input type="text" id="withdrawAddressFinance" class="form-input" placeholder="EQD...">
                     </div>
                     
                     <button class="btn btn-primary" onclick="submitWithdrawal()" style="width: 100%;">
@@ -1743,6 +1716,8 @@
         let currentDepositInfo = null;
         let tonConnectUI = null;
         let isTONConnectInitialized = false;
+        let depositCheckInterval = null;
+        let currentDepositId = null;
 
         // ==============================================
         // USER MANAGEMENT
@@ -1982,8 +1957,6 @@
                     
                     if (result.errorCode === 'AUTH_REQUIRED') {
                         alert('Please open this game through Telegram to play.');
-                    } else if (result.errorCode === 'TESTNET_WALLET_REJECTED') {
-                        alert(result.message || 'Testnet wallets are not accepted. Please use a mainnet TON wallet.');
                     } else {
                         alert(result.error || 'An error occurred');
                     }
@@ -2025,32 +1998,6 @@
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
-        // ✅ NEW: Validate wallet address format
-        function validateWalletAddress(address) {
-            if (!address) return false;
-            
-            const testnetPrefixes = ['0Q', 'kQ', 'testnet:', '-1:', 'test.', 'test_', 'TEST-'];
-            const mainnetPrefixes = ['EQ', 'UQ', 'Ef', '0:'];
-            
-            const addr = address.trim().toLowerCase();
-            
-            // Check for testnet
-            for (const prefix of testnetPrefixes) {
-                if (addr.startsWith(prefix.toLowerCase())) {
-                    return false;
-                }
-            }
-            
-            // Check for mainnet
-            for (const prefix of mainnetPrefixes) {
-                if (addr.startsWith(prefix.toLowerCase())) {
-                    return true;
-                }
-            }
-            
-            return false;
-        }
-
         // ==============================================
         // GAME STATE MANAGEMENT
         // ==============================================
@@ -2061,6 +2008,11 @@
                 gameState = data;
                 console.log('Game state loaded:', gameState);
                 updateUI();
+                
+                // التحقق من الإيداعات المعلقة
+                if (data.pendingDeposits && data.pendingDeposits.length > 0) {
+                    checkPendingDeposits(data.pendingDeposits);
+                }
             } catch (error) {
                 console.error('Failed to load game state:', error);
             }
@@ -2167,12 +2119,6 @@
                 alert('Please enter a valid TON wallet address');
                 return;
             }
-            
-            // ✅ NEW: Validate mainnet address
-            if (!validateWalletAddress(address)) {
-                alert('Only mainnet TON addresses are accepted for withdrawals. Please use a mainnet address.');
-                return;
-            }
 
             try {
                 const data = await callAPI('withdrawTON', { amount, address });
@@ -2225,38 +2171,19 @@
                 return;
             }
             
-            // ✅ NEW: Validate mainnet wallet
-            if (!validateWalletAddress(connectedWallet.address)) {
-                alert('Only mainnet TON wallets are accepted. Please connect a mainnet wallet.');
-                return;
-            }
-            
             try {
-                const depositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                const comment = `SquidPEPE Deposit: ${USER_ID}, ${depositId}`;
-                
-                // Prepare transaction
-                const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 300,
-                    messages: [
-                        {
-                            address: TON_DEPOSIT_ADDRESS,
-                            amount: String(Math.floor(amount * 1000000000))
-                        }
-                    ]
-                };
+                // إنشاء معرف فريد للإيداع
+                currentDepositId = 'dep_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                 
                 currentDepositInfo = {
-                    depositId: depositId,
+                    depositId: currentDepositId,
                     amount: amount,
-                    transaction: transaction,
-                    userAddress: connectedWallet.address,
-                    comment: comment
+                    userAddress: connectedWallet.address
                 };
                 
+                // عرض تفاصيل الإيداع
                 document.getElementById('depositExactAmount').textContent = `${formatTON(amount)} TON`;
                 document.getElementById('depositTargetAddress').textContent = TON_DEPOSIT_ADDRESS;
-                document.getElementById('depositCommentText').textContent = comment;
                 
                 document.getElementById('depositDetailsCard').style.display = 'block';
                 
@@ -2281,48 +2208,151 @@
             }
             
             try {
-                console.log('Sending transaction:', currentDepositInfo.transaction);
+                console.log('Sending transaction...');
                 
-                const result = await tonConnectUI.sendTransaction(currentDepositInfo.transaction);
+                // إرسال معاملة TON Connect بدون comment
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 300,
+                    messages: [
+                        {
+                            address: TON_DEPOSIT_ADDRESS,
+                            amount: String(Math.floor(currentDepositInfo.amount * 1000000000))
+                        }
+                    ]
+                };
+                
+                const result = await tonConnectUI.sendTransaction(transaction);
                 
                 console.log('Transaction sent successfully:', result);
                 
-                // After successful transaction, confirm with backend
+                // تحديث واجهة حالة الإيداع
+                showDepositStatus('pending', 'Transaction sent! No comment required.', result.boc);
+                
+                // إرسال تأكيد للخادم
                 try {
                     const confirmData = await callAPI('deposit/confirm', {
-                        deposit_id: currentDepositInfo.depositId,
+                        depositId: currentDepositInfo.depositId,
                         amount: currentDepositInfo.amount,
-                        tx_hash: result.boc,
-                        user_address: currentDepositInfo.userAddress,
-                        comment: currentDepositInfo.comment,
-                        user_id: USER_ID
+                        txHash: result.boc,
+                        user_address: currentDepositInfo.userAddress
                     });
                     
-                    alert('✅ Deposit successful! Your balance will be updated shortly.');
+                    console.log('Deposit confirmed on server:', confirmData);
+                    
+                    // بدء التحقق الدوري
+                    startDepositVerification(currentDepositInfo.depositId, result.boc);
                     
                 } catch (apiError) {
-                    console.warn('Backend confirmation failed, but transaction succeeded:', apiError);
-                    alert('⚠️ Deposit sent, but server confirmation pending. Your funds are safe.');
+                    console.warn('Backend confirmation failed:', apiError);
+                    startDepositVerification(currentDepositInfo.depositId, result.boc);
                 }
                 
+                // إخفاء تفاصيل الإيداع
                 document.getElementById('depositDetailsCard').style.display = 'none';
                 document.getElementById('depositAmount').value = '';
-                currentDepositInfo = null;
-                
-                setTimeout(() => {
-                    loadGameState();
-                }, 5000);
                 
             } catch (error) {
                 console.error('Transaction failed:', error);
                 
                 if (error.message && error.message.includes('rejected')) {
-                    alert('Transaction cancelled by user.');
-                } else if (error.message && error.message.includes('payload')) {
-                    alert('Transaction error: Invalid payload format. Please try again.');
+                    showDepositStatus('error', 'Transaction cancelled by user.');
                 } else {
-                    alert('Transaction failed: ' + (error.message || 'Unknown error'));
+                    showDepositStatus('error', 'Transaction failed: ' + (error.message || 'Unknown error'));
                 }
+            }
+        }
+
+        function startDepositVerification(depositId, txHash) {
+            if (depositCheckInterval) {
+                clearInterval(depositCheckInterval);
+            }
+            
+            let attempts = 0;
+            const maxAttempts = 30;
+            
+            depositCheckInterval = setInterval(async () => {
+                attempts++;
+                
+                try {
+                    const verifyData = await callAPI('deposit/verify', {
+                        depositId: depositId,
+                        txHash: txHash
+                    });
+                    
+                    if (verifyData.status === 'completed') {
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('success', 
+                            `Deposit confirmed! ${formatTON(verifyData.amount)} TON added to your balance.`,
+                            `New balance: ${formatTON(verifyData.newBalance || gameState.user.tonBalance + verifyData.amount)} TON`
+                        );
+                        
+                        setTimeout(() => {
+                            loadGameState();
+                        }, 2000);
+                        
+                    } else if (attempts >= maxAttempts) {
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('pending', 
+                            'Deposit still pending. Please contact support if not credited within 24 hours.',
+                            `TX Hash: ${txHash}`
+                        );
+                    }
+                    
+                } catch (error) {
+                    console.error('Verification error:', error);
+                    
+                    if (attempts >= maxAttempts) {
+                        clearInterval(depositCheckInterval);
+                        showDepositStatus('error', 
+                            'Verification failed. Please check your transaction manually.',
+                            `TX Hash: ${txHash.substring(0, 20)}...`
+                        );
+                    }
+                }
+            }, 10000);
+        }
+
+        function showDepositStatus(type, message, details = '') {
+            const statusDiv = document.getElementById('depositStatus');
+            const icon = statusDiv.querySelector('.status-icon');
+            const msg = statusDiv.querySelector('.status-message');
+            const det = statusDiv.querySelector('.status-details');
+            
+            statusDiv.className = 'deposit-status';
+            
+            switch (type) {
+                case 'success':
+                    statusDiv.classList.add('success');
+                    icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i>';
+                    break;
+                case 'pending':
+                    statusDiv.classList.add('pending');
+                    icon.innerHTML = '<i class="fas fa-clock" style="color: var(--warning);"></i>';
+                    break;
+                case 'error':
+                    statusDiv.classList.add('error');
+                    icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i>';
+                    break;
+            }
+            
+            msg.textContent = message;
+            det.textContent = details;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 10000);
+            }
+        }
+
+        function checkPendingDeposits(pendingDeposits) {
+            if (pendingDeposits && pendingDeposits.length > 0) {
+                pendingDeposits.forEach(deposit => {
+                    if (deposit.status === 'pending' || deposit.status === 'sent') {
+                        startDepositVerification(deposit.depositId, deposit.txHash);
+                    }
+                });
             }
         }
 
@@ -2363,12 +2393,6 @@
             
             if (!address || address.length < 10) {
                 alert('Please enter a valid TON wallet address');
-                return;
-            }
-            
-            // ✅ NEW: Validate mainnet address
-            if (!validateWalletAddress(address)) {
-                alert('Only mainnet TON addresses are accepted for withdrawals. Please use a mainnet address.');
                 return;
             }
             
@@ -2415,9 +2439,9 @@
             
             if (gameState.marketStats) {
                 document.getElementById('bestBuyPrice').textContent = 
-                    gameState.marketStats.bestBuy ? formatTON(gameState.marketStats.bestBuy) : '0.0000';
+                    gameState.marketStats.bestBuyPrice ? formatTON(gameState.marketStats.bestBuyPrice) : '0.0000';
                 document.getElementById('bestSellPrice').textContent = 
-                    gameState.marketStats.bestSell ? formatTON(gameState.marketStats.bestSell) : '0.0000';
+                    gameState.marketStats.bestSellPrice ? formatTON(gameState.marketStats.bestSellPrice) : '0.0000';
             }
             
             document.getElementById('craftSquids').textContent = formatNumber(gameState.user.squids);
@@ -2577,13 +2601,6 @@
             
             document.getElementById(tabId).classList.add('active');
             document.querySelector(`.nav-item[data-tab="${tabId}"]`).classList.add('active');
-            
-            // Show network warning on finance tab
-            if (tabId === 'financeTab') {
-                document.getElementById('networkWarning').classList.add('active');
-            } else {
-                document.getElementById('networkWarning').classList.remove('active');
-            }
         }
 
         // ==============================================
