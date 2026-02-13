@@ -15,8 +15,8 @@
     <!-- TON Connect SDK -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     
-    <!-- TON Core SDK لإصلاح مشكلة payload -->
-    <script src="https://cdn.jsdelivr.net/npm/@ton/core@0.56.0/dist/index.min.js"></script>
+    <!-- 🔥 IMPORTANT: ton-core for proper payload building -->
+    <script src="https://unpkg.com/@ton/core@0.0.3/dist/ton-core.umd.js"></script>
     
     <style>
         /* ===== RESET & GLOBAL ===== */
@@ -1777,7 +1777,7 @@
         // ============================================
         // FARM ECONOMY - COMPLETE FRONTEND
         // VERSION 3.0 - P2P MARKET, HATCH, DEPOSIT
-        // FIXED: TON Connect Payload Issue - الحل الرسمي
+        // FIXED: TON Connect Payload Issue - باستخدام ton-core
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -2593,87 +2593,75 @@
         };
 
         // ============================================
-        // FIXED: DEPOSIT FUNCTION - TON CONNECT PAYLOAD ISSUE
+        // FIXED: DEPOSIT FUNCTION - باستخدام ton-core
         // ============================================
         window.initiateDeposit = async function() {
             if (!App.wallet) {
                 alert('Connect wallet first');
                 return;
             }
-            
+
             const amount = parseFloat(document.getElementById('depositAmountInput').value);
-            
+
             if (!amount || amount < 0.1) {
                 alert('Minimum deposit: 0.1 TON');
                 return;
             }
-            
+
             try {
-                const comment = App.userId;
+                const comment = String(App.userId);
                 const amountInNano = String(Math.floor(amount * 1000000000));
+
+                // ✅ بناء خلية التعليق باستخدام ton-core
+                const ton = window.tonCore || window.ton;
                 
-                // ===== الحل الرسمي: بناء payload صحيح باستخدام @ton/core =====
-                let payloadBase64 = '';
-                
-                // التحقق من وجود مكتبة ton core
-                if (window.tonCore && window.tonCore.beginCell) {
-                    console.log('Using @ton/core library to build payload');
-                    
-                    // استخدام المكتبة لبناء الخلية بالطريقة الصحيحة
-                    const { beginCell } = window.tonCore;
-                    
-                    // بناء الخلية: uint32(0) + string comment
-                    const cell = beginCell()
-                        .storeUint(0, 32)           // op-code 0 للتعليقات
-                        .storeStringTail(comment)    // نص التعليق (User ID)
-                        .endCell();
-                    
-                    // تحويل الخلية إلى BOC ثم إلى Base64
-                    payloadBase64 = cell.toBoc().toString('base64');
-                    
-                    console.log('Payload built successfully');
-                } else {
-                    // Fallback: إذا لم تكن المكتبة متاحة (نادراً ما يحدث)
-                    console.warn('@ton/core not found, using fallback method');
-                    
-                    // طريقة يدوية بسيطة (قد لا تعمل مع كل المحافظ)
-                    const encoder = new TextEncoder();
-                    const commentBytes = encoder.encode(comment);
-                    
-                    // إضافة op-code 0 (4 بايت) قبل نص التعليق
-                    const totalBytes = new Uint8Array(4 + commentBytes.length);
-                    totalBytes[0] = 0; // op-code uint32(0) بالبايت الأول
-                    totalBytes[1] = 0;
-                    totalBytes[2] = 0;
-                    totalBytes[3] = 0;
-                    totalBytes.set(commentBytes, 4);
-                    
-                    payloadBase64 = btoa(String.fromCharCode(...totalBytes));
+                if (!ton || !ton.beginCell) {
+                    throw new Error('ton-core not loaded properly');
                 }
-                
-                // إرسال المعاملة مع الـ payload الصحيح
+
+                // بناء الخلية: 4 بايت صفر (opcode) + النص
+                const cell = ton.beginCell()
+                    .storeUint(0, 32)           // opcode للتعليق
+                    .storeStringTail(comment)    // النص (User ID)
+                    .endCell();
+
+                // تحويل الخلية إلى Base64
+                const payload = cell.toBoc().toString('base64');
+
+                console.log('✅ Payload built successfully:', {
+                    comment: comment,
+                    payloadLength: payload.length,
+                    payloadStart: payload.substring(0, 30) + '...'
+                });
+
+                // بناء المعاملة
                 const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 600, // 10 دقائق صلاحية
+                    validUntil: Math.floor(Date.now() / 1000) + 600, // 10 دقائق
                     messages: [
                         {
                             address: CONFIG.DEPOSIT_WALLET,
                             amount: amountInNano,
-                            payload: payloadBase64 // نرسل Base64 الناتج
+                            payload: payload // الآن هو Base64 BOC صحيح
                         }
                     ]
                 };
-                
+
+                // إرسال المعاملة
                 const result = await App.tonConnectUI.sendTransaction(transaction);
-                await handleDepositSuccess(result, amount, comment);
                 
+                // معالجة النجاح
+                await handleDepositSuccess(result, amount, comment);
+
             } catch (error) {
-                console.error('Deposit error:', error);
+                console.error('❌ Deposit error:', error);
                 
                 let errorMessage = 'Transaction failed';
                 if (error.message?.includes('rejected')) {
                     errorMessage = 'Transaction rejected in wallet';
                 } else if (error.message?.includes('insufficient')) {
                     errorMessage = 'Insufficient balance';
+                } else if (error.message?.includes('payload')) {
+                    errorMessage = 'Invalid payload format';
                 }
                 
                 const statusDiv = document.getElementById('depositStatus');
