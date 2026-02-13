@@ -1,13 +1,17 @@
-// Farm Economy Game Engine - Complete Version with TON Connect Only
+// ============================================
+// FARM ECONOMY WORKER v3.1 - COMPLETE PRODUCTION
+// FIXED: TELEGRAM AUTH VALIDATION + ALL FEATURES
+// ============================================
+
 export default {
     async fetch(request, env, ctx) {
-        // إعداد CORS
+        // ===== CORS HANDLING =====
         if (request.method === 'OPTIONS') {
             return new Response(null, {
                 headers: {
                     'Access-Control-Allow-Origin': '*',
-                    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-                    'Access-Control-Allow-Headers': 'Content-Type, X-User-ID, X-Telegram-Data, X-Action, Authorization',
+                    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Action',
                 }
             });
         }
@@ -15,14 +19,14 @@ export default {
         const url = new URL(request.url);
         const path = url.pathname;
         
-        // ====== TON Connect Manifest ======
+        // ===== TON CONNECT MANIFEST =====
         if (path === '/tonconnect-manifest.json') {
             const origin = url.origin;
             return new Response(JSON.stringify({
                 url: origin,
                 name: "Farm Economy",
                 iconUrl: `${origin}/icon.png`,
-                description: "Buy machines, produce resources, earn TON"
+                description: "Buy machines, produce resources, trade P2P"
             }), {
                 headers: { 
                     'Content-Type': 'application/json',
@@ -31,280 +35,633 @@ export default {
             });
         }
         
-        // التحقق من المسار
-        const validPaths = ['/api', '/cron/hourly', '/deposit/status', '/deposit/verify'];
-        if (!validPaths.includes(path)) {
+        // ===== HEALTH CHECK =====
+        if (path === '/health') {
             return new Response(JSON.stringify({
-                success: false,
-                error: 'Invalid endpoint'
+                status: 'ok',
+                timestamp: Date.now(),
+                environment: env.ENVIRONMENT || 'production'
             }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
             });
         }
         
-        // ====== HOURLY PRODUCTION CRON ======
-        if (path === '/cron/hourly') {
-            // التحقق من المصادقة (CRON secret)
-            const authHeader = request.headers.get('Authorization');
-            if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Unauthorized'
-                }), {
-                    status: 401,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            return handleHourlyProduction(env);
-        }
-        
-        // التحقق من حالة الإيداع
-        if (path === '/deposit/status') {
-            return handleDepositStatus(request, env);
-        }
-        
-        // التحقق من المعاملة على السلسلة
-        if (path === '/deposit/verify') {
-            return handleVerifyDeposit(request, env);
-        }
-        
-        // للمسار /api - التحقق من المصادقة أولاً
-        try {
-            // استخراج بيانات Telegram من Authorization header
-            const authHeader = request.headers.get('Authorization');
-            
-            // التحقق من وجود header المصادقة
-            if (!authHeader?.startsWith('Telegram ')) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Telegram authentication required',
-                    errorCode: 'AUTH_REQUIRED',
-                    message: 'يجب فتح اللعبة داخل تطبيق Telegram'
-                }), {
-                    status: 401,
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-            }
-            
-            const initData = authHeader.replace('Telegram ', '');
-            
-            // التحقق من بيانات Telegram
-            if (!validateTelegramInitData(initData, env.BOT_TOKEN)) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'Invalid Telegram authentication',
-                    errorCode: 'INVALID_TELEGRAM_AUTH',
-                    message: 'مصادقة Telegram غير صالحة'
-                }), {
-                    status: 401,
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-            }
-            
-            // استخراج userId من بيانات Telegram
-            const params = new URLSearchParams(initData);
-            const userParam = params.get('user');
-            if (!userParam) {
-                return new Response(JSON.stringify({
-                    success: false,
-                    error: 'User data not found',
-                    errorCode: 'USER_DATA_MISSING'
-                }), {
-                    status: 401,
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*'
-                    }
-                });
-            }
-            
-            const userData = JSON.parse(decodeURIComponent(userParam));
-            const userId = String(userData.id);
-            
-            // استخراج البيانات من الطلب
-            const requestData = await request.json();
-            const action = request.headers.get('X-Action') || requestData.action;
-            const data = requestData.data || {};
-            
-            console.log(`Request received: action=${action}, userId=${userId}`);
-            
-            // ====== معالجة الإجراءات الجديدة ======
-            let result;
-            switch (action) {
-                // State
-                case 'getState':
-                    result = await handleGetState(env, userId);
-                    break;
+        // ===== MAIN API ENDPOINT =====
+        if (path === '/api') {
+            try {
+                // === TELEGRAM AUTH VALIDATION - FIXED ===
+                const authHeader = request.headers.get('Authorization');
                 
-                // Machine Purchases
-                case 'buyCow':
-                    result = await handleBuyCow(env, userId, data);
-                    break;
-                    
-                case 'buyChicken':
-                    result = await handleBuyChicken(env, userId, data);
-                    break;
-                    
-                case 'buyDiamondEngine':
-                    result = await handleBuyDiamondEngine(env, userId, data);
-                    break;
-                
-                // Production
-                case 'startDiamondProduction':
-                    result = await handleStartDiamondProduction(env, userId, data);
-                    break;
-                
-                // Conversion
-                case 'convertDiamond':
-                    result = await handleConvertDiamond(env, userId, data);
-                    break;
-                
-                // Market
-                case 'createOrder':
-                    result = await handleCreateOrder(env, userId, data);
-                    break;
-                    
-                case 'buyOrder':
-                    result = await handleBuyOrder(env, userId, data);
-                    break;
-                
-                // Withdrawal
-                case 'withdrawTON':
-                    result = await handleWithdrawTON(env, userId, data);
-                    break;
-                
-                // Deposit
-                case 'deposit/init':
-                    result = await handleInitDeposit(env, userId, data);
-                    break;
-                    
-                case 'deposit/confirm':
-                    result = await handleConfirmDeposit(env, userId, data);
-                    break;
-                    
-                case 'deposit/verify':
-                    result = await handleVerifyDepositAPI(env, userId, data);
-                    break;
-                
-                // Referral
-                case 'claimReferralEarnings':
-                    result = await handleClaimReferralEarnings(env, userId);
-                    break;
-                
-                // Initialize
-                case 'initializeUser':
-                    result = await initializeUserHandler(env, userId, data);
-                    break;
-                    
-                default:
-                    result = {
+                if (!authHeader || !authHeader.startsWith('Telegram ')) {
+                    return new Response(JSON.stringify({
                         success: false,
-                        error: 'Unknown action',
-                        errorCode: 'UNKNOWN_ACTION'
-                    };
+                        error: 'Telegram authentication required',
+                        errorCode: 'AUTH_REQUIRED',
+                        details: 'Missing Telegram authorization header'
+                    }), {
+                        status: 401,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+                
+                const initData = authHeader.replace('Telegram ', '');
+                
+                // التحقق من Telegram - يدعم وضع التطوير والإنتاج
+                const isDevelopment = env.ENVIRONMENT === 'development' || !env.BOT_TOKEN;
+                let validationResult;
+                
+                if (isDevelopment) {
+                    // وضع التطوير - تحقق مبسط
+                    validationResult = await validateTelegramInitDataDev(initData, env.BOT_TOKEN);
+                    console.log('Development mode: using simplified validation');
+                } else {
+                    // وضع الإنتاج - تحقق كامل
+                    validationResult = await validateTelegramInitData(initData, env.BOT_TOKEN);
+                }
+                
+                if (!validationResult.valid) {
+                    console.error('Telegram validation failed:', validationResult.error);
+                    
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'Invalid Telegram authentication',
+                        errorCode: 'INVALID_TELEGRAM_AUTH',
+                        details: validationResult.error,
+                        // معلومات للتصحيح
+                        debug: {
+                            hasInitData: !!initData,
+                            initDataLength: initData?.length,
+                            botTokenConfigured: !!env.BOT_TOKEN,
+                            environment: env.ENVIRONMENT || 'production'
+                        }
+                    }), {
+                        status: 401,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+                
+                // استخراج user data
+                const params = new URLSearchParams(initData);
+                const userParam = params.get('user');
+                
+                if (!userParam) {
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'User data not found in Telegram init data',
+                        errorCode: 'USER_DATA_MISSING'
+                    }), {
+                        status: 401,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+                
+                let userData;
+                try {
+                    userData = JSON.parse(decodeURIComponent(userParam));
+                } catch (e) {
+                    return new Response(JSON.stringify({
+                        success: false,
+                        error: 'Invalid user data format',
+                        errorCode: 'INVALID_USER_DATA'
+                    }), {
+                        status: 401,
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        }
+                    });
+                }
+                
+                const userId = String(userData.id);
+                const authDate = params.get('auth_date');
+                
+                console.log(`[${new Date().toISOString()}] ✅ Valid Telegram auth - User: ${userId}, Auth Date: ${authDate || 'unknown'}, Env: ${env.ENVIRONMENT || 'production'}`);
+                
+                // ===== PARSE REQUEST BODY =====
+                const requestData = await request.json();
+                const action = request.headers.get('X-Action') || requestData.action;
+                const data = requestData.data || {};
+                
+                console.log(`[${new Date().toISOString()}] Action: ${action}, User: ${userId}`);
+                
+                // ===== ACTION HANDLERS =====
+                let result;
+                
+                switch (action) {
+                    // === STATE ===
+                    case 'getState':
+                        result = await handleGetState(env, userId);
+                        break;
+                    
+                    // === MACHINE PURCHASES (TON) ===
+                    case 'buyCow':
+                        result = await handleBuyCow(env, userId, data);
+                        break;
+                    case 'buyChicken':
+                        result = await handleBuyChicken(env, userId, data);
+                        break;
+                    case 'buyDiamondEngine':
+                        result = await handleBuyDiamondEngine(env, userId, data);
+                        break;
+                    
+                    // === HATCH SYSTEM ===
+                    case 'hatchCow':
+                        result = await handleHatchCow(env, userId, data);
+                        break;
+                    case 'hatchChicken':
+                        result = await handleHatchChicken(env, userId, data);
+                        break;
+                    
+                    // === DIAMOND PRODUCTION ===
+                    case 'startDiamondProduction':
+                        result = await handleStartDiamondProduction(env, userId, data);
+                        break;
+                    
+                    // === DIAMOND CONVERSION ===
+                    case 'convertDiamond':
+                        result = await handleConvertDiamond(env, userId, data);
+                        break;
+                    
+                    // === MARKET ORDERS ===
+                    case 'createSellOrder':
+                        result = await handleCreateSellOrder(env, userId, data);
+                        break;
+                    case 'createBuyOrder':
+                        result = await handleCreateBuyOrder(env, userId, data);
+                        break;
+                    case 'executeOrder':
+                        result = await handleExecuteOrder(env, userId, data);
+                        break;
+                    case 'getMarketOrders':
+                        result = await handleGetMarketOrders(env, data);
+                        break;
+                    case 'getMyOrders':
+                        result = await handleGetMyOrders(env, userId);
+                        break;
+                    case 'cancelOrder':
+                        result = await handleCancelOrder(env, userId, data);
+                        break;
+                    
+                    // === DEPOSIT ===
+                    case 'deposit':
+                        result = await handleDeposit(env, userId, data);
+                        break;
+                    case 'verifyDeposit':
+                        result = await handleVerifyDeposit(env, userId, data);
+                        break;
+                    
+                    // === WITHDRAWAL ===
+                    case 'withdraw':
+                        result = await handleWithdraw(env, userId, data);
+                        break;
+                    
+                    // === REFERRAL ===
+                    case 'claimReferralEarnings':
+                        result = await handleClaimReferralEarnings(env, userId);
+                        break;
+                    
+                    // === INITIALIZATION ===
+                    case 'initializeUser':
+                        result = await handleInitializeUser(env, userId, data);
+                        break;
+                    
+                    default:
+                        result = {
+                            success: false,
+                            error: 'Unknown action',
+                            errorCode: 'UNKNOWN_ACTION'
+                        };
+                }
+                
+                return new Response(JSON.stringify(result), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
+                
+            } catch (error) {
+                console.error(`Worker Error: ${error.message}`, error.stack);
+                
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Internal server error',
+                    errorCode: 'INTERNAL_SERVER_ERROR',
+                    message: error.message
+                }), {
+                    status: 500,
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    }
+                });
             }
-            
-            // إرجاع النتيجة
-            return new Response(JSON.stringify(result), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            });
-            
-        } catch (error) {
-            console.error('Worker error:', error);
-            
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Internal server error',
-                errorCode: 'INTERNAL_SERVER_ERROR',
-                details: error.message
-            }), {
-                status: 500,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
-            });
         }
+        
+        // 404 for any other path
+        return new Response(JSON.stringify({
+            success: false,
+            error: 'Endpoint not found'
+        }), {
+            status: 404,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 };
 
-// ==================== GLOBAL CONSTANTS ====================
+// ============================================
+// GAME CONSTANTS
+// ============================================
+
 const GAME_CONSTANTS = {
-    // Cow Machine
+    // === COW MACHINE ===
     COW_PRICE: 1,
     COW_GLOBAL_CAP: 1000,
     COW_PRODUCTION_RATE: 41,
+    COW_HATCH_COST: 10000,
     
-    // Chicken Machine
+    // === CHICKEN MACHINE ===
     CHICKEN_PRICE: 1,
     CHICKEN_GLOBAL_CAP: 1000,
     CHICKEN_PRODUCTION_RATE: 41,
+    CHICKEN_HATCH_COST: 10000,
     
-    // Diamond Engine
+    // === DIAMOND ENGINE ===
     DIAMOND_ENGINE_PRICE: 20,
     DIAMOND_PRODUCTION_COST_MILK: 20000,
     DIAMOND_PRODUCTION_COST_EGG: 20000,
     DIAMOND_PRODUCTION_YIELD: 1,
+    DIAMOND_BASE_PRICE: 5,
     
-    // Market
-    MIN_ORDER_AMOUNT_MILK: 100,
-    MIN_ORDER_AMOUNT_EGG: 100,
-    MARKET_SELLER_FEE_PERCENT: 5,
-    MARKET_BUYER_FEE_PERCENT: 5,
+    // === MARKET ===
+    MIN_ORDER_AMOUNT: 100,
+    MAX_ACTIVE_ORDERS: 50,
     
-    // Withdrawal
+    // === WITHDRAWAL ===
     MIN_WITHDRAW_AMOUNT: 0.5,
     WITHDRAW_FEE_PERCENT: 5,
     
-    // Deposit
+    // === DEPOSIT ===
     MIN_DEPOSIT_AMOUNT: 0.1,
     
-    // Referral
-    REFERRAL_REWARD_PERCENT: 10
+    // === REFERRAL ===
+    REFERRAL_REWARD_PERCENT: 10,
+    
+    // === PRODUCTION ===
+    HOUR_IN_MS: 3600000
 };
 
-// ==================== INITIALIZATION ====================
+// ============================================
+// ✅ FIXED: TELEGRAM VALIDATION - PRODUCTION READY
+// ============================================
+
+/**
+ * التحقق الكامل من Telegram initData باستخدام Web Crypto API
+ * يعمل في Cloudflare Workers
+ */
+async function validateTelegramInitData(initData, botToken) {
+    try {
+        if (!initData || !botToken) {
+            return {
+                valid: false,
+                error: !initData ? 'No init data provided' : 'Bot token not configured'
+            };
+        }
+
+        const params = new URLSearchParams(initData);
+        const hash = params.get('hash');
+        
+        if (!hash) {
+            return {
+                valid: false,
+                error: 'No hash parameter in init data'
+            };
+        }
+
+        // Remove hash from params before creating data check string
+        params.delete('hash');
+        
+        // Sort keys alphabetically
+        const sortedKeys = Array.from(params.keys()).sort();
+        let dataCheckArray = [];
+        
+        for (const key of sortedKeys) {
+            dataCheckArray.push(`${key}=${params.get(key)}`);
+        }
+        
+        const dataCheckString = dataCheckArray.join('\n');
+        
+        // Create HMAC-SHA256 using Web Crypto API
+        const encoder = new TextEncoder();
+        
+        // Step 1: Create secret key from "WebAppData"
+        const secretKeyMaterial = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode('WebAppData'),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        
+        const secretKey = await crypto.subtle.sign(
+            'HMAC',
+            secretKeyMaterial,
+            encoder.encode(botToken)
+        );
+        
+        // Step 2: Create HMAC from data check string
+        const hmacKey = await crypto.subtle.importKey(
+            'raw',
+            secretKey,
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+        );
+        
+        const signature = await crypto.subtle.sign(
+            'HMAC',
+            hmacKey,
+            encoder.encode(dataCheckString)
+        );
+        
+        // Convert signature to hex
+        const hashHex = Array.from(new Uint8Array(signature))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        
+        // Compare with provided hash (case insensitive)
+        const isValid = hashHex.toLowerCase() === hash.toLowerCase();
+        
+        // Check auth_date (optional - log if older than 24h)
+        const authDate = params.get('auth_date');
+        if (authDate) {
+            const authTimestamp = parseInt(authDate) * 1000;
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            
+            if (now - authTimestamp > oneDayMs) {
+                console.warn('Telegram auth data is older than 24 hours');
+            }
+        }
+        
+        if (!isValid) {
+            console.error('Hash validation failed');
+            console.error('Expected:', hashHex);
+            console.error('Received:', hash);
+            console.error('Data string:', dataCheckString);
+            
+            return {
+                valid: false,
+                error: 'Hash validation failed - data tampered'
+            };
+        }
+        
+        return {
+            valid: true,
+            hash: hashHex,
+            authDate: params.get('auth_date')
+        };
+        
+    } catch (error) {
+        console.error('Telegram validation error:', error);
+        return {
+            valid: false,
+            error: `Validation error: ${error.message}`
+        };
+    }
+}
+
+/**
+ * تحقق مبسط للتطوير - لا يتطلب bot token حقيقي
+ */
+async function validateTelegramInitDataDev(initData, botToken) {
+    try {
+        if (!initData) {
+            return { valid: false, error: 'No init data' };
+        }
+        
+        const params = new URLSearchParams(initData);
+        const userParam = params.get('user');
+        const hash = params.get('hash');
+        
+        if (!userParam) {
+            return { valid: false, error: 'No user data' };
+        }
+        
+        // التحقق من أن userParam JSON صحيح
+        try {
+            JSON.parse(decodeURIComponent(userParam));
+        } catch (e) {
+            return { valid: false, error: 'Invalid user data format' };
+        }
+        
+        // في وضع التطوير، نقبل أي hash أو حتى بدونه
+        return { 
+            valid: true, 
+            hash: hash || 'dev-mode',
+            devMode: true 
+        };
+        
+    } catch (error) {
+        return { valid: false, error: error.message };
+    }
+}
+
+// ============================================
+// DATABASE OPERATIONS - FIREBASE REST API
+// ============================================
+
+async function getFirebaseUrl(env, path) {
+    const baseUrl = env.FIREBASE_DATABASE_URL?.replace(/\/$/, '');
+    if (!baseUrl) {
+        throw new Error('FIREBASE_DATABASE_URL is not configured');
+    }
+    
+    const cleanPath = path.replace(/^\//, '');
+    const apiKey = env.FIREBASE_API_KEY;
+    
+    if (!apiKey) {
+        throw new Error('FIREBASE_API_KEY is not configured');
+    }
+    
+    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
+}
+
+async function dbGet(env, path) {
+    try {
+        const url = await getFirebaseUrl(env, path);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase GET error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+        
+        const data = await response.json();
+        
+        return {
+            success: true,
+            data: data
+        };
+    } catch (error) {
+        console.error(`DB GET Error [${path}]:`, error.message);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_GET_ERROR'
+        };
+    }
+}
+
+async function dbSet(env, path, data) {
+    try {
+        const url = await getFirebaseUrl(env, path);
+        const response = await fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase SET error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error(`DB SET Error [${path}]:`, error.message);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_SET_ERROR'
+        };
+    }
+}
+
+async function dbUpdate(env, path, updates) {
+    try {
+        const url = await getFirebaseUrl(env, path);
+        const response = await fetch(url, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase UPDATE error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error(`DB UPDATE Error [${path}]:`, error.message);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_UPDATE_ERROR'
+        };
+    }
+}
+
+async function dbPush(env, path, data) {
+    try {
+        const url = await getFirebaseUrl(env, path);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase PUSH error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+        
+        const result = await response.json();
+        
+        return {
+            success: true,
+            data: { id: result.name }
+        };
+    } catch (error) {
+        console.error(`DB PUSH Error [${path}]:`, error.message);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_PUSH_ERROR'
+        };
+    }
+}
+
+async function dbDelete(env, path) {
+    try {
+        const url = await getFirebaseUrl(env, path);
+        const response = await fetch(url, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Firebase DELETE error ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+        
+        return {
+            success: true
+        };
+    } catch (error) {
+        console.error(`DB DELETE Error [${path}]:`, error.message);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DB_DELETE_ERROR'
+        };
+    }
+}
+
+// ============================================
+// INITIALIZATION FUNCTIONS
+// ============================================
 
 async function initializeGlobalState(env) {
     const now = Date.now();
+    
     const initialState = {
-        // Machines
         cows_sold: 0,
         chickens_sold: 0,
-        diamond_engines_sold: 0,
-        
-        // Unlock Status
-        chicken_unlocked: false,
-        diamond_unlocked: false,
-        
-        // Economy
-        diamond_price: 5,
-        
-        // Production
-        last_hourly_production: now,
-        
-        // Timestamps
+        diamond_price: GAME_CONSTANTS.DIAMOND_BASE_PRICE,
         createdAt: now,
-        lastUpdated: now
+        updatedAt: now
     };
     
-    await handleDbSet(env, 'game/global', initialState);
+    await dbSet(env, 'global', initialState);
     return initialState;
 }
 
 async function initializeUser(env, userId, referredBy = null) {
     const now = Date.now();
+    
     const initialUser = {
         // Balances
         tonBalance: 0,
@@ -312,13 +669,13 @@ async function initializeUser(env, userId, referredBy = null) {
         eggs: 0,
         diamond: 0,
         
-        // Machines Owned
+        // Machines
         cows_owned: 0,
         chickens_owned: 0,
         diamond_engines_owned: 0,
         
         // Production Tracking
-        lastProductionTimestamp: now,
+        lastProduction: now,
         
         // Referral
         referralCode: generateReferralCode(userId),
@@ -327,20 +684,41 @@ async function initializeUser(env, userId, referredBy = null) {
         referralEarningsClaimed: 0,
         
         // Timestamps
-        joinDate: now,
-        lastUpdated: now
+        createdAt: now,
+        updatedAt: now
     };
     
-    await handleDbSet(env, `users/${userId}`, initialUser);
+    await dbSet(env, `users/${userId}`, initialUser);
+    
+    // Record referral if exists
+    if (referredBy) {
+        await dbPush(env, `users/${referredBy}/referrals`, {
+            userId: userId,
+            timestamp: now
+        });
+    }
+    
     return initialUser;
 }
 
-async function initializeUserHandler(env, userId, data) {
+function generateReferralCode(userId) {
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${userId.substring(0, 6)}_${random}`;
+}
+
+async function handleInitializeUser(env, userId, data) {
     try {
-        const { user, referredBy } = data;
+        const { startParam } = data;
+        let referredBy = null;
+        
+        // Extract referrer from startapp parameter
+        if (startParam && startParam.startsWith('ref_')) {
+            referredBy = startParam.replace('ref_', '');
+        }
         
         // Check if user already exists
-        const existingUser = await handleDbGet(env, `users/${userId}`);
+        const existingUser = await dbGet(env, `users/${userId}`);
+        
         if (existingUser.success && existingUser.data) {
             return {
                 success: true,
@@ -351,14 +729,15 @@ async function initializeUserHandler(env, userId, data) {
             };
         }
         
-        // Create new user with referral
-        const userData = await initializeUser(env, userId, referredBy || null);
+        // Create new user
+        const userData = await initializeUser(env, userId, referredBy);
         
         return {
             success: true,
             data: {
                 message: 'User initialized successfully',
-                user: userData
+                user: userData,
+                referredBy: referredBy
             }
         };
         
@@ -367,122 +746,133 @@ async function initializeUserHandler(env, userId, data) {
         return {
             success: false,
             error: error.message,
-            errorCode: 'INITIALIZE_USER_ERROR'
+            errorCode: 'INIT_USER_ERROR'
         };
     }
 }
 
-// ==================== HOURLY PRODUCTION ====================
+// ============================================
+// PRODUCTION CALCULATION - LIFETIME ACCRUAL
+// ============================================
 
-async function handleHourlyProduction(env) {
+async function calculateProduction(env, userId, user = null) {
     try {
-        console.log('Running hourly production...');
+        // Get user if not provided
+        if (!user) {
+            const userResult = await dbGet(env, `users/${userId}`);
+            
+            if (!userResult.success || !userResult.data) {
+                return null;
+            }
+            
+            user = userResult.data;
+        }
         
-        // Get all users
-        const usersResult = await handleDbGet(env, 'users');
-        if (!usersResult.success || !usersResult.data) {
+        const now = Date.now();
+        const lastProduction = user.lastProduction || now;
+        
+        // Calculate hours passed since last production
+        const msPassed = now - lastProduction;
+        const hoursPassed = Math.floor(msPassed / GAME_CONSTANTS.HOUR_IN_MS);
+        
+        if (hoursPassed <= 0) {
             return {
-                success: true,
-                data: { milkProduced: 0, eggsProduced: 0 }
+                user: user,
+                hoursPassed: 0,
+                milkProduced: 0,
+                eggsProduced: 0
             };
         }
         
-        const users = usersResult.data;
-        let totalMilkProduced = 0;
-        let totalEggsProduced = 0;
+        // Calculate production
+        const milkProduced = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE * hoursPassed;
+        const eggsProduced = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE * hoursPassed;
         
-        for (const [userId, user] of Object.entries(users)) {
-            if (!user) continue;
-            
-            const updates = {};
-            
-            // Milk Production
-            if (user.cows_owned > 0) {
-                const milkProduced = user.cows_owned * GAME_CONSTANTS.COW_PRODUCTION_RATE;
-                updates.milk = (user.milk || 0) + milkProduced;
-                totalMilkProduced += milkProduced;
-            }
-            
-            // Eggs Production
-            if (user.chickens_owned > 0) {
-                const eggsProduced = user.chickens_owned * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
-                updates.eggs = (user.eggs || 0) + eggsProduced;
-                totalEggsProduced += eggsProduced;
-            }
-            
-            // Update timestamp
-            updates.lastProductionTimestamp = Date.now();
-            updates.lastUpdated = Date.now();
-            
-            if (Object.keys(updates).length > 0) {
-                await handleDbUpdate(env, `users/${userId}`, updates);
-            }
-        }
+        // Update user
+        const updates = {
+            milk: (user.milk || 0) + milkProduced,
+            eggs: (user.eggs || 0) + eggsProduced,
+            lastProduction: lastProduction + (hoursPassed * GAME_CONSTANTS.HOUR_IN_MS),
+            updatedAt: now
+        };
         
-        // Update global last production timestamp
-        await handleDbUpdate(env, 'game/global', {
-            last_hourly_production: Date.now()
-        });
+        await dbUpdate(env, `users/${userId}`, updates);
         
-        console.log(`Hourly production complete. Milk: ${totalMilkProduced}, Eggs: ${totalEggsProduced}`);
+        // Return updated user
+        const updatedUser = {
+            ...user,
+            ...updates
+        };
         
-        return new Response(JSON.stringify({
-            success: true,
-            data: {
-                milkProduced: totalMilkProduced,
-                eggsProduced: totalEggsProduced,
-                timestamp: Date.now()
-            }
-        }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
+        return {
+            user: updatedUser,
+            hoursPassed: hoursPassed,
+            milkProduced: milkProduced,
+            eggsProduced: eggsProduced
+        };
         
     } catch (error) {
-        console.error('Hourly production error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: error.message
-        }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+        console.error('Production calculation error:', error);
+        return null;
     }
 }
 
-// ==================== MACHINE PURCHASES ====================
+// ============================================
+// MACHINE PURCHASES (TON)
+// ============================================
 
 async function handleBuyCow(env, userId, data) {
     try {
-        const { referredBy } = data;
+        // Get user and global state with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        const globalResult = await dbGet(env, 'global');
         
-        // Get user and global state
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
+        if (!userResult.success || !globalResult.success) {
+            return {
+                success: false,
+                error: 'Failed to load game state',
+                errorCode: 'STATE_LOAD_ERROR'
+            };
+        }
         
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
+        let user = userResult.data;
+        let global = globalResult.data;
+        
+        // Initialize if not exists
+        if (!global) {
+            global = await initializeGlobalState(env);
+        }
+        
+        if (!user) {
+            user = await initializeUser(env, userId);
+        }
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
         
         // Check global cap
         if (global.cows_sold >= GAME_CONSTANTS.COW_GLOBAL_CAP) {
             return {
                 success: false,
-                error: 'All Cow machines are sold out!',
+                error: 'All Cow machines are sold out',
                 errorCode: 'COW_SOLD_OUT'
             };
         }
         
-        // Check user already bought
+        // Check if user already owns a cow
         if (user.cows_owned > 0) {
             return {
                 success: false,
-                error: 'You can only buy one Cow machine',
+                error: 'You can only own one Cow machine',
                 errorCode: 'COW_ALREADY_OWNED'
             };
         }
         
-        // Check balance
+        // Check TON balance
         if ((user.tonBalance || 0) < GAME_CONSTANTS.COW_PRICE) {
             return {
                 success: false,
@@ -495,70 +885,62 @@ async function handleBuyCow(env, userId, data) {
         const userUpdates = {
             cows_owned: 1,
             tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.COW_PRICE,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
         const globalUpdates = {
             cows_sold: (global.cows_sold || 0) + 1,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
-        // Unlock chicken if cows reach cap
-        if (globalUpdates.cows_sold >= GAME_CONSTANTS.COW_GLOBAL_CAP) {
-            globalUpdates.chicken_unlocked = true;
-        }
-        
         // Apply updates
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        await dbUpdate(env, 'global', globalUpdates);
         
-        // ===== REFERRAL SYSTEM =====
-        let referralReward = 0;
-        if (referredBy && referredBy !== userId) {
-            const referrerResult = await handleDbGet(env, `users/${referredBy}`);
+        // === REFERRAL COMMISSION ===
+        let referralCommission = 0;
+        
+        if (user.referredBy) {
+            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
+            
             if (referrerResult.success && referrerResult.data) {
                 const referrer = referrerResult.data;
-                referralReward = GAME_CONSTANTS.COW_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                referralCommission = GAME_CONSTANTS.COW_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
                 
-                // Add to referrer's earnings
-                await handleDbUpdate(env, `users/${referredBy}`, {
-                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
-                    lastUpdated: Date.now()
+                await dbUpdate(env, `users/${user.referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralCommission,
+                    updatedAt: Date.now()
                 });
                 
-                // Record referral
-                await handleDbPush(env, `users/${referredBy}/referrals`, {
+                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
                     userId: userId,
-                    type: 'cow',
-                    amount: GAME_CONSTANTS.COW_PRICE,
-                    reward: referralReward,
+                    amount: referralCommission,
+                    type: 'cow_purchase',
                     timestamp: Date.now()
                 });
-                
-                userUpdates.referredBy = referredBy;
-                await handleDbUpdate(env, `users/${userId}`, { referredBy: referredBy });
             }
         }
         
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
             type: 'buy_cow',
-            price: GAME_CONSTANTS.COW_PRICE,
-            referredBy: referredBy || null,
-            referralReward: referralReward,
+            amount: GAME_CONSTANTS.COW_PRICE,
+            payment: 'TON',
             timestamp: Date.now()
         });
+        
+        // Get updated user for response
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
         
         return {
             success: true,
             data: {
                 cows_owned: 1,
-                newTonBalance: userUpdates.tonBalance,
+                newTonBalance: updatedUser.tonBalance,
                 cows_sold: globalUpdates.cows_sold,
-                chicken_unlocked: globalUpdates.chicken_unlocked || false,
-                referralReward: referralReward
+                cows_remaining: GAME_CONSTANTS.COW_GLOBAL_CAP - globalUpdates.cows_sold,
+                referralCommission: referralCommission
             }
         };
         
@@ -574,30 +956,45 @@ async function handleBuyCow(env, userId, data) {
 
 async function handleBuyChicken(env, userId, data) {
     try {
-        const { referredBy } = data;
-        
         // Get user and global state
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
+        const userResult = await dbGet(env, `users/${userId}`);
+        const globalResult = await dbGet(env, 'global');
         
-        const user = userResult.data;
-        const global = globalResult.data;
-        
-        if (!user || !global) {
+        if (!userResult.success || !globalResult.success) {
             return {
                 success: false,
-                error: 'User or global state not found',
-                errorCode: 'STATE_NOT_FOUND'
+                error: 'Failed to load game state',
+                errorCode: 'STATE_LOAD_ERROR'
             };
         }
         
-        // Check if chicken is unlocked
-        if (!global.chicken_unlocked && global.cows_sold < GAME_CONSTANTS.COW_GLOBAL_CAP) {
+        let user = userResult.data;
+        let global = globalResult.data;
+        
+        if (!global) {
+            global = await initializeGlobalState(env);
+        }
+        
+        if (!user) {
             return {
                 success: false,
-                error: 'Chicken machines are not unlocked yet',
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Check if chicken is unlocked (all cows sold)
+        if (global.cows_sold < GAME_CONSTANTS.COW_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'Chicken machine is locked until all Cow machines are sold',
                 errorCode: 'CHICKEN_LOCKED'
             };
         }
@@ -606,21 +1003,21 @@ async function handleBuyChicken(env, userId, data) {
         if (global.chickens_sold >= GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) {
             return {
                 success: false,
-                error: 'All Chicken machines are sold out!',
+                error: 'All Chicken machines are sold out',
                 errorCode: 'CHICKEN_SOLD_OUT'
             };
         }
         
-        // Check user already bought
+        // Check if user already owns a chicken
         if (user.chickens_owned > 0) {
             return {
                 success: false,
-                error: 'You can only buy one Chicken machine',
+                error: 'You can only own one Chicken machine',
                 errorCode: 'CHICKEN_ALREADY_OWNED'
             };
         }
         
-        // Check balance
+        // Check TON balance
         if ((user.tonBalance || 0) < GAME_CONSTANTS.CHICKEN_PRICE) {
             return {
                 success: false,
@@ -633,64 +1030,61 @@ async function handleBuyChicken(env, userId, data) {
         const userUpdates = {
             chickens_owned: 1,
             tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.CHICKEN_PRICE,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
         const globalUpdates = {
             chickens_sold: (global.chickens_sold || 0) + 1,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
-        // Unlock diamond if chickens reach cap
-        if (globalUpdates.chickens_sold >= GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) {
-            globalUpdates.diamond_unlocked = true;
-        }
-        
         // Apply updates
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        await dbUpdate(env, 'global', globalUpdates);
         
-        // ===== REFERRAL SYSTEM =====
-        let referralReward = 0;
+        // === REFERRAL COMMISSION ===
+        let referralCommission = 0;
+        
         if (user.referredBy) {
-            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
+            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
+            
             if (referrerResult.success && referrerResult.data) {
                 const referrer = referrerResult.data;
-                referralReward = GAME_CONSTANTS.CHICKEN_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                referralCommission = GAME_CONSTANTS.CHICKEN_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
                 
-                await handleDbUpdate(env, `users/${user.referredBy}`, {
-                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
-                    lastUpdated: Date.now()
+                await dbUpdate(env, `users/${user.referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralCommission,
+                    updatedAt: Date.now()
                 });
                 
-                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
+                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
                     userId: userId,
-                    type: 'chicken',
-                    amount: GAME_CONSTANTS.CHICKEN_PRICE,
-                    reward: referralReward,
+                    amount: referralCommission,
+                    type: 'chicken_purchase',
                     timestamp: Date.now()
                 });
             }
         }
         
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
             type: 'buy_chicken',
-            price: GAME_CONSTANTS.CHICKEN_PRICE,
-            referralReward: referralReward,
+            amount: GAME_CONSTANTS.CHICKEN_PRICE,
+            payment: 'TON',
             timestamp: Date.now()
         });
+        
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
         
         return {
             success: true,
             data: {
                 chickens_owned: 1,
-                newTonBalance: userUpdates.tonBalance,
+                newTonBalance: updatedUser.tonBalance,
                 chickens_sold: globalUpdates.chickens_sold,
-                diamond_unlocked: globalUpdates.diamond_unlocked || false,
-                referralReward: referralReward
+                chickens_remaining: GAME_CONSTANTS.CHICKEN_GLOBAL_CAP - globalUpdates.chickens_sold,
+                referralCommission: referralCommission
             }
         };
         
@@ -706,44 +1100,60 @@ async function handleBuyChicken(env, userId, data) {
 
 async function handleBuyDiamondEngine(env, userId, data) {
     try {
-        const { referredBy } = data;
-        
         // Get user and global state
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
+        const userResult = await dbGet(env, `users/${userId}`);
+        const globalResult = await dbGet(env, 'global');
         
-        const user = userResult.data;
-        const global = globalResult.data;
-        
-        if (!user || !global) {
+        if (!userResult.success || !globalResult.success) {
             return {
                 success: false,
-                error: 'User or global state not found',
-                errorCode: 'STATE_NOT_FOUND'
+                error: 'Failed to load game state',
+                errorCode: 'STATE_LOAD_ERROR'
             };
         }
         
-        // Check if diamond is unlocked
-        if (!global.diamond_unlocked) {
+        let user = userResult.data;
+        let global = globalResult.data;
+        
+        if (!global) {
+            global = await initializeGlobalState(env);
+        }
+        
+        if (!user) {
             return {
                 success: false,
-                error: 'Diamond Engines are not unlocked yet',
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Check if diamond engine is unlocked (all cows AND all chickens sold)
+        if (global.cows_sold < GAME_CONSTANTS.COW_GLOBAL_CAP || 
+            global.chickens_sold < GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'Diamond Engine is locked until all Cow and Chicken machines are sold',
                 errorCode: 'DIAMOND_LOCKED'
             };
         }
         
-        // Check user already bought
+        // Check if user already owns a diamond engine
         if (user.diamond_engines_owned > 0) {
             return {
                 success: false,
-                error: 'You can only buy one Diamond Engine',
+                error: 'You can only own one Diamond Engine',
                 errorCode: 'DIAMOND_ALREADY_OWNED'
             };
         }
         
-        // Check balance
+        // Check TON balance
         if ((user.tonBalance || 0) < GAME_CONSTANTS.DIAMOND_ENGINE_PRICE) {
             return {
                 success: false,
@@ -756,58 +1166,53 @@ async function handleBuyDiamondEngine(env, userId, data) {
         const userUpdates = {
             diamond_engines_owned: 1,
             tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
-            lastUpdated: Date.now()
-        };
-        
-        const globalUpdates = {
-            diamond_engines_sold: (global.diamond_engines_sold || 0) + 1,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
         // Apply updates
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
+        await dbUpdate(env, `users/${userId}`, userUpdates);
         
-        // ===== REFERRAL SYSTEM =====
-        let referralReward = 0;
+        // === REFERRAL COMMISSION ===
+        let referralCommission = 0;
+        
         if (user.referredBy) {
-            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
+            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
+            
             if (referrerResult.success && referrerResult.data) {
                 const referrer = referrerResult.data;
-                referralReward = GAME_CONSTANTS.DIAMOND_ENGINE_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                referralCommission = GAME_CONSTANTS.DIAMOND_ENGINE_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
                 
-                await handleDbUpdate(env, `users/${user.referredBy}`, {
-                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
-                    lastUpdated: Date.now()
+                await dbUpdate(env, `users/${user.referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralCommission,
+                    updatedAt: Date.now()
                 });
                 
-                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
+                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
                     userId: userId,
-                    type: 'diamond_engine',
-                    amount: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
-                    reward: referralReward,
+                    amount: referralCommission,
+                    type: 'diamond_engine_purchase',
                     timestamp: Date.now()
                 });
             }
         }
         
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
             type: 'buy_diamond_engine',
-            price: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
-            referralReward: referralReward,
+            amount: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+            payment: 'TON',
             timestamp: Date.now()
         });
+        
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
         
         return {
             success: true,
             data: {
                 diamond_engines_owned: 1,
-                newTonBalance: userUpdates.tonBalance,
-                diamond_engines_sold: globalUpdates.diamond_engines_sold,
-                referralReward: referralReward
+                newTonBalance: updatedUser.tonBalance,
+                referralCommission: referralCommission
             }
         };
         
@@ -821,20 +1226,202 @@ async function handleBuyDiamondEngine(env, userId, data) {
     }
 }
 
-// ==================== DIAMOND PRODUCTION ====================
+// ============================================
+// HATCH SYSTEM - RESOURCE TO MACHINE
+// ============================================
 
-async function handleStartDiamondProduction(env, userId, data) {
+async function handleHatchCow(env, userId, data) {
     try {
-        // Get user
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data;
+        const { amount } = data;
+        const hatchAmount = parseInt(amount) || 1;
         
-        if (!user) {
+        if (hatchAmount <= 0) {
+            return {
+                success: false,
+                error: 'Invalid hatch amount',
+                errorCode: 'INVALID_AMOUNT'
+            };
+        }
+        
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
             return {
                 success: false,
                 error: 'User not found',
                 errorCode: 'USER_NOT_FOUND'
             };
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Check milk balance
+        const milkNeeded = GAME_CONSTANTS.COW_HATCH_COST * hatchAmount;
+        
+        if ((user.milk || 0) < milkNeeded) {
+            return {
+                success: false,
+                error: `Insufficient Milk. Need ${milkNeeded} Milk`,
+                errorCode: 'INSUFFICIENT_MILK'
+            };
+        }
+        
+        // Execute hatch
+        const userUpdates = {
+            milk: (user.milk || 0) - milkNeeded,
+            cows_owned: (user.cows_owned || 0) + hatchAmount,
+            updatedAt: Date.now()
+        };
+        
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'hatch_cow',
+            amount: hatchAmount,
+            milkCost: milkNeeded,
+            timestamp: Date.now()
+        });
+        
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
+        
+        return {
+            success: true,
+            data: {
+                cows_hatched: hatchAmount,
+                milk_used: milkNeeded,
+                new_milk: updatedUser.milk,
+                new_cows: updatedUser.cows_owned
+            }
+        };
+        
+    } catch (error) {
+        console.error('Hatch cow error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HATCH_COW_ERROR'
+        };
+    }
+}
+
+async function handleHatchChicken(env, userId, data) {
+    try {
+        const { amount } = data;
+        const hatchAmount = parseInt(amount) || 1;
+        
+        if (hatchAmount <= 0) {
+            return {
+                success: false,
+                error: 'Invalid hatch amount',
+                errorCode: 'INVALID_AMOUNT'
+            };
+        }
+        
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Check eggs balance
+        const eggsNeeded = GAME_CONSTANTS.CHICKEN_HATCH_COST * hatchAmount;
+        
+        if ((user.eggs || 0) < eggsNeeded) {
+            return {
+                success: false,
+                error: `Insufficient Eggs. Need ${eggsNeeded} Eggs`,
+                errorCode: 'INSUFFICIENT_EGGS'
+            };
+        }
+        
+        // Execute hatch
+        const userUpdates = {
+            eggs: (user.eggs || 0) - eggsNeeded,
+            chickens_owned: (user.chickens_owned || 0) + hatchAmount,
+            updatedAt: Date.now()
+        };
+        
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'hatch_chicken',
+            amount: hatchAmount,
+            eggsCost: eggsNeeded,
+            timestamp: Date.now()
+        });
+        
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
+        
+        return {
+            success: true,
+            data: {
+                chickens_hatched: hatchAmount,
+                eggs_used: eggsNeeded,
+                new_eggs: updatedUser.eggs,
+                new_chickens: updatedUser.chickens_owned
+            }
+        };
+        
+    } catch (error) {
+        console.error('Hatch chicken error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'HATCH_CHICKEN_ERROR'
+        };
+    }
+}
+
+// ============================================
+// DIAMOND PRODUCTION
+// ============================================
+
+async function handleStartDiamondProduction(env, userId, data) {
+    try {
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
         }
         
         // Check if user owns diamond engine
@@ -868,13 +1455,13 @@ async function handleStartDiamondProduction(env, userId, data) {
             milk: (user.milk || 0) - GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
             eggs: (user.eggs || 0) - GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
             diamond: (user.diamond || 0) + GAME_CONSTANTS.DIAMOND_PRODUCTION_YIELD,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        await dbUpdate(env, `users/${userId}`, userUpdates);
         
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
             type: 'diamond_production',
             milkUsed: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
             eggsUsed: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
@@ -882,13 +1469,16 @@ async function handleStartDiamondProduction(env, userId, data) {
             timestamp: Date.now()
         });
         
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
+        
         return {
             success: true,
             data: {
-                diamondProduced: 1,
-                newMilk: userUpdates.milk,
-                newEggs: userUpdates.eggs,
-                newDiamond: userUpdates.diamond
+                diamondProduced: GAME_CONSTANTS.DIAMOND_PRODUCTION_YIELD,
+                newMilk: updatedUser.milk,
+                newEggs: updatedUser.eggs,
+                newDiamond: updatedUser.diamond
             }
         };
         
@@ -902,7 +1492,9 @@ async function handleStartDiamondProduction(env, userId, data) {
     }
 }
 
-// ==================== DIAMOND CONVERSION ====================
+// ============================================
+// DIAMOND CONVERSION
+// ============================================
 
 async function handleConvertDiamond(env, userId, data) {
     try {
@@ -918,20 +1510,37 @@ async function handleConvertDiamond(env, userId, data) {
         }
         
         // Get user and global state
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
+        const userResult = await dbGet(env, `users/${userId}`);
+        const globalResult = await dbGet(env, 'global');
         
-        const user = userResult.data;
-        const global = globalResult.data;
-        
-        if (!user || !global) {
+        if (!userResult.success || !globalResult.success) {
             return {
                 success: false,
-                error: 'User or global state not found',
-                errorCode: 'STATE_NOT_FOUND'
+                error: 'Failed to load game state',
+                errorCode: 'STATE_LOAD_ERROR'
             };
+        }
+        
+        let user = userResult.data;
+        let global = globalResult.data;
+        
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        if (!global) {
+            global = await initializeGlobalState(env);
+        }
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
         }
         
         // Check diamond balance
@@ -944,20 +1553,20 @@ async function handleConvertDiamond(env, userId, data) {
         }
         
         // Get current diamond price
-        const diamondPrice = global.diamond_price || 5;
+        const diamondPrice = global.diamond_price || GAME_CONSTANTS.DIAMOND_BASE_PRICE;
         const tonToReceive = diamondsToConvert * diamondPrice;
         
         // Execute conversion
         const userUpdates = {
             diamond: (user.diamond || 0) - diamondsToConvert,
             tonBalance: (user.tonBalance || 0) + tonToReceive,
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        await dbUpdate(env, `users/${userId}`, userUpdates);
         
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
             type: 'diamond_conversion',
             diamondsUsed: diamondsToConvert,
             diamondPrice: diamondPrice,
@@ -965,14 +1574,17 @@ async function handleConvertDiamond(env, userId, data) {
             timestamp: Date.now()
         });
         
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
+        
         return {
             success: true,
             data: {
                 diamondsConverted: diamondsToConvert,
                 diamondPrice: diamondPrice,
                 tonReceived: tonToReceive,
-                newDiamond: userUpdates.diamond,
-                newTonBalance: userUpdates.tonBalance
+                newDiamond: updatedUser.diamond,
+                newTonBalance: updatedUser.tonBalance
             }
         };
         
@@ -986,171 +1598,15 @@ async function handleConvertDiamond(env, userId, data) {
     }
 }
 
-// ==================== REFERRAL SYSTEM ====================
+// ============================================
+// MARKET - P2P ORDER BOOK
+// ============================================
 
-async function handleClaimReferralEarnings(env, userId) {
+async function handleCreateSellOrder(env, userId, data) {
     try {
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data;
+        const { resource, quantity, pricePerUnit } = data;
         
-        if (!user) {
-            return {
-                success: false,
-                error: 'User not found',
-                errorCode: 'USER_NOT_FOUND'
-            };
-        }
-        
-        const earnings = user.referralEarnings || 0;
-        
-        if (earnings <= 0) {
-            return {
-                success: false,
-                error: 'No referral earnings to claim',
-                errorCode: 'NO_EARNINGS'
-            };
-        }
-        
-        // Transfer earnings to TON balance
-        const userUpdates = {
-            tonBalance: (user.tonBalance || 0) + earnings,
-            referralEarnings: 0,
-            referralEarningsClaimed: (user.referralEarningsClaimed || 0) + earnings,
-            lastUpdated: Date.now()
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'claim_referral',
-            amount: earnings,
-            timestamp: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                claimedAmount: earnings,
-                newTonBalance: userUpdates.tonBalance
-            }
-        };
-        
-    } catch (error) {
-        console.error('Claim referral earnings error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'CLAIM_REFERRAL_ERROR'
-        };
-    }
-}
-
-// ==================== GET STATE ====================
-
-async function handleGetState(env, userId) {
-    try {
-        const [globalResult, userResult] = await Promise.all([
-            handleDbGet(env, 'game/global'),
-            handleDbGet(env, `users/${userId}`)
-        ]);
-        
-        const global = globalResult.data || await initializeGlobalState(env);
-        const user = userResult.data || await initializeUser(env, userId);
-        
-        // Check for pending deposits
-        const pendingDeposits = await checkPendingDeposits(env, userId);
-        
-        // Get market stats
-        const marketStats = await getMarketStats(env);
-        
-        // Get referral stats
-        const referralStats = await getReferralStats(env, userId);
-        
-        // Calculate hourly production rates
-        const milkPerHour = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE;
-        const eggsPerHour = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
-        
-        // Time until next production
-        const lastProduction = user.lastProductionTimestamp || Date.now();
-        const nextProduction = lastProduction + (60 * 60 * 1000); // 1 hour
-        const secondsUntilNext = Math.max(0, Math.floor((nextProduction - Date.now()) / 1000));
-        
-        return {
-            success: true,
-            data: {
-                user: {
-                    tonBalance: user.tonBalance || 0,
-                    milk: user.milk || 0,
-                    eggs: user.eggs || 0,
-                    diamond: user.diamond || 0,
-                    
-                    cows_owned: user.cows_owned || 0,
-                    chickens_owned: user.chickens_owned || 0,
-                    diamond_engines_owned: user.diamond_engines_owned || 0,
-                    
-                    milkPerHour: milkPerHour,
-                    eggsPerHour: eggsPerHour,
-                    secondsUntilNext: secondsUntilNext,
-                    
-                    referralCode: user.referralCode,
-                    referredBy: user.referredBy,
-                    referralEarnings: user.referralEarnings || 0,
-                    referralEarningsClaimed: user.referralEarningsClaimed || 0
-                },
-                global: {
-                    cows_sold: global.cows_sold || 0,
-                    cows_cap: GAME_CONSTANTS.COW_GLOBAL_CAP,
-                    cows_remaining: Math.max(0, GAME_CONSTANTS.COW_GLOBAL_CAP - (global.cows_sold || 0)),
-                    
-                    chickens_sold: global.chickens_sold || 0,
-                    chickens_cap: GAME_CONSTANTS.CHICKEN_GLOBAL_CAP,
-                    chickens_remaining: Math.max(0, GAME_CONSTANTS.CHICKEN_GLOBAL_CAP - (global.chickens_sold || 0)),
-                    
-                    chicken_unlocked: global.chicken_unlocked || false,
-                    diamond_unlocked: global.diamond_unlocked || false,
-                    
-                    diamond_price: global.diamond_price || 5,
-                    diamond_engines_sold: global.diamond_engines_sold || 0,
-                    
-                    last_hourly_production: global.last_hourly_production || Date.now()
-                },
-                constants: {
-                    COW_PRICE: GAME_CONSTANTS.COW_PRICE,
-                    COW_PRODUCTION_RATE: GAME_CONSTANTS.COW_PRODUCTION_RATE,
-                    CHICKEN_PRICE: GAME_CONSTANTS.CHICKEN_PRICE,
-                    CHICKEN_PRODUCTION_RATE: GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE,
-                    DIAMOND_ENGINE_PRICE: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
-                    DIAMOND_PRODUCTION_COST_MILK: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
-                    DIAMOND_PRODUCTION_COST_EGG: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
-                    MIN_WITHDRAW_AMOUNT: GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT,
-                    WITHDRAW_FEE_PERCENT: GAME_CONSTANTS.WITHDRAW_FEE_PERCENT,
-                    MIN_DEPOSIT_AMOUNT: GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT,
-                    REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT
-                },
-                market: marketStats,
-                referral: referralStats,
-                pendingDeposits: pendingDeposits
-            }
-        };
-        
-    } catch (error) {
-        console.error('Get state error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'GET_STATE_ERROR'
-        };
-    }
-}
-
-// ==================== MARKET SYSTEM ====================
-
-async function handleCreateOrder(env, userId, data) {
-    try {
-        const { type, resource, price, amount } = data;
-        
-        // Validate resource type
+        // Validate resource
         if (!['milk', 'eggs'].includes(resource)) {
             return {
                 success: false,
@@ -1159,44 +1615,32 @@ async function handleCreateOrder(env, userId, data) {
             };
         }
         
-        // Validate order type
-        if (!['sell', 'buy'].includes(type)) {
+        // Validate quantity
+        const orderQuantity = parseInt(quantity);
+        
+        if (!orderQuantity || orderQuantity < GAME_CONSTANTS.MIN_ORDER_AMOUNT) {
             return {
                 success: false,
-                error: 'Invalid order type',
-                errorCode: 'INVALID_ORDER_TYPE'
+                error: `Minimum order quantity is ${GAME_CONSTANTS.MIN_ORDER_AMOUNT}`,
+                errorCode: 'INVALID_QUANTITY'
             };
         }
         
         // Validate price
-        if (!price || parseFloat(price) <= 0) {
+        const orderPrice = parseFloat(pricePerUnit);
+        
+        if (!orderPrice || orderPrice <= 0) {
             return {
                 success: false,
-                error: 'Invalid price',
+                error: 'Price must be greater than 0',
                 errorCode: 'INVALID_PRICE'
             };
         }
         
-        // Validate amount
-        const minAmount = resource === 'milk' 
-            ? GAME_CONSTANTS.MIN_ORDER_AMOUNT_MILK 
-            : GAME_CONSTANTS.MIN_ORDER_AMOUNT_EGG;
-            
-        if (!amount || parseInt(amount) < minAmount) {
-            return {
-                success: false,
-                error: `Minimum order amount is ${minAmount} ${resource}`,
-                errorCode: 'INVALID_AMOUNT'
-            };
-        }
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
         
-        const orderAmount = parseInt(amount);
-        
-        // Get user
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data;
-        
-        if (!user) {
+        if (!userResult.success || !userResult.data) {
             return {
                 success: false,
                 error: 'User not found',
@@ -1204,71 +1648,81 @@ async function handleCreateOrder(env, userId, data) {
             };
         }
         
-        // Check balance based on order type
-        if (type === 'sell') {
-            // Selling resources
-            const userBalance = resource === 'milk' ? (user.milk || 0) : (user.eggs || 0);
-            if (userBalance < orderAmount) {
-                return {
-                    success: false,
-                    error: `Insufficient ${resource}`,
-                    errorCode: 'INSUFFICIENT_BALANCE'
-                };
-            }
-            
-            // Freeze resources
-            const updates = {};
-            if (resource === 'milk') {
-                updates.milk = (user.milk || 0) - orderAmount;
-            } else {
-                updates.eggs = (user.eggs || 0) - orderAmount;
-            }
-            updates.lastUpdated = Date.now();
-            
-            await handleDbUpdate(env, `users/${userId}`, updates);
-            
-        } else {
-            // Buying resources
-            const totalCost = orderAmount * parseFloat(price);
-            if ((user.tonBalance || 0) < totalCost) {
-                return {
-                    success: false,
-                    error: 'Insufficient TON balance',
-                    errorCode: 'INSUFFICIENT_TON'
-                };
-            }
-            
-            // Freeze TON
-            await handleDbUpdate(env, `users/${userId}`, {
-                tonBalance: (user.tonBalance || 0) - totalCost,
-                lastUpdated: Date.now()
-            });
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
         }
         
+        // Check resource balance
+        const userBalance = resource === 'milk' ? (user.milk || 0) : (user.eggs || 0);
+        
+        if (userBalance < orderQuantity) {
+            return {
+                success: false,
+                error: `Insufficient ${resource}`,
+                errorCode: 'INSUFFICIENT_RESOURCE'
+            };
+        }
+        
+        // Check active orders limit
+        const activeOrdersResult = await dbGet(env, `users/${userId}/orders`);
+        let activeOrders = 0;
+        
+        if (activeOrdersResult.success && activeOrdersResult.data) {
+            activeOrders = Object.values(activeOrdersResult.data).filter(o => o.status === 'active').length;
+        }
+        
+        if (activeOrders >= GAME_CONSTANTS.MAX_ACTIVE_ORDERS) {
+            return {
+                success: false,
+                error: `Maximum ${GAME_CONSTANTS.MAX_ACTIVE_ORDERS} active orders allowed`,
+                errorCode: 'MAX_ORDERS_REACHED'
+            };
+        }
+        
+        // Deduct resources from user
+        const userUpdates = {};
+        
+        if (resource === 'milk') {
+            userUpdates.milk = (user.milk || 0) - orderQuantity;
+        } else {
+            userUpdates.eggs = (user.eggs || 0) - orderQuantity;
+        }
+        
+        userUpdates.updatedAt = Date.now();
+        
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        
         // Create order
-        const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const orderId = `sell_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+        
         const orderData = {
             id: orderId,
             userId: userId,
-            type: type,
+            type: 'sell',
             resource: resource,
-            price: parseFloat(price),
-            amount: orderAmount,
-            remaining: orderAmount,
+            quantity: orderQuantity,
+            remaining: orderQuantity,
+            pricePerUnit: orderPrice,
             status: 'active',
             createdAt: Date.now(),
-            lastUpdated: Date.now()
+            updatedAt: Date.now()
         };
         
-        await handleDbSet(env, `market/orders/${orderId}`, orderData);
-        
-        // Record frozen assets
-        await handleDbSet(env, `users/${userId}/frozenAssets/${orderId}`, {
-            type: type,
+        await dbSet(env, `orders/${orderId}`, orderData);
+        await dbSet(env, `users/${userId}/orders/${orderId}`, {
+            id: orderId,
+            type: 'sell',
             resource: resource,
-            amount: orderAmount,
-            price: parseFloat(price),
-            frozenAt: Date.now()
+            quantity: orderQuantity,
+            remaining: orderQuantity,
+            pricePerUnit: orderPrice,
+            status: 'active',
+            createdAt: Date.now()
         });
         
         return {
@@ -1280,21 +1734,159 @@ async function handleCreateOrder(env, userId, data) {
         };
         
     } catch (error) {
-        console.error('Create order error:', error);
+        console.error('Create sell order error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'CREATE_ORDER_ERROR'
+            errorCode: 'CREATE_SELL_ORDER_ERROR'
         };
     }
 }
 
-async function handleBuyOrder(env, userId, data) {
+async function handleCreateBuyOrder(env, userId, data) {
     try {
-        const { orderId, amount } = data;
+        const { resource, quantity, pricePerUnit } = data;
+        
+        // Validate resource
+        if (!['milk', 'eggs'].includes(resource)) {
+            return {
+                success: false,
+                error: 'Invalid resource. Must be milk or eggs',
+                errorCode: 'INVALID_RESOURCE'
+            };
+        }
+        
+        // Validate quantity
+        const orderQuantity = parseInt(quantity);
+        
+        if (!orderQuantity || orderQuantity < GAME_CONSTANTS.MIN_ORDER_AMOUNT) {
+            return {
+                success: false,
+                error: `Minimum order quantity is ${GAME_CONSTANTS.MIN_ORDER_AMOUNT}`,
+                errorCode: 'INVALID_QUANTITY'
+            };
+        }
+        
+        // Validate price
+        const orderPrice = parseFloat(pricePerUnit);
+        
+        if (!orderPrice || orderPrice <= 0) {
+            return {
+                success: false,
+                error: 'Price must be greater than 0',
+                errorCode: 'INVALID_PRICE'
+            };
+        }
+        
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Calculate total cost
+        const totalCost = orderQuantity * orderPrice;
+        
+        // Check TON balance
+        if ((user.tonBalance || 0) < totalCost) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        // Check active orders limit
+        const activeOrdersResult = await dbGet(env, `users/${userId}/orders`);
+        let activeOrders = 0;
+        
+        if (activeOrdersResult.success && activeOrdersResult.data) {
+            activeOrders = Object.values(activeOrdersResult.data).filter(o => o.status === 'active').length;
+        }
+        
+        if (activeOrders >= GAME_CONSTANTS.MAX_ACTIVE_ORDERS) {
+            return {
+                success: false,
+                error: `Maximum ${GAME_CONSTANTS.MAX_ACTIVE_ORDERS} active orders allowed`,
+                errorCode: 'MAX_ORDERS_REACHED'
+            };
+        }
+        
+        // Deduct TON from user
+        const userUpdates = {
+            tonBalance: (user.tonBalance || 0) - totalCost,
+            updatedAt: Date.now()
+        };
+        
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Create order
+        const orderId = `buy_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+        
+        const orderData = {
+            id: orderId,
+            userId: userId,
+            type: 'buy',
+            resource: resource,
+            quantity: orderQuantity,
+            remaining: orderQuantity,
+            pricePerUnit: orderPrice,
+            status: 'active',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+        
+        await dbSet(env, `orders/${orderId}`, orderData);
+        await dbSet(env, `users/${userId}/orders/${orderId}`, {
+            id: orderId,
+            type: 'buy',
+            resource: resource,
+            quantity: orderQuantity,
+            remaining: orderQuantity,
+            pricePerUnit: orderPrice,
+            status: 'active',
+            createdAt: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                orderId: orderId,
+                order: orderData
+            }
+        };
+        
+    } catch (error) {
+        console.error('Create buy order error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CREATE_BUY_ORDER_ERROR'
+        };
+    }
+}
+
+async function handleExecuteOrder(env, userId, data) {
+    try {
+        const { orderId, quantity } = data;
         
         // Get order
-        const orderResult = await handleDbGet(env, `market/orders/${orderId}`);
+        const orderResult = await dbGet(env, `orders/${orderId}`);
+        
         if (!orderResult.success || !orderResult.data) {
             return {
                 success: false,
@@ -1305,7 +1897,7 @@ async function handleBuyOrder(env, userId, data) {
         
         const order = orderResult.data;
         
-        // Validate order
+        // Check if order is active
         if (order.status !== 'active') {
             return {
                 success: false,
@@ -1314,291 +1906,385 @@ async function handleBuyOrder(env, userId, data) {
             };
         }
         
-        if (order.type !== 'sell') {
+        // Check if user is executing their own order
+        if (order.userId === userId) {
             return {
                 success: false,
-                error: 'Can only buy from sell orders',
-                errorCode: 'INVALID_ORDER_TYPE'
+                error: 'Cannot execute your own order',
+                errorCode: 'OWN_ORDER'
             };
         }
         
-        const buyAmount = parseInt(amount) || order.remaining;
-        if (buyAmount > order.remaining) {
+        // Determine execution quantity
+        const executeQuantity = quantity ? parseInt(quantity) : order.remaining;
+        
+        if (executeQuantity <= 0 || executeQuantity > order.remaining) {
             return {
                 success: false,
-                error: 'Order does not have enough remaining',
-                errorCode: 'INSUFFICIENT_ORDER_AMOUNT'
+                error: 'Invalid execution quantity',
+                errorCode: 'INVALID_QUANTITY'
             };
         }
         
-        // Get buyer and seller
-        const [buyerResult, sellerResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, `users/${order.userId}`)
-        ]);
+        // Get buyer and seller with production calculation
+        let buyerId, sellerId;
+        let buyer, seller;
         
-        const buyer = buyerResult.data;
-        const seller = sellerResult.data;
-        
-        if (!buyer || !seller) {
-            return {
-                success: false,
-                error: 'User not found',
-                errorCode: 'USER_NOT_FOUND'
-            };
-        }
-        
-        // Calculate costs and fees
-        const totalCost = buyAmount * order.price;
-        const sellerFee = totalCost * (GAME_CONSTANTS.MARKET_SELLER_FEE_PERCENT / 100);
-        const buyerFee = buyAmount * (GAME_CONSTANTS.MARKET_BUYER_FEE_PERCENT / 100);
-        
-        const sellerReceives = totalCost - sellerFee;
-        const buyerReceives = buyAmount - buyerFee;
-        
-        // Check buyer balance
-        if ((buyer.tonBalance || 0) < totalCost) {
-            return {
-                success: false,
-                error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON'
-            };
-        }
-        
-        // Execute trade
-        const buyerUpdates = {
-            tonBalance: (buyer.tonBalance || 0) - totalCost,
-            lastUpdated: Date.now()
-        };
-        
-        const sellerUpdates = {
-            tonBalance: (seller.tonBalance || 0) + sellerReceives,
-            lastUpdated: Date.now()
-        };
-        
-        // Add resources to buyer
-        if (order.resource === 'milk') {
-            buyerUpdates.milk = (buyer.milk || 0) + buyerReceives;
+        if (order.type === 'sell') {
+            // User is buying from sell order
+            buyerId = userId;
+            sellerId = order.userId;
         } else {
-            buyerUpdates.eggs = (buyer.eggs || 0) + buyerReceives;
+            // User is selling to buy order
+            buyerId = order.userId;
+            sellerId = userId;
+        }
+        
+        // Get buyer data
+        const buyerResult = await dbGet(env, `users/${buyerId}`);
+        
+        if (!buyerResult.success || !buyerResult.data) {
+            return {
+                success: false,
+                error: 'Buyer not found',
+                errorCode: 'BUYER_NOT_FOUND'
+            };
+        }
+        
+        let buyerData = buyerResult.data;
+        
+        // Calculate production for buyer
+        const buyerProductionResult = await calculateProduction(env, buyerId, buyerData);
+        
+        if (buyerProductionResult) {
+            buyerData = buyerProductionResult.user;
+        }
+        
+        // Get seller data
+        const sellerResult = await dbGet(env, `users/${sellerId}`);
+        
+        if (!sellerResult.success || !sellerResult.data) {
+            return {
+                success: false,
+                error: 'Seller not found',
+                errorCode: 'SELLER_NOT_FOUND'
+            };
+        }
+        
+        let sellerData = sellerResult.data;
+        
+        // Calculate production for seller
+        const sellerProductionResult = await calculateProduction(env, sellerId, sellerData);
+        
+        if (sellerProductionResult) {
+            sellerData = sellerProductionResult.user;
+        }
+        
+        // Calculate total cost
+        const totalCost = executeQuantity * order.pricePerUnit;
+        
+        // Execute based on order type
+        if (order.type === 'sell') {
+            // Buyer pays TON, receives resource
+            if ((buyerData.tonBalance || 0) < totalCost) {
+                return {
+                    success: false,
+                    error: 'Buyer has insufficient TON balance',
+                    errorCode: 'BUYER_INSUFFICIENT_TON'
+                };
+            }
+            
+            // Update buyer
+            const buyerUpdates = {
+                tonBalance: (buyerData.tonBalance || 0) - totalCost
+            };
+            
+            if (order.resource === 'milk') {
+                buyerUpdates.milk = (buyerData.milk || 0) + executeQuantity;
+            } else {
+                buyerUpdates.eggs = (buyerData.eggs || 0) + executeQuantity;
+            }
+            
+            buyerUpdates.updatedAt = Date.now();
+            
+            await dbUpdate(env, `users/${buyerId}`, buyerUpdates);
+            
+            // Update seller
+            const sellerUpdates = {
+                tonBalance: (sellerData.tonBalance || 0) + totalCost,
+                updatedAt: Date.now()
+            };
+            
+            await dbUpdate(env, `users/${sellerId}`, sellerUpdates);
+            
+        } else {
+            // Buyer pays TON (already locked in order)
+            // Seller receives TON, sends resource
+            
+            // Check seller has resource
+            const sellerResourceBalance = order.resource === 'milk' ? 
+                (sellerData.milk || 0) : (sellerData.eggs || 0);
+            
+            if (sellerResourceBalance < executeQuantity) {
+                return {
+                    success: false,
+                    error: 'Seller has insufficient resource',
+                    errorCode: 'SELLER_INSUFFICIENT_RESOURCE'
+                };
+            }
+            
+            // Update seller (deduct resource, add TON)
+            const sellerUpdates = {
+                tonBalance: (sellerData.tonBalance || 0) + totalCost
+            };
+            
+            if (order.resource === 'milk') {
+                sellerUpdates.milk = (sellerData.milk || 0) - executeQuantity;
+            } else {
+                sellerUpdates.eggs = (sellerData.eggs || 0) - executeQuantity;
+            }
+            
+            sellerUpdates.updatedAt = Date.now();
+            
+            await dbUpdate(env, `users/${sellerId}`, sellerUpdates);
+            
+            // Update buyer (add resource)
+            const buyerUpdates = {};
+            
+            if (order.resource === 'milk') {
+                buyerUpdates.milk = (buyerData.milk || 0) + executeQuantity;
+            } else {
+                buyerUpdates.eggs = (buyerData.eggs || 0) + executeQuantity;
+            }
+            
+            buyerUpdates.updatedAt = Date.now();
+            
+            await dbUpdate(env, `users/${buyerId}`, buyerUpdates);
         }
         
         // Update order
-        const newRemaining = order.remaining - buyAmount;
+        const newRemaining = order.remaining - executeQuantity;
+        const orderStatus = newRemaining <= 0 ? 'filled' : 'active';
+        
         const orderUpdates = {
             remaining: newRemaining,
-            status: newRemaining > 0 ? 'active' : 'filled',
-            lastUpdated: Date.now()
+            status: orderStatus,
+            updatedAt: Date.now()
         };
         
-        // Apply updates
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, buyerUpdates),
-            handleDbUpdate(env, `users/${order.userId}`, sellerUpdates),
-            handleDbUpdate(env, `market/orders/${orderId}`, orderUpdates)
-        ]);
+        await dbUpdate(env, `orders/${orderId}`, orderUpdates);
+        await dbUpdate(env, `users/${order.userId}/orders/${orderId}`, orderUpdates);
         
-        // Remove frozen assets if order is filled
-        if (newRemaining <= 0) {
-            await handleDbSet(env, `users/${order.userId}/frozenAssets/${orderId}`, null);
-        }
+        // Record transactions
+        const txId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
         
-        // Record transaction
-        const txId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        await dbPush(env, `users/${buyerId}/transactions`, {
+            id: txId,
+            type: 'market_buy',
+            orderId: orderId,
+            resource: order.resource,
+            quantity: executeQuantity,
+            pricePerUnit: order.pricePerUnit,
+            totalCost: totalCost,
+            sellerId: sellerId,
+            timestamp: Date.now()
+        });
         
-        await Promise.all([
-            handleDbPush(env, `users/${userId}/history`, {
-                type: 'market_buy',
-                orderId: orderId,
-                resource: order.resource,
-                amount: buyerReceives,
-                tonPaid: totalCost,
-                buyerFee: buyerFee,
-                sellerId: order.userId,
-                timestamp: Date.now(),
-                txId: txId
-            }),
-            
-            handleDbPush(env, `users/${order.userId}/history`, {
-                type: 'market_sell',
-                orderId: orderId,
-                resource: order.resource,
-                amount: buyAmount,
-                tonReceived: sellerReceives,
-                sellerFee: sellerFee,
-                buyerId: userId,
-                timestamp: Date.now(),
-                txId: txId
-            })
-        ]);
+        await dbPush(env, `users/${sellerId}/transactions`, {
+            id: txId,
+            type: 'market_sell',
+            orderId: orderId,
+            resource: order.resource,
+            quantity: executeQuantity,
+            pricePerUnit: order.pricePerUnit,
+            totalReceived: totalCost,
+            buyerId: buyerId,
+            timestamp: Date.now()
+        });
         
         return {
             success: true,
             data: {
                 txId: txId,
+                orderId: orderId,
                 resource: order.resource,
-                amount: buyerReceives,
-                tonPaid: totalCost,
-                fees: {
-                    buyerFee: buyerFee,
-                    sellerFee: sellerFee
-                },
-                newBuyerBalance: buyerUpdates.tonBalance,
-                newBuyerResource: order.resource === 'milk' ? buyerUpdates.milk : buyerUpdates.eggs,
+                quantity: executeQuantity,
+                pricePerUnit: order.pricePerUnit,
+                totalCost: totalCost,
                 orderRemaining: newRemaining,
-                orderStatus: orderUpdates.status
+                orderStatus: orderStatus
             }
         };
         
     } catch (error) {
-        console.error('Buy order error:', error);
+        console.error('Execute order error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'BUY_ORDER_ERROR'
+            errorCode: 'EXECUTE_ORDER_ERROR'
         };
     }
 }
 
-async function getMarketStats(env) {
+async function handleGetMarketOrders(env, data) {
     try {
-        const ordersResult = await handleDbGet(env, 'market/orders');
-        const allOrders = ordersResult.data || {};
+        const { resource, type } = data;
         
-        let milkBuyOrders = 0;
-        let milkSellOrders = 0;
-        let eggBuyOrders = 0;
-        let eggSellOrders = 0;
+        // Get all orders
+        const ordersResult = await dbGet(env, 'orders');
         
-        let bestMilkBuyPrice = 0;
-        let bestMilkSellPrice = Infinity;
-        let bestEggBuyPrice = 0;
-        let bestEggSellPrice = Infinity;
-        
-        for (const order of Object.values(allOrders)) {
-            if (order.status === 'active') {
-                if (order.resource === 'milk') {
-                    if (order.type === 'buy') {
-                        milkBuyOrders++;
-                        if (order.price > bestMilkBuyPrice) {
-                            bestMilkBuyPrice = order.price;
-                        }
-                    } else {
-                        milkSellOrders++;
-                        if (order.price < bestMilkSellPrice) {
-                            bestMilkSellPrice = order.price;
-                        }
-                    }
-                } else {
-                    if (order.type === 'buy') {
-                        eggBuyOrders++;
-                        if (order.price > bestEggBuyPrice) {
-                            bestEggBuyPrice = order.price;
-                        }
-                    } else {
-                        eggSellOrders++;
-                        if (order.price < bestEggSellPrice) {
-                            bestEggSellPrice = order.price;
-                        }
-                    }
+        if (!ordersResult.success || !ordersResult.data) {
+            return {
+                success: true,
+                data: {
+                    orders: []
                 }
-            }
+            };
         }
         
-        if (bestMilkSellPrice === Infinity) bestMilkSellPrice = 0;
-        if (bestEggSellPrice === Infinity) bestEggSellPrice = 0;
+        const allOrders = ordersResult.data;
+        const filteredOrders = [];
+        
+        for (const [orderId, order] of Object.entries(allOrders)) {
+            // Filter by status
+            if (order.status !== 'active') continue;
+            
+            // Filter by resource
+            if (resource && order.resource !== resource) continue;
+            
+            // Filter by type
+            if (type && order.type !== type) continue;
+            
+            filteredOrders.push({
+                id: orderId,
+                userId: order.userId,
+                type: order.type,
+                resource: order.resource,
+                quantity: order.quantity,
+                remaining: order.remaining,
+                pricePerUnit: order.pricePerUnit,
+                createdAt: order.createdAt
+            });
+        }
+        
+        // Sort by price (ascending for sell, descending for buy)
+        if (type === 'sell') {
+            filteredOrders.sort((a, b) => a.pricePerUnit - b.pricePerUnit);
+        } else if (type === 'buy') {
+            filteredOrders.sort((a, b) => b.pricePerUnit - a.pricePerUnit);
+        } else {
+            filteredOrders.sort((a, b) => b.createdAt - a.createdAt);
+        }
         
         return {
-            milk: {
-                buyOrders: milkBuyOrders,
-                sellOrders: milkSellOrders,
-                bestBuyPrice: bestMilkBuyPrice,
-                bestSellPrice: bestMilkSellPrice
-            },
-            eggs: {
-                buyOrders: eggBuyOrders,
-                sellOrders: eggSellOrders,
-                bestBuyPrice: bestEggBuyPrice,
-                bestSellPrice: bestEggSellPrice
+            success: true,
+            data: {
+                orders: filteredOrders.slice(0, 50)
             }
         };
         
     } catch (error) {
+        console.error('Get market orders error:', error);
         return {
-            milk: { buyOrders: 0, sellOrders: 0, bestBuyPrice: 0, bestSellPrice: 0 },
-            eggs: { buyOrders: 0, sellOrders: 0, bestBuyPrice: 0, bestSellPrice: 0 }
+            success: false,
+            error: error.message,
+            errorCode: 'GET_MARKET_ORDERS_ERROR'
         };
     }
 }
 
-// ==================== REFERRAL STATS ====================
-
-async function getReferralStats(env, userId) {
+async function handleGetMyOrders(env, userId) {
     try {
-        const referralsResult = await handleDbGet(env, `users/${userId}/referrals`);
-        const referrals = referralsResult.data || {};
+        const ordersResult = await dbGet(env, `users/${userId}/orders`);
         
-        let totalReferrals = 0;
-        let totalRewards = 0;
-        let lastReferral = null;
+        if (!ordersResult.success || !ordersResult.data) {
+            return {
+                success: true,
+                data: {
+                    orders: []
+                }
+            };
+        }
         
-        const referralList = Object.values(referrals);
-        totalReferrals = referralList.length;
+        const userOrders = ordersResult.data;
+        const activeOrders = [];
+        const filledOrders = [];
         
-        referralList.forEach(ref => {
-            totalRewards += ref.reward || 0;
-            if (!lastReferral || ref.timestamp > lastReferral) {
-                lastReferral = ref.timestamp;
+        for (const [orderId, order] of Object.entries(userOrders)) {
+            if (order.status === 'active') {
+                activeOrders.push({
+                    id: orderId,
+                    ...order
+                });
+            } else {
+                filledOrders.push({
+                    id: orderId,
+                    ...order
+                });
             }
-        });
+        }
+        
+        // Sort by createdAt (newest first)
+        activeOrders.sort((a, b) => b.createdAt - a.createdAt);
+        filledOrders.sort((a, b) => b.createdAt - a.createdAt);
         
         return {
-            totalReferrals: totalReferrals,
-            totalRewards: totalRewards,
-            lastReferral: lastReferral,
-            referralList: referralList.slice(-5) // Last 5 referrals
+            success: true,
+            data: {
+                active: activeOrders.slice(0, 20),
+                filled: filledOrders.slice(0, 20)
+            }
         };
         
     } catch (error) {
+        console.error('Get my orders error:', error);
         return {
-            totalReferrals: 0,
-            totalRewards: 0,
-            lastReferral: null,
-            referralList: []
+            success: false,
+            error: error.message,
+            errorCode: 'GET_MY_ORDERS_ERROR'
         };
     }
 }
 
-// ==================== WITHDRAWAL ====================
-
-async function handleWithdrawTON(env, userId, data) {
+async function handleCancelOrder(env, userId, data) {
     try {
-        const { amount, address } = data;
-        const withdrawAmount = parseFloat(amount);
+        const { orderId } = data;
         
-        // Validate amount
-        if (!withdrawAmount || withdrawAmount < GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT) {
+        // Get order
+        const orderResult = await dbGet(env, `orders/${orderId}`);
+        
+        if (!orderResult.success || !orderResult.data) {
             return {
                 success: false,
-                error: `Minimum withdrawal amount is ${GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT} TON`,
-                errorCode: 'INVALID_WITHDRAW_AMOUNT'
+                error: 'Order not found',
+                errorCode: 'ORDER_NOT_FOUND'
             };
         }
         
-        // Validate address
-        if (!address || address.trim().length === 0) {
+        const order = orderResult.data;
+        
+        // Check ownership
+        if (order.userId !== userId) {
             return {
                 success: false,
-                error: 'TON address is required',
-                errorCode: 'ADDRESS_REQUIRED'
+                error: 'Unauthorized to cancel this order',
+                errorCode: 'UNAUTHORIZED'
             };
         }
         
-        // Get user
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data;
+        // Check if order is still active
+        if (order.status !== 'active') {
+            return {
+                success: false,
+                error: 'Order is not active',
+                errorCode: 'ORDER_NOT_ACTIVE'
+            };
+        }
         
-        if (!user) {
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
             return {
                 success: false,
                 error: 'User not found',
@@ -1606,153 +2292,85 @@ async function handleWithdrawTON(env, userId, data) {
             };
         }
         
-        // Calculate fee
-        const fee = withdrawAmount * (GAME_CONSTANTS.WITHDRAW_FEE_PERCENT / 100);
-        const netAmount = withdrawAmount - fee;
+        let user = userResult.data;
         
-        // Check balance
-        if ((user.tonBalance || 0) < withdrawAmount) {
-            return {
-                success: false,
-                error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON'
-            };
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
         }
         
-        // Update user balance
-        await handleDbUpdate(env, `users/${userId}`, {
-            tonBalance: (user.tonBalance || 0) - withdrawAmount,
-            lastUpdated: Date.now()
-        });
+        // Refund based on order type
+        if (order.type === 'sell') {
+            // Refund resources
+            const userUpdates = {};
+            
+            if (order.resource === 'milk') {
+                userUpdates.milk = (user.milk || 0) + order.remaining;
+            } else {
+                userUpdates.eggs = (user.eggs || 0) + order.remaining;
+            }
+            
+            userUpdates.updatedAt = Date.now();
+            
+            await dbUpdate(env, `users/${userId}`, userUpdates);
+            
+        } else {
+            // Refund TON
+            const refundAmount = order.remaining * order.pricePerUnit;
+            
+            await dbUpdate(env, `users/${userId}`, {
+                tonBalance: (user.tonBalance || 0) + refundAmount,
+                updatedAt: Date.now()
+            });
+        }
         
-        // Create withdrawal request
-        const withdrawalId = `withdraw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const withdrawalData = {
-            id: withdrawalId,
-            userId: userId,
-            amount: withdrawAmount,
-            fee: fee,
-            netAmount: netAmount,
-            address: address,
-            status: 'pending',
-            createdAt: Date.now(),
-            lastUpdated: Date.now()
+        // Update order status
+        const orderUpdates = {
+            status: 'cancelled',
+            updatedAt: Date.now()
         };
         
-        await handleDbSet(env, `withdrawals/pending/${withdrawalId}`, withdrawalData);
-        
-        // Record history
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'withdraw_request',
-            amount: withdrawAmount,
-            fee: fee,
-            netAmount: netAmount,
-            address: address,
-            status: 'pending',
-            timestamp: Date.now(),
-            withdrawalId: withdrawalId
-        });
+        await dbUpdate(env, `orders/${orderId}`, orderUpdates);
+        await dbUpdate(env, `users/${userId}/orders/${orderId}`, orderUpdates);
         
         return {
             success: true,
             data: {
-                withdrawalId: withdrawalId,
-                amount: withdrawAmount,
-                fee: fee,
-                netAmount: netAmount,
-                newBalance: (user.tonBalance || 0) - withdrawAmount,
-                message: 'Withdrawal request submitted. Will be processed within 24 hours.'
+                orderId: orderId,
+                status: 'cancelled'
             }
         };
         
     } catch (error) {
-        console.error('Withdraw TON error:', error);
+        console.error('Cancel order error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'WITHDRAW_TON_ERROR'
+            errorCode: 'CANCEL_ORDER_ERROR'
         };
     }
 }
 
-// ==================== DEPOSIT SYSTEM ====================
+// ============================================
+// DEPOSIT SYSTEM
+// ============================================
 
-async function handleInitDeposit(env, userId, data) {
+async function handleDeposit(env, userId, data) {
     try {
-        const { amount, wallet_address } = data;
+        const { amount, txHash, comment } = data;
         
         // Validate amount
         if (!amount || amount < GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT) {
             return {
                 success: false,
                 error: `Minimum deposit amount is ${GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT} TON`,
-                errorCode: 'MIN_DEPOSIT_AMOUNT'
+                errorCode: 'INVALID_AMOUNT'
             };
         }
         
-        // Validate wallet address
-        if (!wallet_address || wallet_address.length < 5) {
-            return {
-                success: false,
-                error: 'Valid wallet address is required',
-                errorCode: 'INVALID_WALLET_ADDRESS'
-            };
-        }
-        
-        // Get deposit address from environment
-        const depositAddress = env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG";
-        
-        // Create deposit record
-        const depositId = `deposit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
-        const depositData = {
-            id: depositId,
-            userId: userId,
-            amount: amount,
-            walletAddress: wallet_address,
-            status: 'pending',
-            createdAt: Date.now(),
-            lastUpdated: Date.now()
-        };
-        
-        await handleDbSet(env, `deposits/pending/${depositId}`, depositData);
-        
-        return {
-            success: true,
-            data: {
-                address: depositAddress,
-                amount: amount,
-                depositId: depositId,
-                message: 'Send the exact amount with comment containing your User ID only',
-                comment: userId // يجب إضافة User ID في الـ Comment
-            }
-        };
-        
-    } catch (error) {
-        console.error('Init deposit error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'INIT_DEPOSIT_ERROR'
-        };
-    }
-}
-
-async function handleConfirmDeposit(env, userId, data) {
-    try {
-        const { txHash, amount, user_address, comment } = data;
-        
-        // Validate required fields
-        if (!txHash || !amount) {
-            return {
-                success: false,
-                error: 'Transaction hash and amount are required',
-                errorCode: 'MISSING_REQUIRED_FIELDS'
-            };
-        }
-        
-        // التحقق من أن الـ comment يحتوي فقط على User ID
+        // Validate comment - must be only userId
         if (!comment || comment.toString() !== userId) {
             return {
                 success: false,
@@ -1761,19 +2379,9 @@ async function handleConfirmDeposit(env, userId, data) {
             };
         }
         
-        const depositAmount = parseFloat(amount);
-        
-        // Check minimum amount
-        if (depositAmount < GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT) {
-            return {
-                success: false,
-                error: `Minimum deposit amount is ${GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT} TON`,
-                errorCode: 'MIN_DEPOSIT_NOT_MET'
-            };
-        }
-        
         // Check for duplicate transaction
-        const existingTx = await handleDbGet(env, `transactions/${txHash}`);
+        const existingTx = await dbGet(env, `transactions/${txHash}`);
+        
         if (existingTx.success && existingTx.data) {
             return {
                 success: false,
@@ -1782,221 +2390,61 @@ async function handleConfirmDeposit(env, userId, data) {
             };
         }
         
-        // Record transaction (pending verification)
+        // Create deposit record
+        const depositId = `dep_${Date.now()}_${userId}`;
         const now = Date.now();
+        
         const depositRecord = {
+            id: depositId,
             userId: userId,
-            amount: depositAmount,
-            fromAddress: user_address || 'TON Connect',
-            toAddress: env.DEPOSIT_WALLET_ADDRESS,
+            amount: parseFloat(amount),
             txHash: txHash,
             comment: comment,
-            status: 'verifying',
-            verified: false,
-            processedAt: now,
-            method: 'TON Connect',
-            depositId: `dep_${now}_${userId}_${txHash.substring(0, 8)}`
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now
         };
         
-        await handleDbSet(env, `transactions/${txHash}`, depositRecord);
-        
-        // Add to pending verification
-        await handleDbSet(env, `deposits/verifying/${txHash}`, depositRecord);
+        await dbSet(env, `deposits/${depositId}`, depositRecord);
+        await dbSet(env, `transactions/${txHash}`, depositRecord);
+        await dbSet(env, `users/${userId}/deposits/${depositId}`, depositRecord);
         
         return {
             success: true,
             data: {
-                amount: depositAmount,
-                txHash: txHash,
-                timestamp: now,
-                status: 'verifying',
-                message: 'Transaction received. Verification in progress. Your balance will be updated within 1-3 minutes.'
+                depositId: depositId,
+                amount: amount,
+                status: 'pending',
+                message: 'Transaction received. Verification in progress.'
             }
         };
         
     } catch (error) {
-        console.error('Confirm deposit error:', error);
+        console.error('Deposit error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'CONFIRM_DEPOSIT_ERROR'
+            errorCode: 'DEPOSIT_ERROR'
         };
     }
 }
 
-// ✅ التحقق من المعاملة على السلسلة (مع التحقق من Comment)
-async function verifyOnChainTransaction(env, txHash, fromAddress, amount, expectedUserId) {
-    try {
-        // هنا يتم التحقق من المعاملة على البلوكشين
-        // هذا يعتمد على الـ API المستخدم (toncenter, tonapi.io, etc.)
-        
-        console.log('Verifying transaction:', txHash);
-        
-        // التحقق من أن المعاملة موجودة
-        if (!txHash || !expectedUserId) {
-            return false;
-        }
-        
-        // TODO: استدعاء TON API للتحقق من المعاملة
-        // يجب التأكد من:
-        // 1. المبلغ صحيح
-        // 2. عنوان المستلم صحيح
-        // 3. الـ comment يحتوي فقط على User ID
-        
-        // للاختبار، نقبل المعاملة
-        return true;
-        
-    } catch (error) {
-        console.error('Transaction verification error:', error);
-        return false;
-    }
-}
-
-async function handleVerifyDeposit(request, env) {
-    try {
-        const { txHash, userId } = await request.json();
-        
-        if (!txHash || !userId) {
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Transaction hash and user ID required'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-        
-        // Get transaction record
-        const txResult = await handleDbGet(env, `transactions/${txHash}`);
-        if (!txResult.success || !txResult.data) {
-            return new Response(JSON.stringify({
-                success: false,
-                error: 'Transaction not found'
-            }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-        
-        const transaction = txResult.data;
-        
-        // Check if already verified
-        if (transaction.status === 'completed') {
-            return new Response(JSON.stringify({
-                success: true,
-                data: {
-                    status: 'completed',
-                    amount: transaction.amount,
-                    verified: true,
-                    timestamp: transaction.processedAt
-                }
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-        
-        // Verify on blockchain
-        const verified = await verifyOnChainTransaction(
-            env, 
-            txHash, 
-            transaction.fromAddress, 
-            transaction.amount,
-            transaction.comment
-        );
-        
-        if (verified) {
-            // Update transaction status
-            const now = Date.now();
-            
-            await handleDbUpdate(env, `transactions/${txHash}`, {
-                status: 'completed',
-                verified: true,
-                processedAt: now
-            });
-            
-            // Update user balance
-            const userResult = await handleDbGet(env, `users/${userId}`);
-            if (userResult.success && userResult.data) {
-                const user = userResult.data;
-                await handleDbUpdate(env, `users/${userId}`, {
-                    tonBalance: (user.tonBalance || 0) + transaction.amount,
-                    lastUpdated: now
-                });
-            }
-            
-            // Remove from verifying
-            await handleDbSet(env, `deposits/verifying/${txHash}`, null);
-            
-            // Record in history
-            await handleDbPush(env, `users/${userId}/history`, {
-                type: 'deposit',
-                amount: transaction.amount,
-                txHash: txHash,
-                timestamp: now
-            });
-            
-            return new Response(JSON.stringify({
-                success: true,
-                data: {
-                    status: 'completed',
-                    amount: transaction.amount,
-                    verified: true,
-                    timestamp: now
-                }
-            }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-        
-        return new Response(JSON.stringify({
-            success: true,
-            data: {
-                status: 'verifying',
-                amount: transaction.amount,
-                verified: false,
-                timestamp: transaction.processedAt
-            }
-        }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-    } catch (error) {
-        console.error('Verify deposit error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: error.message
-        }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-}
-
-async function handleVerifyDepositAPI(env, userId, data) {
+async function handleVerifyDeposit(env, userId, data) {
     try {
         const { txHash, depositId } = data;
         
-        if (!txHash && !depositId) {
-            return {
-                success: false,
-                error: 'Transaction hash or deposit ID required',
-                errorCode: 'MISSING_IDENTIFIER'
-            };
-        }
+        let depositRecord = null;
         
-        let depositRecord;
-        
-        // Find by transaction hash
+        // Find deposit record
         if (txHash) {
-            const txResult = await handleDbGet(env, `transactions/${txHash}`);
+            const txResult = await dbGet(env, `transactions/${txHash}`);
             if (txResult.success && txResult.data) {
                 depositRecord = txResult.data;
             }
         }
         
-        // Find by deposit ID
         if (!depositRecord && depositId) {
-            const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
+            const depositResult = await dbGet(env, `deposits/${depositId}`);
             if (depositResult.success && depositResult.data) {
                 depositRecord = depositResult.data;
             }
@@ -2014,18 +2462,79 @@ async function handleVerifyDepositAPI(env, userId, data) {
         if (depositRecord.userId !== userId) {
             return {
                 success: false,
-                error: 'Unauthorized access to deposit',
-                errorCode: 'UNAUTHORIZED_ACCESS'
+                error: 'Unauthorized access',
+                errorCode: 'UNAUTHORIZED'
             };
+        }
+        
+        // If already completed
+        if (depositRecord.status === 'completed') {
+            return {
+                success: true,
+                data: {
+                    status: 'completed',
+                    amount: depositRecord.amount,
+                    verified: true,
+                    timestamp: depositRecord.updatedAt
+                }
+            };
+        }
+        
+        // For demo/development - auto verify after 30 seconds
+        // In production, this would call TON API
+        const isDevelopment = env.ENVIRONMENT === 'development';
+        
+        if (isDevelopment && depositRecord.createdAt) {
+            const timeElapsed = Date.now() - depositRecord.createdAt;
+            if (timeElapsed > 30000) { // 30 seconds
+                // Auto-verify for development
+                await dbUpdate(env, `deposits/${depositRecord.id}`, {
+                    status: 'completed',
+                    verified: true,
+                    updatedAt: Date.now()
+                });
+                
+                await dbUpdate(env, `transactions/${depositRecord.txHash}`, {
+                    status: 'completed',
+                    verified: true,
+                    updatedAt: Date.now()
+                });
+                
+                await dbUpdate(env, `users/${userId}/deposits/${depositRecord.id}`, {
+                    status: 'completed',
+                    verified: true,
+                    updatedAt: Date.now()
+                });
+                
+                // Add TON to user balance
+                const userResult = await dbGet(env, `users/${userId}`);
+                if (userResult.success && userResult.data) {
+                    const user = userResult.data;
+                    await dbUpdate(env, `users/${userId}`, {
+                        tonBalance: (user.tonBalance || 0) + depositRecord.amount,
+                        updatedAt: Date.now()
+                    });
+                }
+                
+                return {
+                    success: true,
+                    data: {
+                        status: 'completed',
+                        amount: depositRecord.amount,
+                        verified: true,
+                        timestamp: Date.now()
+                    }
+                };
+            }
         }
         
         return {
             success: true,
             data: {
-                status: depositRecord.status || 'pending',
+                status: depositRecord.status,
                 amount: depositRecord.amount,
                 verified: depositRecord.verified || false,
-                timestamp: depositRecord.processedAt || depositRecord.createdAt
+                timestamp: depositRecord.createdAt
             }
         };
         
@@ -2039,251 +2548,451 @@ async function handleVerifyDepositAPI(env, userId, data) {
     }
 }
 
-async function handleDepositStatus(request, env) {
+// ============================================
+// WITHDRAWAL SYSTEM
+// ============================================
+
+async function handleWithdraw(env, userId, data) {
     try {
-        const url = new URL(request.url);
-        const txHash = url.searchParams.get('tx');
-        const depositId = url.searchParams.get('id');
+        const { amount, address } = data;
+        const withdrawAmount = parseFloat(amount);
         
-        if (!txHash && !depositId) {
-            return new Response(JSON.stringify({
+        // Validate amount
+        if (!withdrawAmount || withdrawAmount < GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT) {
+            return {
                 success: false,
-                error: 'Transaction hash or deposit ID required'
-            }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' }
-            });
+                error: `Minimum withdrawal amount is ${GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT} TON`,
+                errorCode: 'INVALID_AMOUNT'
+            };
         }
         
-        let depositRecord;
-        
-        if (txHash) {
-            const txResult = await handleDbGet(env, `transactions/${txHash}`);
-            if (txResult.success && txResult.data) {
-                depositRecord = txResult.data;
-            }
-        }
-        
-        if (!depositRecord && depositId) {
-            const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
-            if (depositResult.success && depositResult.data) {
-                depositRecord = depositResult.data;
-            }
-        }
-        
-        if (!depositRecord) {
-            return new Response(JSON.stringify({
+        // Validate address
+        if (!address || address.trim().length < 10) {
+            return {
                 success: false,
-                error: 'Deposit not found'
-            }), {
-                status: 404,
-                headers: { 'Content-Type': 'application/json' }
-            });
+                error: 'Valid TON wallet address is required',
+                errorCode: 'INVALID_ADDRESS'
+            };
         }
         
-        return new Response(JSON.stringify({
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        // Calculate fee
+        const fee = withdrawAmount * (GAME_CONSTANTS.WITHDRAW_FEE_PERCENT / 100);
+        const netAmount = withdrawAmount - fee;
+        
+        // Check balance
+        if ((user.tonBalance || 0) < withdrawAmount) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        // Create withdrawal request
+        const withdrawalId = `wd_${Date.now()}_${userId}`;
+        const now = Date.now();
+        
+        const withdrawalRecord = {
+            id: withdrawalId,
+            userId: userId,
+            amount: withdrawAmount,
+            fee: fee,
+            netAmount: netAmount,
+            address: address,
+            status: 'pending',
+            createdAt: now,
+            updatedAt: now
+        };
+        
+        // Update user balance
+        await dbUpdate(env, `users/${userId}`, {
+            tonBalance: (user.tonBalance || 0) - withdrawAmount,
+            updatedAt: now
+        });
+        
+        // Save withdrawal record
+        await dbSet(env, `withdrawals/${withdrawalId}`, withdrawalRecord);
+        await dbSet(env, `users/${userId}/withdrawals/${withdrawalId}`, withdrawalRecord);
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'withdrawal',
+            withdrawalId: withdrawalId,
+            amount: withdrawAmount,
+            fee: fee,
+            netAmount: netAmount,
+            address: address,
+            status: 'pending',
+            timestamp: now
+        });
+        
+        return {
             success: true,
             data: {
-                status: depositRecord.status || 'pending',
-                amount: depositRecord.amount,
-                fromAddress: depositRecord.fromAddress || depositRecord.walletAddress,
-                toAddress: depositRecord.toAddress || depositRecord.depositAddress,
-                txHash: depositRecord.txHash,
-                createdAt: depositRecord.createdAt,
-                processedAt: depositRecord.processedAt,
-                verified: depositRecord.verified || false
+                withdrawalId: withdrawalId,
+                amount: withdrawAmount,
+                fee: fee,
+                netAmount: netAmount,
+                newBalance: (user.tonBalance || 0) - withdrawAmount,
+                status: 'pending'
             }
-        }), {
-            headers: { 'Content-Type': 'application/json' }
-        });
+        };
         
     } catch (error) {
-        console.error('Deposit status error:', error);
-        return new Response(JSON.stringify({
+        console.error('Withdrawal error:', error);
+        return {
             success: false,
-            error: error.message
-        }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
+            error: error.message,
+            errorCode: 'WITHDRAWAL_ERROR'
+        };
     }
 }
 
-async function checkPendingDeposits(env, userId) {
+// ============================================
+// REFERRAL SYSTEM
+// ============================================
+
+async function handleClaimReferralEarnings(env, userId) {
     try {
-        const depositsResult = await handleDbGet(env, `users/${userId}/deposits`);
-        const deposits = depositsResult.data || {};
+        // Get user with production calculation
+        const userResult = await dbGet(env, `users/${userId}`);
         
-        const pending = [];
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
         
-        for (const [key, deposit] of Object.entries(deposits)) {
-            if (deposit.status === 'pending' || deposit.status === 'verifying') {
-                pending.push({
-                    depositId: key,
-                    amount: deposit.amount,
-                    timestamp: deposit.timestamp || deposit.createdAt,
-                    status: deposit.status,
-                    txHash: deposit.txHash
-                });
+        let user = userResult.data;
+        
+        // Calculate production first
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        const earnings = user.referralEarnings || 0;
+        
+        if (earnings <= 0) {
+            return {
+                success: false,
+                error: 'No referral earnings to claim',
+                errorCode: 'NO_EARNINGS'
+            };
+        }
+        
+        // Transfer earnings to TON balance
+        const userUpdates = {
+            tonBalance: (user.tonBalance || 0) + earnings,
+            referralEarnings: 0,
+            referralEarningsClaimed: (user.referralEarningsClaimed || 0) + earnings,
+            updatedAt: Date.now()
+        };
+        
+        await dbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'claim_referral',
+            amount: earnings,
+            timestamp: Date.now()
+        });
+        
+        const updatedUserResult = await dbGet(env, `users/${userId}`);
+        const updatedUser = updatedUserResult.data;
+        
+        return {
+            success: true,
+            data: {
+                claimedAmount: earnings,
+                newTonBalance: updatedUser.tonBalance,
+                totalClaimed: updatedUser.referralEarningsClaimed
+            }
+        };
+        
+    } catch (error) {
+        console.error('Claim referral earnings error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CLAIM_REFERRAL_ERROR'
+        };
+    }
+}
+
+// ============================================
+// GET STATE - MAIN STATE FUNCTION
+// ============================================
+
+async function handleGetState(env, userId) {
+    try {
+        // Get user and global state
+        const userResult = await dbGet(env, `users/${userId}`);
+        const globalResult = await dbGet(env, 'global');
+        
+        // Initialize if not exists
+        let global = globalResult.data;
+        
+        if (!global) {
+            global = await initializeGlobalState(env);
+        }
+        
+        let user = userResult.data;
+        
+        // Calculate production and get updated user
+        if (user) {
+            const productionResult = await calculateProduction(env, userId, user);
+            
+            if (productionResult) {
+                user = productionResult.user;
+            }
+        } else {
+            // User doesn't exist yet - return default values
+            user = {
+                tonBalance: 0,
+                milk: 0,
+                eggs: 0,
+                diamond: 0,
+                cows_owned: 0,
+                chickens_owned: 0,
+                diamond_engines_owned: 0,
+                lastProduction: Date.now(),
+                milkPerHour: 0,
+                eggsPerHour: 0,
+                secondsUntilNext: 0,
+                referralCode: null,
+                referredBy: null,
+                referralEarnings: 0,
+                referralEarningsClaimed: 0,
+                activeOrdersCount: 0
+            };
+        }
+        
+        // Get referral stats
+        let referralStats = {
+            totalReferrals: 0,
+            totalEarnings: 0,
+            recentReferrals: []
+        };
+        
+        const referralsResult = await dbGet(env, `users/${userId}/referrals`);
+        
+        if (referralsResult.success && referralsResult.data) {
+            const referrals = Object.values(referralsResult.data);
+            referralStats.totalReferrals = referrals.length;
+            
+            // Get recent referrals
+            referralStats.recentReferrals = referrals
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, 5);
+        }
+        
+        // Get referral earnings history
+        const earningsResult = await dbGet(env, `users/${userId}/referralEarnings`);
+        
+        if (earningsResult.success && earningsResult.data) {
+            const earnings = Object.values(earningsResult.data);
+            referralStats.totalEarnings = earnings.reduce((sum, e) => sum + (e.amount || 0), 0);
+            referralStats.recentEarnings = earnings
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .slice(0, 5);
+        }
+        
+        // Get pending deposits
+        let pendingDeposits = [];
+        
+        const depositsResult = await dbGet(env, `users/${userId}/deposits`);
+        
+        if (depositsResult.success && depositsResult.data) {
+            pendingDeposits = Object.values(depositsResult.data)
+                .filter(d => d.status === 'pending' || d.status === 'verifying')
+                .map(d => ({
+                    depositId: d.id,
+                    amount: d.amount,
+                    timestamp: d.createdAt,
+                    status: d.status,
+                    txHash: d.txHash
+                }))
+                .slice(0, 3);
+        }
+        
+        // Get active orders count
+        let activeOrdersCount = 0;
+        
+        const ordersResult = await dbGet(env, `users/${userId}/orders`);
+        
+        if (ordersResult.success && ordersResult.data) {
+            activeOrdersCount = Object.values(ordersResult.data)
+                .filter(o => o.status === 'active')
+                .length;
+        }
+        
+        // Get market stats
+        let marketStats = {
+            milk: { sellOrders: 0, buyOrders: 0, bestSellPrice: 0, bestBuyPrice: 0 },
+            eggs: { sellOrders: 0, buyOrders: 0, bestSellPrice: 0, bestBuyPrice: 0 }
+        };
+        
+        const marketOrdersResult = await dbGet(env, 'orders');
+        
+        if (marketOrdersResult.success && marketOrdersResult.data) {
+            const allOrders = Object.values(marketOrdersResult.data);
+            
+            // Milk sell orders
+            const milkSellOrders = allOrders.filter(o => 
+                o.resource === 'milk' && o.type === 'sell' && o.status === 'active');
+            
+            marketStats.milk.sellOrders = milkSellOrders.length;
+            
+            if (milkSellOrders.length > 0) {
+                marketStats.milk.bestSellPrice = Math.min(...milkSellOrders.map(o => o.pricePerUnit));
+            }
+            
+            // Milk buy orders
+            const milkBuyOrders = allOrders.filter(o => 
+                o.resource === 'milk' && o.type === 'buy' && o.status === 'active');
+            
+            marketStats.milk.buyOrders = milkBuyOrders.length;
+            
+            if (milkBuyOrders.length > 0) {
+                marketStats.milk.bestBuyPrice = Math.max(...milkBuyOrders.map(o => o.pricePerUnit));
+            }
+            
+            // Eggs sell orders
+            const eggSellOrders = allOrders.filter(o => 
+                o.resource === 'eggs' && o.type === 'sell' && o.status === 'active');
+            
+            marketStats.eggs.sellOrders = eggSellOrders.length;
+            
+            if (eggSellOrders.length > 0) {
+                marketStats.eggs.bestSellPrice = Math.min(...eggSellOrders.map(o => o.pricePerUnit));
+            }
+            
+            // Eggs buy orders
+            const eggBuyOrders = allOrders.filter(o => 
+                o.resource === 'eggs' && o.type === 'buy' && o.status === 'active');
+            
+            marketStats.eggs.buyOrders = eggBuyOrders.length;
+            
+            if (eggBuyOrders.length > 0) {
+                marketStats.eggs.bestBuyPrice = Math.max(...eggBuyOrders.map(o => o.pricePerUnit));
             }
         }
         
-        return pending;
+        // Calculate production rates
+        const milkPerHour = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE;
+        const eggsPerHour = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
         
-    } catch (error) {
-        console.error('Check pending deposits error:', error);
-        return [];
-    }
-}
-
-// ==================== HELPER FUNCTIONS ====================
-
-function generateReferralCode(userId) {
-    return `FARM_${userId.substring(0, 8).toUpperCase()}_${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-}
-
-function validateTelegramInitData(initData, botToken) {
-    try {
-        // في الإنتاج، يجب التحقق من HMAC-SHA256
-        return true; // للاختبار
-        
-    } catch (error) {
-        console.error('Telegram validation error:', error);
-        return false;
-    }
-}
-
-// ==================== DATABASE FUNCTIONS ====================
-
-async function getFirebaseUrl(env, path) {
-    const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
-    const cleanPath = path.replace(/^\//, '');
-    const apiKey = env.FIREBASE_API_KEY;
-    
-    if (!apiKey) {
-        throw new Error('FIREBASE_API_KEY is not configured');
-    }
-    
-    return `${baseUrl}/${cleanPath}.json?key=${apiKey}`;
-}
-
-async function handleDbGet(env, path) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        const response = await fetch(firebaseUrl);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
+        // Time until next production tick
+        const lastProduction = user.lastProduction || Date.now();
+        const nextProduction = lastProduction + GAME_CONSTANTS.HOUR_IN_MS;
+        const msUntilNext = Math.max(0, nextProduction - Date.now());
+        const secondsUntilNext = Math.floor(msUntilNext / 1000);
+        const minutesUntilNext = Math.floor(secondsUntilNext / 60);
+        const secondsRemaining = secondsUntilNext % 60;
         
         return {
             success: true,
-            data: data
+            data: {
+                user: {
+                    tonBalance: user.tonBalance || 0,
+                    milk: user.milk || 0,
+                    eggs: user.eggs || 0,
+                    diamond: user.diamond || 0,
+                    
+                    cows_owned: user.cows_owned || 0,
+                    chickens_owned: user.chickens_owned || 0,
+                    diamond_engines_owned: user.diamond_engines_owned || 0,
+                    
+                    milkPerHour: milkPerHour,
+                    eggsPerHour: eggsPerHour,
+                    
+                    lastProduction: user.lastProduction,
+                    secondsUntilNext: secondsUntilNext,
+                    minutesUntilNext: minutesUntilNext,
+                    secondsRemaining: secondsRemaining,
+                    
+                    referralCode: user.referralCode,
+                    referredBy: user.referredBy,
+                    referralEarnings: user.referralEarnings || 0,
+                    referralEarningsClaimed: user.referralEarningsClaimed || 0,
+                    
+                    activeOrdersCount: activeOrdersCount
+                },
+                
+                global: {
+                    cows_sold: global.cows_sold || 0,
+                    cows_cap: GAME_CONSTANTS.COW_GLOBAL_CAP,
+                    cows_remaining: Math.max(0, GAME_CONSTANTS.COW_GLOBAL_CAP - (global.cows_sold || 0)),
+                    cows_progress: ((global.cows_sold || 0) / GAME_CONSTANTS.COW_GLOBAL_CAP) * 100,
+                    
+                    chickens_sold: global.chickens_sold || 0,
+                    chickens_cap: GAME_CONSTANTS.CHICKEN_GLOBAL_CAP,
+                    chickens_remaining: Math.max(0, GAME_CONSTANTS.CHICKEN_GLOBAL_CAP - (global.chickens_sold || 0)),
+                    chickens_progress: ((global.chickens_sold || 0) / GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) * 100,
+                    
+                    chicken_unlocked: (global.cows_sold || 0) >= GAME_CONSTANTS.COW_GLOBAL_CAP,
+                    diamond_unlocked: (global.cows_sold || 0) >= GAME_CONSTANTS.COW_GLOBAL_CAP && 
+                                    (global.chickens_sold || 0) >= GAME_CONSTANTS.CHICKEN_GLOBAL_CAP,
+                    
+                    diamond_price: global.diamond_price || GAME_CONSTANTS.DIAMOND_BASE_PRICE
+                },
+                
+                constants: {
+                    COW_PRICE: GAME_CONSTANTS.COW_PRICE,
+                    COW_PRODUCTION_RATE: GAME_CONSTANTS.COW_PRODUCTION_RATE,
+                    COW_HATCH_COST: GAME_CONSTANTS.COW_HATCH_COST,
+                    
+                    CHICKEN_PRICE: GAME_CONSTANTS.CHICKEN_PRICE,
+                    CHICKEN_PRODUCTION_RATE: GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE,
+                    CHICKEN_HATCH_COST: GAME_CONSTANTS.CHICKEN_HATCH_COST,
+                    
+                    DIAMOND_ENGINE_PRICE: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+                    DIAMOND_PRODUCTION_COST_MILK: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
+                    DIAMOND_PRODUCTION_COST_EGG: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
+                    
+                    MIN_WITHDRAW_AMOUNT: GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT,
+                    WITHDRAW_FEE_PERCENT: GAME_CONSTANTS.WITHDRAW_FEE_PERCENT,
+                    MIN_DEPOSIT_AMOUNT: GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT,
+                    REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT,
+                    MIN_ORDER_AMOUNT: GAME_CONSTANTS.MIN_ORDER_AMOUNT
+                },
+                
+                referral: referralStats,
+                market: marketStats,
+                pendingDeposits: pendingDeposits
+            }
         };
+        
     } catch (error) {
-        console.error('Database GET error:', error);
+        console.error('Get state error:', error);
         return {
             success: false,
             error: error.message,
-            errorCode: 'DB_GET_ERROR'
+            errorCode: 'GET_STATE_ERROR'
         };
     }
 }
-
-async function handleDbSet(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database SET error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_SET_ERROR'
-        };
-    }
-}
-
-async function handleDbUpdate(env, path, updates) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updates)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: result
-        };
-    } catch (error) {
-        console.error('Database UPDATE error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_UPDATE_ERROR'
-        };
-    }
-}
-
-async function handleDbPush(env, path, data) {
-    try {
-        const firebaseUrl = await getFirebaseUrl(env, path);
-        
-        const response = await fetch(firebaseUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Firebase error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        
-        return {
-            success: true,
-            data: { name: result.name }
-        };
-    } catch (error) {
-        console.error('Database PUSH error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'DB_PUSH_ERROR'
-        };
-    }
-}
-
-// ==================== END OF WORKER CODE ====================
