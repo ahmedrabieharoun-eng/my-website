@@ -15,7 +15,7 @@
     <!-- TON Connect SDK -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     
-    <!-- TON Core SDK - الحل الرسمي لبناء payload -->
+    <!-- TON Core SDK لإصلاح مشكلة payload -->
     <script src="https://cdn.jsdelivr.net/npm/@ton/core@0.56.0/dist/index.min.js"></script>
     
     <style>
@@ -1720,7 +1720,7 @@
         </div>
     </div>
 
-    <!-- ===== MODAL: DEPOSIT (مع الحل الصحيح لـ payload) ===== -->
+    <!-- ===== MODAL: DEPOSIT ===== -->
     <div class="modal-overlay" id="depositModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1777,7 +1777,7 @@
         // ============================================
         // FARM ECONOMY - COMPLETE FRONTEND
         // VERSION 3.0 - P2P MARKET, HATCH, DEPOSIT
-        // FIXED: TON Connect Payload Issue - الحل الرسمي
+        // FIXED: TON Connect Payload Issue - الحل الرسمي النهائي
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -1814,11 +1814,46 @@
             initialized: false
         };
 
+        // ---------- دالة مساعدة لتحميل مكتبة TON Core ديناميكياً =====
+        function loadTonCoreLibrary() {
+            return new Promise((resolve, reject) => {
+                // إذا كانت المكتبة موجودة بالفعل
+                if (window.tonCore || window.TON || window.core || window.TonCore) {
+                    console.log('✅ TON Core library already loaded');
+                    resolve();
+                    return;
+                }
+                
+                console.log('⏳ Loading TON Core library dynamically...');
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@ton/core@0.56.0/dist/index.min.js';
+                script.onload = () => {
+                    console.log('✅ TON Core library loaded dynamically');
+                    // انتظر قليلاً للتأكد من تهيئة المكتبة
+                    setTimeout(resolve, 100);
+                };
+                script.onerror = () => {
+                    console.error('❌ Failed to load TON Core library');
+                    reject(new Error('Failed to load TON Core library'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
         // ---------- INITIALIZATION ----------
         async function initApp() {
             console.log('Farm Economy · Initializing...');
             
             await setupTelegram();
+            
+            // تحميل مكتبة TON Core مسبقاً
+            try {
+                await loadTonCoreLibrary();
+                console.log('✅ TON Core library ready');
+            } catch (e) {
+                console.warn('⚠️ Could not preload TON Core:', e);
+            }
+            
             await initializeUser();
             
             setTimeout(() => initTONConnect(), 1000);
@@ -2594,7 +2629,7 @@
 
         // ============================================
         // FIXED: DEPOSIT FUNCTION - TON CONNECT PAYLOAD ISSUE
-        // الحل النهائي - إرسال payload بصيغة base64 BOC
+        // الحل النهائي باستخدام @ton/core فقط
         // ============================================
         window.initiateDeposit = async function() {
             if (!App.wallet) {
@@ -2610,81 +2645,75 @@
             }
             
             try {
-                const comment = String(App.userId);
+                const comment = App.userId;
                 const amountInNano = String(Math.floor(amount * 1000000000));
                 
-                // ✅ بناء Comment Cell رسمي باستخدام @ton/core
-                let payloadBase64 = '';
+                // ===== البحث عن مكتبة ton core بأسماء مختلفة محتملة =====
+                const tonCoreLib = window.tonCore || window.TON || window.core || window.TonCore;
                 
-                // التأكد من وجود مكتبة tonCore
-                if (window.tonCore && typeof window.tonCore.beginCell === 'function') {
-                    console.log('Using @ton/core library to build payload');
+                if (!tonCoreLib || typeof tonCoreLib.beginCell !== 'function') {
+                    console.error('❌ TON Core library not found');
                     
-                    // بناء الخلية: uint32(0) + string comment (الطريقة الصحيحة)
-                    const cell = window.tonCore.beginCell()
-                        .storeUint(0, 32)           // op-code 0 للتعليقات
-                        .storeStringTail(comment)    // نص التعليق (User ID)
-                        .endCell();
+                    // محاولة تحميل المكتبة ديناميكياً
+                    const statusDiv = document.getElementById('depositStatus');
+                    statusDiv.classList.add('visible');
+                    statusDiv.querySelector('.status-icon').innerHTML = '⏳';
+                    statusDiv.querySelector('.status-message').innerHTML = 'Loading TON library...';
                     
-                    // تحويل الخلية إلى BOC ثم إلى Base64
-                    // ملاحظة: بعض إصدارات المكتبة تتعامل مع toBoc بشكل مختلف
-                    if (typeof cell.toBoc === 'function') {
-                        const boc = cell.toBoc();
-                        // تحويل Uint8Array إلى base64
-                        payloadBase64 = btoa(String.fromCharCode.apply(null, boc));
-                    } else if (cell.hash) {
-                        // طريقة بديلة لبعض الإصدارات
-                        const boc = cell.toBoc ? cell.toBoc() : new TextEncoder().encode(comment);
-                        payloadBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(boc)));
+                    try {
+                        await loadTonCoreLibrary();
+                        // استدعاء الدالة مرة أخرى بعد التحميل
+                        await window.initiateDeposit();
+                        return;
+                    } catch (loadError) {
+                        alert('Failed to load TON library. Please refresh the page.');
+                        return;
                     }
-                    
-                    console.log('Payload built successfully');
-                } else {
-                    // Fallback يدوي - إذا لم تكن المكتبة متاحة
-                    console.warn('@ton/core not found, using fallback method');
-                    
-                    // طريقة يدوية: نبني payload بسيط مع op-code 0
-                    const encoder = new TextEncoder();
-                    const commentBytes = encoder.encode(comment);
-                    
-                    // 4 بايت op-code (0) + نص التعليق
-                    const totalBytes = new Uint8Array(4 + commentBytes.length);
-                    totalBytes[0] = 0;
-                    totalBytes[1] = 0;
-                    totalBytes[2] = 0;
-                    totalBytes[3] = 0;
-                    totalBytes.set(commentBytes, 4);
-                    
-                    payloadBase64 = btoa(String.fromCharCode.apply(null, totalBytes));
                 }
                 
-                // التأكد من أن payloadBase64 ليس فارغاً
-                if (!payloadBase64) {
-                    throw new Error('Failed to generate payload');
-                }
+                console.log('✅ Using @ton/core library to build payload');
                 
-                console.log('Payload base64 length:', payloadBase64.length);
+                // استخدام المكتبة لبناء الخلية بالطريقة الصحيحة
+                const { beginCell } = tonCoreLib;
+                
+                // بناء الخلية: uint32(0) + string comment
+                // هذا هو التنسيق الصحيح للتعليقات في TON
+                const cell = beginCell()
+                    .storeUint(0, 32)           // op-code 0 للتعليقات
+                    .storeStringTail(comment)    // نص التعليق (User ID)
+                    .endCell();
+                
+                // تحويل الخلية إلى BOC ثم إلى Base64
+                // هذا هو التنسيق الوحيد الذي تقبله محافظ TON
+                const payloadBase64 = cell.toBoc().toString('base64');
+                
+                console.log('✅ Payload built successfully');
+                console.log('Payload (first 50 chars):', payloadBase64.substring(0, 50) + '...');
+                
+                // التأكد أن الـ payload يبدأ بـ te6ccg (توقيع BOC الصحيح)
+                if (!payloadBase64.startsWith('te6ccg')) {
+                    console.warn('⚠️ Payload does not start with te6ccg, might be invalid');
+                }
                 
                 // إرسال المعاملة مع الـ payload الصحيح
+                console.log('🚀 Sending transaction...');
+                
                 const transaction = {
                     validUntil: Math.floor(Date.now() / 1000) + 600, // 10 دقائق صلاحية
                     messages: [
                         {
                             address: CONFIG.DEPOSIT_WALLET,
                             amount: amountInNano,
-                            payload: payloadBase64 // نرسل Base64 الناتج فقط - وليس أي object آخر
+                            payload: payloadBase64 // نرسل Base64 الناتج (BOC)
                         }
                     ]
                 };
                 
-                // إرسال المعاملة
                 const result = await App.tonConnectUI.sendTransaction(transaction);
-                
-                // معالجة النتيجة
                 await handleDepositSuccess(result, amount, comment);
                 
             } catch (error) {
-                console.error('Deposit error:', error);
+                console.error('❌ Deposit error:', error);
                 
                 let errorMessage = 'Transaction failed';
                 if (error.message?.includes('rejected')) {
@@ -2692,7 +2721,7 @@
                 } else if (error.message?.includes('insufficient')) {
                     errorMessage = 'Insufficient balance';
                 } else if (error.message?.includes('payload')) {
-                    errorMessage = 'Invalid payload format - please try again';
+                    errorMessage = 'Invalid transaction format';
                 }
                 
                 const statusDiv = document.getElementById('depositStatus');
