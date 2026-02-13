@@ -1594,7 +1594,7 @@
                 <h3 class="modal-title">
                     <i class="fas fa-tag" style="color: var(--red);"></i> Sell Order
                 </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
+                <i class="fas fa-times modal-close" onclick="closeAllModals()"></i>
             </div>
             
             <div class="form-group">
@@ -1641,7 +1641,7 @@
                 <h3 class="modal-title">
                     <i class="fas fa-cart-plus" style="color: var(--green);"></i> Buy Order
                 </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
+                <i class="fas fa-times modal-close" onclick="closeAllModals()"></i>
             </div>
             
             <div class="form-group">
@@ -1688,7 +1688,7 @@
                 <h3 class="modal-title">
                     <i class="fas fa-egg" style="color: var(--purple);"></i> Hatch Machine
                 </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
+                <i class="fas fa-times modal-close" onclick="closeAllModals()"></i>
             </div>
             
             <div class="hatch-option" id="hatchCowOption">
@@ -1724,7 +1724,7 @@
                 <h3 class="modal-title">
                     <i class="fas fa-arrow-down" style="color: var(--green);"></i> Deposit TON
                 </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
+                <i class="fas fa-times modal-close" onclick="closeAllModals()"></i>
             </div>
             
             <!-- Wallet Status -->
@@ -1774,7 +1774,6 @@
         // ============================================
         // FARM ECONOMY - COMPLETE FRONTEND
         // VERSION 3.0 - P2P MARKET, HATCH, DEPOSIT
-        // FIXED: TON Connect Payload Issue
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -1782,9 +1781,9 @@
             API_URL: 'https://silent-block-bedf.ahmedrabieharoun.workers.dev',
             BOT_USERNAME: '@testtt1257bot',
             DEPOSIT_WALLET: 'UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG',
-            PRODUCTION_INTERVAL: 60000,
-            MARKET_REFRESH: 15000,
-            DEPOSIT_VERIFY_INTERVAL: 10000
+            PRODUCTION_INTERVAL: 60000, // 1 minute
+            MARKET_REFRESH: 15000, // 15 seconds
+            DEPOSIT_VERIFY_INTERVAL: 10000 // 10 seconds
         };
 
         // ---------- GLOBAL STATE ----------
@@ -1815,16 +1814,25 @@
         async function initApp() {
             console.log('Farm Economy · Initializing...');
             
+            // 1. Setup Telegram
             await setupTelegram();
+            
+            // 2. Initialize user
             await initializeUser();
             
+            // 3. Setup TON Connect
             setTimeout(() => initTONConnect(), 1000);
             
+            // 4. Load game state
             await loadGameState();
             
+            // 5. Setup intervals
             setupIntervals();
+            
+            // 6. Setup event listeners
             setupEventListeners();
             
+            // 7. Hide loading screen
             setTimeout(() => {
                 let progress = 0;
                 const loadingBar = document.getElementById('loadingBar');
@@ -1858,10 +1866,12 @@
                     App.telegram.ready();
                     App.telegram.expand();
                     
+                    // Extract user data
                     if (App.telegram.initDataUnsafe && App.telegram.initDataUnsafe.user) {
                         const tgUser = App.telegram.initDataUnsafe.user;
                         App.userId = String(tgUser.id);
                         
+                        // Update UI with user info
                         document.getElementById('profileName').innerHTML = 
                             `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Farmer';
                         document.getElementById('profileUsername').innerHTML = 
@@ -1870,6 +1880,7 @@
                         document.getElementById('depositUserIdDisplay').innerHTML = App.userId;
                     }
                     
+                    // Check start parameter (referral)
                     if (App.telegram.initDataUnsafe && App.telegram.initDataUnsafe.start_param) {
                         const startParam = App.telegram.initDataUnsafe.start_param;
                         if (startParam.startsWith('ref_')) {
@@ -1879,6 +1890,7 @@
                     
                     resolve();
                 } else {
+                    // Demo mode
                     App.userId = 'demo_' + Math.floor(Math.random() * 1000000);
                     document.getElementById('profileName').innerHTML = 'Demo Farmer';
                     document.getElementById('profileUsername').innerHTML = '@demo';
@@ -1935,6 +1947,7 @@
                         }
                     });
                     
+                    // Restore connection if exists
                     setTimeout(() => {
                         if (App.tonConnectUI.connected) {
                             App.tonConnectUI.getWallets();
@@ -2012,7 +2025,7 @@
                 
                 if (!result.success) {
                     console.error(`API Error [${action}]:`, result.error);
-                    alert(result.error || 'Transaction failed');
+                    showNotification(result.error || 'Transaction failed', 'error');
                     throw new Error(result.error);
                 }
                 
@@ -2039,6 +2052,7 @@
                 
                 updateAllUI();
                 
+                // Check pending deposits
                 if (state.pendingDeposits && state.pendingDeposits.length > 0) {
                     const pending = state.pendingDeposits[0];
                     if (pending.status === 'pending') {
@@ -2163,6 +2177,7 @@
             document.getElementById('milkForDiamond').innerHTML = formatNumber(App.user.milk || 0);
             document.getElementById('eggsForDiamond').innerHTML = formatNumber(App.user.eggs || 0);
             
+            // Update conversion preview
             const convertAmount = document.getElementById('convertAmount').value || 0;
             const tonReceive = convertAmount * (App.global.diamond_price || 5);
             document.getElementById('tonReceiveMain').innerHTML = formatTON(tonReceive);
@@ -2254,16 +2269,19 @@
             if (!App.currentMarketResource) return;
             
             try {
+                // Fetch sell orders
                 const sellOrders = await callAPI('getMarketOrders', {
                     resource: App.currentMarketResource,
                     type: 'sell'
                 });
                 
+                // Fetch buy orders
                 const buyOrders = await callAPI('getMarketOrders', {
                     resource: App.currentMarketResource,
                     type: 'buy'
                 });
                 
+                // Update sell orders container
                 const sellContainer = document.getElementById('sellOrdersContainer');
                 if (sellOrders.orders && sellOrders.orders.length > 0) {
                     let html = '';
@@ -2287,7 +2305,7 @@
                             <div style="text-align: right;">
                                 <div class="order-price">${formatTON(pricePerUnit)} <small>TON</small></div>
                                 <div style="font-size: 11px; color: var(--text-muted);">Total: ${formatTON(total)} TON</div>
-                                <button class="btn btn-buy" style="padding: 8px 16px; margin-top: 8px;" onclick="window.executeOrder('${order.id}', ${order.remaining})">
+                                <button class="btn btn-buy" style="padding: 8px 16px; margin-top: 8px;" onclick="executeOrder('${order.id}', ${order.remaining})">
                                     Buy
                                 </button>
                             </div>
@@ -2298,6 +2316,7 @@
                     sellContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-inbox" style="font-size: 36px; margin-bottom: 12px; opacity: 0.5;"></i><p>No active sell orders</p></div>';
                 }
                 
+                // Update buy orders container
                 const buyContainer = document.getElementById('buyOrdersContainer');
                 if (buyOrders.orders && buyOrders.orders.length > 0) {
                     let html = '';
@@ -2321,7 +2340,7 @@
                             <div style="text-align: right;">
                                 <div class="order-price">${formatTON(pricePerUnit)} <small>TON</small></div>
                                 <div style="font-size: 11px; color: var(--text-muted);">Total: ${formatTON(total)} TON</div>
-                                <button class="btn btn-sell" style="padding: 8px 16px; margin-top: 8px;" onclick="window.executeOrder('${order.id}', ${order.remaining})">
+                                <button class="btn btn-sell" style="padding: 8px 16px; margin-top: 8px;" onclick="executeOrder('${order.id}', ${order.remaining})">
                                     Sell
                                 </button>
                             </div>
@@ -2332,12 +2351,14 @@
                     buyContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-secondary);"><i class="fas fa-inbox" style="font-size: 36px; margin-bottom: 12px; opacity: 0.5;"></i><p>No active buy orders</p></div>';
                 }
                 
+                // Update best price badges
                 const bestSell = App.market?.[App.currentMarketResource]?.bestSellPrice || 0;
                 const bestBuy = App.market?.[App.currentMarketResource]?.bestBuyPrice || 0;
                 
                 document.getElementById('bestSellPriceBadge').innerHTML = `<i class="fas fa-fire"></i> Best: ${formatTON(bestSell)} TON`;
                 document.getElementById('bestBuyPriceBadge').innerHTML = `<i class="fas fa-fire"></i> Best: ${formatTON(bestBuy)} TON`;
                 
+                // Load my orders
                 loadMyOrders();
                 
             } catch (error) {
@@ -2353,6 +2374,7 @@
                 const activeContainer = document.getElementById('myActiveOrders');
                 const filledContainer = document.getElementById('myFilledOrders');
                 
+                // Active orders
                 if (orders.active && orders.active.length > 0) {
                     let html = '';
                     orders.active.forEach(order => {
@@ -2366,7 +2388,7 @@
                             </div>
                             <div style="display: flex; justify-content: space-between; width: 100%;">
                                 <span style="color: var(--text-secondary);">${formatNumber(order.remaining)}/${formatNumber(order.quantity)} units</span>
-                                <button class="btn btn-secondary" style="padding: 6px 12px; width: auto;" onclick="window.cancelOrder('${order.id}')">
+                                <button class="btn btn-secondary" style="padding: 6px 12px; width: auto;" onclick="cancelOrder('${order.id}')">
                                     Cancel
                                 </button>
                             </div>
@@ -2377,6 +2399,7 @@
                     activeContainer.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-secondary);"><p>No active orders</p></div>';
                 }
                 
+                // Filled orders
                 if (orders.filled && orders.filled.length > 0) {
                     let html = '';
                     orders.filled.slice(0, 5).forEach(order => {
@@ -2420,9 +2443,9 @@
                     quantity: qty
                 });
                 
-                alert('Order executed successfully!');
+                showNotification('Order executed successfully!', 'success');
                 loadGameState();
-                window.closeAllModals();
+                closeAllModals();
                 
             } catch (error) {
                 console.error('Execute order error:', error);
@@ -2435,7 +2458,7 @@
             
             try {
                 await callAPI('cancelOrder', { orderId });
-                alert('Order cancelled');
+                showNotification('Order cancelled', 'success');
                 loadGameState();
             } catch (error) {
                 console.error('Cancel order error:', error);
@@ -2447,7 +2470,7 @@
             try {
                 const result = await callAPI('buyCow');
                 await loadGameState();
-                alert('✅ Cow machine purchased!');
+                showNotification('✅ Cow machine purchased!', 'success');
             } catch (error) {
                 console.error('Buy cow error:', error);
             }
@@ -2458,7 +2481,7 @@
             try {
                 const result = await callAPI('buyChicken');
                 await loadGameState();
-                alert('✅ Chicken machine purchased!');
+                showNotification('✅ Chicken machine purchased!', 'success');
             } catch (error) {
                 console.error('Buy chicken error:', error);
             }
@@ -2469,7 +2492,7 @@
             try {
                 const result = await callAPI('buyDiamondEngine');
                 await loadGameState();
-                alert('✅ Diamond Engine purchased!');
+                showNotification('✅ Diamond Engine purchased!', 'success');
             } catch (error) {
                 console.error('Buy diamond engine error:', error);
             }
@@ -2480,7 +2503,7 @@
             try {
                 const result = await callAPI('startDiamondProduction');
                 await loadGameState();
-                alert('💎 Diamond produced!');
+                showNotification('💎 Diamond produced!', 'success');
             } catch (error) {
                 console.error('Diamond production error:', error);
             }
@@ -2493,8 +2516,8 @@
             try {
                 const result = await callAPI('hatchCow', { amount });
                 await loadGameState();
-                alert(`🐮 Hatched ${amount} Cow(s)!`);
-                window.closeAllModals();
+                showNotification(`🐮 Hatched ${amount} Cow(s)!`, 'success');
+                closeAllModals();
             } catch (error) {
                 console.error('Hatch cow error:', error);
             }
@@ -2507,8 +2530,8 @@
             try {
                 const result = await callAPI('hatchChicken', { amount });
                 await loadGameState();
-                alert(`🐔 Hatched ${amount} Chicken(s)!`);
-                window.closeAllModals();
+                showNotification(`🐔 Hatched ${amount} Chicken(s)!`, 'success');
+                closeAllModals();
             } catch (error) {
                 console.error('Hatch chicken error:', error);
             }
@@ -2532,7 +2555,7 @@
                 const result = await callAPI('convertDiamond', { amount });
                 await loadGameState();
                 document.getElementById('convertAmount').value = '';
-                alert(`✅ Converted ${amount} 💎 to ${result.tonReceived} TON`);
+                showNotification(`✅ Converted ${amount} 💎 to ${result.tonReceived} TON`, 'success');
             } catch (error) {
                 console.error('Convert diamond error:', error);
             }
@@ -2543,7 +2566,7 @@
             try {
                 const result = await callAPI('claimReferralEarnings');
                 await loadGameState();
-                alert(`✅ Claimed ${result.claimedAmount} TON!`);
+                showNotification(`✅ Claimed ${result.claimedAmount} TON!`, 'success');
             } catch (error) {
                 console.error('Claim referral error:', error);
             }
@@ -2574,8 +2597,8 @@
                 await loadGameState();
                 document.getElementById('withdrawAmount').value = '';
                 document.getElementById('withdrawAddress').value = '';
-                alert(`✅ Withdrawal requested: ${result.netAmount} TON`);
-                window.closeAllModals();
+                showNotification(`✅ Withdrawal requested: ${result.netAmount} TON`, 'success');
+                closeAllModals();
             } catch (error) {
                 console.error('Withdraw error:', error);
             }
@@ -2586,12 +2609,10 @@
             const input = document.getElementById('referralLink');
             input.select();
             navigator.clipboard.writeText(input.value);
-            alert('✅ Link copied!');
+            showNotification('✅ Link copied!', 'success');
         };
 
-        // ============================================
-        // FIXED: DEPOSIT FUNCTION - TON CONNECT PAYLOAD ISSUE
-        // ============================================
+        // ---------- DEPOSIT (FIXED VERSION) ----------
         window.initiateDeposit = async function() {
             if (!App.wallet) {
                 alert('Connect wallet first');
@@ -2606,99 +2627,51 @@
             }
             
             try {
-                const comment = App.userId;
-                const amountInNano = String(Math.floor(amount * 1000000000));
-                
-                // أول محاولة - تنسيق comment مباشر
+                // ✅ FIX: Using textComment instead of payload
+                // This is the correct way to send a simple text comment with TON Connect
                 const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 600,
+                    validUntil: Math.floor(Date.now() / 1000) + 300,
                     messages: [
                         {
                             address: CONFIG.DEPOSIT_WALLET,
-                            amount: amountInNano,
-                            payload: comment
+                            amount: String(Math.floor(amount * 1000000000)),
+                            textComment: App.userId // ✅ User ID as plain text comment
                         }
                     ]
                 };
                 
-                let result;
+                const result = await App.tonConnectUI.sendTransaction(transaction);
                 
-                try {
-                    // المحاولة الأولى
-                    result = await App.tonConnectUI.sendTransaction(transaction);
-                } catch (error) {
-                    console.log('First attempt failed, trying second format...', error);
-                    
-                    // المحاولة الثانية - تنسيق comment كـ object
-                    const transactionWithComment = {
-                        validUntil: Math.floor(Date.now() / 1000) + 600,
-                        messages: [
-                            {
-                                address: CONFIG.DEPOSIT_WALLET,
-                                amount: amountInNano,
-                                payload: {
-                                    type: 'comment',
-                                    value: comment
-                                }
-                            }
-                        ]
-                    };
-                    
-                    result = await App.tonConnectUI.sendTransaction(transactionWithComment);
-                }
-                
-                await handleDepositSuccess(result, amount, comment);
-                
-            } catch (error) {
-                console.error('Deposit error:', error);
-                
-                let errorMessage = 'Transaction failed';
-                if (error.message?.includes('payload')) {
-                    errorMessage = 'Invalid comment format. Please try again.';
-                } else if (error.message?.includes('rejected')) {
-                    errorMessage = 'Transaction rejected in wallet';
-                } else if (error.message?.includes('insufficient')) {
-                    errorMessage = 'Insufficient balance';
-                }
-                
-                const statusDiv = document.getElementById('depositStatus');
-                statusDiv.classList.add('visible');
-                statusDiv.querySelector('.status-icon').innerHTML = '❌';
-                statusDiv.querySelector('.status-message').innerHTML = errorMessage;
-                document.getElementById('depositStatusDetail').innerHTML = error.message || 'Please try again';
-            }
-        };
-
-        // ---------- HANDLE DEPOSIT SUCCESS ----------
-        async function handleDepositSuccess(result, amount, comment) {
-            try {
+                // Send to server
                 const depositResult = await callAPI('deposit', {
                     amount: amount,
                     txHash: result.boc,
-                    comment: comment
+                    comment: App.userId
                 });
                 
                 App.currentDepositId = depositResult.depositId;
                 App.currentTxHash = result.boc;
                 
+                // Show status
                 const statusDiv = document.getElementById('depositStatus');
                 statusDiv.classList.add('visible');
                 statusDiv.querySelector('.status-icon').innerHTML = '⏳';
                 statusDiv.querySelector('.status-message').innerHTML = 'Transaction sent!';
                 document.getElementById('depositStatusDetail').innerHTML = 'Verifying on blockchain...';
                 
+                // Start verification
                 startDepositVerification(depositResult.depositId, result.boc);
                 
             } catch (error) {
-                console.error('Deposit API error:', error);
+                console.error('Deposit error:', error);
                 
                 const statusDiv = document.getElementById('depositStatus');
                 statusDiv.classList.add('visible');
                 statusDiv.querySelector('.status-icon').innerHTML = '❌';
-                statusDiv.querySelector('.status-message').innerHTML = 'Failed to process deposit';
-                document.getElementById('depositStatusDetail').innerHTML = error.message;
+                statusDiv.querySelector('.status-message').innerHTML = 'Transaction failed';
+                document.getElementById('depositStatusDetail').innerHTML = error.message || 'Please try again';
             }
-        }
+        };
 
         // ---------- DEPOSIT VERIFICATION ----------
         function startDepositVerification(depositId, txHash) {
@@ -2707,7 +2680,7 @@
             }
             
             let attempts = 0;
-            const maxAttempts = 18;
+            const maxAttempts = 18; // 3 minutes
             
             App.depositCheckInterval = setInterval(async () => {
                 attempts++;
@@ -2730,7 +2703,7 @@
                         
                         setTimeout(() => {
                             statusDiv.classList.remove('visible');
-                            window.closeAllModals();
+                            closeAllModals();
                         }, 3000);
                     }
                     
@@ -2763,6 +2736,12 @@
             }
         }
 
+        // ---------- NOTIFICATIONS ----------
+        function showNotification(message, type = 'info') {
+            // Simple alert for now - can be enhanced
+            alert(message);
+        }
+
         // ---------- FORMATTERS ----------
         function formatNumber(num) {
             if (num === null || num === undefined) return '0';
@@ -2778,6 +2757,7 @@
 
         // ---------- INTERVALS ----------
         function setupIntervals() {
+            // Production timer update every second
             if (App.timerInterval) clearInterval(App.timerInterval);
             App.timerInterval = setInterval(() => {
                 if (App.user && App.user.secondsUntilNext > 0) {
@@ -2788,6 +2768,7 @@
                 }
             }, 1000);
             
+            // Market refresh
             if (App.marketInterval) clearInterval(App.marketInterval);
             App.marketInterval = setInterval(() => {
                 if (App.currentMarketResource) {
@@ -2795,6 +2776,7 @@
                 }
             }, CONFIG.MARKET_REFRESH);
             
+            // Full state refresh every 30 seconds
             setInterval(() => {
                 loadGameState();
             }, 30000);
@@ -2851,8 +2833,8 @@
                     pricePerUnit: price
                 });
                 
-                alert('✅ Sell order created');
-                window.closeAllModals();
+                showNotification('✅ Sell order created', 'success');
+                closeAllModals();
                 loadGameState();
                 
             } catch (error) {
@@ -2888,8 +2870,8 @@
                     pricePerUnit: price
                 });
                 
-                alert('✅ Buy order created');
-                window.closeAllModals();
+                showNotification('✅ Buy order created', 'success');
+                closeAllModals();
                 loadGameState();
                 
             } catch (error) {
@@ -2967,7 +2949,7 @@
             document.getElementById('submitSellOrderBtn').addEventListener('click', window.createSellOrder);
             document.getElementById('submitBuyOrderBtn').addEventListener('click', window.createBuyOrder);
             
-            // Deposit
+            // Deposit - FIXED: Use the corrected initiateDeposit function
             document.getElementById('depositButton').addEventListener('click', window.openDepositModal);
             document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
             document.getElementById('submitDepositBtn').addEventListener('click', window.initiateDeposit);
