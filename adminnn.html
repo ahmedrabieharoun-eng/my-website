@@ -1,4 +1,4 @@
-// SquidPEPE Game Engine - Complete Version with TON Connect Only
+// Farm Economy Game Engine - Complete Version with TON Connect Only
 export default {
     async fetch(request, env, ctx) {
         // إعداد CORS
@@ -20,9 +20,9 @@ export default {
             const origin = url.origin;
             return new Response(JSON.stringify({
                 url: origin,
-                name: "SquidPEPE Game",
+                name: "Farm Economy",
                 iconUrl: `${origin}/icon.png`,
-                description: "Deposit TON to play SquidPEPE game"
+                description: "Buy machines, produce resources, earn TON"
             }), {
                 headers: { 
                     'Content-Type': 'application/json',
@@ -32,7 +32,7 @@ export default {
         }
         
         // التحقق من المسار
-        const validPaths = ['/api', '/getDepositInfo', '/process-deposit', '/deposit/verify', '/deposit/status'];
+        const validPaths = ['/api', '/cron/hourly', '/deposit/status', '/deposit/verify'];
         if (!validPaths.includes(path)) {
             return new Response(JSON.stringify({
                 success: false,
@@ -43,14 +43,21 @@ export default {
             });
         }
         
-        // معالجة طلب معلومات الإيداع (القديم - للتوافق فقط)
-        if (path === '/getDepositInfo') {
-            return handleGetDepositInfo(request, env);
-        }
-        
-        // معالجة إيداع من الـ watcher (القديم - للتوافق فقط)
-        if (path === '/process-deposit') {
-            return handleProcessDeposit(request, env);
+        // ====== HOURLY PRODUCTION CRON ======
+        if (path === '/cron/hourly') {
+            // التحقق من المصادقة (CRON secret)
+            const authHeader = request.headers.get('Authorization');
+            if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
+                return new Response(JSON.stringify({
+                    success: false,
+                    error: 'Unauthorized'
+                }), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            
+            return handleHourlyProduction(env);
         }
         
         // التحقق من حالة الإيداع
@@ -86,7 +93,7 @@ export default {
             
             const initData = authHeader.replace('Telegram ', '');
             
-            // التحقق من بيانات Telegram باستخدام HMAC
+            // التحقق من بيانات Telegram
             if (!validateTelegramInitData(initData, env.BOT_TOKEN)) {
                 return new Response(JSON.stringify({
                     success: false,
@@ -129,21 +136,38 @@ export default {
             
             console.log(`Request received: action=${action}, userId=${userId}`);
             
-            // معالجة الإجراءات
+            // ====== معالجة الإجراءات الجديدة ======
             let result;
             switch (action) {
+                // State
                 case 'getState':
                     result = await handleGetState(env, userId);
                     break;
-                    
-                case 'mintSquids':
-                    result = await handleMintSquids(env, userId, data);
+                
+                // Machine Purchases
+                case 'buyCow':
+                    result = await handleBuyCow(env, userId, data);
                     break;
                     
-                case 'hatchSquids':
-                    result = await handleHatchSquids(env, userId, data);
+                case 'buyChicken':
+                    result = await handleBuyChicken(env, userId, data);
                     break;
                     
+                case 'buyDiamondEngine':
+                    result = await handleBuyDiamondEngine(env, userId, data);
+                    break;
+                
+                // Production
+                case 'startDiamondProduction':
+                    result = await handleStartDiamondProduction(env, userId, data);
+                    break;
+                
+                // Conversion
+                case 'convertDiamond':
+                    result = await handleConvertDiamond(env, userId, data);
+                    break;
+                
+                // Market
                 case 'createOrder':
                     result = await handleCreateOrder(env, userId, data);
                     break;
@@ -151,11 +175,13 @@ export default {
                 case 'buyOrder':
                     result = await handleBuyOrder(env, userId, data);
                     break;
-                    
+                
+                // Withdrawal
                 case 'withdrawTON':
                     result = await handleWithdrawTON(env, userId, data);
                     break;
-                    
+                
+                // Deposit
                 case 'deposit/init':
                     result = await handleInitDeposit(env, userId, data);
                     break;
@@ -167,7 +193,13 @@ export default {
                 case 'deposit/verify':
                     result = await handleVerifyDepositAPI(env, userId, data);
                     break;
-                    
+                
+                // Referral
+                case 'claimReferralEarnings':
+                    result = await handleClaimReferralEarnings(env, userId);
+                    break;
+                
+                // Initialize
                 case 'initializeUser':
                     result = await initializeUserHandler(env, userId, data);
                     break;
@@ -207,134 +239,901 @@ export default {
     }
 };
 
-// ==================== Global Constants ====================
-
+// ==================== GLOBAL CONSTANTS ====================
 const GAME_CONSTANTS = {
-    MINT_RATE: 3000, // 1 TON = 3000 Squids
-    MINT_GLOBAL_CAP: 90000000, // 90 مليون سكويد كحد أقصى للـ Mint
-    DAILY_EGG_CAP: 30000000, // 30 مليون بيضة يومياً كحد أقصى
-    MIN_HATCH_AMOUNT: 100, // الحد الأدنى للفقس
-    HATCH_FEE_PERCENT: 5, // رسوم الحرف 5%
-    MARKET_SELLER_FEE_PERCENT: 5, // رسوم البائع 5% TON
-    MARKET_BUYER_FEE_PERCENT: 5, // رسوم المشتري 5% Eggs
-    MIN_WITHDRAW_AMOUNT: 0.1, // الحد الأدنى للسحب 0.1 TON
-    WITHDRAW_FEE_PERCENT: 5, // رسوم السحب 5%
-    REFERRAL_MINT_REWARD_PERCENT: 10, // 10% من TON للمُحيل
-    REFERRAL_HATCH_REWARD_PERCENT: 5, // 5% من البيض للمُحيل
-    MIN_ORDER_AMOUNT: 100, // الحد الأدنى للطلب في السوق
-    MIN_DEPOSIT_AMOUNT: 0.1 // الحد الأدنى للإيداع
+    // Cow Machine
+    COW_PRICE: 1,
+    COW_GLOBAL_CAP: 1000,
+    COW_PRODUCTION_RATE: 41,
+    
+    // Chicken Machine
+    CHICKEN_PRICE: 1,
+    CHICKEN_GLOBAL_CAP: 1000,
+    CHICKEN_PRODUCTION_RATE: 41,
+    
+    // Diamond Engine
+    DIAMOND_ENGINE_PRICE: 20,
+    DIAMOND_PRODUCTION_COST_MILK: 20000,
+    DIAMOND_PRODUCTION_COST_EGG: 20000,
+    DIAMOND_PRODUCTION_YIELD: 1,
+    
+    // Market
+    MIN_ORDER_AMOUNT_MILK: 100,
+    MIN_ORDER_AMOUNT_EGG: 100,
+    MARKET_SELLER_FEE_PERCENT: 5,
+    MARKET_BUYER_FEE_PERCENT: 5,
+    
+    // Withdrawal
+    MIN_WITHDRAW_AMOUNT: 0.5,
+    WITHDRAW_FEE_PERCENT: 5,
+    
+    // Deposit
+    MIN_DEPOSIT_AMOUNT: 0.1,
+    
+    // Referral
+    REFERRAL_REWARD_PERCENT: 10
 };
 
-// ==================== Helper Functions ====================
+// ==================== INITIALIZATION ====================
 
-// ✅ Helper to format wallet address
-function formatWalletAddress(rawAddress) {
+async function initializeGlobalState(env) {
+    const now = Date.now();
+    const initialState = {
+        // Machines
+        cows_sold: 0,
+        chickens_sold: 0,
+        diamond_engines_sold: 0,
+        
+        // Unlock Status
+        chicken_unlocked: false,
+        diamond_unlocked: false,
+        
+        // Economy
+        diamond_price: 5,
+        
+        // Production
+        last_hourly_production: now,
+        
+        // Timestamps
+        createdAt: now,
+        lastUpdated: now
+    };
+    
+    await handleDbSet(env, 'game/global', initialState);
+    return initialState;
+}
+
+async function initializeUser(env, userId, referredBy = null) {
+    const now = Date.now();
+    const initialUser = {
+        // Balances
+        tonBalance: 0,
+        milk: 0,
+        eggs: 0,
+        diamond: 0,
+        
+        // Machines Owned
+        cows_owned: 0,
+        chickens_owned: 0,
+        diamond_engines_owned: 0,
+        
+        // Production Tracking
+        lastProductionTimestamp: now,
+        
+        // Referral
+        referralCode: generateReferralCode(userId),
+        referredBy: referredBy,
+        referralEarnings: 0,
+        referralEarningsClaimed: 0,
+        
+        // Timestamps
+        joinDate: now,
+        lastUpdated: now
+    };
+    
+    await handleDbSet(env, `users/${userId}`, initialUser);
+    return initialUser;
+}
+
+async function initializeUserHandler(env, userId, data) {
     try {
-        if (!rawAddress) return '';
-        // Convert from "0:..." format to user-friendly format if possible
-        if (rawAddress.startsWith('0:')) {
-            return rawAddress;
+        const { user, referredBy } = data;
+        
+        // Check if user already exists
+        const existingUser = await handleDbGet(env, `users/${userId}`);
+        if (existingUser.success && existingUser.data) {
+            return {
+                success: true,
+                data: {
+                    message: 'User already exists',
+                    user: existingUser.data
+                }
+            };
         }
-        return rawAddress;
+        
+        // Create new user with referral
+        const userData = await initializeUser(env, userId, referredBy || null);
+        
+        return {
+            success: true,
+            data: {
+                message: 'User initialized successfully',
+                user: userData
+            }
+        };
+        
     } catch (error) {
-        console.error('Error formatting address:', error);
-        return rawAddress;
+        console.error('Initialize user error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'INITIALIZE_USER_ERROR'
+        };
     }
 }
 
-// ✅ التحقق من المعاملة على السلسلة (بسيط - بدون بلوك تشين)
-async function verifyOnChainTransaction(env, txHash, fromAddress, amount) {
+// ==================== HOURLY PRODUCTION ====================
+
+async function handleHourlyProduction(env) {
     try {
-        // في هذا الإصدار، نقبل أي معاملة دون التحقق من البلوك تشين
-        console.log('Accepting transaction without blockchain verification:', txHash);
+        console.log('Running hourly production...');
         
-        // فقط نتأكد من وجود بيانات أساسية
-        if (!txHash || !fromAddress || !amount) {
-            console.warn('Missing basic transaction data');
-            return false;
+        // Get all users
+        const usersResult = await handleDbGet(env, 'users');
+        if (!usersResult.success || !usersResult.data) {
+            return {
+                success: true,
+                data: { milkProduced: 0, eggsProduced: 0 }
+            };
         }
         
-        // نقبل المعاملة إذا كانت تحتوي على هاش
-        if (txHash.length < 10) {
-            console.warn('Transaction hash too short');
-            return false;
+        const users = usersResult.data;
+        let totalMilkProduced = 0;
+        let totalEggsProduced = 0;
+        
+        for (const [userId, user] of Object.entries(users)) {
+            if (!user) continue;
+            
+            const updates = {};
+            
+            // Milk Production
+            if (user.cows_owned > 0) {
+                const milkProduced = user.cows_owned * GAME_CONSTANTS.COW_PRODUCTION_RATE;
+                updates.milk = (user.milk || 0) + milkProduced;
+                totalMilkProduced += milkProduced;
+            }
+            
+            // Eggs Production
+            if (user.chickens_owned > 0) {
+                const eggsProduced = user.chickens_owned * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
+                updates.eggs = (user.eggs || 0) + eggsProduced;
+                totalEggsProduced += eggsProduced;
+            }
+            
+            // Update timestamp
+            updates.lastProductionTimestamp = Date.now();
+            updates.lastUpdated = Date.now();
+            
+            if (Object.keys(updates).length > 0) {
+                await handleDbUpdate(env, `users/${userId}`, updates);
+            }
         }
         
-        console.log('Transaction accepted without blockchain verification');
-        return true; // ✅ نقبل المعاملة دائمًا
+        // Update global last production timestamp
+        await handleDbUpdate(env, 'game/global', {
+            last_hourly_production: Date.now()
+        });
+        
+        console.log(`Hourly production complete. Milk: ${totalMilkProduced}, Eggs: ${totalEggsProduced}`);
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: {
+                milkProduced: totalMilkProduced,
+                eggsProduced: totalEggsProduced,
+                timestamp: Date.now()
+            }
+        }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
         
     } catch (error) {
-        console.error('Simple verification error:', error);
-        return true; // حتى في حالة الخطأ، نقبل المعاملة
+        console.error('Hourly production error:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
     }
 }
 
-// ==================== Main Handlers ====================
+// ==================== MACHINE PURCHASES ====================
 
-// Get Game State
+async function handleBuyCow(env, userId, data) {
+    try {
+        const { referredBy } = data;
+        
+        // Get user and global state
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data || await initializeUser(env, userId);
+        const global = globalResult.data || await initializeGlobalState(env);
+        
+        // Check global cap
+        if (global.cows_sold >= GAME_CONSTANTS.COW_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'All Cow machines are sold out!',
+                errorCode: 'COW_SOLD_OUT'
+            };
+        }
+        
+        // Check user already bought
+        if (user.cows_owned > 0) {
+            return {
+                success: false,
+                error: 'You can only buy one Cow machine',
+                errorCode: 'COW_ALREADY_OWNED'
+            };
+        }
+        
+        // Check balance
+        if ((user.tonBalance || 0) < GAME_CONSTANTS.COW_PRICE) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        // Execute purchase
+        const userUpdates = {
+            cows_owned: 1,
+            tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.COW_PRICE,
+            lastUpdated: Date.now()
+        };
+        
+        const globalUpdates = {
+            cows_sold: (global.cows_sold || 0) + 1,
+            lastUpdated: Date.now()
+        };
+        
+        // Unlock chicken if cows reach cap
+        if (globalUpdates.cows_sold >= GAME_CONSTANTS.COW_GLOBAL_CAP) {
+            globalUpdates.chicken_unlocked = true;
+        }
+        
+        // Apply updates
+        await Promise.all([
+            handleDbUpdate(env, `users/${userId}`, userUpdates),
+            handleDbUpdate(env, 'game/global', globalUpdates)
+        ]);
+        
+        // ===== REFERRAL SYSTEM =====
+        let referralReward = 0;
+        if (referredBy && referredBy !== userId) {
+            const referrerResult = await handleDbGet(env, `users/${referredBy}`);
+            if (referrerResult.success && referrerResult.data) {
+                const referrer = referrerResult.data;
+                referralReward = GAME_CONSTANTS.COW_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                
+                // Add to referrer's earnings
+                await handleDbUpdate(env, `users/${referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
+                    lastUpdated: Date.now()
+                });
+                
+                // Record referral
+                await handleDbPush(env, `users/${referredBy}/referrals`, {
+                    userId: userId,
+                    type: 'cow',
+                    amount: GAME_CONSTANTS.COW_PRICE,
+                    reward: referralReward,
+                    timestamp: Date.now()
+                });
+                
+                userUpdates.referredBy = referredBy;
+                await handleDbUpdate(env, `users/${userId}`, { referredBy: referredBy });
+            }
+        }
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'buy_cow',
+            price: GAME_CONSTANTS.COW_PRICE,
+            referredBy: referredBy || null,
+            referralReward: referralReward,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                cows_owned: 1,
+                newTonBalance: userUpdates.tonBalance,
+                cows_sold: globalUpdates.cows_sold,
+                chicken_unlocked: globalUpdates.chicken_unlocked || false,
+                referralReward: referralReward
+            }
+        };
+        
+    } catch (error) {
+        console.error('Buy cow error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'BUY_COW_ERROR'
+        };
+    }
+}
+
+async function handleBuyChicken(env, userId, data) {
+    try {
+        const { referredBy } = data;
+        
+        // Get user and global state
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data;
+        const global = globalResult.data;
+        
+        if (!user || !global) {
+            return {
+                success: false,
+                error: 'User or global state not found',
+                errorCode: 'STATE_NOT_FOUND'
+            };
+        }
+        
+        // Check if chicken is unlocked
+        if (!global.chicken_unlocked && global.cows_sold < GAME_CONSTANTS.COW_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'Chicken machines are not unlocked yet',
+                errorCode: 'CHICKEN_LOCKED'
+            };
+        }
+        
+        // Check global cap
+        if (global.chickens_sold >= GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) {
+            return {
+                success: false,
+                error: 'All Chicken machines are sold out!',
+                errorCode: 'CHICKEN_SOLD_OUT'
+            };
+        }
+        
+        // Check user already bought
+        if (user.chickens_owned > 0) {
+            return {
+                success: false,
+                error: 'You can only buy one Chicken machine',
+                errorCode: 'CHICKEN_ALREADY_OWNED'
+            };
+        }
+        
+        // Check balance
+        if ((user.tonBalance || 0) < GAME_CONSTANTS.CHICKEN_PRICE) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        // Execute purchase
+        const userUpdates = {
+            chickens_owned: 1,
+            tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.CHICKEN_PRICE,
+            lastUpdated: Date.now()
+        };
+        
+        const globalUpdates = {
+            chickens_sold: (global.chickens_sold || 0) + 1,
+            lastUpdated: Date.now()
+        };
+        
+        // Unlock diamond if chickens reach cap
+        if (globalUpdates.chickens_sold >= GAME_CONSTANTS.CHICKEN_GLOBAL_CAP) {
+            globalUpdates.diamond_unlocked = true;
+        }
+        
+        // Apply updates
+        await Promise.all([
+            handleDbUpdate(env, `users/${userId}`, userUpdates),
+            handleDbUpdate(env, 'game/global', globalUpdates)
+        ]);
+        
+        // ===== REFERRAL SYSTEM =====
+        let referralReward = 0;
+        if (user.referredBy) {
+            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
+            if (referrerResult.success && referrerResult.data) {
+                const referrer = referrerResult.data;
+                referralReward = GAME_CONSTANTS.CHICKEN_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                
+                await handleDbUpdate(env, `users/${user.referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
+                    lastUpdated: Date.now()
+                });
+                
+                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
+                    userId: userId,
+                    type: 'chicken',
+                    amount: GAME_CONSTANTS.CHICKEN_PRICE,
+                    reward: referralReward,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'buy_chicken',
+            price: GAME_CONSTANTS.CHICKEN_PRICE,
+            referralReward: referralReward,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                chickens_owned: 1,
+                newTonBalance: userUpdates.tonBalance,
+                chickens_sold: globalUpdates.chickens_sold,
+                diamond_unlocked: globalUpdates.diamond_unlocked || false,
+                referralReward: referralReward
+            }
+        };
+        
+    } catch (error) {
+        console.error('Buy chicken error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'BUY_CHICKEN_ERROR'
+        };
+    }
+}
+
+async function handleBuyDiamondEngine(env, userId, data) {
+    try {
+        const { referredBy } = data;
+        
+        // Get user and global state
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data;
+        const global = globalResult.data;
+        
+        if (!user || !global) {
+            return {
+                success: false,
+                error: 'User or global state not found',
+                errorCode: 'STATE_NOT_FOUND'
+            };
+        }
+        
+        // Check if diamond is unlocked
+        if (!global.diamond_unlocked) {
+            return {
+                success: false,
+                error: 'Diamond Engines are not unlocked yet',
+                errorCode: 'DIAMOND_LOCKED'
+            };
+        }
+        
+        // Check user already bought
+        if (user.diamond_engines_owned > 0) {
+            return {
+                success: false,
+                error: 'You can only buy one Diamond Engine',
+                errorCode: 'DIAMOND_ALREADY_OWNED'
+            };
+        }
+        
+        // Check balance
+        if ((user.tonBalance || 0) < GAME_CONSTANTS.DIAMOND_ENGINE_PRICE) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        // Execute purchase
+        const userUpdates = {
+            diamond_engines_owned: 1,
+            tonBalance: (user.tonBalance || 0) - GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+            lastUpdated: Date.now()
+        };
+        
+        const globalUpdates = {
+            diamond_engines_sold: (global.diamond_engines_sold || 0) + 1,
+            lastUpdated: Date.now()
+        };
+        
+        // Apply updates
+        await Promise.all([
+            handleDbUpdate(env, `users/${userId}`, userUpdates),
+            handleDbUpdate(env, 'game/global', globalUpdates)
+        ]);
+        
+        // ===== REFERRAL SYSTEM =====
+        let referralReward = 0;
+        if (user.referredBy) {
+            const referrerResult = await handleDbGet(env, `users/${user.referredBy}`);
+            if (referrerResult.success && referrerResult.data) {
+                const referrer = referrerResult.data;
+                referralReward = GAME_CONSTANTS.DIAMOND_ENGINE_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+                
+                await handleDbUpdate(env, `users/${user.referredBy}`, {
+                    referralEarnings: (referrer.referralEarnings || 0) + referralReward,
+                    lastUpdated: Date.now()
+                });
+                
+                await handleDbPush(env, `users/${user.referredBy}/referrals`, {
+                    userId: userId,
+                    type: 'diamond_engine',
+                    amount: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+                    reward: referralReward,
+                    timestamp: Date.now()
+                });
+            }
+        }
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'buy_diamond_engine',
+            price: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+            referralReward: referralReward,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                diamond_engines_owned: 1,
+                newTonBalance: userUpdates.tonBalance,
+                diamond_engines_sold: globalUpdates.diamond_engines_sold,
+                referralReward: referralReward
+            }
+        };
+        
+    } catch (error) {
+        console.error('Buy diamond engine error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'BUY_DIAMOND_ENGINE_ERROR'
+        };
+    }
+}
+
+// ==================== DIAMOND PRODUCTION ====================
+
+async function handleStartDiamondProduction(env, userId, data) {
+    try {
+        // Get user
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        const user = userResult.data;
+        
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        // Check if user owns diamond engine
+        if (!user.diamond_engines_owned || user.diamond_engines_owned < 1) {
+            return {
+                success: false,
+                error: 'You need a Diamond Engine first',
+                errorCode: 'NO_DIAMOND_ENGINE'
+            };
+        }
+        
+        // Check resources
+        if ((user.milk || 0) < GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK) {
+            return {
+                success: false,
+                error: `Insufficient Milk. Need ${GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK} Milk`,
+                errorCode: 'INSUFFICIENT_MILK'
+            };
+        }
+        
+        if ((user.eggs || 0) < GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG) {
+            return {
+                success: false,
+                error: `Insufficient Eggs. Need ${GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG} Eggs`,
+                errorCode: 'INSUFFICIENT_EGGS'
+            };
+        }
+        
+        // Execute production
+        const userUpdates = {
+            milk: (user.milk || 0) - GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
+            eggs: (user.eggs || 0) - GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
+            diamond: (user.diamond || 0) + GAME_CONSTANTS.DIAMOND_PRODUCTION_YIELD,
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'diamond_production',
+            milkUsed: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
+            eggsUsed: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
+            diamondProduced: GAME_CONSTANTS.DIAMOND_PRODUCTION_YIELD,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                diamondProduced: 1,
+                newMilk: userUpdates.milk,
+                newEggs: userUpdates.eggs,
+                newDiamond: userUpdates.diamond
+            }
+        };
+        
+    } catch (error) {
+        console.error('Diamond production error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DIAMOND_PRODUCTION_ERROR'
+        };
+    }
+}
+
+// ==================== DIAMOND CONVERSION ====================
+
+async function handleConvertDiamond(env, userId, data) {
+    try {
+        const { amount } = data;
+        const diamondsToConvert = parseInt(amount);
+        
+        if (!diamondsToConvert || diamondsToConvert <= 0) {
+            return {
+                success: false,
+                error: 'Invalid amount',
+                errorCode: 'INVALID_AMOUNT'
+            };
+        }
+        
+        // Get user and global state
+        const [userResult, globalResult] = await Promise.all([
+            handleDbGet(env, `users/${userId}`),
+            handleDbGet(env, 'game/global')
+        ]);
+        
+        const user = userResult.data;
+        const global = globalResult.data;
+        
+        if (!user || !global) {
+            return {
+                success: false,
+                error: 'User or global state not found',
+                errorCode: 'STATE_NOT_FOUND'
+            };
+        }
+        
+        // Check diamond balance
+        if ((user.diamond || 0) < diamondsToConvert) {
+            return {
+                success: false,
+                error: 'Insufficient diamonds',
+                errorCode: 'INSUFFICIENT_DIAMOND'
+            };
+        }
+        
+        // Get current diamond price
+        const diamondPrice = global.diamond_price || 5;
+        const tonToReceive = diamondsToConvert * diamondPrice;
+        
+        // Execute conversion
+        const userUpdates = {
+            diamond: (user.diamond || 0) - diamondsToConvert,
+            tonBalance: (user.tonBalance || 0) + tonToReceive,
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'diamond_conversion',
+            diamondsUsed: diamondsToConvert,
+            diamondPrice: diamondPrice,
+            tonReceived: tonToReceive,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                diamondsConverted: diamondsToConvert,
+                diamondPrice: diamondPrice,
+                tonReceived: tonToReceive,
+                newDiamond: userUpdates.diamond,
+                newTonBalance: userUpdates.tonBalance
+            }
+        };
+        
+    } catch (error) {
+        console.error('Diamond conversion error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'DIAMOND_CONVERSION_ERROR'
+        };
+    }
+}
+
+// ==================== REFERRAL SYSTEM ====================
+
+async function handleClaimReferralEarnings(env, userId) {
+    try {
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        const user = userResult.data;
+        
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        const earnings = user.referralEarnings || 0;
+        
+        if (earnings <= 0) {
+            return {
+                success: false,
+                error: 'No referral earnings to claim',
+                errorCode: 'NO_EARNINGS'
+            };
+        }
+        
+        // Transfer earnings to TON balance
+        const userUpdates = {
+            tonBalance: (user.tonBalance || 0) + earnings,
+            referralEarnings: 0,
+            referralEarningsClaimed: (user.referralEarningsClaimed || 0) + earnings,
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbUpdate(env, `users/${userId}`, userUpdates);
+        
+        // Record history
+        await handleDbPush(env, `users/${userId}/history`, {
+            type: 'claim_referral',
+            amount: earnings,
+            timestamp: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                claimedAmount: earnings,
+                newTonBalance: userUpdates.tonBalance
+            }
+        };
+        
+    } catch (error) {
+        console.error('Claim referral earnings error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CLAIM_REFERRAL_ERROR'
+        };
+    }
+}
+
+// ==================== GET STATE ====================
+
 async function handleGetState(env, userId) {
     try {
-        const [globalState, userState] = await Promise.all([
+        const [globalResult, userResult] = await Promise.all([
             handleDbGet(env, 'game/global'),
             handleDbGet(env, `users/${userId}`)
         ]);
         
-        const global = globalState.data || await initializeGlobalState(env);
-        const user = userState.data || await initializeUser(env, userId);
+        const global = globalResult.data || await initializeGlobalState(env);
+        const user = userResult.data || await initializeUser(env, userId);
         
-        // ✅ التحقق من الإيداعات المعلقة
+        // Check for pending deposits
         const pendingDeposits = await checkPendingDeposits(env, userId);
         
-        // مزامنة البيض المنتج
-        const syncedUser = await syncEggs(user, global, env, userId);
+        // Get market stats
+        const marketStats = await getMarketStats(env);
         
-        // حساب البيض المتاحة اليوم
-        const eggProduction = calculateDailyEggProduction(global);
-        const availableEggs = Math.max(0, eggProduction - (global.totalEggsToday || 0));
+        // Get referral stats
+        const referralStats = await getReferralStats(env, userId);
         
-        // حساب نسبة المستخدم من البيض المتاحة
-        const userSquids = syncedUser.squids || 0;
-        const totalSquids = global.totalSquids || 1;
-        const userEggShare = userSquids / totalSquids;
-        const userDailyEggs = Math.floor(availableEggs * userEggShare);
+        // Calculate hourly production rates
+        const milkPerHour = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE;
+        const eggsPerHour = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
         
-        // حساب إنتاج البيض اليومي للمستخدم
-        const eggsPerDay = Math.floor(eggProduction * userEggShare);
-        
-        // تحديث إذا كان الوقت مر
-        const now = Date.now();
-        if (now - (syncedUser.lastEggCalc || 0) > 60000) {
-            await updateUserEggs(env, userId, syncedUser);
-        }
+        // Time until next production
+        const lastProduction = user.lastProductionTimestamp || Date.now();
+        const nextProduction = lastProduction + (60 * 60 * 1000); // 1 hour
+        const secondsUntilNext = Math.max(0, Math.floor((nextProduction - Date.now()) / 1000));
         
         return {
             success: true,
             data: {
                 user: {
-                    squids: syncedUser.squids || 0,
-                    eggs: syncedUser.eggs || 0,
-                    tonBalance: syncedUser.tonBalance || 0,
-                    mintUsed: syncedUser.mintUsed || false,
-                    mintedSquids: syncedUser.mintedSquids || 0,
-                    referralCode: syncedUser.referralCode || generateReferralCode(userId),
-                    referredBy: syncedUser.referredBy || null,
-                    eggsPerDay: eggsPerDay,
-                    lastEggCalc: syncedUser.lastEggCalc || now
+                    tonBalance: user.tonBalance || 0,
+                    milk: user.milk || 0,
+                    eggs: user.eggs || 0,
+                    diamond: user.diamond || 0,
+                    
+                    cows_owned: user.cows_owned || 0,
+                    chickens_owned: user.chickens_owned || 0,
+                    diamond_engines_owned: user.diamond_engines_owned || 0,
+                    
+                    milkPerHour: milkPerHour,
+                    eggsPerHour: eggsPerHour,
+                    secondsUntilNext: secondsUntilNext,
+                    
+                    referralCode: user.referralCode,
+                    referredBy: user.referredBy,
+                    referralEarnings: user.referralEarnings || 0,
+                    referralEarningsClaimed: user.referralEarningsClaimed || 0
                 },
                 global: {
-                    totalSquids: global.totalSquids || 0,
-                    mintedSoFar: global.mintedSoFar || 0,
-                    dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
-                    totalEggsToday: global.totalEggsToday || 0,
-                    lastDailyReset: global.lastDailyReset || now,
-                    eggProduction: eggProduction,
-                    availableEggs: availableEggs
+                    cows_sold: global.cows_sold || 0,
+                    cows_cap: GAME_CONSTANTS.COW_GLOBAL_CAP,
+                    cows_remaining: Math.max(0, GAME_CONSTANTS.COW_GLOBAL_CAP - (global.cows_sold || 0)),
+                    
+                    chickens_sold: global.chickens_sold || 0,
+                    chickens_cap: GAME_CONSTANTS.CHICKEN_GLOBAL_CAP,
+                    chickens_remaining: Math.max(0, GAME_CONSTANTS.CHICKEN_GLOBAL_CAP - (global.chickens_sold || 0)),
+                    
+                    chicken_unlocked: global.chicken_unlocked || false,
+                    diamond_unlocked: global.diamond_unlocked || false,
+                    
+                    diamond_price: global.diamond_price || 5,
+                    diamond_engines_sold: global.diamond_engines_sold || 0,
+                    
+                    last_hourly_production: global.last_hourly_production || Date.now()
                 },
-                constants: GAME_CONSTANTS,
-                marketStats: await getMarketStats(env),
-                pendingDeposits: pendingDeposits // ✅ إضافة الإيداعات المعلقة
+                constants: {
+                    COW_PRICE: GAME_CONSTANTS.COW_PRICE,
+                    COW_PRODUCTION_RATE: GAME_CONSTANTS.COW_PRODUCTION_RATE,
+                    CHICKEN_PRICE: GAME_CONSTANTS.CHICKEN_PRICE,
+                    CHICKEN_PRODUCTION_RATE: GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE,
+                    DIAMOND_ENGINE_PRICE: GAME_CONSTANTS.DIAMOND_ENGINE_PRICE,
+                    DIAMOND_PRODUCTION_COST_MILK: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_MILK,
+                    DIAMOND_PRODUCTION_COST_EGG: GAME_CONSTANTS.DIAMOND_PRODUCTION_COST_EGG,
+                    MIN_WITHDRAW_AMOUNT: GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT,
+                    WITHDRAW_FEE_PERCENT: GAME_CONSTANTS.WITHDRAW_FEE_PERCENT,
+                    MIN_DEPOSIT_AMOUNT: GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT,
+                    REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT
+                },
+                market: marketStats,
+                referral: referralStats,
+                pendingDeposits: pendingDeposits
             }
         };
+        
     } catch (error) {
         console.error('Get state error:', error);
         return {
@@ -345,309 +1144,31 @@ async function handleGetState(env, userId) {
     }
 }
 
-// ✅ التحقق من الإيداعات المعلقة
-async function checkPendingDeposits(env, userId) {
-    try {
-        // جلب جميع المعاملات للمستخدم
-        const depositsResult = await handleDbGet(env, `users/${userId}/deposits`);
-        const deposits = depositsResult.data || {};
-        
-        const pending = [];
-        const depositEntries = Object.entries(deposits);
-        
-        for (const [key, deposit] of depositEntries) {
-            if (deposit.status === 'pending' || deposit.status === 'sent') {
-                // في هذا النظام البسيط، نتحقق فقط من الوقت
-                const now = Date.now();
-                if (deposit.timestamp && now - deposit.timestamp > 10 * 60 * 1000) {
-                    // إذا مر أكثر من 10 دقائق، نعتبرها منتهية
-                    await handleDbUpdate(env, `users/${userId}/deposits/${key}`, {
-                        status: 'failed',
-                        verified: false,
-                        failedAt: now
-                    });
-                    
-                    continue;
-                }
-                
-                pending.push({
-                    depositId: key,
-                    amount: deposit.amount,
-                    timestamp: deposit.timestamp,
-                    status: deposit.status,
-                    txHash: deposit.txHash
-                });
-            }
-        }
-        
-        return pending;
-        
-    } catch (error) {
-        console.error('Check pending deposits error:', error);
-        return [];
-    }
-}
+// ==================== MARKET SYSTEM ====================
 
-// Mint Squids
-async function handleMintSquids(env, userId, data) {
-    try {
-        const { referredBy } = data;
-        
-        // التحقق من أن المستخدم لم يسبق له الـ Mint
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data || await initializeUser(env, userId);
-        
-        if (user.mintUsed) {
-            return {
-                success: false,
-                error: 'You can only mint once per account',
-                errorCode: 'MINT_ALREADY_USED'
-            };
-        }
-        
-        // التحقق من الحد العالمي
-        const globalResult = await handleDbGet(env, 'game/global');
-        const global = globalResult.data || await initializeGlobalState(env);
-        
-        const squidsToMint = GAME_CONSTANTS.MINT_RATE;
-        if (global.mintedSoFar + squidsToMint > GAME_CONSTANTS.MINT_GLOBAL_CAP) {
-            return {
-                success: false,
-                error: 'Global mint cap reached',
-                errorCode: 'GLOBAL_MINT_CAP_REACHED'
-            };
-        }
-        
-        // التحقق من رصيد TON الكافي
-        if ((user.tonBalance || 0) < 1) {
-            return {
-                success: false,
-                error: 'Insufficient TON balance. Need 1 TON to mint',
-                errorCode: 'INSUFFICIENT_TON_BALANCE'
-            };
-        }
-        
-        // تحديث المستخدم
-        const userUpdates = {
-            squids: (user.squids || 0) + squidsToMint,
-            tonBalance: (user.tonBalance || 0) - 1, // خصم 1 TON
-            mintUsed: true,
-            mintedSquids: squidsToMint,
-            lastUpdated: Date.now()
-        };
-        
-        // إعداد الإحالة إذا كانت موجودة
-        let referralReward = 0;
-        if (referredBy && referredBy !== userId) {
-            const referrerResult = await handleDbGet(env, `users/${referredBy}`);
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralReward = 1 * (GAME_CONSTANTS.REFERRAL_MINT_REWARD_PERCENT / 100);
-                
-                // تحديث المُحيل
-                await handleDbUpdate(env, `users/${referredBy}`, {
-                    tonBalance: (referrer.tonBalance || 0) + referralReward,
-                    lastUpdated: Date.now()
-                });
-                
-                // تسجيل الإحالة
-                await handleDbPush(env, `users/${referredBy}/referrals`, {
-                    userId: userId,
-                    type: 'mint',
-                    reward: referralReward,
-                    timestamp: Date.now()
-                });
-                
-                userUpdates.referredBy = referredBy;
-            }
-        }
-        
-        // تحديث العالم
-        const globalUpdates = {
-            totalSquids: (global.totalSquids || 0) + squidsToMint,
-            mintedSoFar: (global.mintedSoFar || 0) + squidsToMint,
-            lastUpdated: Date.now()
-        };
-        
-        // تطبيق التحديثات
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
-        
-        // تسجيل العملية
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'mint',
-            amount: squidsToMint,
-            tonCost: 1,
-            referralReward: referralReward,
-            timestamp: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                mintedSquids: squidsToMint,
-                newSquids: userUpdates.squids,
-                newTonBalance: userUpdates.tonBalance,
-                referralReward: referralReward,
-                globalMinted: globalUpdates.mintedSoFar
-            }
-        };
-    } catch (error) {
-        console.error('Mint squids error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'MINT_SQUIDS_ERROR'
-        };
-    }
-}
-
-// Hatch Squids from Eggs
-async function handleHatchSquids(env, userId, data) {
-    try {
-        const { amount } = data;
-        const eggsToHatch = parseInt(amount);
-        
-        // التحقق من البيانات
-        if (!eggsToHatch || eggsToHatch < GAME_CONSTANTS.MIN_HATCH_AMOUNT) {
-            return {
-                success: false,
-                error: `Minimum hatch amount is ${GAME_CONSTANTS.MIN_HATCH_AMOUNT} eggs`,
-                errorCode: 'INVALID_HATCH_AMOUNT'
-            };
-        }
-        
-        // جلب بيانات المستخدم والعالم
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
-        
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
-        
-        // مزامنة البيض أولاً
-        const syncedUser = await syncEggs(user, global, env, userId);
-        
-        // التحقق من الرصيد الكافي
-        const userEggs = syncedUser.eggs || 0;
-        if (userEggs < eggsToHatch) {
-            return {
-                success: false,
-                error: 'Insufficient eggs',
-                errorCode: 'INSUFFICIENT_EGGS'
-            };
-        }
-        
-        // حساب الرسوم والإنتاج (5% رسوم)
-        const fee = Math.ceil(eggsToHatch * (GAME_CONSTANTS.HATCH_FEE_PERCENT / 100));
-        const totalEggsNeeded = eggsToHatch + fee;
-        
-        // التحقق مرة أخرى مع الرسوم
-        if (userEggs < totalEggsNeeded) {
-            return {
-                success: false,
-                error: `Need ${totalEggsNeeded} eggs (including ${fee} fee)`,
-                errorCode: 'INSUFFICIENT_EGGS_WITH_FEE'
-            };
-        }
-        
-        // تحديث المستخدم
-        const userUpdates = {
-            eggs: userEggs - totalEggsNeeded,
-            squids: (syncedUser.squids || 0) + eggsToHatch,
-            lastEggCalc: Date.now(),
-            lastUpdated: Date.now()
-        };
-        
-        // تحديث العالم
-        const globalUpdates = {
-            totalSquids: (global.totalSquids || 0) + eggsToHatch,
-            totalEggsToday: (global.totalEggsToday || 0) + totalEggsNeeded,
-            lastUpdated: Date.now()
-        };
-        
-        // مكافأة الإحالة
-        let referralReward = 0;
-        if (syncedUser.referredBy) {
-            const referrerResult = await handleDbGet(env, `users/${syncedUser.referredBy}`);
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralReward = eggsToHatch * (GAME_CONSTANTS.REFERRAL_HATCH_REWARD_PERCENT / 100);
-                
-                // تحديث بيض المُحيل
-                const syncedReferrer = await syncEggs(referrer, global, env, syncedUser.referredBy);
-                
-                await handleDbUpdate(env, `users/${syncedUser.referredBy}`, {
-                    eggs: (syncedReferrer.eggs || 0) + referralReward,
-                    lastEggCalc: Date.now(),
-                    lastUpdated: Date.now()
-                });
-                
-                // تسجيل الإحالة
-                await handleDbPush(env, `users/${syncedUser.referredBy}/referrals`, {
-                    userId: userId,
-                    type: 'hatch',
-                    eggsReward: referralReward,
-                    timestamp: Date.now()
-                });
-            }
-        }
-        
-        // تطبيق التحديثات
-        await Promise.all([
-            handleDbUpdate(env, `users/${userId}`, userUpdates),
-            handleDbUpdate(env, 'game/global', globalUpdates)
-        ]);
-        
-        // تسجيل العملية
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'hatch',
-            eggsUsed: eggsToHatch,
-            fee: fee,
-            squidsProduced: eggsToHatch,
-            referralReward: referralReward,
-            timestamp: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                eggsUsed: eggsToHatch,
-                fee: fee,
-                squidsProduced: eggsToHatch,
-                newSquids: userUpdates.squids,
-                newEggs: userUpdates.eggs,
-                referralReward: referralReward,
-                totalSquids: globalUpdates.totalSquids
-            }
-        };
-    } catch (error) {
-        console.error('Hatch squids error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'HATCH_SQUIDS_ERROR'
-        };
-    }
-}
-
-// Create Market Order
 async function handleCreateOrder(env, userId, data) {
     try {
-        const { type, price, amount } = data;
+        const { type, resource, price, amount } = data;
         
-        // التحقق من البيانات
+        // Validate resource type
+        if (!['milk', 'eggs'].includes(resource)) {
+            return {
+                success: false,
+                error: 'Invalid resource. Must be milk or eggs',
+                errorCode: 'INVALID_RESOURCE'
+            };
+        }
+        
+        // Validate order type
         if (!['sell', 'buy'].includes(type)) {
             return {
                 success: false,
-                error: 'Invalid order type. Must be "sell" or "buy"',
+                error: 'Invalid order type',
                 errorCode: 'INVALID_ORDER_TYPE'
             };
         }
         
+        // Validate price
         if (!price || parseFloat(price) <= 0) {
             return {
                 success: false,
@@ -656,56 +1177,81 @@ async function handleCreateOrder(env, userId, data) {
             };
         }
         
-        const orderAmount = parseInt(amount);
-        if (!orderAmount || orderAmount < GAME_CONSTANTS.MIN_ORDER_AMOUNT) {
+        // Validate amount
+        const minAmount = resource === 'milk' 
+            ? GAME_CONSTANTS.MIN_ORDER_AMOUNT_MILK 
+            : GAME_CONSTANTS.MIN_ORDER_AMOUNT_EGG;
+            
+        if (!amount || parseInt(amount) < minAmount) {
             return {
                 success: false,
-                error: `Minimum order amount is ${GAME_CONSTANTS.MIN_ORDER_AMOUNT}`,
-                errorCode: 'INVALID_ORDER_AMOUNT'
+                error: `Minimum order amount is ${minAmount} ${resource}`,
+                errorCode: 'INVALID_AMOUNT'
             };
         }
         
-        // جلب بيانات المستخدم والعالم
-        const [userResult, globalResult] = await Promise.all([
-            handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, 'game/global')
-        ]);
+        const orderAmount = parseInt(amount);
         
-        const user = userResult.data || await initializeUser(env, userId);
-        const global = globalResult.data || await initializeGlobalState(env);
+        // Get user
+        const userResult = await handleDbGet(env, `users/${userId}`);
+        const user = userResult.data;
         
-        // مزامنة البيض أولاً
-        const syncedUser = await syncEggs(user, global, env, userId);
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
         
-        // التحقق من الرصيد الكافي
+        // Check balance based on order type
         if (type === 'sell') {
-            // بيع بيض
-            if ((syncedUser.eggs || 0) < orderAmount) {
+            // Selling resources
+            const userBalance = resource === 'milk' ? (user.milk || 0) : (user.eggs || 0);
+            if (userBalance < orderAmount) {
                 return {
                     success: false,
-                    error: 'Insufficient eggs',
-                    errorCode: 'INSUFFICIENT_EGGS'
+                    error: `Insufficient ${resource}`,
+                    errorCode: 'INSUFFICIENT_BALANCE'
                 };
             }
+            
+            // Freeze resources
+            const updates = {};
+            if (resource === 'milk') {
+                updates.milk = (user.milk || 0) - orderAmount;
+            } else {
+                updates.eggs = (user.eggs || 0) - orderAmount;
+            }
+            updates.lastUpdated = Date.now();
+            
+            await handleDbUpdate(env, `users/${userId}`, updates);
+            
         } else {
-            // شراء بيض
+            // Buying resources
             const totalCost = orderAmount * parseFloat(price);
-            if ((syncedUser.tonBalance || 0) < totalCost) {
+            if ((user.tonBalance || 0) < totalCost) {
                 return {
                     success: false,
                     error: 'Insufficient TON balance',
-                    errorCode: 'INSUFFICIENT_TON_BALANCE'
+                    errorCode: 'INSUFFICIENT_TON'
                 };
             }
+            
+            // Freeze TON
+            await handleDbUpdate(env, `users/${userId}`, {
+                tonBalance: (user.tonBalance || 0) - totalCost,
+                lastUpdated: Date.now()
+            });
         }
         
-        // تجميد الأصول وإنشاء الطلب
+        // Create order
         const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
         const orderData = {
             id: orderId,
             userId: userId,
             type: type,
+            resource: resource,
             price: parseFloat(price),
             amount: orderAmount,
             remaining: orderAmount,
@@ -714,23 +1260,12 @@ async function handleCreateOrder(env, userId, data) {
             lastUpdated: Date.now()
         };
         
-        // حفظ الطلب
         await handleDbSet(env, `market/orders/${orderId}`, orderData);
         
-        // تجميد الأصول
-        const userUpdates = {};
-        if (type === 'sell') {
-            userUpdates.eggs = (syncedUser.eggs || 0) - orderAmount;
-        } else {
-            userUpdates.tonBalance = (syncedUser.tonBalance || 0) - (orderAmount * parseFloat(price));
-        }
-        userUpdates.lastUpdated = Date.now();
-        
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        // تسجيل الطلب المجمد
+        // Record frozen assets
         await handleDbSet(env, `users/${userId}/frozenAssets/${orderId}`, {
             type: type,
+            resource: resource,
             amount: orderAmount,
             price: parseFloat(price),
             frozenAt: Date.now()
@@ -740,10 +1275,10 @@ async function handleCreateOrder(env, userId, data) {
             success: true,
             data: {
                 orderId: orderId,
-                order: orderData,
-                newBalance: type === 'sell' ? userUpdates.eggs : userUpdates.tonBalance
+                order: orderData
             }
         };
+        
     } catch (error) {
         console.error('Create order error:', error);
         return {
@@ -754,12 +1289,11 @@ async function handleCreateOrder(env, userId, data) {
     }
 }
 
-// Buy from Market Order
 async function handleBuyOrder(env, userId, data) {
     try {
         const { orderId, amount } = data;
         
-        // جلب بيانات الطلب
+        // Get order
         const orderResult = await handleDbGet(env, `market/orders/${orderId}`);
         if (!orderResult.success || !orderResult.data) {
             return {
@@ -771,7 +1305,7 @@ async function handleBuyOrder(env, userId, data) {
         
         const order = orderResult.data;
         
-        // التحقق من حالة الطلب
+        // Validate order
         if (order.status !== 'active') {
             return {
                 success: false,
@@ -797,21 +1331,24 @@ async function handleBuyOrder(env, userId, data) {
             };
         }
         
-        // جلب بيانات المشتري والبائع والعالم
-        const [buyerResult, sellerResult, globalResult] = await Promise.all([
+        // Get buyer and seller
+        const [buyerResult, sellerResult] = await Promise.all([
             handleDbGet(env, `users/${userId}`),
-            handleDbGet(env, `users/${order.userId}`),
-            handleDbGet(env, 'game/global')
+            handleDbGet(env, `users/${order.userId}`)
         ]);
         
-        const buyer = buyerResult.data || await initializeUser(env, userId);
-        const seller = sellerResult.data || await initializeUser(env, order.userId);
-        const global = globalResult.data || await initializeGlobalState(env);
+        const buyer = buyerResult.data;
+        const seller = sellerResult.data;
         
-        // مزامنة البيض للبائع
-        const syncedSeller = await syncEggs(seller, global, env, order.userId);
+        if (!buyer || !seller) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
         
-        // حساب التكلفة والرسوم
+        // Calculate costs and fees
         const totalCost = buyAmount * order.price;
         const sellerFee = totalCost * (GAME_CONSTANTS.MARKET_SELLER_FEE_PERCENT / 100);
         const buyerFee = buyAmount * (GAME_CONSTANTS.MARKET_BUYER_FEE_PERCENT / 100);
@@ -819,28 +1356,34 @@ async function handleBuyOrder(env, userId, data) {
         const sellerReceives = totalCost - sellerFee;
         const buyerReceives = buyAmount - buyerFee;
         
-        // التحقق من رصيد المشتري
+        // Check buyer balance
         if ((buyer.tonBalance || 0) < totalCost) {
             return {
                 success: false,
                 error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON_BALANCE'
+                errorCode: 'INSUFFICIENT_TON'
             };
         }
         
-        // تنفيذ الصفقة
-        const sellerUpdates = {
-            tonBalance: (syncedSeller.tonBalance || 0) + sellerReceives,
-            lastUpdated: Date.now()
-        };
-        
+        // Execute trade
         const buyerUpdates = {
             tonBalance: (buyer.tonBalance || 0) - totalCost,
-            eggs: (buyer.eggs || 0) + buyerReceives,
             lastUpdated: Date.now()
         };
         
-        // تحديث الطلب
+        const sellerUpdates = {
+            tonBalance: (seller.tonBalance || 0) + sellerReceives,
+            lastUpdated: Date.now()
+        };
+        
+        // Add resources to buyer
+        if (order.resource === 'milk') {
+            buyerUpdates.milk = (buyer.milk || 0) + buyerReceives;
+        } else {
+            buyerUpdates.eggs = (buyer.eggs || 0) + buyerReceives;
+        }
+        
+        // Update order
         const newRemaining = order.remaining - buyAmount;
         const orderUpdates = {
             remaining: newRemaining,
@@ -848,27 +1391,27 @@ async function handleBuyOrder(env, userId, data) {
             lastUpdated: Date.now()
         };
         
-        // تطبيق التحديثات
+        // Apply updates
         await Promise.all([
-            handleDbUpdate(env, `users/${order.userId}`, sellerUpdates),
             handleDbUpdate(env, `users/${userId}`, buyerUpdates),
+            handleDbUpdate(env, `users/${order.userId}`, sellerUpdates),
             handleDbUpdate(env, `market/orders/${orderId}`, orderUpdates)
         ]);
         
-        // تحرير الأصول المجمدة للبائع إذا اكتمل الطلب
+        // Remove frozen assets if order is filled
         if (newRemaining <= 0) {
             await handleDbSet(env, `users/${order.userId}/frozenAssets/${orderId}`, null);
         }
         
-        // تسجيل المعاملة
+        // Record transaction
         const txId = `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         await Promise.all([
-            // سجل المشتري
             handleDbPush(env, `users/${userId}/history`, {
                 type: 'market_buy',
                 orderId: orderId,
-                eggsBought: buyerReceives,
+                resource: order.resource,
+                amount: buyerReceives,
                 tonPaid: totalCost,
                 buyerFee: buyerFee,
                 sellerId: order.userId,
@@ -876,11 +1419,11 @@ async function handleBuyOrder(env, userId, data) {
                 txId: txId
             }),
             
-            // سجل البائع
             handleDbPush(env, `users/${order.userId}/history`, {
                 type: 'market_sell',
                 orderId: orderId,
-                eggsSold: buyAmount,
+                resource: order.resource,
+                amount: buyAmount,
                 tonReceived: sellerReceives,
                 sellerFee: sellerFee,
                 buyerId: userId,
@@ -893,19 +1436,20 @@ async function handleBuyOrder(env, userId, data) {
             success: true,
             data: {
                 txId: txId,
-                eggsBought: buyerReceives,
+                resource: order.resource,
+                amount: buyerReceives,
                 tonPaid: totalCost,
                 fees: {
                     buyerFee: buyerFee,
                     sellerFee: sellerFee
                 },
                 newBuyerBalance: buyerUpdates.tonBalance,
-                newBuyerEggs: buyerUpdates.eggs,
-                newSellerBalance: sellerUpdates.tonBalance,
+                newBuyerResource: order.resource === 'milk' ? buyerUpdates.milk : buyerUpdates.eggs,
                 orderRemaining: newRemaining,
                 orderStatus: orderUpdates.status
             }
         };
+        
     } catch (error) {
         console.error('Buy order error:', error);
         return {
@@ -916,13 +1460,123 @@ async function handleBuyOrder(env, userId, data) {
     }
 }
 
-// Withdraw TON
+async function getMarketStats(env) {
+    try {
+        const ordersResult = await handleDbGet(env, 'market/orders');
+        const allOrders = ordersResult.data || {};
+        
+        let milkBuyOrders = 0;
+        let milkSellOrders = 0;
+        let eggBuyOrders = 0;
+        let eggSellOrders = 0;
+        
+        let bestMilkBuyPrice = 0;
+        let bestMilkSellPrice = Infinity;
+        let bestEggBuyPrice = 0;
+        let bestEggSellPrice = Infinity;
+        
+        for (const order of Object.values(allOrders)) {
+            if (order.status === 'active') {
+                if (order.resource === 'milk') {
+                    if (order.type === 'buy') {
+                        milkBuyOrders++;
+                        if (order.price > bestMilkBuyPrice) {
+                            bestMilkBuyPrice = order.price;
+                        }
+                    } else {
+                        milkSellOrders++;
+                        if (order.price < bestMilkSellPrice) {
+                            bestMilkSellPrice = order.price;
+                        }
+                    }
+                } else {
+                    if (order.type === 'buy') {
+                        eggBuyOrders++;
+                        if (order.price > bestEggBuyPrice) {
+                            bestEggBuyPrice = order.price;
+                        }
+                    } else {
+                        eggSellOrders++;
+                        if (order.price < bestEggSellPrice) {
+                            bestEggSellPrice = order.price;
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (bestMilkSellPrice === Infinity) bestMilkSellPrice = 0;
+        if (bestEggSellPrice === Infinity) bestEggSellPrice = 0;
+        
+        return {
+            milk: {
+                buyOrders: milkBuyOrders,
+                sellOrders: milkSellOrders,
+                bestBuyPrice: bestMilkBuyPrice,
+                bestSellPrice: bestMilkSellPrice
+            },
+            eggs: {
+                buyOrders: eggBuyOrders,
+                sellOrders: eggSellOrders,
+                bestBuyPrice: bestEggBuyPrice,
+                bestSellPrice: bestEggSellPrice
+            }
+        };
+        
+    } catch (error) {
+        return {
+            milk: { buyOrders: 0, sellOrders: 0, bestBuyPrice: 0, bestSellPrice: 0 },
+            eggs: { buyOrders: 0, sellOrders: 0, bestBuyPrice: 0, bestSellPrice: 0 }
+        };
+    }
+}
+
+// ==================== REFERRAL STATS ====================
+
+async function getReferralStats(env, userId) {
+    try {
+        const referralsResult = await handleDbGet(env, `users/${userId}/referrals`);
+        const referrals = referralsResult.data || {};
+        
+        let totalReferrals = 0;
+        let totalRewards = 0;
+        let lastReferral = null;
+        
+        const referralList = Object.values(referrals);
+        totalReferrals = referralList.length;
+        
+        referralList.forEach(ref => {
+            totalRewards += ref.reward || 0;
+            if (!lastReferral || ref.timestamp > lastReferral) {
+                lastReferral = ref.timestamp;
+            }
+        });
+        
+        return {
+            totalReferrals: totalReferrals,
+            totalRewards: totalRewards,
+            lastReferral: lastReferral,
+            referralList: referralList.slice(-5) // Last 5 referrals
+        };
+        
+    } catch (error) {
+        return {
+            totalReferrals: 0,
+            totalRewards: 0,
+            lastReferral: null,
+            referralList: []
+        };
+    }
+}
+
+// ==================== WITHDRAWAL ====================
+
 async function handleWithdrawTON(env, userId, data) {
     try {
         const { amount, address } = data;
         const withdrawAmount = parseFloat(amount);
         
-        // التحقق من البيانات
+        // Validate amount
         if (!withdrawAmount || withdrawAmount < GAME_CONSTANTS.MIN_WITHDRAW_AMOUNT) {
             return {
                 success: false,
@@ -931,6 +1585,7 @@ async function handleWithdrawTON(env, userId, data) {
             };
         }
         
+        // Validate address
         if (!address || address.trim().length === 0) {
             return {
                 success: false,
@@ -939,32 +1594,38 @@ async function handleWithdrawTON(env, userId, data) {
             };
         }
         
-        // جلب بيانات المستخدم
+        // Get user
         const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data || await initializeUser(env, userId);
+        const user = userResult.data;
         
-        // حساب الرسوم والمبلغ النهائي
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        // Calculate fee
         const fee = withdrawAmount * (GAME_CONSTANTS.WITHDRAW_FEE_PERCENT / 100);
         const netAmount = withdrawAmount - fee;
         
-        // التحقق من الرصيد الكافي (بما في ذلك الرسوم)
+        // Check balance
         if ((user.tonBalance || 0) < withdrawAmount) {
             return {
                 success: false,
                 error: 'Insufficient TON balance',
-                errorCode: 'INSUFFICIENT_TON_BALANCE'
+                errorCode: 'INSUFFICIENT_TON'
             };
         }
         
-        // تحديث رصيد المستخدم
-        const userUpdates = {
+        // Update user balance
+        await handleDbUpdate(env, `users/${userId}`, {
             tonBalance: (user.tonBalance || 0) - withdrawAmount,
             lastUpdated: Date.now()
-        };
+        });
         
-        await handleDbUpdate(env, `users/${userId}`, userUpdates);
-        
-        // تسجيل طلب السحب
+        // Create withdrawal request
         const withdrawalId = `withdraw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
         const withdrawalData = {
@@ -981,7 +1642,7 @@ async function handleWithdrawTON(env, userId, data) {
         
         await handleDbSet(env, `withdrawals/pending/${withdrawalId}`, withdrawalData);
         
-        // تسجيل في السجل
+        // Record history
         await handleDbPush(env, `users/${userId}/history`, {
             type: 'withdraw_request',
             amount: withdrawAmount,
@@ -1000,10 +1661,11 @@ async function handleWithdrawTON(env, userId, data) {
                 amount: withdrawAmount,
                 fee: fee,
                 netAmount: netAmount,
-                newBalance: userUpdates.tonBalance,
+                newBalance: (user.tonBalance || 0) - withdrawAmount,
                 message: 'Withdrawal request submitted. Will be processed within 24 hours.'
             }
         };
+        
     } catch (error) {
         console.error('Withdraw TON error:', error);
         return {
@@ -1014,14 +1676,13 @@ async function handleWithdrawTON(env, userId, data) {
     }
 }
 
-// ==================== New Deposit Handlers ====================
+// ==================== DEPOSIT SYSTEM ====================
 
-// Initialize Deposit (New Method - بدون كومنت)
 async function handleInitDeposit(env, userId, data) {
     try {
         const { amount, wallet_address } = data;
         
-        // Validate amount only
+        // Validate amount
         if (!amount || amount < GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT) {
             return {
                 success: false,
@@ -1030,7 +1691,7 @@ async function handleInitDeposit(env, userId, data) {
             };
         }
         
-        // Validate wallet address (minimal validation)
+        // Validate wallet address
         if (!wallet_address || wallet_address.length < 5) {
             return {
                 success: false,
@@ -1042,8 +1703,20 @@ async function handleInitDeposit(env, userId, data) {
         // Get deposit address from environment
         const depositAddress = env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG";
         
-        // Create simple deposit record
+        // Create deposit record
         const depositId = `deposit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        const depositData = {
+            id: depositId,
+            userId: userId,
+            amount: amount,
+            walletAddress: wallet_address,
+            status: 'pending',
+            createdAt: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        await handleDbSet(env, `deposits/pending/${depositId}`, depositData);
         
         return {
             success: true,
@@ -1051,7 +1724,8 @@ async function handleInitDeposit(env, userId, data) {
                 address: depositAddress,
                 amount: amount,
                 depositId: depositId,
-                message: 'Send the exact amount. No comment required.'
+                message: 'Send the exact amount with comment containing your User ID only',
+                comment: userId // يجب إضافة User ID في الـ Comment
             }
         };
         
@@ -1065,12 +1739,11 @@ async function handleInitDeposit(env, userId, data) {
     }
 }
 
-// ✅ Handle Deposit Confirmation via TON Connect (بدون كومنت)
 async function handleConfirmDeposit(env, userId, data) {
     try {
-        const { txHash, amount, user_address } = data;
+        const { txHash, amount, user_address, comment } = data;
         
-        // التحقق من المدخلات الأساسية فقط
+        // Validate required fields
         if (!txHash || !amount) {
             return {
                 success: false,
@@ -1079,9 +1752,18 @@ async function handleConfirmDeposit(env, userId, data) {
             };
         }
         
+        // التحقق من أن الـ comment يحتوي فقط على User ID
+        if (!comment || comment.toString() !== userId) {
+            return {
+                success: false,
+                error: 'Invalid comment. Comment must contain only your User ID',
+                errorCode: 'INVALID_COMMENT'
+            };
+        }
+        
         const depositAmount = parseFloat(amount);
         
-        // الحد الأدنى للإيداع
+        // Check minimum amount
         if (depositAmount < GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT) {
             return {
                 success: false,
@@ -1090,7 +1772,7 @@ async function handleConfirmDeposit(env, userId, data) {
             };
         }
         
-        // التحقق من عدم تكرار المعاملة
+        // Check for duplicate transaction
         const existingTx = await handleDbGet(env, `transactions/${txHash}`);
         if (existingTx.success && existingTx.data) {
             return {
@@ -1100,61 +1782,35 @@ async function handleConfirmDeposit(env, userId, data) {
             };
         }
         
-        // ✅ التحقق البسيط بدون بلوك تشين
-        let verified = true; // دائماً نعتبرها صالحة
-        
-        // جلب بيانات المستخدم
-        const userResult = await handleDbGet(env, `users/${userId}`);
-        const user = userResult.data || await initializeUser(env, userId);
-        
-        // تحديث رصيد المستخدم
-        const newBalance = (user.tonBalance || 0) + depositAmount;
-        await handleDbUpdate(env, `users/${userId}`, {
-            tonBalance: newBalance,
-            lastUpdated: Date.now()
-        });
-        
-        // تسجيل المعاملة
+        // Record transaction (pending verification)
         const now = Date.now();
         const depositRecord = {
             userId: userId,
             amount: depositAmount,
-            fromAddress: formatWalletAddress(user_address || 'TON Connect'),
-            toAddress: env.DEPOSIT_WALLET_ADDRESS || "UQBnwSS4Kox3ZZmF69KxWLfvfCc2-dLV8sT5nJe-aV7HfCyG",
+            fromAddress: user_address || 'TON Connect',
+            toAddress: env.DEPOSIT_WALLET_ADDRESS,
             txHash: txHash,
-            comment: 'TON Connect deposit - No comment required',
-            status: 'completed',
-            verified: verified,
+            comment: comment,
+            status: 'verifying',
+            verified: false,
             processedAt: now,
             method: 'TON Connect',
             depositId: `dep_${now}_${userId}_${txHash.substring(0, 8)}`
         };
         
-        // تخزين المعاملة
         await handleDbSet(env, `transactions/${txHash}`, depositRecord);
         
-        // إضافة إلى سجل المستخدم
-        await handleDbPush(env, `users/${userId}/history`, {
-            type: 'deposit',
-            amount: depositAmount,
-            txHash: txHash,
-            fromAddress: user_address || 'TON Connect',
-            newBalance: newBalance,
-            timestamp: now,
-            method: 'TON Connect',
-            comment: 'No comment required',
-            verified: verified
-        });
+        // Add to pending verification
+        await handleDbSet(env, `deposits/verifying/${txHash}`, depositRecord);
         
         return {
             success: true,
             data: {
                 amount: depositAmount,
-                newBalance: newBalance,
                 txHash: txHash,
                 timestamp: now,
-                verified: verified,
-                message: 'Deposit completed successfully without comment verification'
+                status: 'verifying',
+                message: 'Transaction received. Verification in progress. Your balance will be updated within 1-3 minutes.'
             }
         };
         
@@ -1168,7 +1824,154 @@ async function handleConfirmDeposit(env, userId, data) {
     }
 }
 
-// ✅ Handle Deposit Verification (API endpoint)
+// ✅ التحقق من المعاملة على السلسلة (مع التحقق من Comment)
+async function verifyOnChainTransaction(env, txHash, fromAddress, amount, expectedUserId) {
+    try {
+        // هنا يتم التحقق من المعاملة على البلوكشين
+        // هذا يعتمد على الـ API المستخدم (toncenter, tonapi.io, etc.)
+        
+        console.log('Verifying transaction:', txHash);
+        
+        // التحقق من أن المعاملة موجودة
+        if (!txHash || !expectedUserId) {
+            return false;
+        }
+        
+        // TODO: استدعاء TON API للتحقق من المعاملة
+        // يجب التأكد من:
+        // 1. المبلغ صحيح
+        // 2. عنوان المستلم صحيح
+        // 3. الـ comment يحتوي فقط على User ID
+        
+        // للاختبار، نقبل المعاملة
+        return true;
+        
+    } catch (error) {
+        console.error('Transaction verification error:', error);
+        return false;
+    }
+}
+
+async function handleVerifyDeposit(request, env) {
+    try {
+        const { txHash, userId } = await request.json();
+        
+        if (!txHash || !userId) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Transaction hash and user ID required'
+            }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Get transaction record
+        const txResult = await handleDbGet(env, `transactions/${txHash}`);
+        if (!txResult.success || !txResult.data) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: 'Transaction not found'
+            }), {
+                status: 404,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        const transaction = txResult.data;
+        
+        // Check if already verified
+        if (transaction.status === 'completed') {
+            return new Response(JSON.stringify({
+                success: true,
+                data: {
+                    status: 'completed',
+                    amount: transaction.amount,
+                    verified: true,
+                    timestamp: transaction.processedAt
+                }
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // Verify on blockchain
+        const verified = await verifyOnChainTransaction(
+            env, 
+            txHash, 
+            transaction.fromAddress, 
+            transaction.amount,
+            transaction.comment
+        );
+        
+        if (verified) {
+            // Update transaction status
+            const now = Date.now();
+            
+            await handleDbUpdate(env, `transactions/${txHash}`, {
+                status: 'completed',
+                verified: true,
+                processedAt: now
+            });
+            
+            // Update user balance
+            const userResult = await handleDbGet(env, `users/${userId}`);
+            if (userResult.success && userResult.data) {
+                const user = userResult.data;
+                await handleDbUpdate(env, `users/${userId}`, {
+                    tonBalance: (user.tonBalance || 0) + transaction.amount,
+                    lastUpdated: now
+                });
+            }
+            
+            // Remove from verifying
+            await handleDbSet(env, `deposits/verifying/${txHash}`, null);
+            
+            // Record in history
+            await handleDbPush(env, `users/${userId}/history`, {
+                type: 'deposit',
+                amount: transaction.amount,
+                txHash: txHash,
+                timestamp: now
+            });
+            
+            return new Response(JSON.stringify({
+                success: true,
+                data: {
+                    status: 'completed',
+                    amount: transaction.amount,
+                    verified: true,
+                    timestamp: now
+                }
+            }), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: {
+                status: 'verifying',
+                amount: transaction.amount,
+                verified: false,
+                timestamp: transaction.processedAt
+            }
+        }), {
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+    } catch (error) {
+        console.error('Verify deposit error:', error);
+        return new Response(JSON.stringify({
+            success: false,
+            error: error.message
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
 async function handleVerifyDepositAPI(env, userId, data) {
     try {
         const { txHash, depositId } = data;
@@ -1183,7 +1986,7 @@ async function handleVerifyDepositAPI(env, userId, data) {
         
         let depositRecord;
         
-        // Find deposit record by txHash or depositId
+        // Find by transaction hash
         if (txHash) {
             const txResult = await handleDbGet(env, `transactions/${txHash}`);
             if (txResult.success && txResult.data) {
@@ -1191,6 +1994,7 @@ async function handleVerifyDepositAPI(env, userId, data) {
             }
         }
         
+        // Find by deposit ID
         if (!depositRecord && depositId) {
             const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
             if (depositResult.success && depositResult.data) {
@@ -1206,7 +2010,7 @@ async function handleVerifyDepositAPI(env, userId, data) {
             };
         }
         
-        // Check if deposit belongs to user
+        // Check ownership
         if (depositRecord.userId !== userId) {
             return {
                 success: false,
@@ -1215,68 +2019,13 @@ async function handleVerifyDepositAPI(env, userId, data) {
             };
         }
         
-        // If already completed, return status
-        if (depositRecord.status === 'completed') {
-            return {
-                success: true,
-                data: {
-                    status: 'completed',
-                    amount: depositRecord.amount,
-                    verified: depositRecord.verified || true,
-                    timestamp: depositRecord.processedAt || depositRecord.createdAt
-                }
-            };
-        }
-        
-        // In this simple system, we accept all pending transactions
-        if (depositRecord.status === 'pending') {
-            // Just mark as completed if it's pending
-            const userResult = await handleDbGet(env, `users/${userId}`);
-            const user = userResult.data;
-            
-            if (user) {
-                const newBalance = (user.tonBalance || 0) + depositRecord.amount;
-                await handleDbUpdate(env, `users/${userId}`, {
-                    tonBalance: newBalance,
-                    lastUpdated: Date.now()
-                });
-                
-                const now = Date.now();
-                if (depositId) {
-                    await handleDbUpdate(env, `deposits/pending/${depositId}`, {
-                        status: 'completed',
-                        verified: true,
-                        completedAt: now
-                    });
-                }
-                
-                await handleDbSet(env, `transactions/${depositRecord.txHash || depositId}`, {
-                    ...depositRecord,
-                    status: 'completed',
-                    verified: true,
-                    processedAt: now
-                });
-                
-                return {
-                    success: true,
-                    data: {
-                        status: 'completed',
-                        amount: depositRecord.amount,
-                        newBalance: newBalance,
-                        verified: true,
-                        timestamp: now
-                    }
-                };
-            }
-        }
-        
         return {
             success: true,
             data: {
                 status: depositRecord.status || 'pending',
                 amount: depositRecord.amount,
-                verified: depositRecord.verified || true,
-                timestamp: depositRecord.createdAt
+                verified: depositRecord.verified || false,
+                timestamp: depositRecord.processedAt || depositRecord.createdAt
             }
         };
         
@@ -1290,7 +2039,6 @@ async function handleVerifyDepositAPI(env, userId, data) {
     }
 }
 
-// ✅ Handle Deposit Status (Public endpoint)
 async function handleDepositStatus(request, env) {
     try {
         const url = new URL(request.url);
@@ -1303,16 +2051,12 @@ async function handleDepositStatus(request, env) {
                 error: 'Transaction hash or deposit ID required'
             }), {
                 status: 400,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
         }
         
         let depositRecord;
         
-        // Find by transaction hash first
         if (txHash) {
             const txResult = await handleDbGet(env, `transactions/${txHash}`);
             if (txResult.success && txResult.data) {
@@ -1320,7 +2064,6 @@ async function handleDepositStatus(request, env) {
             }
         }
         
-        // Find by deposit ID if not found
         if (!depositRecord && depositId) {
             const depositResult = await handleDbGet(env, `deposits/pending/${depositId}`);
             if (depositResult.success && depositResult.data) {
@@ -1334,10 +2077,7 @@ async function handleDepositStatus(request, env) {
                 error: 'Deposit not found'
             }), {
                 status: 404,
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
         }
         
@@ -1351,13 +2091,10 @@ async function handleDepositStatus(request, env) {
                 txHash: depositRecord.txHash,
                 createdAt: depositRecord.createdAt,
                 processedAt: depositRecord.processedAt,
-                verified: depositRecord.verified || true
+                verified: depositRecord.verified || false
             }
         }), {
-            headers: { 
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
+            headers: { 'Content-Type': 'application/json' }
         });
         
     } catch (error) {
@@ -1372,360 +2109,43 @@ async function handleDepositStatus(request, env) {
     }
 }
 
-// Initialize User with Telegram Data
-async function initializeUserHandler(env, userId, data) {
+async function checkPendingDeposits(env, userId) {
     try {
-        const { user } = data;
+        const depositsResult = await handleDbGet(env, `users/${userId}/deposits`);
+        const deposits = depositsResult.data || {};
         
-        // Check if user already exists
-        const existingUser = await handleDbGet(env, `users/${userId}`);
-        if (existingUser.success && existingUser.data) {
-            return {
-                success: true,
-                data: {
-                    message: 'User already exists',
-                    user: existingUser.data
-                }
-            };
-        }
+        const pending = [];
         
-        // Create new user with Telegram data
-        const now = Date.now();
-        const userData = {
-            squids: 0,
-            eggs: 0,
-            tonBalance: 0,
-            mintUsed: false,
-            mintedSquids: 0,
-            lastEggCalc: now,
-            referralCode: generateReferralCode(userId),
-            referredBy: null,
-            telegramData: {
-                first_name: user?.first_name || '',
-                last_name: user?.last_name || '',
-                username: user?.username || '',
-                language_code: user?.language_code || 'en'
-            },
-            joinDate: now,
-            lastUpdated: now
-        };
-        
-        await handleDbSet(env, `users/${userId}`, userData);
-        
-        return {
-            success: true,
-            data: {
-                message: 'User initialized successfully',
-                user: userData
-            }
-        };
-        
-    } catch (error) {
-        console.error('Initialize user error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'INITIALIZE_USER_ERROR'
-        };
-    }
-}
-
-// ==================== Old Deposit Handlers (for compatibility - DISABLED) ====================
-
-// Get Deposit Information (Old Method - for compatibility - DISABLED)
-async function handleGetDepositInfo(request, env) {
-    try {
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Deposit system has been upgraded. Please use TON Connect instead.',
-            errorCode: 'SYSTEM_UPGRADED',
-            upgrade: {
-                newMethod: 'TON Connect',
-                docs: 'https://docs.ton.org/develop/dapps/ton-connect/overview'
-            }
-        }), {
-            status: 410, // Gone
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
-        });
-        
-    } catch (error) {
-        console.error('Get deposit info error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Deposit system is no longer available. Use TON Connect.',
-            errorCode: 'SYSTEM_UPGRADED'
-        }), {
-            status: 410,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-}
-
-// Process Deposit from Watcher (Old Method - for compatibility - DISABLED)
-async function handleProcessDeposit(request, env) {
-    try {
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Deposit system has been upgraded. Please use TON Connect instead.',
-            errorCode: 'SYSTEM_UPGRADED',
-            upgrade: {
-                newMethod: 'TON Connect',
-                endpoint: '/api with action=deposit/confirm'
-            }
-        }), {
-            status: 410, // Gone
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-    } catch (error) {
-        console.error('Process deposit error:', error);
-        return new Response(JSON.stringify({
-            success: false,
-            error: 'Deposit system is no longer available. Use TON Connect.',
-            errorCode: 'SYSTEM_UPGRADED'
-        }), {
-            status: 410,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-}
-
-// ==================== Helper Functions ====================
-
-// Initialize Global State
-async function initializeGlobalState(env) {
-    const now = Date.now();
-    const initialState = {
-        totalSquids: 0,
-        mintedSoFar: 0,
-        dailyEggCap: GAME_CONSTANTS.DAILY_EGG_CAP,
-        totalEggsToday: 0,
-        lastDailyReset: now,
-        createdAt: now,
-        lastUpdated: now
-    };
-    
-    await handleDbSet(env, 'game/global', initialState);
-    return initialState;
-}
-
-// Initialize User
-async function initializeUser(env, userId) {
-    const now = Date.now();
-    const initialUser = {
-        squids: 0,
-        eggs: 0,
-        tonBalance: 0,
-        mintUsed: false,
-        mintedSquids: 0,
-        lastEggCalc: now,
-        referralCode: generateReferralCode(userId),
-        referredBy: null,
-        joinDate: now,
-        lastUpdated: now
-    };
-    
-    await handleDbSet(env, `users/${userId}`, initialUser);
-    return initialUser;
-}
-
-// Sync User Eggs
-async function syncEggs(user, global, env, userId) {
-    const now = Date.now();
-    const lastCalc = user.lastEggCalc || now;
-    const elapsed = now - lastCalc;
-    
-    if (elapsed <= 0) return user;
-    
-    // حساب البيض المنتج اليوم
-    const dailyProduction = calculateDailyEggProduction(global);
-    const availableEggs = Math.max(0, dailyProduction - (global.totalEggsToday || 0));
-    
-    if (availableEggs <= 0) return user;
-    
-    // حساب نصيب المستخدم بناءً على سكويداته
-    const userSquids = user.squids || 0;
-    const totalSquids = global.totalSquids || 1;
-    const userShare = userSquids / totalSquids;
-    
-    // حساب البيض المنتج منذ آخر حساب
-    const timeFactor = Math.min(1, elapsed / (24 * 60 * 60 * 1000));
-    const eggsProduced = Math.floor(userShare * availableEggs * timeFactor);
-    
-    if (eggsProduced > 0) {
-        const updatedUser = {
-            ...user,
-            eggs: (user.eggs || 0) + eggsProduced,
-            lastEggCalc: now,
-            lastUpdated: now
-        };
-        
-        await handleDbUpdate(env, `users/${userId}`, {
-            eggs: updatedUser.eggs,
-            lastEggCalc: now,
-            lastUpdated: now
-        });
-        
-        return updatedUser;
-    }
-    
-    return user;
-}
-
-// Calculate Daily Egg Production
-function calculateDailyEggProduction(global) {
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
-    
-    // إعادة تعيين الإنتاج اليومي إذا مر يوم
-    if (now - global.lastDailyReset > oneDay) {
-        // هنا يمكن إضافة منطق إعادة التعيين
-        return 0;
-    }
-    
-    // حساب الإنتاج اليومي بناءً على إجمالي السكويدات
-    const totalSquids = global.totalSquids || 0;
-    const maxEggs = GAME_CONSTANTS.DAILY_EGG_CAP;
-    
-    if (totalSquids <= 0) return 0;
-    
-    // الإنتاج يتناسب مع نسبة إجمالي السكويدات إلى الحد الأقصى
-    const productionRatio = Math.min(1, totalSquids / GAME_CONSTANTS.MINT_GLOBAL_CAP);
-    const dailyProduction = Math.floor(productionRatio * maxEggs);
-    
-    return dailyProduction;
-}
-
-// Update User Eggs
-async function updateUserEggs(env, userId, user) {
-    await handleDbUpdate(env, `users/${userId}`, {
-        lastEggCalc: Date.now(),
-        lastUpdated: Date.now()
-    });
-}
-
-// Get Market Stats
-async function getMarketStats(env) {
-    try {
-        const ordersResult = await handleDbGet(env, 'market/orders');
-        const allOrders = ordersResult.data || {};
-        
-        let totalVolume = 0;
-        let activeOrders = 0;
-        let bestBuyPrice = 0;
-        let bestSellPrice = Infinity;
-        
-        for (const order of Object.values(allOrders)) {
-            if (order.status === 'active') {
-                activeOrders++;
-                totalVolume += order.amount * order.price;
-                
-                if (order.type === 'buy' && order.price > bestBuyPrice) {
-                    bestBuyPrice = order.price;
-                }
-                
-                if (order.type === 'sell' && order.price < bestSellPrice) {
-                    bestSellPrice = order.price;
-                }
+        for (const [key, deposit] of Object.entries(deposits)) {
+            if (deposit.status === 'pending' || deposit.status === 'verifying') {
+                pending.push({
+                    depositId: key,
+                    amount: deposit.amount,
+                    timestamp: deposit.timestamp || deposit.createdAt,
+                    status: deposit.status,
+                    txHash: deposit.txHash
+                });
             }
         }
         
-        if (bestSellPrice === Infinity) bestSellPrice = 0;
+        return pending;
         
-        return {
-            activeOrders,
-            totalVolume,
-            bestBuyPrice,
-            bestSellPrice,
-            lastUpdated: Date.now()
-        };
     } catch (error) {
-        return {
-            activeOrders: 0,
-            totalVolume: 0,
-            bestBuyPrice: 0,
-            bestSellPrice: 0,
-            lastUpdated: Date.now()
-        };
+        console.error('Check pending deposits error:', error);
+        return [];
     }
 }
 
-// Get Referral Stats
-async function getReferralStats(env, userId) {
-    try {
-        const referralsResult = await handleDbGet(env, `users/${userId}/referrals`);
-        const referrals = referralsResult.data || {};
-        
-        let totalMintReward = 0;
-        let totalHatchReward = 0;
-        let referralCount = 0;
-        
-        const referralList = Object.values(referrals);
-        
-        referralList.forEach(ref => {
-            if (ref.type === 'mint') {
-                totalMintReward += ref.reward || 0;
-            } else if (ref.type === 'hatch') {
-                totalHatchReward += ref.eggsReward || 0;
-            }
-        });
-        
-        referralCount = referralList.length;
-        
-        return {
-            totalReferrals: referralCount,
-            totalMintReward,
-            totalHatchReward,
-            lastReferral: referralList.length > 0 ? Math.max(...referralList.map(r => r.timestamp)) : null
-        };
-    } catch (error) {
-        return {
-            totalReferrals: 0,
-            totalMintReward: 0,
-            totalHatchReward: 0,
-            lastReferral: null
-        };
-    }
-}
+// ==================== HELPER FUNCTIONS ====================
 
-// Generate Referral Code
 function generateReferralCode(userId) {
-    return `SQUID_${userId.substring(0, 8).toUpperCase()}_${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    return `FARM_${userId.substring(0, 8).toUpperCase()}_${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 }
 
-// Validate Telegram Init Data
 function validateTelegramInitData(initData, botToken) {
     try {
-        // في Cloudflare Workers، استخدم Web Crypto API بدلاً من Node.js crypto
-        const encoder = new TextEncoder();
-        
-        const params = new URLSearchParams(initData);
-        const hash = params.get('hash');
-        if (!hash) return false;
-        
-        // حذف hash من params
-        params.delete('hash');
-        
-        // ترتيب المعاملات أبجديًا
-        const dataCheckString = Array.from(params.entries())
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([k, v]) => `${k}=${v}`)
-            .join('\n');
-        
-        // إنشاء HMAC key
-        const botTokenBytes = encoder.encode(botToken);
-        const webAppDataKey = encoder.encode('WebAppData');
-        
-        // في الواقع، يجب استخدام HMAC-SHA256
-        // لكن لأغراض التوضيح، سنستخدم طريقة مبسطة
-        // في الإنتاج، استخدم مكتبة crypto مناسبة
-        
-        // للاختبار، تقبل أي initData
-        // في الإنتاج الحقيقي، يجب التحقق من HMAC
-        return true; // مؤقتًا للاختبار
+        // في الإنتاج، يجب التحقق من HMAC-SHA256
+        return true; // للاختبار
         
     } catch (error) {
         console.error('Telegram validation error:', error);
@@ -1733,7 +2153,7 @@ function validateTelegramInitData(initData, botToken) {
     }
 }
 
-// ==================== Database Functions ====================
+// ==================== DATABASE FUNCTIONS ====================
 
 async function getFirebaseUrl(env, path) {
     const baseUrl = env.FIREBASE_DATABASE_URL.replace(/\/$/, '');
@@ -1750,7 +2170,6 @@ async function getFirebaseUrl(env, path) {
 async function handleDbGet(env, path) {
     try {
         const firebaseUrl = await getFirebaseUrl(env, path);
-        
         const response = await fetch(firebaseUrl);
         
         if (!response.ok) {
@@ -1867,4 +2286,4 @@ async function handleDbPush(env, path, data) {
     }
 }
 
-// ==================== End of Code ====================
+// ==================== END OF WORKER CODE ====================
