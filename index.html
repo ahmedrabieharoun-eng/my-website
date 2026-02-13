@@ -15,6 +15,9 @@
     <!-- TON Connect SDK -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     
+    <!-- TON Core SDK لإصلاح مشكلة payload -->
+    <script src="https://cdn.jsdelivr.net/npm/@ton/core@0.56.0/dist/index.min.js"></script>
+    
     <style>
         /* ===== RESET & GLOBAL ===== */
         * {
@@ -1774,7 +1777,7 @@
         // ============================================
         // FARM ECONOMY - COMPLETE FRONTEND
         // VERSION 3.0 - P2P MARKET, HATCH, DEPOSIT
-        // FIXED: TON Connect Payload Issue (Base64 Comment)
+        // FIXED: TON Connect Payload Issue - الحل الرسمي
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -2591,7 +2594,6 @@
 
         // ============================================
         // FIXED: DEPOSIT FUNCTION - TON CONNECT PAYLOAD ISSUE
-        // الآن يرسل التعليق بصيغة Base64 الصحيحة
         // ============================================
         window.initiateDeposit = async function() {
             if (!App.wallet) {
@@ -2607,40 +2609,61 @@
             }
             
             try {
-                const comment = String(App.userId); // User ID هو التعليق
-                const amountInNano = String(Math.floor(amount * 1000000000)); // تحويل TON إلى nanoTON
+                const comment = App.userId;
+                const amountInNano = String(Math.floor(amount * 1000000000));
                 
-                // ===== الخطوة الحاسمة: بناء الـ payload الصحيح =====
-                // 1. تحويل النص إلى بايتات (UTF-8)
-                const encoder = new TextEncoder();
-                const commentBytes = encoder.encode(comment);
+                // ===== الحل الرسمي: بناء payload صحيح باستخدام @ton/core =====
+                let payloadBase64 = '';
                 
-                // 2. إنشاء مصفوفة بايتات: 4 بايت صفر (opcode) + النص
-                const payloadBytes = new Uint8Array(4 + commentBytes.length);
-                payloadBytes.set([0, 0, 0, 0], 0); // الـ 4 بايت الصفر (opcode = 0 للتعليق)
-                payloadBytes.set(commentBytes, 4); // النص بعد الـ opcode
+                // التحقق من وجود مكتبة ton core
+                if (window.tonCore && window.tonCore.beginCell) {
+                    console.log('Using @ton/core library to build payload');
+                    
+                    // استخدام المكتبة لبناء الخلية بالطريقة الصحيحة
+                    const { beginCell } = window.tonCore;
+                    
+                    // بناء الخلية: uint32(0) + string comment
+                    const cell = beginCell()
+                        .storeUint(0, 32)           // op-code 0 للتعليقات
+                        .storeStringTail(comment)    // نص التعليق (User ID)
+                        .endCell();
+                    
+                    // تحويل الخلية إلى BOC ثم إلى Base64
+                    payloadBase64 = cell.toBoc().toString('base64');
+                    
+                    console.log('Payload built successfully');
+                } else {
+                    // Fallback: إذا لم تكن المكتبة متاحة (نادراً ما يحدث)
+                    console.warn('@ton/core not found, using fallback method');
+                    
+                    // طريقة يدوية بسيطة (قد لا تعمل مع كل المحافظ)
+                    const encoder = new TextEncoder();
+                    const commentBytes = encoder.encode(comment);
+                    
+                    // إضافة op-code 0 (4 بايت) قبل نص التعليق
+                    const totalBytes = new Uint8Array(4 + commentBytes.length);
+                    totalBytes[0] = 0; // op-code uint32(0) بالبايت الأول
+                    totalBytes[1] = 0;
+                    totalBytes[2] = 0;
+                    totalBytes[3] = 0;
+                    totalBytes.set(commentBytes, 4);
+                    
+                    payloadBase64 = btoa(String.fromCharCode(...totalBytes));
+                }
                 
-                // 3. تحويل المصفوفة إلى Base64 (ما تتوقعه محفظة TON)
-                const payloadBase64 = btoa(
-                    String.fromCharCode(...payloadBytes)
-                );
-                
-                // 4. بناء معاملة TON Connect مع الـ payload كـ Base64
+                // إرسال المعاملة مع الـ payload الصحيح
                 const transaction = {
                     validUntil: Math.floor(Date.now() / 1000) + 600, // 10 دقائق صلاحية
                     messages: [
                         {
-                            address: CONFIG.DEPOSIT_WALLET, // عنوان الإيداع
-                            amount: amountInNano, // المبلغ بـ nanoTON
-                            payload: payloadBase64 // الـ payload الصحيح
+                            address: CONFIG.DEPOSIT_WALLET,
+                            amount: amountInNano,
+                            payload: payloadBase64 // نرسل Base64 الناتج
                         }
                     ]
                 };
                 
-                // 5. إرسال المعاملة
                 const result = await App.tonConnectUI.sendTransaction(transaction);
-                
-                // 6. معالجة النجاح
                 await handleDepositSuccess(result, amount, comment);
                 
             } catch (error) {
@@ -2651,8 +2674,6 @@
                     errorMessage = 'Transaction rejected in wallet';
                 } else if (error.message?.includes('insufficient')) {
                     errorMessage = 'Insufficient balance';
-                } else if (error.message?.includes('timeout')) {
-                    errorMessage = 'Transaction timeout';
                 }
                 
                 const statusDiv = document.getElementById('depositStatus');
