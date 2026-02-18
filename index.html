@@ -2208,7 +2208,7 @@
     <script>
         // ============================================
         // CRYSTAL RANCH - COMPLETE FRONTEND v4.0
-        // مع جميع التعديلات المطلوبة
+        // مع جميع التعديلات المطلوبة - نظام الريفيرال مُصلح بالكامل
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -2499,7 +2499,10 @@
             pendingOrder: null,
             currentLanguage: 'en',
             
-            initialized: false
+            initialized: false,
+            
+            // إضافة هذا المتغير لتخزين ID المستخدم الحقيقي
+            telegramUserId: null
         };
 
         // ---------- NOTIFICATION SYSTEM ----------
@@ -2564,6 +2567,9 @@
             
             await loadGameState();
             
+            // استدعاء معلومات الريفيرال بعد تحميل الحالة
+            await loadReferralInfo();
+            
             setupIntervals();
             setupEventListeners();
             
@@ -2581,6 +2587,7 @@
                     if (App.telegram.initDataUnsafe && App.telegram.initDataUnsafe.user) {
                         const tgUser = App.telegram.initDataUnsafe.user;
                         App.userId = String(tgUser.id);
+                        App.telegramUserId = tgUser.id; // تخزين ID المستخدم الحقيقي
                         
                         document.getElementById('profileName').innerHTML = 
                             `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Farmer';
@@ -2600,6 +2607,7 @@
                     resolve();
                 } else {
                     App.userId = 'demo_' + Math.floor(Math.random() * 1000000);
+                    App.telegramUserId = App.userId;
                     document.getElementById('profileName').innerHTML = 'Demo Farmer';
                     document.getElementById('profileUsername').innerHTML = '@demo';
                     document.getElementById('profileUserId').innerHTML = `ID: ${App.userId}`;
@@ -2794,6 +2802,80 @@
             }
         }
 
+        // ---------- LOAD REFERRAL INFO (دالة جديدة) ----------
+        async function loadReferralInfo() {
+            try {
+                const referralData = await callAPI('getReferralInfo');
+                
+                if (referralData) {
+                    App.referralDetails = referralData;
+                    updateReferralUI(referralData);
+                }
+            } catch (error) {
+                console.error('Load referral info error:', error);
+            }
+        }
+
+        // ---------- UPDATE REFERRAL UI (دالة جديدة) ----------
+        function updateReferralUI(referralData) {
+            // تحديث الإحصائيات
+            document.getElementById('totalReferrals').innerHTML = referralData.referrals?.length || 0;
+            
+            // حساب إجمالي الأرباح من قائمة الأرباح
+            const totalEarnings = referralData.earnings?.reduce((sum, e) => sum + (e.amount || 0), 0) || 0;
+            
+            // عرض الأرباح (إذا كان هناك أرباح غير مطالب بها من user)
+            if (App.user && App.user.referralEarnings !== undefined) {
+                document.getElementById('referralEarnings').innerHTML = formatTON(App.user.referralEarnings);
+            } else {
+                document.getElementById('referralEarnings').innerHTML = formatTON(totalEarnings);
+            }
+            
+            if (App.user && App.user.referralEarningsClaimed !== undefined) {
+                document.getElementById('referralClaimed').innerHTML = formatTON(App.user.referralEarningsClaimed);
+            }
+            
+            // عرض قائمة الريفيرال مع الصور
+            const recentList = document.getElementById('recentReferralsList');
+            if (referralData.referrals?.length > 0) {
+                let html = '';
+                referralData.referrals.slice(0, 5).forEach(ref => {
+                    const date = new Date(ref.timestamp).toLocaleDateString();
+                    const name = ref.firstName || ref.username || `User ${ref.userId?.substring(0, 6)}`;
+                    
+                    // إنشاء رابط صورة افتراضي إذا لم تكن موجودة
+                    const photoUrl = ref.photoUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${ref.userId || name}`;
+                    
+                    html += `<div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width: 32px; height: 32px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden;">
+                            <img src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://i.ibb.co/placeholder.png'">
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 11px;">${name}</div>
+                            <div style="font-size: 9px; color: var(--text-muted);">${date}</div>
+                        </div>
+                    </div>`;
+                });
+                recentList.innerHTML = html;
+            } else {
+                recentList.innerHTML = '<div style="text-align: center; padding: 18px; color: var(--text-secondary);">' + 
+                    (App.currentLanguage === 'ru' ? 'Нет рефералов' : 'No referrals yet') + '</div>';
+            }
+            
+            // تحديث زر المطالبة
+            const claimBtn = document.getElementById('claimReferralBtn');
+            if (App.user && App.user.referralEarnings > 0) {
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = `<i class="fas fa-hand-holding-usd"></i> ` + 
+                    (App.currentLanguage === 'ru' ? 'Забрать ' : 'Claim ') + 
+                    `${formatTON(App.user.referralEarnings)} TON`;
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> ' + 
+                    (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
+            }
+        }
+
         // ---------- UPDATE LOCKED STATES WITH TIMERS ----------
         function updateLockedStates() {
             // Chicken locked
@@ -2959,13 +3041,15 @@
             document.getElementById('totalMachines').innerHTML = totalMachines;
             document.getElementById('totalProduction').innerHTML = (App.user.milkPerHour + App.user.eggsPerHour) + '/h';
             
-            // ----- Referral - FIXED -----
+            // ----- Referral - FIXED (المشكلة الأساسية هنا) -----
             if (App.user.referralCode) {
-                // تعديل رابط الإحالة لاستخدام ID المستخدم فقط
-                const referralLink = `https://t.me/${CONFIG.BOT_USERNAME.replace('@', '')}?startapp=ref_${App.userId}`;
+                // استخدام ID التليجرام الحقيقي وليس App.userId
+                const realUserId = App.telegramUserId || App.userId;
+                const referralLink = `https://t.me/${CONFIG.BOT_USERNAME.replace('@', '')}?startapp=ref_${realUserId}`;
                 document.getElementById('referralLink').value = referralLink;
             }
             
+            // تحديث الإحصائيات الأساسية للريفيرال
             document.getElementById('totalReferrals').innerHTML = App.referral?.totalReferrals || 0;
             document.getElementById('referralEarnings').innerHTML = formatTON(App.user.referralEarnings || 0);
             document.getElementById('referralClaimed').innerHTML = formatTON(App.user.referralEarningsClaimed || 0);
@@ -2980,33 +3064,6 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> ' + 
                     (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
-            }
-            
-            // ----- Recent Referrals with Names and Earnings -----
-            const recentList = document.getElementById('recentReferralsList');
-            if (App.referral?.recentReferrals?.length > 0) {
-                let html = '';
-                App.referral.recentReferrals.slice(0, 5).forEach(ref => {
-                    const date = new Date(ref.timestamp).toLocaleDateString();
-                    // استخدام الاسم والصورة من بيانات المستخدم
-                    const name = ref.firstName || ref.username || `User ${ref.userId?.substring(0, 6)}`;
-                    const earnings = formatTON(ref.earnings || 0);
-                    
-                    html += `<div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <div style="width: 32px; height: 32px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden;">
-                            ${ref.photoUrl ? `<img src="${ref.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;">` : '👤'}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; font-size: 11px;">${name}</div>
-                            <div style="font-size: 9px; color: var(--text-muted);">${date}</div>
-                        </div>
-                        <div style="font-weight: 700; color: var(--neon-green); font-size: 11px;">+${earnings} TON</div>
-                    </div>`;
-                });
-                recentList.innerHTML = html;
-            } else {
-                recentList.innerHTML = '<div style="text-align: center; padding: 18px; color: var(--text-secondary);">' + 
-                    (App.currentLanguage === 'ru' ? 'Нет рефералов' : 'No referrals yet') + '</div>';
             }
             
             // ----- Hints -----
@@ -3408,6 +3465,7 @@
             try {
                 const result = await callAPI('claimReferralEarnings');
                 await loadGameState();
+                await loadReferralInfo(); // تحديث معلومات الريفيرال بعد المطالبة
                 animateTonBalance();
                 
                 const message = App.currentLanguage === 'ru' ? 
@@ -3522,6 +3580,11 @@
             setInterval(() => {
                 loadGameState();
             }, 30000);
+            
+            // تحديث معلومات الريفيرال كل دقيقتين
+            setInterval(() => {
+                loadReferralInfo();
+            }, 120000);
         }
 
         // ---------- MODALS ----------
