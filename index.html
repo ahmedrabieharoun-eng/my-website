@@ -1843,7 +1843,7 @@
             </div>
         </div>
         
-        <!-- ========== SECTION: FRIENDS (REFERRAL) - FIXED ========== -->
+        <!-- ========== SECTION: FRIENDS (REFERRAL) - COMPLETELY FIXED ========== -->
         <div id="sectionFriends" class="section">
             <div class="card" style="background: linear-gradient(145deg, rgba(255,92,168,0.15), var(--glass-strong));">
                 <div class="card-title">
@@ -1891,7 +1891,7 @@
                     <i class="fas fa-history"></i> <span data-i18n="referral.recent">Recent Referrals</span>
                 </div>
                 <div id="recentReferralsList" style="min-height: 70px;">
-                    <!-- سيتم ملؤها بالـ JavaScript -->
+                    <!-- سيتم ملؤها بالـ JavaScript مع عرض الأرباح من كل مستخدم -->
                 </div>
             </div>
         </div>
@@ -2084,6 +2084,8 @@
         </div>
     </div>
 
+    <!-- ========== MODAL: CREATE BUY ORDER (Removed - فقط Sell Order) ========== -->
+
     <!-- ========== MODAL: CONFIRM PURCHASE ========== -->
     <div class="modal-overlay" id="confirmPurchaseModal">
         <div class="modal-content">
@@ -2206,7 +2208,7 @@
     <script>
         // ============================================
         // CRYSTAL RANCH - COMPLETE FRONTEND v4.0
-        // مع جميع التعديلات المطلوبة لنظام الإحالة
+        // مع جميع التعديلات المطلوبة - نظام الإحالة مُصلح بالكامل
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -2500,214 +2502,6 @@
             initialized: false
         };
 
-        // ============================================
-        // FIXED REFERRAL SYSTEM - COMPLETE SOLUTION
-        // ============================================
-
-        // ---------- FIX 1: التقاط الـ referrer من الرابط بشكل صحيح ----------
-        function captureReferrerFromLink() {
-            try {
-                console.log('🔍 Checking for referrer in URL...');
-                
-                // التحقق من وجود referrer في localStorage (للمستخدمين العائدين)
-                const savedReferrer = localStorage.getItem('referrer_id');
-                if (savedReferrer) {
-                    console.log('🔄 Found saved referrer in localStorage:', savedReferrer);
-                    sessionStorage.setItem('referrer', savedReferrer);
-                }
-                
-                // الطريقة الأولى: من Telegram WebApp
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe) {
-                    const tg = window.Telegram.WebApp;
-                    
-                    if (tg.initDataUnsafe.start_param) {
-                        const startParam = tg.initDataUnsafe.start_param;
-                        console.log('📱 Telegram start_param detected:', startParam);
-                        
-                        // التنسيق المتوقع: ref_USERID_RANDOM أو ref_USERID
-                        if (startParam && startParam.startsWith('ref_')) {
-                            const referralCode = startParam.replace('ref_', '');
-                            console.log('🔑 Extracted referral code:', referralCode);
-                            
-                            // استخراج USER ID من الكود
-                            let referrerId = referralCode;
-                            if (referralCode.includes('_')) {
-                                referrerId = referralCode.split('_')[0];
-                            }
-                            
-                            // التحقق من صحة الرقم
-                            if (!isNaN(parseInt(referrerId))) {
-                                console.log('✅ Valid referrer ID found:', referrerId);
-                                
-                                // حفظ في أماكن متعددة لضمان عدم الفقدان
-                                localStorage.setItem('referrer_id', referrerId);
-                                sessionStorage.setItem('referrer', referrerId);
-                                
-                                // عرض رسالة ترحيب للمستخدم
-                                setTimeout(() => {
-                                    if (window.showNotification) {
-                                        window.showNotification(
-                                            App.currentLanguage === 'ru' ? 
-                                            `👋 Добро пожаловать! Вы приглашены пользователем ${referrerId}` : 
-                                            `👋 Welcome! You were invited by user #${referrerId}`,
-                                            'info'
-                                        );
-                                    }
-                                }, 2000);
-                                
-                                return referrerId;
-                            } else {
-                                console.log('❌ Invalid referrer ID format:', referrerId);
-                            }
-                        } else {
-                            console.log('❌ Start param does not start with ref_:', startParam);
-                        }
-                    } else {
-                        console.log('ℹ️ No start_param found in Telegram WebApp');
-                    }
-                } else {
-                    console.log('ℹ️ Telegram WebApp not available');
-                }
-                
-                // الطريقة الثالثة: من URL parameters (للتطوير)
-                const urlParams = new URLSearchParams(window.location.search);
-                const refParam = urlParams.get('ref');
-                if (refParam) {
-                    console.log('🌐 Found ref in URL params:', refParam);
-                    let referrerId = refParam;
-                    if (refParam.includes('_')) {
-                        referrerId = refParam.split('_')[0];
-                    }
-                    if (!isNaN(parseInt(referrerId))) {
-                        localStorage.setItem('referrer_id', referrerId);
-                        sessionStorage.setItem('referrer', referrerId);
-                        return referrerId;
-                    }
-                }
-                
-                return null;
-            } catch (error) {
-                console.error('Error in captureReferrerFromLink:', error);
-                return null;
-            }
-        }
-
-        // ---------- FIX 2: تعديل دالة initializeUser لترسل الـ referrer بشكل صحيح ----------
-        async function initializeUser() {
-            try {
-                // التأكد من التقاط الـ referrer قبل التهيئة
-                captureReferrerFromLink();
-                
-                // الحصول على الـ referrer من sessionStorage
-                const referrer = sessionStorage.getItem('referrer');
-                console.log('📤 Sending referrer to API:', referrer);
-                
-                // تجهيز startParam
-                let startParam = null;
-                if (referrer) {
-                    // إنشاء كود الإحالة بالتنسيق الصحيح: ref_USERID_RANDOM
-                    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-                    startParam = `ref_${referrer}_${random}`;
-                    console.log('📤 StartParam for API:', startParam);
-                }
-                
-                // الحصول على بيانات المستخدم من Telegram
-                const tgUser = App.telegram?.initDataUnsafe?.user;
-                const userInfo = tgUser ? {
-                    id: tgUser.id,
-                    first_name: tgUser.first_name || '',
-                    last_name: tgUser.last_name || '',
-                    username: tgUser.username || '',
-                    photo_url: tgUser.photo_url || ''
-                } : {
-                    first_name: 'Demo',
-                    last_name: 'User',
-                    username: 'demo_user'
-                };
-                
-                console.log('📤 User info for API:', userInfo);
-                
-                // استدعاء API لتهيئة المستخدم
-                const response = await fetch(`${CONFIG.API_URL}/api`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Telegram ${App.telegram?.initData || ''}`,
-                        'X-Action': 'initializeUser',
-                        'X-CSRF-Token': CONFIG.CSRF_TOKEN
-                    },
-                    body: JSON.stringify({
-                        action: 'initializeUser',
-                        data: { 
-                            startParam: startParam,
-                            userInfo: userInfo
-                        }
-                    })
-                });
-                
-                const result = await response.json();
-                console.log('📥 Initialize user response:', result);
-                
-                if (result.success && result.data) {
-                    // إذا كان هناك referrer، عرض رسالة نجاح
-                    if (result.data.referredBy) {
-                        console.log('✅ User registered with referrer:', result.data.referredBy);
-                        setTimeout(() => {
-                            window.showNotification(
-                                App.currentLanguage === 'ru' ? 
-                                '✅ Реферал успешно зарегистрирован!' : 
-                                '✅ Referral successfully registered!',
-                                'success'
-                            );
-                        }, 1000);
-                    }
-                }
-                
-                return result;
-            } catch (error) {
-                console.error('Init user error:', error);
-                return null;
-            }
-        }
-
-        // ---------- FIX 3: دالة لجلب بيانات المستخدمين للإحالات ----------
-        async function fetchUserProfile(userId) {
-            try {
-                // محاولة الحصول من الـ API
-                const response = await fetch(`${CONFIG.API_URL}/api`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Telegram ${App.telegram?.initData || ''}`,
-                        'X-Action': 'getState',
-                        'X-CSRF-Token': CONFIG.CSRF_TOKEN
-                    },
-                    body: JSON.stringify({
-                        action: 'getState',
-                        data: { targetUserId: userId }
-                    })
-                });
-                
-                const result = await response.json();
-                if (result.success && result.data && result.data.user) {
-                    return {
-                        firstName: result.data.user.firstName || 'Farmer',
-                        username: result.data.user.username || '',
-                        photoUrl: result.data.user.photoUrl || ''
-                    };
-                }
-            } catch (error) {
-                console.error('Error fetching user profile:', error);
-            }
-            
-            // إذا فشل، أرجع بيانات افتراضية
-            return {
-                firstName: 'Farmer',
-                username: '',
-                photoUrl: ''
-            };
-        }
-
         // ---------- NOTIFICATION SYSTEM ----------
         function showNotification(message, type = 'success', duration = 5000) {
             const container = document.getElementById('notificationContainer');
@@ -2726,8 +2520,6 @@
                 }, 300);
             }, duration);
         }
-        
-        window.showNotification = showNotification;
 
         // ---------- TRANSLATION SYSTEM ----------
         function setLanguage(lang) {
@@ -2766,10 +2558,6 @@
             setLanguage(savedLang);
             
             await setupTelegram();
-            
-            // التقاط الـ referrer قبل تهيئة المستخدم
-            captureReferrerFromLink();
-            
             await initializeUser();
             
             setTimeout(() => initTONConnect(), 1000);
@@ -2802,8 +2590,22 @@
                         document.getElementById('depositUserIdDisplay').innerHTML = App.userId;
                     }
                     
+                    // Read start parameter (referral) - FIXED
+                    if (App.telegram.initDataUnsafe && App.telegram.initDataUnsafe.start_param) {
+                        const startParam = App.telegram.initDataUnsafe.start_param;
+                        console.log('Start param found:', startParam);
+                        
+                        // The format should be: ref_USERID
+                        if (startParam && startParam.startsWith('ref_')) {
+                            const referrerId = startParam.replace('ref_', '');
+                            console.log('Storing referrer ID:', referrerId);
+                            localStorage.setItem('referrer_id', referrerId);
+                        }
+                    }
+                    
                     resolve();
                 } else {
+                    // Demo mode
                     App.userId = 'demo_' + Math.floor(Math.random() * 1000000);
                     document.getElementById('profileName').innerHTML = 'Demo Farmer';
                     document.getElementById('profileUsername').innerHTML = '@demo';
@@ -2812,6 +2614,54 @@
                     resolve();
                 }
             });
+        }
+
+        // ---------- INITIALIZE USER ----------
+        async function initializeUser() {
+            try {
+                // Get referrer from localStorage - FIXED
+                const referrerId = localStorage.getItem('referrer_id');
+                const startParam = referrerId ? `ref_${referrerId}` : null;
+                
+                console.log('Initializing user with startParam:', startParam);
+                
+                const tgUser = App.telegram?.initDataUnsafe?.user;
+                const userInfo = tgUser ? {
+                    firstName: tgUser.first_name,
+                    lastName: tgUser.last_name,
+                    username: tgUser.username,
+                    photoUrl: tgUser.photo_url
+                } : null;
+                
+                const response = await fetch(`${CONFIG.API_URL}/api`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Telegram ${App.telegram?.initData || ''}`,
+                        'X-Action': 'initializeUser',
+                        'X-CSRF-Token': CONFIG.CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        action: 'initializeUser',
+                        data: { 
+                            startParam,
+                            userInfo 
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Initialize user result:', result);
+                
+                // Clear referrer after use
+                if (referrerId) {
+                    localStorage.removeItem('referrer_id');
+                }
+                
+                return result;
+            } catch (error) {
+                console.error('Init user error:', error);
+            }
         }
 
         // ---------- TON CONNECT ----------
@@ -3125,11 +2975,10 @@
             document.getElementById('totalMachines').innerHTML = totalMachines;
             document.getElementById('totalProduction').innerHTML = (App.user.milkPerHour + App.user.eggsPerHour) + '/h';
             
-            // ----- Referral - FIXED -----
+            // ----- Referral - COMPLETELY FIXED -----
             if (App.user.referralCode) {
-                // تعديل رابط الإحالة لاستخدام ID المستخدم فقط
-                const botName = CONFIG.BOT_USERNAME.replace('@', '');
-                const referralLink = `https://t.me/${botName}?startapp=ref_${App.userId}`;
+                // استخدام الرابط مع ID المستخدم فقط - صيغة ref_USERID
+                const referralLink = `https://t.me/${CONFIG.BOT_USERNAME.replace('@', '')}?startapp=ref_${App.userId}`;
                 document.getElementById('referralLink').value = referralLink;
             }
             
@@ -3149,33 +2998,35 @@
                     (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
             }
             
-            // ----- Recent Referrals with Names and Earnings - FIXED -----
+            // ----- Recent Referrals with Names, Photos, and Earnings - COMPLETELY FIXED -----
             const recentList = document.getElementById('recentReferralsList');
             if (App.referral?.recentReferrals?.length > 0) {
                 let html = '';
-                App.referral.recentReferrals.slice(0, 5).forEach(ref => {
-                    const date = new Date(ref.timestamp).formatDate ? 
-                        new Date(ref.timestamp).formatDate() : 
-                        new Date(ref.timestamp).toLocaleDateString();
-                    
+                App.referral.recentReferrals.slice(0, 10).forEach(ref => {
+                    const date = new Date(ref.timestamp).toLocaleDateString();
                     // استخدام الاسم والصورة من بيانات المستخدم
                     const name = ref.firstName || ref.username || `User ${ref.userId?.substring(0, 6)}`;
-                    const earnings = formatTON(ref.amount || 0);
+                    // إظهار المبلغ الذي تم ربحه من هذا المستخدم بالضبط
+                    const earnedFromThisUser = ref.totalEarnedFromThisUser || 0;
                     
-                    // صورة المستخدم
+                    // عرض صورة المستخدم إذا كانت موجودة
                     const photoHtml = ref.photoUrl ? 
                         `<img src="${ref.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                        '👤';
+                        (ref.firstName ? ref.firstName.charAt(0).toUpperCase() : '👤');
                     
                     html += `<div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <div style="width: 32px; height: 32px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden;">
-                            ${photoHtml}
+                            ${ref.photoUrl ? `<img src="${ref.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                               (ref.firstName ? `<span style="color: white; font-weight: bold;">${ref.firstName.charAt(0).toUpperCase()}</span>` : '👤')}
                         </div>
                         <div style="flex: 1;">
                             <div style="font-weight: 600; font-size: 11px;">${name}</div>
                             <div style="font-size: 9px; color: var(--text-muted);">${date}</div>
                         </div>
-                        <div style="font-weight: 700; color: var(--neon-green); font-size: 11px;">+${earnings} TON</div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 700; color: var(--neon-green); font-size: 11px;">+${formatTON(earnedFromThisUser)} TON</div>
+                            <div style="font-size: 8px; color: var(--text-muted);">earned</div>
+                        </div>
                     </div>`;
                 });
                 recentList.innerHTML = html;
@@ -3586,8 +3437,8 @@
                 animateTonBalance();
                 
                 const message = App.currentLanguage === 'ru' ? 
-                    `✅ Забрано ${formatTON(result.claimedAmount)} TON от рефералов!` : 
-                    `✅ Claimed ${formatTON(result.claimedAmount)} TON from referrals!`;
+                    `✅ Забрано ${result.claimedAmount} TON!` : 
+                    `✅ Claimed ${result.claimedAmount} TON!`;
                 
                 showNotification(message, 'success');
             } catch (error) {
@@ -3622,8 +3473,8 @@
                 document.getElementById('withdrawAddress').value = '';
                 
                 const message = App.currentLanguage === 'ru' ? 
-                    `✅ Запрос на вывод: ${formatTON(result.netAmount)} TON` : 
-                    `✅ Withdrawal requested: ${formatTON(result.netAmount)} TON`;
+                    `✅ Запрос на вывод: ${result.netAmount} TON` : 
+                    `✅ Withdrawal requested: ${result.netAmount} TON`;
                 
                 showNotification(message, 'success');
                 window.closeAllModals();
@@ -3818,18 +3669,18 @@
             } catch (error) {
                 console.error('Deposit error:', error);
                 
-                let errorMessage = App.currentLanguage === 'ru' ? 'Транзакция не удалась' : 'Transaction failed';
+                let errorMessage = App.currentLanguage === 'ru' ? 'فشلت المعاملة' : 'Transaction failed';
                 if (error.message?.includes('rejected')) {
-                    errorMessage = App.currentLanguage === 'ru' ? 'Транзакция отклонена в кошельке' : 'Transaction rejected in wallet';
+                    errorMessage = App.currentLanguage === 'ru' ? 'تم رفض المعاملة في المحفظة' : 'Transaction rejected in wallet';
                 } else if (error.message?.includes('insufficient')) {
-                    errorMessage = App.currentLanguage === 'ru' ? 'Недостаточно средств' : 'Insufficient balance';
+                    errorMessage = App.currentLanguage === 'ru' ? 'رصيد غير كاف' : 'Insufficient balance';
                 }
                 
                 const statusDiv = document.getElementById('depositStatus');
                 statusDiv.classList.add('visible');
                 statusDiv.querySelector('.status-icon').innerHTML = '❌';
                 statusDiv.querySelector('.status-message').innerHTML = errorMessage;
-                document.getElementById('depositStatusDetail').innerHTML = error.message || (App.currentLanguage === 'ru' ? 'Попробуйте снова' : 'Please try again');
+                document.getElementById('depositStatusDetail').innerHTML = error.message || (App.currentLanguage === 'ru' ? 'حاول مرة أخرى' : 'Please try again');
             }
         };
 
@@ -3848,9 +3699,9 @@
                 statusDiv.classList.add('visible');
                 statusDiv.querySelector('.status-icon').innerHTML = '⏳';
                 statusDiv.querySelector('.status-message').innerHTML = App.currentLanguage === 'ru' ? 
-                    'Транзакция отправлена!' : 'Transaction sent!';
+                    'تم إرسال المعاملة!' : 'Transaction sent!';
                 document.getElementById('depositStatusDetail').innerHTML = App.currentLanguage === 'ru' ? 
-                    'Ожидание подтверждения (≈1 мин)...' : 'Waiting for confirmation (≈1 min)...';
+                    'في انتظار التأكيد (حوالي 1 دقيقة)...' : 'Waiting for confirmation (≈1 min)...';
                 
                 startDepositVerification(depositResult.depositId, result.boc);
                 
@@ -3861,7 +3712,7 @@
                 statusDiv.classList.add('visible');
                 statusDiv.querySelector('.status-icon').innerHTML = '❌';
                 statusDiv.querySelector('.status-message').innerHTML = App.currentLanguage === 'ru' ? 
-                    'Ошибка обработки депозита' : 'Failed to process deposit';
+                    'فشل معالجة الإيداع' : 'Failed to process deposit';
                 document.getElementById('depositStatusDetail').innerHTML = error.message;
             }
         }
@@ -3889,14 +3740,14 @@
                         const statusDiv = document.getElementById('depositStatus');
                         statusDiv.querySelector('.status-icon').innerHTML = '✅';
                         statusDiv.querySelector('.status-message').innerHTML = App.currentLanguage === 'ru' ? 
-                            'Депозит подтвержден!' : 'Deposit confirmed!';
+                            'تم تأكيد الإيداع!' : 'Deposit confirmed!';
                         document.getElementById('depositStatusDetail').innerHTML = App.currentLanguage === 'ru' ? 
-                            `${result.amount} TON добавлено на баланс` : 
+                            `تم إضافة ${result.amount} TON إلى رصيدك` : 
                             `${result.amount} TON added to your balance`;
                         
                         showNotification(
                             App.currentLanguage === 'ru' ? 
-                            `💰 Депозит подтвержден! ${result.amount} TON добавлено` : 
+                            `💰 تم تأكيد الإيداع! تم إضافة ${result.amount} TON` : 
                             `💰 Deposit confirmed! ${result.amount} TON added`,
                             'success'
                         );
@@ -3916,9 +3767,9 @@
                         const statusDiv = document.getElementById('depositStatus');
                         statusDiv.querySelector('.status-icon').innerHTML = '⏳';
                         statusDiv.querySelector('.status-message').innerHTML = App.currentLanguage === 'ru' ? 
-                            'Все еще проверяется...' : 'Still verifying...';
+                            'لا يزال قيد التحقق...' : 'Still verifying...';
                         document.getElementById('depositStatusDetail').innerHTML = App.currentLanguage === 'ru' ? 
-                            'Будет зачислено автоматически' : 'Will be credited automatically';
+                            'سيتم إضافته تلقائياً' : 'Will be credited automatically';
                     }
                     
                 } catch (error) {
