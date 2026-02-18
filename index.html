@@ -1843,7 +1843,7 @@
             </div>
         </div>
         
-        <!-- ========== SECTION: FRIENDS (REFERRAL) - FIXED ========== -->
+        <!-- ========== SECTION: FRIENDS (REFERRAL) - FIXED WITH FULL INFO ========== -->
         <div id="sectionFriends" class="section">
             <div class="card" style="background: linear-gradient(145deg, rgba(255,92,168,0.15), var(--glass-strong));">
                 <div class="card-title">
@@ -1886,12 +1886,31 @@
                 </button>
             </div>
             
+            <!-- قسم الإحالات مع عرض الصورة والاسم والمبلغ -->
             <div class="card">
                 <div class="card-title">
                     <i class="fas fa-history"></i> <span data-i18n="referral.recent">Recent Referrals</span>
                 </div>
-                <div id="recentReferralsList" style="min-height: 70px;">
+                <div id="recentReferralsList" style="min-height: 70px; max-height: 300px; overflow-y: auto;">
+                    <!-- سيتم ملؤها بالـ JavaScript مع الصور والأسماء والأرباح -->
+                    <div style="text-align: center; padding: 18px; color: var(--text-secondary);">
+                        <i class="fas fa-users" style="font-size: 24px; margin-bottom: 8px; opacity: 0.5;"></i>
+                        <p data-i18n="referral.noReferrals">No referrals yet</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- قسم سجل الأرباح -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-chart-line"></i> <span data-i18n="referral.earningsHistory">Earnings History</span>
+                </div>
+                <div id="earningsHistoryList" style="min-height: 70px; max-height: 200px; overflow-y: auto;">
                     <!-- سيتم ملؤها بالـ JavaScript -->
+                    <div style="text-align: center; padding: 18px; color: var(--text-secondary);">
+                        <i class="fas fa-coins" style="font-size: 24px; margin-bottom: 8px; opacity: 0.5;"></i>
+                        <p data-i18n="referral.noEarnings">No earnings yet</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1900,7 +1919,7 @@
         <div id="sectionProfile" class="section">
             <div class="card">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-                    <div style="width: 50px; height: 50px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                    <div style="width: 50px; height: 50px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; overflow: hidden;" id="profileAvatar">
                         👨‍🌾
                     </div>
                     <div>
@@ -2206,7 +2225,7 @@
     <script>
         // ============================================
         // CRYSTAL RANCH - COMPLETE FRONTEND v4.0
-        // مع جميع التعديلات المطلوبة
+        // مع نظام إحالة كامل - عرض الصور والأسماء والأرباح
         // ============================================
 
         // ---------- CONFIGURATION ----------
@@ -2284,6 +2303,9 @@
                 'referral.claimed': 'Claimed',
                 'referral.claim': 'Claim Earnings',
                 'referral.recent': 'Recent Referrals',
+                'referral.noReferrals': 'No referrals yet',
+                'referral.earningsHistory': 'Earnings History',
+                'referral.noEarnings': 'No earnings yet',
                 
                 // Profile
                 'profile.totalMachines': 'Total Machines',
@@ -2407,6 +2429,9 @@
                 'referral.claimed': 'Выведено',
                 'referral.claim': 'Забрать доход',
                 'referral.recent': 'Недавние рефералы',
+                'referral.noReferrals': 'Пока нет рефералов',
+                'referral.earningsHistory': 'История доходов',
+                'referral.noEarnings': 'Пока нет доходов',
                 
                 // Profile
                 'profile.totalMachines': 'Всего машин',
@@ -2531,6 +2556,7 @@
                 if (TRANSLATIONS[lang][key]) {
                     let text = TRANSLATIONS[lang][key];
                     
+                    // Handle line breaks
                     if (element.tagName === 'P' || element.tagName === 'DIV') {
                         text = text.replace(/\\n/g, '<br>');
                         element.innerHTML = text;
@@ -2550,6 +2576,7 @@
         async function initApp() {
             console.log('Crystal Ranch · Initializing...');
             
+            // Load saved language
             const savedLang = localStorage.getItem('crystal_ranch_lang') || 'en';
             setLanguage(savedLang);
             
@@ -2578,23 +2605,32 @@
                         const tgUser = App.telegram.initDataUnsafe.user;
                         App.userId = String(tgUser.id);
                         
-                        document.getElementById('profileName').innerHTML = 
-                            `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Farmer';
+                        // تحديث معلومات الملف الشخصي
+                        const fullName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Farmer';
+                        document.getElementById('profileName').innerHTML = fullName;
                         document.getElementById('profileUsername').innerHTML = 
                             tgUser.username ? `@${tgUser.username}` : '@crystal_ranch';
                         document.getElementById('profileUserId').innerHTML = `ID: ${App.userId}`;
                         document.getElementById('depositUserIdDisplay').innerHTML = App.userId;
+                        
+                        // تحديث الصورة إذا وجدت
+                        if (tgUser.photo_url) {
+                            const avatar = document.getElementById('profileAvatar');
+                            avatar.innerHTML = `<img src="${tgUser.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                        }
                     }
                     
                     if (App.telegram.initDataUnsafe && App.telegram.initDataUnsafe.start_param) {
                         const startParam = App.telegram.initDataUnsafe.start_param;
+                        console.log('Start param:', startParam);
                         if (startParam.startsWith('ref_')) {
-                            sessionStorage.setItem('referrer', startParam.replace('ref_', ''));
+                            sessionStorage.setItem('referrer', startParam);
                         }
                     }
                     
                     resolve();
                 } else {
+                    // وضع التجربة
                     App.userId = 'demo_' + Math.floor(Math.random() * 1000000);
                     document.getElementById('profileName').innerHTML = 'Demo Farmer';
                     document.getElementById('profileUsername').innerHTML = '@demo';
@@ -2609,11 +2645,10 @@
         async function initializeUser() {
             try {
                 const referrer = sessionStorage.getItem('referrer');
-                const startParam = referrer ? `ref_${referrer}` : null;
+                const startParam = referrer || null;
                 
                 const tgUser = App.telegram?.initDataUnsafe?.user;
                 const userInfo = tgUser ? {
-                    id: tgUser.id,
                     first_name: tgUser.first_name,
                     last_name: tgUser.last_name,
                     username: tgUser.username,
@@ -2638,6 +2673,7 @@
                 });
                 
                 const result = await response.json();
+                console.log('Initialize user result:', result);
                 return result;
             } catch (error) {
                 console.error('Init user error:', error);
@@ -2761,17 +2797,24 @@
                 App.user = state.user;
                 App.global = state.global;
                 App.constants = state.constants;
-                App.referral = state.referral || { totalReferrals: 0, totalEarnings: 0, recentReferrals: [] };
+                App.referral = state.referral || { 
+                    totalReferrals: 0, 
+                    totalEarnings: 0, 
+                    recentReferrals: [],
+                    recentEarnings: []
+                };
                 App.market = state.market || { 
                     milk: { sellOrders: 0, buyOrders: 0, bestSellPrice: 0, bestBuyPrice: 0, totalMilk: 0, totalEggs: 0 },
                     eggs: { sellOrders: 0, buyOrders: 0, bestSellPrice: 0, bestBuyPrice: 0 }
                 };
                 
+                // تحديث سعر الكريستال
                 if (App.global) {
                     App.global.diamond_price = CONFIG.CRYSTAL_PRICE;
                 }
                 
                 updateAllUI();
+                updateReferralUI();
                 
                 animateTonBalance();
                 
@@ -2789,8 +2832,78 @@
             }
         }
 
+        // ---------- UPDATE REFERRAL UI WITH FULL INFO ----------
+        function updateReferralUI() {
+            if (!App.referral) return;
+            
+            // تحديث الإحالات مع الصور والأسماء والأرباح
+            const recentList = document.getElementById('recentReferralsList');
+            if (App.referral.recentReferrals && App.referral.recentReferrals.length > 0) {
+                let html = '';
+                App.referral.recentReferrals.forEach(ref => {
+                    const joinDate = ref.joinedAt ? new Date(ref.joinedAt).toLocaleDateString() : 'Recently';
+                    const name = ref.firstName || ref.username || `User ${ref.userId?.substring(0, 6)}`;
+                    const earned = ref.totalEarnedFromThisUser || 0;
+                    
+                    // استخدام الصورة إذا وجدت أو أول حرف من الاسم
+                    let avatarHtml = '';
+                    if (ref.photoUrl) {
+                        avatarHtml = `<img src="${ref.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    } else {
+                        avatarHtml = name.charAt(0).toUpperCase();
+                    }
+                    
+                    html += `<div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width: 36px; height: 36px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden; color: white; font-weight: 600;">
+                            ${avatarHtml}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="font-weight: 600; font-size: 12px;">${name}</div>
+                                <div style="font-weight: 700; color: var(--neon-green); font-size: 11px;">+${formatTON(earned)} TON</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 2px;">
+                                <div style="font-size: 9px; color: var(--text-muted);">${joinDate}</div>
+                                <div style="font-size: 9px; color: var(--text-secondary);">@${ref.username || 'farmer'}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                recentList.innerHTML = html;
+            } else {
+                recentList.innerHTML = '<div style="text-align: center; padding: 18px; color: var(--text-secondary);">' + 
+                    (App.currentLanguage === 'ru' ? 'Нет рефералов' : 'No referrals yet') + '</div>';
+            }
+            
+            // تحديث سجل الأرباح
+            const earningsList = document.getElementById('earningsHistoryList');
+            if (App.referral.recentEarnings && App.referral.recentEarnings.length > 0) {
+                let html = '';
+                App.referral.recentEarnings.slice(0, 10).forEach(earning => {
+                    const date = new Date(earning.timestamp).toLocaleDateString();
+                    const name = earning.firstName || earning.username || `User ${earning.userId?.substring(0, 6)}`;
+                    
+                    html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 600;">${name}</div>
+                            <div style="font-size: 9px; color: var(--text-muted);">${earning.type || 'purchase'}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 11px; font-weight: 700; color: var(--neon-green);">+${formatTON(earning.amount)} TON</div>
+                            <div style="font-size: 8px; color: var(--text-muted);">${date}</div>
+                        </div>
+                    </div>`;
+                });
+                earningsList.innerHTML = html;
+            } else {
+                earningsList.innerHTML = '<div style="text-align: center; padding: 18px; color: var(--text-secondary);">' + 
+                    (App.currentLanguage === 'ru' ? 'Нет доходов' : 'No earnings yet') + '</div>';
+            }
+        }
+
         // ---------- UPDATE LOCKED STATES WITH TIMERS ----------
         function updateLockedStates() {
+            // Chicken locked
             const chickenLocked = document.getElementById('chickenLockedOverlay');
             const chickenTimer = document.getElementById('chickenUnlockTimer');
             
@@ -2802,6 +2915,7 @@
                 chickenLocked.style.display = 'none';
             }
             
+            // Diamond locked
             const diamondLocked = document.getElementById('diamondLockedOverlay');
             const diamondTimer = document.getElementById('diamondUnlockTimer');
             
@@ -2954,7 +3068,9 @@
             
             // ----- Referral - FIXED -----
             if (App.user.referralCode) {
-                const referralLink = `https://t.me/${CONFIG.BOT_USERNAME.replace('@', '')}?startapp=ref_${App.userId}`;
+                // رابط الإحالة: https://t.me/Crystal_Ranch_bot?startapp=ref_USERID
+                const botUsername = CONFIG.BOT_USERNAME.replace('@', '');
+                const referralLink = `https://t.me/${botUsername}?startapp=ref_${App.userId}`;
                 document.getElementById('referralLink').value = referralLink;
             }
             
@@ -2972,41 +3088,6 @@
                 claimBtn.disabled = true;
                 claimBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> ' + 
                     (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
-            }
-            
-            // ----- Recent Referrals with Names and Earnings - FIXED -----
-            const recentList = document.getElementById('recentReferralsList');
-            const referrals = App.referral?.recentReferrals || [];
-            const earnings = App.referral?.recentEarnings || [];
-
-            if (referrals.length > 0) {
-                let html = '';
-                const earningsMap = new Map();
-                earnings.forEach(earn => {
-                    earningsMap.set(earn.userId, earn.amount);
-                });
-
-                referrals.slice(0, 5).forEach(ref => {
-                    const date = new Date(ref.timestamp).toLocaleDateString();
-                    const name = ref.firstName || ref.username || `User ${ref.userId?.substring(0, 6)}`;
-                    const earnedAmount = earningsMap.get(ref.userId) || 0;
-                    const earningsFormatted = formatTON(earnedAmount);
-
-                    html += `<div style="display: flex; align-items: center; gap: 8px; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <div style="width: 32px; height: 32px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; overflow: hidden;">
-                            ${ref.photoUrl ? `<img src="${ref.photoUrl}" style="width: 100%; height: 100%; object-fit: cover;">` : '👤'}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="font-weight: 600; font-size: 11px;">${name}</div>
-                            <div style="font-size: 9px; color: var(--text-muted);">${date}</div>
-                        </div>
-                        <div style="font-weight: 700; color: var(--neon-green); font-size: 11px;">+${earningsFormatted} TON</div>
-                    </div>`;
-                });
-                recentList.innerHTML = html;
-            } else {
-                recentList.innerHTML = '<div style="text-align: center; padding: 18px; color: var(--text-secondary);">' + 
-                    (App.currentLanguage === 'ru' ? 'Нет рефералов' : 'No referrals yet') + '</div>';
             }
             
             // ----- Hints -----
@@ -3045,6 +3126,7 @@
                     limit: 10
                 });
                 
+                // Update Market Stats
                 let totalOrders = sellOrders.orders?.length || 0;
                 let milkQty = 0, eggsQty = 0;
                 
@@ -3061,6 +3143,7 @@
                 const bestSell = App.market?.[App.currentMarketResource]?.bestSellPrice || 0.0001;
                 document.getElementById('marketBestPrice').innerHTML = formatTON(bestSell);
                 
+                // Update Sell Orders Grid (Buy View)
                 const sellGrid = document.getElementById('sellOrdersGrid');
                 const loadMoreBtn = document.getElementById('loadMoreSellBtn');
                 
@@ -3628,6 +3711,7 @@
                 
                 const result = await App.tonConnectUI.sendTransaction(transaction);
                 
+                // عرض إشعار النجاح فوراً
                 showNotification(
                     App.currentLanguage === 'ru' ? 
                     '✅ تمت المعاملة بنجاح! انتظر خلال 1 دقيقة سيتم إضافة الرصيد' : 
@@ -3761,10 +3845,12 @@
                     const lang = this.dataset.lang;
                     setLanguage(lang);
                     
+                    // Update TON Connect language if connected
                     if (App.tonConnectUI) {
                         App.tonConnectUI.language = lang === 'ru' ? 'ru' : 'en';
                     }
                     
+                    // Update UI with new language
                     updateAllUI();
                 });
             });
