@@ -1,6 +1,7 @@
 // ============================================
 // FARM ECONOMY WORKER v4.1 - COMPLETE PRODUCTION
 // FIXED: Auto-add referral earnings, Hatch 5000, Notifications, Withdraw 0.1, Market Fee 10%
+// UPDATED: Diamond price 25 TON, Fixed notifications, UI improvements
 // ============================================
 
 export default {
@@ -356,7 +357,7 @@ const GAME_CONSTANTS = {
     DIAMOND_PRODUCTION_COST_MILK: 20000,
     DIAMOND_PRODUCTION_COST_EGG: 20000,
     DIAMOND_PRODUCTION_YIELD: 1,
-    DIAMOND_BASE_PRICE: 10,
+    DIAMOND_BASE_PRICE: 25, // MODIFIED: Changed from 10 to 25
     
     MIN_ORDER_AMOUNT: 100,
     MAX_ACTIVE_ORDERS: 50,
@@ -706,20 +707,20 @@ async function sendTelegramNotification(env, userId, message) {
 async function notifyOrderFilled(env, userId, order, quantity, totalTon, fee = 0) {
     const resourceEmoji = order.resource === 'milk' ? '🥛' : '🥚';
     const resourceName = order.resource === 'milk' ? 'MILK' : 'EGG';
-    const orderType = order.type === 'sell' ? 'SELL' : 'BUY';
     const netAmount = order.type === 'sell' ? totalTon - fee : totalTon;
     
     let message = '';
     
+    // FIXED: Send notification to seller (order.userId) when order is sold
+    // userId parameter is already the seller ID when called from handleExecuteOrder
     if (order.type === 'sell') {
-        message = `🎉 <b>Order Sold!</b>\n\nYour ${orderType} order for ${formatNumber(quantity)} ${resourceEmoji} ${resourceName} has been filled!\n\n`;
-        message += `💰 You received: ${formatTON(netAmount)} TON`;
+        message = `🎉 <b>Order Sold!</b>\n\nYour sell order for ${formatNumber(quantity)} ${resourceEmoji} ${resourceName} has been filled!\n\n💰 You received: ${formatTON(netAmount)} TON`;
         if (fee > 0) {
             message += `\n📉 Fee (10%): ${formatTON(fee)} TON`;
         }
         message += `\n📦 Order ID: #${order.id.substring(0, 6)}`;
     } else {
-        message = `🎉 <b>Order Filled!</b>\n\nYour ${orderType} order for ${formatNumber(quantity)} ${resourceEmoji} ${resourceName} has been filled!\n\n📦 Order ID: #${order.id.substring(0, 6)}`;
+        message = `🎉 <b>Order Filled!</b>\n\nYour buy order for ${formatNumber(quantity)} ${resourceEmoji} ${resourceName} has been filled!\n\n📦 Order ID: #${order.id.substring(0, 6)}`;
     }
     
     await sendTelegramNotification(env, userId, message);
@@ -735,6 +736,7 @@ async function notifyMachinePurchase(env, userId, machineType) {
 }
 
 async function notifyReferralReward(env, userId, amount, referrerName) {
+    // FIXED: Send notification to referrer (userId parameter) when referred user makes a purchase
     const message = `🎁 <b>Referral Reward!</b>\n\nYour referral ${referrerName || 'friend'} just purchased a machine!\n\n💎 You received: ${formatTON(amount)} TON\n\nKeep sharing your link to earn more! 🚀`;
     
     await sendTelegramNotification(env, userId, message);
@@ -906,6 +908,7 @@ async function updateReferralEarnings(env, referrerId, referredUserId, purchaseA
         });
     }
     
+    // FIXED: Keep all earnings records, don't overwrite
     await dbPush(env, `users/${referrerId}/referralEarnings`, {
         userId: referredUserId,
         amount: commission,
@@ -2075,6 +2078,7 @@ async function handleExecuteOrder(env, userId, data) {
             
             await dbUpdate(env, `users/${sellerId}`, sellerUpdates);
             
+            // FIXED: Send notification to seller (order.userId) when order is sold
             await notifyOrderFilled(env, sellerId, order, executeQuantity, totalCost, fee);
             
         } else {
@@ -3036,7 +3040,7 @@ async function handleGetState(env, userId) {
             
             referralStats.recentReferrals = referrals
                 .sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0))
-                .slice(0, 20);
+                .slice(0, 50);
         }
         
         const earningsResult = await dbGet(env, `users/${userId}/referralEarnings`);
@@ -3048,7 +3052,7 @@ async function handleGetState(env, userId) {
             
             const recentEarnings = earnings
                 .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 20);
+                .slice(0, 50);
             
             referralStats.recentEarnings = recentEarnings;
         }
