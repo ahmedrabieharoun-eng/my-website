@@ -852,294 +852,194 @@ async function initializeGlobalState(env) {
     return initialState;
 }
 
-async function initializeUser(env, userId, referredBy = null) {
+/**
+ * توليد كود إحالة بسيط - يستخدم userId فقط
+ */
+function generateReferralCode(userId) {
+    // كود إحالة بسيط: ref_USERID
+    return `ref_${userId}`;
+}
+
+/**
+ * استخراج المُحيل من start parameter
+ */
+function extractReferrerFromStartParam(startParam) {
+    if (!startParam) return null;
+    
+    // التنسيق: ref_USERID
+    if (startParam.startsWith('ref_')) {
+        const referrerId = startParam.replace('ref_', '');
+        // التحقق من أنه رقم صحيح
+        if (!isNaN(parseInt(referrerId))) {
+            return referrerId;
+        }
+    }
+    return null;
+}
+
+/**
+ * تهيئة مستخدم جديد مع نظام إحالة متطور
+ */
+async function initializeUser(env, userId, userInfo = {}, startParam = null) {
     const now = Date.now();
     
-    // Generate unique referral code
+    // استخراج المُحيل من startParam
+    const referredBy = extractReferrerFromStartParam(startParam);
+    
+    // توليد كود إحالة للمستخدم الجديد
     const referralCode = generateReferralCode(userId);
     
-    const initialUser = {
-        // Balances
+    // بيانات المستخدم الأساسية
+    const userData = {
+        // التوازنات
         tonBalance: 0,
         milk: 0,
         eggs: 0,
         diamond: 0,
         
-        // Machines
+        // الآلات
         cows_owned: 0,
         chickens_owned: 0,
         diamond_engines_owned: 0,
         
-        // Production Tracking
+        // الإنتاج
         lastProduction: now,
         
-        // Referral
+        // الإحالات
         referralCode: referralCode,
         referredBy: referredBy,
-        referralEarnings: 0,
-        referralEarningsClaimed: 0,
+        referralEarnings: 0, // الأرباح غير المسحوبة
+        referralEarningsClaimed: 0, // الأرباح المسحوبة
         
-        // Language preference
-        language: 'en', // Default to English
+        // معلومات المستخدم من تليجرام
+        firstName: userInfo.first_name || '',
+        lastName: userInfo.last_name || '',
+        username: userInfo.username || '',
+        photoUrl: userInfo.photo_url || '',
         
-        // User info for display
-        firstName: '',
-        lastName: '',
-        username: '',
-        photoUrl: '',
+        // اللغة
+        language: 'en',
         
-        // Timestamps
+        // الطوابع الزمنية
         createdAt: now,
         updatedAt: now
     };
     
-    await dbSet(env, `users/${userId}`, initialUser);
+    // حفظ المستخدم في قاعدة البيانات
+    await dbSet(env, `users/${userId}`, userData);
     
-    // Record referral if exists
+    // إذا كان هناك مُحيل، سجل الإحالة
     if (referredBy) {
-        // Get referrer info
-        const referrerResult = await dbGet(env, `users/${referredBy}`);
-        let referrerName = 'a friend';
-        
-        if (referrerResult.success && referrerResult.data) {
-            const referrer = referrerResult.data;
-            referrerName = referrer.firstName || referrer.username || 'a friend';
-        }
-        
-        // Add to referrer's referrals list with user info
-        await dbPush(env, `users/${referredBy}/referrals`, {
-            userId: userId,
-            firstName: initialUser.firstName || 'Farmer',
-            username: initialUser.username || '',
-            timestamp: now
-        });
-        
-        // Send notification to referrer
-        await sendTelegramNotification(
-            env, 
-            referredBy, 
-            `🎉 <b>New Referral!</b>\n\n${initialUser.firstName || 'A new farmer'} just joined using your link!\n\nYou'll earn 10% commission on their purchases. 🚀`
-        );
+        await recordReferral(env, referredBy, userId, userData);
     }
     
-    return initialUser;
+    return userData;
 }
 
-function generateReferralCode(userId) {
-    // Use actual Telegram user ID in the referral code
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${userId}_${random}`;
+/**
+ * تسجيل إحالة جديدة مع كامل المعلومات
+ */
+async function recordReferral(env, referrerId, newUserId, newUserData) {
+    const now = Date.now();
+    
+    // بيانات الإحالة الكاملة
+    const referralRecord = {
+        userId: newUserId,
+        firstName: newUserData.firstName || 'Farmer',
+        lastName: newUserData.lastName || '',
+        username: newUserData.username || '',
+        photoUrl: newUserData.photoUrl || '',
+        joinedAt: now,
+        totalEarnedFromThisUser: 0, // سيتم تحديثه عند كل عملية شراء
+        lastPurchase: null
+    };
+    
+    // حفظ الإحالة في قائمة المُحيل
+    await dbSet(env, `users/${referrerId}/referrals/${newUserId}`, referralRecord);
+    
+    // إرسال إشعار للمُحيل
+    await sendTelegramNotification(
+        env,
+        referrerId,
+        `🎉 <b>New Referral!</b>\n\n${newUserData.firstName || 'A new farmer'} just joined using your link!\n\nYou'll earn 10% commission on their purchases. 🚀`
+    );
 }
 
-async function handleInitializeUser(env, userId, data) {
-    try {
-        const { startParam, userInfo } = data;
-        let referredBy = null;
-        
-        // Extract referrer from startapp parameter - FIXED
-        if (startParam && startParam.startsWith('ref_')) {
-            // The format is ref_REFERRALCODE
-            const referralCode = startParam.replace('ref_', '');
-            
-            // Extract user ID from referral code (format: USERID_RANDOM)
-            if (referralCode.includes('_')) {
-                const possibleUserId = referralCode.split('_')[0];
-                // Validate that it's a number (Telegram user ID)
-                if (!isNaN(parseInt(possibleUserId))) {
-                    referredBy = possibleUserId;
-                }
-            }
-        }
-        
-        // Check if user already exists
-        const existingUser = await dbGet(env, `users/${userId}`);
-        
-        if (existingUser.success && existingUser.data) {
-            // Update user info if provided
-            if (userInfo) {
-                const updates = {};
-                if (userInfo.firstName) updates.firstName = userInfo.firstName;
-                if (userInfo.lastName) updates.lastName = userInfo.lastName;
-                if (userInfo.username) updates.username = userInfo.username;
-                if (userInfo.photoUrl) updates.photoUrl = userInfo.photoUrl;
-                
-                if (Object.keys(updates).length > 0) {
-                    await dbUpdate(env, `users/${userId}`, updates);
-                    existingUser.data = { ...existingUser.data, ...updates };
-                }
-            }
-            
-            return {
-                success: true,
-                data: {
-                    message: 'User already exists',
-                    user: existingUser.data,
-                    referredBy: existingUser.data.referredBy
-                }
-            };
-        }
-        
-        // Create new user with user info
-        const userDataWithInfo = {
-            firstName: userInfo?.firstName || '',
-            lastName: userInfo?.lastName || '',
-            username: userInfo?.username || '',
-            photoUrl: userInfo?.photoUrl || ''
-        };
-        
-        const userData = await initializeUser(env, userId, referredBy);
-        
-        // Update with user info
-        if (userInfo) {
-            const updates = {};
-            if (userInfo.firstName) updates.firstName = userInfo.firstName;
-            if (userInfo.lastName) updates.lastName = userInfo.lastName;
-            if (userInfo.username) updates.username = userInfo.username;
-            if (userInfo.photoUrl) updates.photoUrl = userInfo.photoUrl;
-            
-            if (Object.keys(updates).length > 0) {
-                await dbUpdate(env, `users/${userId}`, updates);
-            }
-        }
-        
-        return {
-            success: true,
-            data: {
-                message: 'User initialized successfully',
-                user: userData,
-                referredBy: referredBy
-            }
-        };
-        
-    } catch (error) {
-        console.error('Initialize user error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'INIT_USER_ERROR'
-        };
-    }
-}
-
-// ============================================
-// LANGUAGE HANDLING
-// ============================================
-
-async function handleSetLanguage(env, userId, data) {
-    try {
-        const { language } = data;
-        
-        if (!['en', 'ru'].includes(language)) {
-            return {
-                success: false,
-                error: 'Invalid language. Supported: en, ru',
-                errorCode: 'INVALID_LANGUAGE'
-            };
-        }
-        
-        // Get user
-        const userResult = await dbGet(env, `users/${userId}`);
-        
-        if (!userResult.success || !userResult.data) {
-            return {
-                success: false,
-                error: 'User not found',
-                errorCode: 'USER_NOT_FOUND'
-            };
-        }
-        
-        // Update language
-        await dbUpdate(env, `users/${userId}`, {
-            language: language,
-            updatedAt: Date.now()
-        });
-        
-        return {
-            success: true,
-            data: {
-                language: language,
-                message: language === 'en' ? 'Language set to English' : 'Язык изменен на Русский'
-            }
-        };
-        
-    } catch (error) {
-        console.error('Set language error:', error);
-        return {
-            success: false,
-            error: error.message,
-            errorCode: 'SET_LANGUAGE_ERROR'
-        };
-    }
-}
-
-// ============================================
-// PRODUCTION CALCULATION - LIFETIME ACCRUAL
-// ============================================
-
-async function calculateProduction(env, userId, user = null) {
-    try {
-        // Get user if not provided
-        if (!user) {
-            const userResult = await dbGet(env, `users/${userId}`);
-            
-            if (!userResult.success || !userResult.data) {
-                return null;
-            }
-            
-            user = userResult.data;
-        }
-        
-        const now = Date.now();
-        const lastProduction = user.lastProduction || now;
-        
-        // Calculate hours passed since last production
-        const msPassed = now - lastProduction;
-        const hoursPassed = Math.floor(msPassed / GAME_CONSTANTS.HOUR_IN_MS);
-        
-        if (hoursPassed <= 0) {
-            return {
-                user: user,
-                hoursPassed: 0,
-                milkProduced: 0,
-                eggsProduced: 0
-            };
-        }
-        
-        // Calculate production
-        const milkProduced = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE * hoursPassed;
-        const eggsProduced = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE * hoursPassed;
-        
-        // Update user
-        const updates = {
-            milk: (user.milk || 0) + milkProduced,
-            eggs: (user.eggs || 0) + eggsProduced,
-            lastProduction: lastProduction + (hoursPassed * GAME_CONSTANTS.HOUR_IN_MS),
-            updatedAt: now
-        };
-        
-        await dbUpdate(env, `users/${userId}`, updates);
-        
-        // Return updated user
-        const updatedUser = {
-            ...user,
-            ...updates
-        };
-        
-        return {
-            user: updatedUser,
-            hoursPassed: hoursPassed,
-            milkProduced: milkProduced,
-            eggsProduced: eggsProduced
-        };
-        
-    } catch (error) {
-        console.error('Production calculation error:', error);
+/**
+ * تحديث أرباح المُحيل من مستخدم معين
+ */
+async function updateReferralEarnings(env, referrerId, referredUserId, purchaseAmount, purchaseType) {
+    const now = Date.now();
+    
+    // حساب العمولة (10%)
+    const commission = purchaseAmount * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
+    
+    // جلب بيانات المُحيل
+    const referrerResult = await dbGet(env, `users/${referrerId}`);
+    if (!referrerResult.success || !referrerResult.data) {
+        console.error('Referrer not found:', referrerId);
         return null;
     }
+    
+    const referrer = referrerResult.data;
+    
+    // تحديث أرباح المُحيل
+    const currentEarnings = parseFloat(referrer.referralEarnings || 0);
+    const newEarnings = currentEarnings + commission;
+    
+    await dbUpdate(env, `users/${referrerId}`, {
+        referralEarnings: newEarnings,
+        updatedAt: now
+    });
+    
+    // جلب بيانات المستخدم المُحال
+    const referredUserResult = await dbGet(env, `users/${referredUserId}`);
+    let referredUserInfo = {};
+    if (referredUserResult.success && referredUserResult.data) {
+        referredUserInfo = referredUserResult.data;
+    }
+    
+    // تحديث سجل الإحالة
+    const referralRecordResult = await dbGet(env, `users/${referrerId}/referrals/${referredUserId}`);
+    if (referralRecordResult.success && referralRecordResult.data) {
+        const currentTotal = parseFloat(referralRecordResult.data.totalEarnedFromThisUser || 0);
+        
+        await dbUpdate(env, `users/${referrerId}/referrals/${referredUserId}`, {
+            totalEarnedFromThisUser: currentTotal + commission,
+            lastPurchase: {
+                amount: purchaseAmount,
+                commission: commission,
+                type: purchaseType,
+                timestamp: now
+            },
+            // تحديث المعلومات الشخصية في حالة تغيرها
+            firstName: referredUserInfo.firstName || referralRecordResult.data.firstName,
+            lastName: referredUserInfo.lastName || '',
+            username: referredUserInfo.username || '',
+            photoUrl: referredUserInfo.photoUrl || ''
+        });
+    }
+    
+    // تسجيل عملية الربح في سجل الأرباح
+    await dbPush(env, `users/${referrerId}/referralEarnings`, {
+        userId: referredUserId,
+        amount: commission,
+        type: purchaseType,
+        purchaseAmount: purchaseAmount,
+        timestamp: now,
+        firstName: referredUserInfo.firstName || 'Farmer',
+        username: referredUserInfo.username || ''
+    });
+    
+    // إرسال إشعار للمُحيل
+    const buyerName = referredUserInfo.firstName || referredUserInfo.username || 'Your referral';
+    await notifyReferralReward(env, referrerId, commission, buyerName);
+    
+    return commission;
 }
 
 // ============================================
-// MACHINE PURCHASES (TON)
+// MACHINE PURCHASES WITH UPDATED REFERRAL SYSTEM
 // ============================================
 
 async function handleBuyCow(env, userId, data) {
@@ -1165,7 +1065,11 @@ async function handleBuyCow(env, userId, data) {
         }
         
         if (!user) {
-            user = await initializeUser(env, userId);
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
         }
         
         // Calculate production first
@@ -1218,37 +1122,17 @@ async function handleBuyCow(env, userId, data) {
         await dbUpdate(env, `users/${userId}`, userUpdates);
         await dbUpdate(env, 'global', globalUpdates);
         
-        // === REFERRAL COMMISSION - FIXED ===
+        // ===== REFERRAL COMMISSION - نظام إحالة متطور =====
         let referralCommission = 0;
         
         if (user.referredBy) {
-            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
-            
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralCommission = GAME_CONSTANTS.COW_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
-                
-                // Update referrer earnings - ensure it's a number
-                const currentEarnings = parseFloat(referrer.referralEarnings || 0);
-                const newEarnings = currentEarnings + referralCommission;
-                
-                await dbUpdate(env, `users/${user.referredBy}`, {
-                    referralEarnings: newEarnings,
-                    updatedAt: Date.now()
-                });
-                
-                // Record earnings with amount as number
-                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
-                    userId: userId,
-                    amount: referralCommission,
-                    type: 'cow_purchase',
-                    timestamp: Date.now()
-                });
-                
-                // Send notification to referrer
-                const buyerName = user.firstName || user.username || 'Your referral';
-                await notifyReferralReward(env, user.referredBy, referralCommission, buyerName);
-            }
+            referralCommission = await updateReferralEarnings(
+                env, 
+                user.referredBy, 
+                userId, 
+                GAME_CONSTANTS.COW_PRICE, 
+                'cow_purchase'
+            );
         }
         
         // Record transaction
@@ -1273,7 +1157,7 @@ async function handleBuyCow(env, userId, data) {
                 newTonBalance: updatedUser.tonBalance,
                 cows_sold: globalUpdates.cows_sold,
                 cows_remaining: GAME_CONSTANTS.COW_GLOBAL_CAP - globalUpdates.cows_sold,
-                referralCommission: referralCommission
+                referralCommission: referralCommission || 0
             }
         };
         
@@ -1375,37 +1259,17 @@ async function handleBuyChicken(env, userId, data) {
         await dbUpdate(env, `users/${userId}`, userUpdates);
         await dbUpdate(env, 'global', globalUpdates);
         
-        // === REFERRAL COMMISSION - FIXED ===
+        // ===== REFERRAL COMMISSION - نظام إحالة متطور =====
         let referralCommission = 0;
         
         if (user.referredBy) {
-            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
-            
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralCommission = GAME_CONSTANTS.CHICKEN_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
-                
-                // Update referrer earnings - ensure it's a number
-                const currentEarnings = parseFloat(referrer.referralEarnings || 0);
-                const newEarnings = currentEarnings + referralCommission;
-                
-                await dbUpdate(env, `users/${user.referredBy}`, {
-                    referralEarnings: newEarnings,
-                    updatedAt: Date.now()
-                });
-                
-                // Record earnings with amount as number
-                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
-                    userId: userId,
-                    amount: referralCommission,
-                    type: 'chicken_purchase',
-                    timestamp: Date.now()
-                });
-                
-                // Send notification to referrer
-                const buyerName = user.firstName || user.username || 'Your referral';
-                await notifyReferralReward(env, user.referredBy, referralCommission, buyerName);
-            }
+            referralCommission = await updateReferralEarnings(
+                env, 
+                user.referredBy, 
+                userId, 
+                GAME_CONSTANTS.CHICKEN_PRICE, 
+                'chicken_purchase'
+            );
         }
         
         // Record transaction
@@ -1429,7 +1293,7 @@ async function handleBuyChicken(env, userId, data) {
                 newTonBalance: updatedUser.tonBalance,
                 chickens_sold: globalUpdates.chickens_sold,
                 chickens_remaining: GAME_CONSTANTS.CHICKEN_GLOBAL_CAP - globalUpdates.chickens_sold,
-                referralCommission: referralCommission
+                referralCommission: referralCommission || 0
             }
         };
         
@@ -1517,37 +1381,17 @@ async function handleBuyDiamondEngine(env, userId, data) {
         // Apply updates
         await dbUpdate(env, `users/${userId}`, userUpdates);
         
-        // === REFERRAL COMMISSION - FIXED ===
+        // ===== REFERRAL COMMISSION - نظام إحالة متطور =====
         let referralCommission = 0;
         
         if (user.referredBy) {
-            const referrerResult = await dbGet(env, `users/${user.referredBy}`);
-            
-            if (referrerResult.success && referrerResult.data) {
-                const referrer = referrerResult.data;
-                referralCommission = GAME_CONSTANTS.DIAMOND_ENGINE_PRICE * (GAME_CONSTANTS.REFERRAL_REWARD_PERCENT / 100);
-                
-                // Update referrer earnings - ensure it's a number
-                const currentEarnings = parseFloat(referrer.referralEarnings || 0);
-                const newEarnings = currentEarnings + referralCommission;
-                
-                await dbUpdate(env, `users/${user.referredBy}`, {
-                    referralEarnings: newEarnings,
-                    updatedAt: Date.now()
-                });
-                
-                // Record earnings with amount as number
-                await dbPush(env, `users/${user.referredBy}/referralEarnings`, {
-                    userId: userId,
-                    amount: referralCommission,
-                    type: 'diamond_engine_purchase',
-                    timestamp: Date.now()
-                });
-                
-                // Send notification to referrer
-                const buyerName = user.firstName || user.username || 'Your referral';
-                await notifyReferralReward(env, user.referredBy, referralCommission, buyerName);
-            }
+            referralCommission = await updateReferralEarnings(
+                env, 
+                user.referredBy, 
+                userId, 
+                GAME_CONSTANTS.DIAMOND_ENGINE_PRICE, 
+                'diamond_engine_purchase'
+            );
         }
         
         // Record transaction
@@ -1569,7 +1413,7 @@ async function handleBuyDiamondEngine(env, userId, data) {
             data: {
                 diamond_engines_owned: 1,
                 newTonBalance: updatedUser.tonBalance,
-                referralCommission: referralCommission
+                referralCommission: referralCommission || 0
             }
         };
         
@@ -1584,7 +1428,73 @@ async function handleBuyDiamondEngine(env, userId, data) {
 }
 
 // ============================================
-// HATCH SYSTEM - RESOURCE TO MACHINE
+// PRODUCTION CALCULATION - LIFETIME ACCRUAL
+// ============================================
+
+async function calculateProduction(env, userId, user = null) {
+    try {
+        // Get user if not provided
+        if (!user) {
+            const userResult = await dbGet(env, `users/${userId}`);
+            
+            if (!userResult.success || !userResult.data) {
+                return null;
+            }
+            
+            user = userResult.data;
+        }
+        
+        const now = Date.now();
+        const lastProduction = user.lastProduction || now;
+        
+        // Calculate hours passed since last production
+        const msPassed = now - lastProduction;
+        const hoursPassed = Math.floor(msPassed / GAME_CONSTANTS.HOUR_IN_MS);
+        
+        if (hoursPassed <= 0) {
+            return {
+                user: user,
+                hoursPassed: 0,
+                milkProduced: 0,
+                eggsProduced: 0
+            };
+        }
+        
+        // Calculate production
+        const milkProduced = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE * hoursPassed;
+        const eggsProduced = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE * hoursPassed;
+        
+        // Update user
+        const updates = {
+            milk: (user.milk || 0) + milkProduced,
+            eggs: (user.eggs || 0) + eggsProduced,
+            lastProduction: lastProduction + (hoursPassed * GAME_CONSTANTS.HOUR_IN_MS),
+            updatedAt: now
+        };
+        
+        await dbUpdate(env, `users/${userId}`, updates);
+        
+        // Return updated user
+        const updatedUser = {
+            ...user,
+            ...updates
+        };
+        
+        return {
+            user: updatedUser,
+            hoursPassed: hoursPassed,
+            milkProduced: milkProduced,
+            eggsProduced: eggsProduced
+        };
+        
+    } catch (error) {
+        console.error('Production calculation error:', error);
+        return null;
+    }
+}
+
+// ============================================
+// HATCH SYSTEM
 // ============================================
 
 async function handleHatchCow(env, userId, data) {
@@ -3125,6 +3035,9 @@ async function handleClaimReferralEarnings(env, userId) {
     }
 }
 
+/**
+ * الحصول على معلومات الإحالة الكاملة
+ */
 async function handleGetReferralInfo(env, userId) {
     try {
         // Get user
@@ -3146,21 +3059,14 @@ async function handleGetReferralInfo(env, userId) {
         let referrals = [];
         if (referralsResult.success && referralsResult.data) {
             const referralsObj = referralsResult.data;
-            referrals = Object.values(referralsObj);
+            // تحويل الكائن إلى مصفوفة مع إضافة المفتاح كـ id
+            referrals = Object.entries(referralsObj).map(([key, value]) => ({
+                id: key,
+                ...value
+            }));
             
-            // Enhance with user info if available
-            for (let i = 0; i < referrals.length; i++) {
-                const ref = referrals[i];
-                if (ref.userId) {
-                    const refUserResult = await dbGet(env, `users/${ref.userId}`);
-                    if (refUserResult.success && refUserResult.data) {
-                        const refUser = refUserResult.data;
-                        ref.firstName = refUser.firstName || 'Farmer';
-                        ref.username = refUser.username || '';
-                        ref.photoUrl = refUser.photoUrl || '';
-                    }
-                }
-            }
+            // ترتيب حسب تاريخ الانضمام (الأحدث أولاً)
+            referrals.sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0));
         }
         
         // Get referral earnings with details
@@ -3172,22 +3078,9 @@ async function handleGetReferralInfo(env, userId) {
             
             // Sort by timestamp (newest first)
             earnings.sort((a, b) => b.timestamp - a.timestamp);
-            
-            // Enhance with user info
-            for (let i = 0; i < earnings.length; i++) {
-                const earn = earnings[i];
-                if (earn.userId) {
-                    const earnUserResult = await dbGet(env, `users/${earn.userId}`);
-                    if (earnUserResult.success && earnUserResult.data) {
-                        const earnUser = earnUserResult.data;
-                        earn.firstName = earnUser.firstName || 'Farmer';
-                        earn.username = earnUser.username || '';
-                    }
-                }
-            }
         }
         
-        // Calculate total earnings from purchases
+        // Calculate total earnings from all sources
         const totalEarnings = earnings.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
         
         return {
@@ -3197,8 +3090,8 @@ async function handleGetReferralInfo(env, userId) {
                 referralEarnings: parseFloat(user.referralEarnings || 0),
                 referralEarningsClaimed: parseFloat(user.referralEarningsClaimed || 0),
                 totalEarnings: totalEarnings,
-                referrals: referrals.slice(0, 20),
-                earnings: earnings.slice(0, 20)
+                referrals: referrals.slice(0, 50), // آخر 50 إحالة
+                earnings: earnings.slice(0, 50) // آخر 50 عملية ربح
             }
         };
         
@@ -3208,6 +3101,136 @@ async function handleGetReferralInfo(env, userId) {
             success: false,
             error: error.message,
             errorCode: 'GET_REFERRAL_ERROR'
+        };
+    }
+}
+
+// ============================================
+// INITIALIZATION HANDLER
+// ============================================
+
+async function handleInitializeUser(env, userId, data) {
+    try {
+        const { startParam, userInfo } = data;
+        
+        // استخراج المُحيل من startParam
+        let referredBy = null;
+        if (startParam) {
+            referredBy = extractReferrerFromStartParam(startParam);
+            console.log('Extracted referrer:', referredBy, 'from startParam:', startParam);
+        }
+        
+        // التحقق من وجود المستخدم
+        const existingUser = await dbGet(env, `users/${userId}`);
+        
+        if (existingUser.success && existingUser.data) {
+            // المستخدم موجود مسبقاً - تحديث المعلومات
+            console.log('User already exists:', userId);
+            
+            if (userInfo) {
+                const updates = {};
+                if (userInfo.first_name) updates.firstName = userInfo.first_name;
+                if (userInfo.last_name) updates.lastName = userInfo.last_name;
+                if (userInfo.username) updates.username = userInfo.username;
+                if (userInfo.photo_url) updates.photoUrl = userInfo.photo_url;
+                
+                if (Object.keys(updates).length > 0) {
+                    updates.updatedAt = Date.now();
+                    await dbUpdate(env, `users/${userId}`, updates);
+                    
+                    // إذا كان المستخدم موجود وكان له مُحيل، حدث معلوماته في سجل الإحالة
+                    if (existingUser.data.referredBy) {
+                        await dbUpdate(env, `users/${existingUser.data.referredBy}/referrals/${userId}`, {
+                            firstName: updates.firstName || existingUser.data.firstName,
+                            lastName: updates.lastName || existingUser.data.lastName,
+                            username: updates.username || existingUser.data.username,
+                            photoUrl: updates.photoUrl || existingUser.data.photoUrl
+                        });
+                    }
+                }
+            }
+            
+            return {
+                success: true,
+                data: {
+                    message: 'User already exists',
+                    user: existingUser.data,
+                    referredBy: existingUser.data.referredBy
+                }
+            };
+        }
+        
+        // مستخدم جديد - إنشاء حساب
+        console.log('Creating new user:', userId, 'referred by:', referredBy);
+        
+        const userData = await initializeUser(env, userId, userInfo || {}, startParam);
+        
+        return {
+            success: true,
+            data: {
+                message: 'User initialized successfully',
+                user: userData,
+                referredBy: referredBy
+            }
+        };
+        
+    } catch (error) {
+        console.error('Initialize user error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'INIT_USER_ERROR'
+        };
+    }
+}
+
+// ============================================
+// LANGUAGE HANDLING
+// ============================================
+
+async function handleSetLanguage(env, userId, data) {
+    try {
+        const { language } = data;
+        
+        if (!['en', 'ru'].includes(language)) {
+            return {
+                success: false,
+                error: 'Invalid language. Supported: en, ru',
+                errorCode: 'INVALID_LANGUAGE'
+            };
+        }
+        
+        // Get user
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        // Update language
+        await dbUpdate(env, `users/${userId}`, {
+            language: language,
+            updatedAt: Date.now()
+        });
+        
+        return {
+            success: true,
+            data: {
+                language: language,
+                message: language === 'en' ? 'Language set to English' : 'Язык изменен на Русский'
+            }
+        };
+        
+    } catch (error) {
+        console.error('Set language error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'SET_LANGUAGE_ERROR'
         };
     }
 }
@@ -3273,31 +3296,29 @@ async function handleGetState(env, userId) {
             recentEarnings: []
         };
         
+        // جلب قائمة الإحالات كاملة
         const referralsResult = await dbGet(env, `users/${userId}/referrals`);
         
         if (referralsResult.success && referralsResult.data) {
             const referralsObj = referralsResult.data;
-            const referrals = Object.values(referralsObj);
+            const referrals = Object.entries(referralsObj).map(([key, value]) => ({
+                id: key,
+                userId: value.userId,
+                firstName: value.firstName || 'Farmer',
+                lastName: value.lastName || '',
+                username: value.username || '',
+                photoUrl: value.photoUrl || '',
+                joinedAt: value.joinedAt,
+                totalEarnedFromThisUser: value.totalEarnedFromThisUser || 0,
+                lastPurchase: value.lastPurchase
+            }));
+            
             referralStats.totalReferrals = referrals.length;
             
-            // Get recent referrals with user info
-            const recentRefs = referrals
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 10);
-            
-            for (let ref of recentRefs) {
-                if (ref.userId) {
-                    const refUserResult = await dbGet(env, `users/${ref.userId}`);
-                    if (refUserResult.success && refUserResult.data) {
-                        const refUser = refUserResult.data;
-                        ref.firstName = refUser.firstName || 'Farmer';
-                        ref.username = refUser.username || '';
-                        ref.photoUrl = refUser.photoUrl || '';
-                    }
-                }
-            }
-            
-            referralStats.recentReferrals = recentRefs;
+            // آخر 20 إحالة
+            referralStats.recentReferrals = referrals
+                .sort((a, b) => (b.joinedAt || 0) - (a.joinedAt || 0))
+                .slice(0, 20);
         }
         
         // Get referral earnings history
@@ -3311,18 +3332,7 @@ async function handleGetState(env, userId) {
             // Get recent earnings with user info
             const recentEarnings = earnings
                 .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 10);
-            
-            for (let earn of recentEarnings) {
-                if (earn.userId) {
-                    const earnUserResult = await dbGet(env, `users/${earn.userId}`);
-                    if (earnUserResult.success && earnUserResult.data) {
-                        const earnUser = earnUserResult.data;
-                        earn.firstName = earnUser.firstName || 'Farmer';
-                        earn.username = earnUser.username || '';
-                    }
-                }
-            }
+                .slice(0, 20);
             
             referralStats.recentEarnings = recentEarnings;
         }
