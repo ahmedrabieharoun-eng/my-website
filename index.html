@@ -828,116 +828,106 @@
             margin-bottom: 16px;
         }
         
+        /* ===== NEW MARKET CARD STYLES ===== */
         .market-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            padding: 12px;
-            border-radius: 18px;
-            font-size: 11px;
-            transition: all 0.2s;
-            display: flex;
-            flex-direction: column;
+            width: 100%;
+            padding: 18px;
+            border-radius: 28px;
+            background: linear-gradient(
+                160deg,
+                rgba(255, 120, 200, 0.7),
+                rgba(140, 80, 255, 0.7)
+            );
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.2);
+            color: white;
             cursor: pointer;
+            transition: transform 0.2s ease;
+            border: none;
         }
         
         .market-card:hover {
             transform: scale(1.02);
-            background: rgba(255, 255, 255, 0.12);
         }
         
-        .market-card-header {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 1px solid var(--glass-border);
+        .card-inner {
+            text-align: center;
         }
         
-        .market-card-icon {
-            width: 24px;
-            height: 24px;
+        .market-card .card-title {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            border-bottom: none;
+            padding-bottom: 0;
+            display: block;
+            text-align: center;
+        }
+        
+        .market-card .card-title.sell {
+            color: var(--danger-red);
+            opacity: 1;
+            font-weight: 700;
+        }
+        
+        .market-card .card-title.buy {
+            color: var(--neon-green);
+            opacity: 1;
+            font-weight: 700;
+        }
+        
+        .amount-box,
+        .price-box {
+            background: rgba(255,255,255,0.15);
+            border-radius: 16px;
+            padding: 14px;
             font-size: 20px;
-            animation: soft-shine 3s infinite;
-        }
-        
-        .market-card-type {
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 11px;
-        }
-        
-        .market-card-type.sell { color: var(--danger-red); }
-        .market-card-type.buy { color: var(--neon-green); }
-        
-        .market-card-body {
+            font-weight: bold;
+            margin-bottom: 14px;
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.1);
+        }
+        
+        .price-label {
+            font-size: 12px;
+            opacity: 0.7;
             margin-bottom: 8px;
         }
         
-        .market-card-row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-        }
-        
-        .market-card-label {
-            color: var(--text-muted);
-        }
-        
-        .market-card-value {
-            font-weight: 600;
-        }
-        
-        .market-card-total {
-            font-weight: 700;
-            color: var(--crystal-blue);
+        .unit-price {
             font-size: 11px;
+            opacity: 0.6;
+            margin-bottom: 18px;
         }
         
-        .btn-market {
-            margin-top: 6px;
+        .buy-btn {
             width: 100%;
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
+            padding: 14px;
+            border-radius: 18px;
             border: none;
-            padding: 8px;
-            border-radius: 30px;
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: bold;
             color: white;
+            background: linear-gradient(180deg, #7bff00, #32c800);
+            box-shadow: 0 10px 20px rgba(0,255,0,0.4);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: 0.2s ease;
         }
         
-        .btn-market:active {
-            transform: scale(0.96);
+        .buy-btn:hover {
+            transform: scale(1.05);
         }
         
-        .btn-market.sell { background: linear-gradient(145deg, var(--danger-red), #c43a47); }
-        
-        .load-more-btn {
-            width: 100%;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 10px;
-            color: var(--text-primary);
-            font-weight: 600;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            cursor: pointer;
-            margin-top: 8px;
-            transition: all 0.2s;
-        }
-        
-        .load-more-btn:active {
-            background: rgba(255, 92, 168, 0.2);
+        /* Hide old elements inside the card that are no longer needed */
+        .market-card .market-card-header,
+        .market-card .market-card-body,
+        .market-card .btn-market {
+            display: none;
         }
         
         .best-price-badge {
@@ -3097,27 +3087,23 @@
                         const pricePerUnit = order.pricePerUnit;
                         const total = order.remaining * pricePerUnit;
                         const resourceEmoji = App.currentMarketResource === 'milk' ? '🥛' : '🥚';
+                        const resourceName = App.currentMarketResource === 'milk' ? 'MILK' : 'EGG';
                         
                         html += `<div class="market-card" onclick="showPurchaseConfirm('${order.id}', '${order.resource}', ${order.remaining}, ${pricePerUnit})">
-                            <div class="market-card-header">
-                                <span class="market-card-icon">${resourceEmoji}</span>
-                                <span class="market-card-type sell">${App.currentLanguage === 'ru' ? 'ПРОДАЖА' : 'SELL'}</span>
+                            <div class="card-inner">
+                                <div class="card-title ${order.type}">${resourceName}</div>
+                                <div class="amount-box">
+                                    <span class="egg-icon">${resourceEmoji}</span>
+                                    <span>${formatNumber(order.remaining)}</span>
+                                </div>
+                                <div class="price-label">PRICE</div>
+                                <div class="price-box">
+                                    <span class="ton-icon">💎</span>
+                                    <span>${formatTON(total)}</span>
+                                </div>
+                                <div class="unit-price">${formatTON(pricePerUnit)} TON/${resourceName.toLowerCase()}</div>
+                                <button class="buy-btn">${App.currentLanguage === 'ru' ? 'Купить' : 'Buy'}</button>
                             </div>
-                            <div class="market-card-body">
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Количество:' : 'Quantity:'}</span>
-                                    <span class="market-card-value">${formatNumber(order.remaining)}</span>
-                                </div>
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Цена/ед:' : 'Price/unit:'}</span>
-                                    <span class="market-card-value">${formatTON(pricePerUnit)} TON</span>
-                                </div>
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Итого:' : 'Total:'}</span>
-                                    <span class="market-card-total">${formatTON(total)} TON</span>
-                                </div>
-                            </div>
-                            <button class="btn-market sell">${App.currentLanguage === 'ru' ? 'Купить' : 'Buy Package'}</button>
                         </div>`;
                     });
                     
@@ -3240,29 +3226,22 @@
                         const total = order.remaining * pricePerUnit;
                         
                         html += `<div class="market-card">
-                            <div class="market-card-header">
-                                <span class="market-card-icon">${resourceEmoji}</span>
-                                <span class="market-card-type ${order.type}">${order.type === 'sell' ? 
-                                    (App.currentLanguage === 'ru' ? 'ПРОДАЖА' : 'SELL') : 
-                                    (App.currentLanguage === 'ru' ? 'ПОКУПКА' : 'BUY')}</span>
+                            <div class="card-inner">
+                                <div class="card-title ${order.type}">${order.resource === 'milk' ? 'MILK' : 'EGG'}</div>
+                                <div class="amount-box">
+                                    <span class="egg-icon">${resourceEmoji}</span>
+                                    <span>${formatNumber(order.remaining)}/${formatNumber(order.quantity)}</span>
+                                </div>
+                                <div class="price-label">PRICE</div>
+                                <div class="price-box">
+                                    <span class="ton-icon">💎</span>
+                                    <span>${formatTON(total)}</span>
+                                </div>
+                                <div class="unit-price">${formatTON(pricePerUnit)} TON/${order.resource === 'milk' ? 'milk' : 'egg'}</div>
+                                <button class="btn btn-secondary" style="padding: 8px; font-size: 12px; margin-top: 8px;" onclick="window.cancelOrder('${order.id}')">
+                                    ${App.currentLanguage === 'ru' ? 'Отменить' : 'Cancel'}
+                                </button>
                             </div>
-                            <div class="market-card-body">
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Осталось:' : 'Remaining:'}</span>
-                                    <span class="market-card-value">${formatNumber(order.remaining)}/${formatNumber(order.quantity)}</span>
-                                </div>
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Цена/ед:' : 'Price/unit:'}</span>
-                                    <span class="market-card-value">${formatTON(pricePerUnit)} TON</span>
-                                </div>
-                                <div class="market-card-row">
-                                    <span class="market-card-label">${App.currentLanguage === 'ru' ? 'Итого:' : 'Total:'}</span>
-                                    <span class="market-card-total">${formatTON(total)} TON</span>
-                                </div>
-                            </div>
-                            <button class="btn btn-secondary" style="padding: 6px; font-size: 10px;" onclick="window.cancelOrder('${order.id}')">
-                                ${App.currentLanguage === 'ru' ? 'Отменить' : 'Cancel'}
-                            </button>
                         </div>`;
                     });
                     activeContainer.innerHTML = html;
