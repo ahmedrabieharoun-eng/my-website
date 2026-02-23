@@ -1,8 +1,9 @@
 // ============================================
-// FARM ECONOMY WORKER v5.0 - WITH TASKS SYSTEM
+// FARM ECONOMY WORKER v5.0 - WITH TASKS & BOUNTY SYSTEM
 // FIXED: Auto-add referral earnings, Hatch 5000, Notifications, Withdraw 0.1, Market Fee 10%
 // ADDED: Tasks System with Partner & Community tasks, Channel verification, Bot tasks
-// UPDATED: Diamond price 25 TON, Task reward 0.001 TON fixed
+// ADDED: Bounty System with Admin Panel
+// UPDATED: Diamond price 25 TON, Task reward 0.001 TON fixed, Task price doubled
 // ============================================
 
 export default {
@@ -267,7 +268,7 @@ export default {
                         result = await handleSetLanguage(env, userId, data);
                         break;
                     
-                    // New Task Actions
+                    // Task Actions
                     case 'createTask':
                         result = await handleCreateTask(env, userId, data);
                         break;
@@ -276,6 +277,23 @@ export default {
                         break;
                     case 'getTasks':
                         result = await handleGetTasks(env, userId);
+                        break;
+                    
+                    // Bounty Actions
+                    case 'submitBounty':
+                        result = await handleSubmitBounty(env, userId, data);
+                        break;
+                    case 'getUserBounties':
+                        result = await handleGetUserBounties(env, userId);
+                        break;
+                    case 'adminGetAllBounties':
+                        result = await handleAdminGetAllBounties(env, userId);
+                        break;
+                    case 'adminApproveBounty':
+                        result = await handleAdminApproveBounty(env, userId, data);
+                        break;
+                    case 'adminRejectBounty':
+                        result = await handleAdminRejectBounty(env, userId, data);
                         break;
                     
                     default:
@@ -386,8 +404,16 @@ const GAME_CONSTANTS = {
     // Task System Constants
     TASK_REWARD: 0.001,
     MIN_TASK_TARGET: 1000,
-    MAX_TASK_DURATION_DAYS: 30
+    MAX_TASK_DURATION_DAYS: 30,
+    
+    // Bounty System Constants
+    BOUNTY_MIN_REWARD: 1,
+    BOUNTY_MAX_REWARD: 50,
+    BOUNTY_MIN_FOLLOWERS: 500
 };
+
+// Admin IDs (set these in environment variables)
+const ADMIN_IDS = ['123456789', '987654321']; // Replace with actual admin IDs
 
 // ============================================
 // TELEGRAM VALIDATION
@@ -818,6 +844,24 @@ async function notifyTaskCompleted(env, userId, taskType, reward) {
 
 async function notifyTaskCreated(env, userId, taskType, targetUsers, totalCost) {
     const message = `📢 <b>Task Created!</b>\n\nYour ${taskType === 'channel' ? '📢 Channel' : '🤖 Bot'} task has been created successfully!\n\n👥 Target: ${targetUsers} users\n💰 Total Cost: ${formatTON(totalCost)} TON\n\nIt will appear in Community Tasks section. 🚀`;
+    
+    await sendTelegramNotification(env, userId, message);
+}
+
+async function notifyBountySubmitted(env, userId, bountyId) {
+    const message = `🎁 <b>Bounty Submitted!</b>\n\nYour bounty request has been submitted successfully!\n\n📋 ID: ${bountyId.substring(0, 8)}\n⏳ Status: Pending Review\n\nWe'll notify you once it's reviewed (1-3 days).`;
+    
+    await sendTelegramNotification(env, userId, message);
+}
+
+async function notifyBountyApproved(env, userId, reward) {
+    const message = `🎉 <b>Bounty Approved!</b>\n\nYour bounty request has been approved!\n\n💰 Reward: ${formatTON(reward)} TON added to your balance.\n\nThank you for promoting Crystal Ranch! 🚀`;
+    
+    await sendTelegramNotification(env, userId, message);
+}
+
+async function notifyBountyRejected(env, userId, reason) {
+    const message = `❌ <b>Bounty Rejected</b>\n\nYour bounty request has been rejected.\n\nReason: ${reason || 'Not specified'}\n\nPlease check the terms and submit a new request.`;
     
     await sendTelegramNotification(env, userId, message);
 }
@@ -2916,7 +2960,7 @@ async function handleGetReferralInfo(env, userId) {
 }
 
 // ============================================
-// TASK SYSTEM - NEW
+// TASK SYSTEM - NEW (With double price)
 // ============================================
 
 async function handleCreateTask(env, userId, data) {
@@ -2951,7 +2995,8 @@ async function handleCreateTask(env, userId, data) {
         
         // Fixed reward from constants - don't trust client
         const taskReward = GAME_CONSTANTS.TASK_REWARD;
-        const totalCost = target * taskReward;
+        // Double the cost
+        const totalCost = target * taskReward * 2;
         
         const userResult = await dbGet(env, `users/${userId}`);
         
@@ -2997,7 +3042,7 @@ async function handleCreateTask(env, userId, data) {
             updatedAt: now
         };
         
-        // Deduct cost from creator
+        // Deduct cost from creator (double price)
         await dbUpdate(env, `users/${userId}`, {
             tonBalance: (user.tonBalance || 0) - totalCost,
             updatedAt: now
@@ -3217,6 +3262,346 @@ async function handleGetTasks(env, userId) {
 }
 
 // ============================================
+// BOUNTY SYSTEM - NEW
+// ============================================
+
+async function handleSubmitBounty(env, userId, data) {
+    try {
+        const { link, platform } = data;
+        
+        if (!link || !link.includes('t.me/') && !link.includes('youtube.com') && !link.includes('facebook.com') && !link.includes('twitter.com') && !link.includes('x.com')) {
+            return {
+                success: false,
+                error: 'Valid social media link is required',
+                errorCode: 'INVALID_LINK'
+            };
+        }
+        
+        if (!platform || !['telegram', 'youtube', 'facebook', 'twitter'].includes(platform)) {
+            return {
+                success: false,
+                error: 'Invalid platform',
+                errorCode: 'INVALID_PLATFORM'
+            };
+        }
+        
+        // Check if link already exists
+        const bountiesResult = await dbGet(env, 'bounties');
+        if (bountiesResult.success && bountiesResult.data) {
+            const existing = Object.values(bountiesResult.data).find(b => b.link === link);
+            if (existing) {
+                return {
+                    success: false,
+                    error: 'This link has already been submitted',
+                    errorCode: 'DUPLICATE_LINK'
+                };
+            }
+        }
+        
+        const now = Date.now();
+        const bountyId = `bounty_${now}_${Math.random().toString(36).substring(2, 10)}`;
+        
+        const bountyData = {
+            id: bountyId,
+            userId: userId,
+            link: link,
+            platform: platform,
+            status: 'pending',
+            reward: null,
+            rejectReason: null,
+            createdAt: now,
+            updatedAt: now
+        };
+        
+        await dbSet(env, `bounties/${bountyId}`, bountyData);
+        await dbSet(env, `users/${userId}/bounties/${bountyId}`, bountyData);
+        
+        await notifyBountySubmitted(env, userId, bountyId);
+        
+        return {
+            success: true,
+            data: {
+                bountyId: bountyId,
+                status: 'pending',
+                message: 'Bounty submitted successfully'
+            }
+        };
+        
+    } catch (error) {
+        console.error('Submit bounty error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'SUBMIT_BOUNTY_ERROR'
+        };
+    }
+}
+
+async function handleGetUserBounties(env, userId) {
+    try {
+        const bountiesResult = await dbGet(env, `users/${userId}/bounties`);
+        
+        if (!bountiesResult.success || !bountiesResult.data) {
+            return {
+                success: true,
+                data: []
+            };
+        }
+        
+        const bounties = Object.values(bountiesResult.data)
+            .sort((a, b) => b.createdAt - a.createdAt);
+        
+        return {
+            success: true,
+            data: bounties
+        };
+        
+    } catch (error) {
+        console.error('Get user bounties error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'GET_USER_BOUNTIES_ERROR'
+        };
+    }
+}
+
+async function handleAdminGetAllBounties(env, userId) {
+    try {
+        // Check if user is admin
+        if (!ADMIN_IDS.includes(userId)) {
+            return {
+                success: false,
+                error: 'Unauthorized',
+                errorCode: 'UNAUTHORIZED'
+            };
+        }
+        
+        const bountiesResult = await dbGet(env, 'bounties');
+        
+        if (!bountiesResult.success || !bountiesResult.data) {
+            return {
+                success: true,
+                data: []
+            };
+        }
+        
+        const bounties = Object.values(bountiesResult.data)
+            .sort((a, b) => b.createdAt - a.createdAt);
+        
+        // Get user info for each bounty
+        const bountiesWithUser = [];
+        for (const bounty of bounties) {
+            const userResult = await dbGet(env, `users/${bounty.userId}`);
+            const user = userResult.success ? userResult.data : null;
+            
+            bountiesWithUser.push({
+                ...bounty,
+                userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || bounty.userId.substring(0, 6) : bounty.userId
+            });
+        }
+        
+        return {
+            success: true,
+            data: bountiesWithUser
+        };
+        
+    } catch (error) {
+        console.error('Admin get bounties error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'ADMIN_GET_BOUNTIES_ERROR'
+        };
+    }
+}
+
+async function handleAdminApproveBounty(env, userId, data) {
+    try {
+        // Check if user is admin
+        if (!ADMIN_IDS.includes(userId)) {
+            return {
+                success: false,
+                error: 'Unauthorized',
+                errorCode: 'UNAUTHORIZED'
+            };
+        }
+        
+        const { bountyId, reward } = data;
+        
+        if (!bountyId) {
+            return {
+                success: false,
+                error: 'Bounty ID required',
+                errorCode: 'INVALID_BOUNTY_ID'
+            };
+        }
+        
+        const rewardAmount = parseFloat(reward);
+        if (!rewardAmount || rewardAmount < GAME_CONSTANTS.BOUNTY_MIN_REWARD || rewardAmount > GAME_CONSTANTS.BOUNTY_MAX_REWARD) {
+            return {
+                success: false,
+                error: `Reward must be between ${GAME_CONSTANTS.BOUNTY_MIN_REWARD} and ${GAME_CONSTANTS.BOUNTY_MAX_REWARD} TON`,
+                errorCode: 'INVALID_REWARD'
+            };
+        }
+        
+        const bountyResult = await dbGet(env, `bounties/${bountyId}`);
+        
+        if (!bountyResult.success || !bountyResult.data) {
+            return {
+                success: false,
+                error: 'Bounty not found',
+                errorCode: 'BOUNTY_NOT_FOUND'
+            };
+        }
+        
+        const bounty = bountyResult.data;
+        
+        if (bounty.status !== 'pending') {
+            return {
+                success: false,
+                error: `Bounty is already ${bounty.status}`,
+                errorCode: 'BOUNTY_ALREADY_PROCESSED'
+            };
+        }
+        
+        const now = Date.now();
+        
+        // Update bounty
+        await dbUpdate(env, `bounties/${bountyId}`, {
+            status: 'approved',
+            reward: rewardAmount,
+            reviewedAt: now,
+            updatedAt: now
+        });
+        
+        await dbUpdate(env, `users/${bounty.userId}/bounties/${bountyId}`, {
+            status: 'approved',
+            reward: rewardAmount,
+            reviewedAt: now,
+            updatedAt: now
+        });
+        
+        // Add reward to user balance
+        const userResult = await dbGet(env, `users/${bounty.userId}`);
+        if (userResult.success && userResult.data) {
+            const user = userResult.data;
+            await dbUpdate(env, `users/${bounty.userId}`, {
+                tonBalance: (user.tonBalance || 0) + rewardAmount,
+                updatedAt: now
+            });
+        }
+        
+        // Record transaction
+        await dbPush(env, `users/${bounty.userId}/transactions`, {
+            type: 'bounty_reward',
+            bountyId: bountyId,
+            amount: rewardAmount,
+            timestamp: now
+        });
+        
+        await notifyBountyApproved(env, bounty.userId, rewardAmount);
+        
+        return {
+            success: true,
+            data: {
+                bountyId: bountyId,
+                status: 'approved',
+                reward: rewardAmount
+            }
+        };
+        
+    } catch (error) {
+        console.error('Admin approve bounty error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'ADMIN_APPROVE_BOUNTY_ERROR'
+        };
+    }
+}
+
+async function handleAdminRejectBounty(env, userId, data) {
+    try {
+        // Check if user is admin
+        if (!ADMIN_IDS.includes(userId)) {
+            return {
+                success: false,
+                error: 'Unauthorized',
+                errorCode: 'UNAUTHORIZED'
+            };
+        }
+        
+        const { bountyId, reason } = data;
+        
+        if (!bountyId) {
+            return {
+                success: false,
+                error: 'Bounty ID required',
+                errorCode: 'INVALID_BOUNTY_ID'
+            };
+        }
+        
+        const bountyResult = await dbGet(env, `bounties/${bountyId}`);
+        
+        if (!bountyResult.success || !bountyResult.data) {
+            return {
+                success: false,
+                error: 'Bounty not found',
+                errorCode: 'BOUNTY_NOT_FOUND'
+            };
+        }
+        
+        const bounty = bountyResult.data;
+        
+        if (bounty.status !== 'pending') {
+            return {
+                success: false,
+                error: `Bounty is already ${bounty.status}`,
+                errorCode: 'BOUNTY_ALREADY_PROCESSED'
+            };
+        }
+        
+        const now = Date.now();
+        
+        // Update bounty
+        await dbUpdate(env, `bounties/${bountyId}`, {
+            status: 'rejected',
+            rejectReason: reason || 'Not meeting requirements',
+            reviewedAt: now,
+            updatedAt: now
+        });
+        
+        await dbUpdate(env, `users/${bounty.userId}/bounties/${bountyId}`, {
+            status: 'rejected',
+            rejectReason: reason || 'Not meeting requirements',
+            reviewedAt: now,
+            updatedAt: now
+        });
+        
+        await notifyBountyRejected(env, bounty.userId, reason);
+        
+        return {
+            success: true,
+            data: {
+                bountyId: bountyId,
+                status: 'rejected',
+                reason: reason
+            }
+        };
+        
+    } catch (error) {
+        console.error('Admin reject bounty error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'ADMIN_REJECT_BOUNTY_ERROR'
+        };
+    }
+}
+
+// ============================================
 // INITIALIZATION HANDLER
 // ============================================
 
@@ -3340,7 +3725,7 @@ async function handleSetLanguage(env, userId, data) {
 }
 
 // ============================================
-// GET STATE - MAIN STATE FUNCTION WITH TASKS
+// GET STATE - MAIN STATE FUNCTION WITH TASKS AND BOUNTIES
 // ============================================
 
 async function handleGetState(env, userId) {
@@ -3513,6 +3898,10 @@ async function handleGetState(env, userId) {
         const tasksResult = await handleGetTasks(env, userId);
         let tasks = tasksResult.success ? tasksResult.data : { partner: [], community: [] };
         
+        // Get bounties
+        const bountiesResult = await handleGetUserBounties(env, userId);
+        let bounties = bountiesResult.success ? bountiesResult.data : [];
+        
         const milkPerHour = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE;
         const eggsPerHour = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
         
@@ -3599,12 +3988,17 @@ async function handleGetState(env, userId) {
                     REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT,
                     MIN_ORDER_AMOUNT: GAME_CONSTANTS.MIN_ORDER_AMOUNT,
                     MARKET_FEE_PERCENT: GAME_CONSTANTS.MARKET_FEE_PERCENT,
-                    TASK_REWARD: GAME_CONSTANTS.TASK_REWARD
+                    TASK_REWARD: GAME_CONSTANTS.TASK_REWARD,
+                    
+                    BOUNTY_MIN_REWARD: GAME_CONSTANTS.BOUNTY_MIN_REWARD,
+                    BOUNTY_MAX_REWARD: GAME_CONSTANTS.BOUNTY_MAX_REWARD,
+                    BOUNTY_MIN_FOLLOWERS: GAME_CONSTANTS.BOUNTY_MIN_FOLLOWERS
                 },
                 
                 referral: referralStats,
                 market: marketStats,
                 tasks: tasks,
+                bounties: bounties,
                 pendingDeposits: pendingDeposits
             }
         };
