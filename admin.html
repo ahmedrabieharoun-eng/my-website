@@ -1,7 +1,8 @@
 // ============================================
-// FARM ECONOMY WORKER v4.1 - COMPLETE PRODUCTION
+// FARM ECONOMY WORKER v5.0 - WITH TASKS SYSTEM
 // FIXED: Auto-add referral earnings, Hatch 5000, Notifications, Withdraw 0.1, Market Fee 10%
-// UPDATED: Diamond price 25 TON, Fixed notifications, UI improvements
+// ADDED: Tasks System with Partner & Community tasks, Channel verification, Bot tasks
+// UPDATED: Diamond price 25 TON, Task reward 0.001 TON fixed
 // ============================================
 
 export default {
@@ -22,19 +23,20 @@ export default {
         const path = url.pathname;
         
         // ===== TON CONNECT MANIFEST =====
-if (path === '/tonconnect-manifest.json') {
-    return new Response(JSON.stringify({
-        url: "Crystal_Ranch_bot",
-        name: "Crystal_Ranch_bot",
-        iconUrl: "https://i.ibb.co/cfMm2bV/photo-5805343424280988997-c.jpg",
-        description: "Crystal Ranch Game"
-    }), {
-        headers: { 
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
+        if (path === '/tonconnect-manifest.json') {
+            return new Response(JSON.stringify({
+                url: "Crystal_Ranch_bot",
+                name: "Crystal_Ranch_bot",
+                iconUrl: "https://i.ibb.co/cfMm2bV/photo-5805343424280988997-c.jpg",
+                description: "Crystal Ranch Game"
+            }), {
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            });
         }
-    });
-}
+        
         // ===== HEALTH CHECK =====
         if (path === '/health') {
             return new Response(JSON.stringify({
@@ -265,6 +267,17 @@ if (path === '/tonconnect-manifest.json') {
                         result = await handleSetLanguage(env, userId, data);
                         break;
                     
+                    // New Task Actions
+                    case 'createTask':
+                        result = await handleCreateTask(env, userId, data);
+                        break;
+                    case 'verifyTask':
+                        result = await handleVerifyTask(env, userId, data);
+                        break;
+                    case 'getTasks':
+                        result = await handleGetTasks(env, userId);
+                        break;
+                    
                     default:
                         result = {
                             success: false,
@@ -355,7 +368,7 @@ const GAME_CONSTANTS = {
     DIAMOND_PRODUCTION_COST_MILK: 20000,
     DIAMOND_PRODUCTION_COST_EGG: 20000,
     DIAMOND_PRODUCTION_YIELD: 1,
-    DIAMOND_BASE_PRICE: 25, // MODIFIED: Changed from 10 to 25
+    DIAMOND_BASE_PRICE: 25,
     
     MIN_ORDER_AMOUNT: 100,
     MAX_ACTIVE_ORDERS: 50,
@@ -368,7 +381,12 @@ const GAME_CONSTANTS = {
     
     REFERRAL_REWARD_PERCENT: 10,
     
-    HOUR_IN_MS: 3600000
+    HOUR_IN_MS: 3600000,
+    
+    // Task System Constants
+    TASK_REWARD: 0.001,
+    MIN_TASK_TARGET: 1000,
+    MAX_TASK_DURATION_DAYS: 30
 };
 
 // ============================================
@@ -507,6 +525,55 @@ async function validateTelegramInitDataDev(initData, botToken) {
         
     } catch (error) {
         return { valid: false, error: error.message };
+    }
+}
+
+// ============================================
+// TELEGRAM CHANNEL VERIFICATION
+// ============================================
+
+async function checkTelegramMembership(env, userId, channelUsername) {
+    try {
+        if (!env.BOT_TOKEN) {
+            console.log('No bot token, skipping channel verification');
+            return true; // Skip verification in dev mode
+        }
+        
+        // Extract channel username from link
+        let username = channelUsername;
+        if (channelUsername.includes('t.me/')) {
+            username = channelUsername.split('t.me/')[1].split('?')[0].split('/')[0];
+        }
+        if (username.startsWith('@')) {
+            username = username.substring(1);
+        }
+        
+        const url = `https://api.telegram.org/bot${env.BOT_TOKEN}/getChatMember`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: `@${username}`,
+                user_id: parseInt(userId)
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!result.ok) {
+            console.error('Telegram API error:', result);
+            return false;
+        }
+        
+        const status = result.result?.status;
+        const isMember = ['member', 'administrator', 'creator'].includes(status);
+        
+        return isMember;
+        
+    } catch (error) {
+        console.error('Channel verification error:', error);
+        return false;
     }
 }
 
@@ -709,8 +776,6 @@ async function notifyOrderFilled(env, userId, order, quantity, totalTon, fee = 0
     
     let message = '';
     
-    // FIXED: Send notification to seller (order.userId) when order is sold
-    // userId parameter is already the seller ID when called from handleExecuteOrder
     if (order.type === 'sell') {
         message = `🎉 <b>Order Sold!</b>\n\nYour sell order for ${formatNumber(quantity)} ${resourceEmoji} ${resourceName} has been filled!\n\n💰 You received: ${formatTON(netAmount)} TON`;
         if (fee > 0) {
@@ -734,7 +799,6 @@ async function notifyMachinePurchase(env, userId, machineType) {
 }
 
 async function notifyReferralReward(env, userId, amount, referrerName) {
-    // FIXED: Send notification to referrer (userId parameter) when referred user makes a purchase
     const message = `🎁 <b>Referral Reward!</b>\n\nYour referral ${referrerName || 'friend'} just purchased a machine!\n\n💎 You received: ${formatTON(amount)} TON\n\nKeep sharing your link to earn more! 🚀`;
     
     await sendTelegramNotification(env, userId, message);
@@ -742,6 +806,18 @@ async function notifyReferralReward(env, userId, amount, referrerName) {
 
 async function notifyDepositSuccess(env, userId, amount) {
     const message = `💰 <b>Deposit Successful!</b>\n\nYour deposit of ${formatTON(amount)} TON has been confirmed and added to your balance.\n\nHappy farming! 🚜`;
+    
+    await sendTelegramNotification(env, userId, message);
+}
+
+async function notifyTaskCompleted(env, userId, taskType, reward) {
+    const message = `✅ <b>Task Completed!</b>\n\nYou have successfully completed the ${taskType === 'channel' ? '📢 Channel' : '🤖 Bot'} task!\n\n💰 Reward: ${formatTON(reward)} TON added to your balance.\n\nKeep completing tasks to earn more! 🚀`;
+    
+    await sendTelegramNotification(env, userId, message);
+}
+
+async function notifyTaskCreated(env, userId, taskType, targetUsers, totalCost) {
+    const message = `📢 <b>Task Created!</b>\n\nYour ${taskType === 'channel' ? '📢 Channel' : '🤖 Bot'} task has been created successfully!\n\n👥 Target: ${targetUsers} users\n💰 Total Cost: ${formatTON(totalCost)} TON\n\nIt will appear in Community Tasks section. 🚀`;
     
     await sendTelegramNotification(env, userId, message);
 }
@@ -822,6 +898,8 @@ async function initializeUser(env, userId, userInfo = {}, startParam = null) {
         photoUrl: userInfo.photo_url || '',
         
         language: 'en',
+        
+        completedTasks: [], // Array of task IDs completed by user
         
         createdAt: now,
         updatedAt: now
@@ -906,7 +984,6 @@ async function updateReferralEarnings(env, referrerId, referredUserId, purchaseA
         });
     }
     
-    // FIXED: Keep all earnings records, don't overwrite
     await dbPush(env, `users/${referrerId}/referralEarnings`, {
         userId: referredUserId,
         amount: commission,
@@ -2076,7 +2153,6 @@ async function handleExecuteOrder(env, userId, data) {
             
             await dbUpdate(env, `users/${sellerId}`, sellerUpdates);
             
-            // FIXED: Send notification to seller (order.userId) when order is sold
             await notifyOrderFilled(env, sellerId, order, executeQuantity, totalCost, fee);
             
         } else {
@@ -2840,6 +2916,307 @@ async function handleGetReferralInfo(env, userId) {
 }
 
 // ============================================
+// TASK SYSTEM - NEW
+// ============================================
+
+async function handleCreateTask(env, userId, data) {
+    try {
+        const { type, link, targetUsers, reward } = data;
+        
+        if (!['channel', 'bot'].includes(type)) {
+            return {
+                success: false,
+                error: 'Invalid task type. Must be channel or bot',
+                errorCode: 'INVALID_TASK_TYPE'
+            };
+        }
+        
+        const target = parseInt(targetUsers);
+        
+        if (!target || target < GAME_CONSTANTS.MIN_TASK_TARGET) {
+            return {
+                success: false,
+                error: `Minimum target users is ${GAME_CONSTANTS.MIN_TASK_TARGET}`,
+                errorCode: 'INVALID_TARGET'
+            };
+        }
+        
+        if (!link || !link.includes('t.me/')) {
+            return {
+                success: false,
+                error: 'Valid Telegram link is required',
+                errorCode: 'INVALID_LINK'
+            };
+        }
+        
+        // Fixed reward from constants - don't trust client
+        const taskReward = GAME_CONSTANTS.TASK_REWARD;
+        const totalCost = target * taskReward;
+        
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        const productionResult = await calculateProduction(env, userId, user);
+        
+        if (productionResult) {
+            user = productionResult.user;
+        }
+        
+        if ((user.tonBalance || 0) < totalCost) {
+            return {
+                success: false,
+                error: 'Insufficient TON balance',
+                errorCode: 'INSUFFICIENT_TON'
+            };
+        }
+        
+        const now = Date.now();
+        const taskId = `task_${now}_${Math.random().toString(36).substring(2, 10)}`;
+        
+        const taskData = {
+            id: taskId,
+            creatorId: userId,
+            type: type,
+            link: link,
+            targetUsers: target,
+            reward: taskReward,
+            completions: 0,
+            completedBy: [],
+            status: 'active',
+            createdAt: now,
+            expiresAt: now + (GAME_CONSTANTS.MAX_TASK_DURATION_DAYS * 24 * 60 * 60 * 1000),
+            updatedAt: now
+        };
+        
+        // Deduct cost from creator
+        await dbUpdate(env, `users/${userId}`, {
+            tonBalance: (user.tonBalance || 0) - totalCost,
+            updatedAt: now
+        });
+        
+        // Save task in community tasks
+        await dbSet(env, `tasks/community/${taskId}`, taskData);
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'create_task',
+            taskId: taskId,
+            taskType: type,
+            targetUsers: target,
+            cost: totalCost,
+            timestamp: now
+        });
+        
+        await notifyTaskCreated(env, userId, type, target, totalCost);
+        
+        return {
+            success: true,
+            data: {
+                taskId: taskId,
+                type: type,
+                targetUsers: target,
+                totalCost: totalCost,
+                reward: taskReward
+            }
+        };
+        
+    } catch (error) {
+        console.error('Create task error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'CREATE_TASK_ERROR'
+        };
+    }
+}
+
+async function handleVerifyTask(env, userId, data) {
+    try {
+        const { taskId, taskType } = data;
+        
+        // Try to find task in community or partner tasks
+        let taskResult = await dbGet(env, `tasks/community/${taskId}`);
+        let task = taskResult.data;
+        let taskCategory = 'community';
+        
+        if (!task) {
+            taskResult = await dbGet(env, `tasks/partner/${taskId}`);
+            task = taskResult.data;
+            taskCategory = 'partner';
+        }
+        
+        if (!task) {
+            return {
+                success: false,
+                error: 'Task not found',
+                errorCode: 'TASK_NOT_FOUND'
+            };
+        }
+        
+        if (task.status !== 'active') {
+            return {
+                success: false,
+                error: 'Task is no longer active',
+                errorCode: 'TASK_INACTIVE'
+            };
+        }
+        
+        // Check if user already completed this task
+        if (task.completedBy && task.completedBy.includes(userId)) {
+            return {
+                success: false,
+                error: 'Task already completed',
+                errorCode: 'TASK_ALREADY_COMPLETED'
+            };
+        }
+        
+        const userResult = await dbGet(env, `users/${userId}`);
+        
+        if (!userResult.success || !userResult.data) {
+            return {
+                success: false,
+                error: 'User not found',
+                errorCode: 'USER_NOT_FOUND'
+            };
+        }
+        
+        let user = userResult.data;
+        
+        // For channel tasks, verify membership
+        if (task.type === 'channel') {
+            const isMember = await checkTelegramMembership(env, userId, task.link);
+            
+            if (!isMember) {
+                return {
+                    success: false,
+                    error: 'Not a member of the channel',
+                    errorCode: 'NOT_MEMBER'
+                };
+            }
+        }
+        
+        // For bot tasks, no verification needed, just mark as completed
+        
+        // Check if task has reached target
+        const currentCompletions = task.completions || 0;
+        const newCompletions = currentCompletions + 1;
+        
+        const taskUpdates = {
+            completions: newCompletions,
+            completedBy: [...(task.completedBy || []), userId],
+            updatedAt: Date.now()
+        };
+        
+        // If task reached target, deactivate it
+        if (newCompletions >= task.targetUsers) {
+            taskUpdates.status = 'completed';
+        }
+        
+        await dbUpdate(env, `tasks/${taskCategory}/${taskId}`, taskUpdates);
+        
+        // Add reward to user
+        const reward = task.reward || GAME_CONSTANTS.TASK_REWARD;
+        
+        await dbUpdate(env, `users/${userId}`, {
+            tonBalance: (user.tonBalance || 0) + reward,
+            updatedAt: Date.now()
+        });
+        
+        // Add to user's completed tasks
+        const completedTasks = user.completedTasks || [];
+        completedTasks.push(taskId);
+        
+        await dbUpdate(env, `users/${userId}`, {
+            completedTasks: completedTasks
+        });
+        
+        // Record transaction
+        await dbPush(env, `users/${userId}/transactions`, {
+            type: 'task_reward',
+            taskId: taskId,
+            taskType: task.type,
+            reward: reward,
+            timestamp: Date.now()
+        });
+        
+        await notifyTaskCompleted(env, userId, task.type, reward);
+        
+        return {
+            success: true,
+            data: {
+                taskId: taskId,
+                reward: reward,
+                completions: newCompletions,
+                taskCompleted: newCompletions >= task.targetUsers
+            }
+        };
+        
+    } catch (error) {
+        console.error('Verify task error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'VERIFY_TASK_ERROR'
+        };
+    }
+}
+
+async function handleGetTasks(env, userId) {
+    try {
+        // Get partner tasks (system tasks)
+        const partnerTasksResult = await dbGet(env, 'tasks/partner');
+        let partnerTasks = [];
+        
+        if (partnerTasksResult.success && partnerTasksResult.data) {
+            partnerTasks = Object.values(partnerTasksResult.data)
+                .filter(t => t.status === 'active')
+                .map(task => ({
+                    ...task,
+                    completedByUser: task.completedBy && task.completedBy.includes(userId)
+                }));
+        }
+        
+        // Get community tasks
+        const communityTasksResult = await dbGet(env, 'tasks/community');
+        let communityTasks = [];
+        
+        if (communityTasksResult.success && communityTasksResult.data) {
+            communityTasks = Object.values(communityTasksResult.data)
+                .filter(t => t.status === 'active')
+                .map(task => ({
+                    ...task,
+                    completedByUser: task.completedBy && task.completedBy.includes(userId)
+                }));
+        }
+        
+        return {
+            success: true,
+            data: {
+                partner: partnerTasks,
+                community: communityTasks
+            }
+        };
+        
+    } catch (error) {
+        console.error('Get tasks error:', error);
+        return {
+            success: false,
+            error: error.message,
+            errorCode: 'GET_TASKS_ERROR'
+        };
+    }
+}
+
+// ============================================
 // INITIALIZATION HANDLER
 // ============================================
 
@@ -2963,7 +3340,7 @@ async function handleSetLanguage(env, userId, data) {
 }
 
 // ============================================
-// GET STATE - MAIN STATE FUNCTION
+// GET STATE - MAIN STATE FUNCTION WITH TASKS
 // ============================================
 
 async function handleGetState(env, userId) {
@@ -3007,7 +3384,8 @@ async function handleGetState(env, userId) {
                 lastName: '',
                 username: '',
                 photoUrl: '',
-                activeOrdersCount: 0
+                activeOrdersCount: 0,
+                completedTasks: []
             };
         }
         
@@ -3131,6 +3509,10 @@ async function handleGetState(env, userId) {
             }
         }
         
+        // Get tasks
+        const tasksResult = await handleGetTasks(env, userId);
+        let tasks = tasksResult.success ? tasksResult.data : { partner: [], community: [] };
+        
         const milkPerHour = (user.cows_owned || 0) * GAME_CONSTANTS.COW_PRODUCTION_RATE;
         const eggsPerHour = (user.chickens_owned || 0) * GAME_CONSTANTS.CHICKEN_PRODUCTION_RATE;
         
@@ -3173,7 +3555,8 @@ async function handleGetState(env, userId) {
                     username: user.username || '',
                     photoUrl: user.photoUrl || '',
                     
-                    activeOrdersCount: activeOrdersCount
+                    activeOrdersCount: activeOrdersCount,
+                    completedTasks: user.completedTasks || []
                 },
                 
                 global: {
@@ -3215,11 +3598,13 @@ async function handleGetState(env, userId) {
                     MIN_DEPOSIT_AMOUNT: GAME_CONSTANTS.MIN_DEPOSIT_AMOUNT,
                     REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT,
                     MIN_ORDER_AMOUNT: GAME_CONSTANTS.MIN_ORDER_AMOUNT,
-                    MARKET_FEE_PERCENT: GAME_CONSTANTS.MARKET_FEE_PERCENT
+                    MARKET_FEE_PERCENT: GAME_CONSTANTS.MARKET_FEE_PERCENT,
+                    TASK_REWARD: GAME_CONSTANTS.TASK_REWARD
                 },
                 
                 referral: referralStats,
                 market: marketStats,
+                tasks: tasks,
                 pendingDeposits: pendingDeposits
             }
         };
