@@ -872,10 +872,7 @@
             color: var(--primary-pink);
         }
         
-        .task-creator {
-            font-size: 10px;
-            color: var(--text-muted);
-        }
+        /* Removed .task-creator */
         
         .task-details {
             background: rgba(0, 0, 0, 0.3);
@@ -884,34 +881,63 @@
             margin-bottom: 12px;
         }
         
-        /* Single line for stats */
-        .task-stats-row {
+        /* New styles for the simplified layout */
+        .task-reward-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
-            margin-top: 8px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 8px;
+            margin-bottom: 10px;
         }
         
-        .task-stat-item {
+        .task-reward-item {
             display: flex;
             align-items: center;
             gap: 4px;
-            font-size: 11px;
+            font-size: 13px;
+            font-weight: 600;
         }
         
-        .task-stat-value {
+        .task-reward-item .ton-icon-small {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .task-reward-value {
+            color: var(--neon-green);
+        }
+        
+        .task-progress-container {
+            width: 100%;
+        }
+        
+        .task-progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        
+        .task-progress-bar {
+            height: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .task-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--crystal-blue), var(--primary-pink));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .task-remaining {
             font-weight: 700;
             color: var(--crystal-blue);
         }
         
-        .task-stat-remaining {
-            font-weight: 700;
-            color: var(--neon-green);
-        }
+        /* Removed .task-stats-row, .task-stat-item, .task-stat-value, .task-stat-remaining */
         
         .task-completed-badge {
             background: rgba(0, 242, 122, 0.15);
@@ -2088,7 +2114,7 @@
                     </button>
                 </div>
                 
-                <!-- Tasks Grid - Modified -->
+                <!-- Tasks Grid - Modified with new simplified design -->
                 <div id="tasksGrid" class="task-grid">
                     <!-- Tasks will be loaded here -->
                     <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -3163,7 +3189,7 @@
             }
         }
 
-        // Modified updateTasksUI function
+        // Modified updateTasksUI function with simplified design
         function updateTasksUI() {
             if (!App.tasks) return;
             
@@ -3187,35 +3213,51 @@
                 const taskIcon = task.type === 'channel' ? '📢' : '🤖';
                 const taskName = task.name || (task.type === 'channel' ? 'News Channel' : 'Chat Bot');
                 
+                // Simplified task card design
                 html += `<div class="task-card">
                     <div class="task-header">
                         <div class="task-icon">${taskIcon}</div>
                         <div class="task-info">
                             <div class="task-title">${taskName}</div>
-                            <div class="task-creator">${TRANSLATIONS[App.currentLanguage]['tasks.created']} ${task.creatorName || 'User'}</div>
+                            <!-- Removed task-creator div -->
                         </div>
                     </div>
                     
                     <div class="task-details">
-                        <div class="task-stats-row">
-                            <div class="task-stat-item">
-                                <span>💎</span>
-                                <span class="task-stat-value">${formatTON(CONFIG.TASK_REWARD)} TON</span>
+                        <!-- Simplified layout: reward and progress bar -->
+                        <div class="task-reward-row">
+                            <div class="task-reward-item">
+                                <!-- TON icon from status bar -->
+                                <svg class="ton-icon-small" width="16" height="16" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14 28C21.732 28 28 21.732 28 14C28 6.26801 21.732 0 14 0C6.26801 0 0 6.26801 0 14C0 21.732 6.26801 28 14 28Z" fill="#45AEF5"/>
+                                    <path d="M19.45 9.2L14.95 17.8C14.75 18.15 14.25 18.15 14.05 17.8L9.55 9.2C9.4 8.95 9.6 8.65 9.9 8.65H19.1C19.4 8.65 19.6 8.95 19.45 9.2Z" fill="white"/>
+                                    <path d="M14.5 18.05L15.9 15.6L19.25 10.6C19.35 10.45 19.2 10.25 19.05 10.3L14.5 12.3V18.05Z" fill="white" fill-opacity="0.8"/>
+                                    <path d="M13.5 18.05L12.1 15.6L8.75 10.6C8.65 10.45 8.8 10.25 8.95 10.3L13.5 12.3V18.05Z" fill="white" fill-opacity="0.6"/>
+                                </svg>
+                                <span class="task-reward-value">${formatTON(CONFIG.TASK_REWARD)} TON</span>
                             </div>
-                            <div class="task-stat-item">
-                                <span>📊</span>
-                                <span class="task-stat-value">${completions}/${task.targetUsers}</span>
+                            <div class="task-remaining">
+                                ${remaining} ${TRANSLATIONS[App.currentLanguage]['tasks.remaining']}
                             </div>
-                            <div class="task-stat-item">
-                                <span>⏳</span>
-                                <span class="task-stat-remaining">${remaining} ${TRANSLATIONS[App.currentLanguage]['tasks.remaining']}</span>
+                        </div>
+                        
+                        <!-- Progress bar for remaining completions -->
+                        <div class="task-progress-container">
+                            <div class="task-progress-header">
+                                <span>${completions}/${task.targetUsers}</span>
                             </div>
-                            ${isCompleted ? `
+                            <div class="task-progress-bar">
+                                <div class="task-progress-fill" style="width: ${progressPercent}%;"></div>
+                            </div>
+                        </div>
+                        
+                        ${isCompleted ? `
+                        <div style="text-align: right; margin-top: 8px;">
                             <div class="task-completed-badge">
                                 <i class="fas fa-check-circle"></i> ${TRANSLATIONS[App.currentLanguage]['tasks.completed']}
                             </div>
-                            ` : ''}
                         </div>
+                        ` : ''}
                     </div>
                     
                     <div class="task-actions">` +
