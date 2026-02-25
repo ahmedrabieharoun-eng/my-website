@@ -3,7 +3,7 @@
 // FIXED: Auto-add referral earnings, Hatch 5000, Notifications, Withdraw 0.1, Market Fee 10%
 // ADDED: Tasks System with Partner & Community tasks, Channel verification, Bot tasks
 // ADDED: Bounty System with Admin Panel
-// UPDATED: Diamond price 25 TON, Task reward 0.001 TON fixed, Task price doubled
+// UPDATED: Diamond price 25 TON, Task reward 0.001 TON fixed, Task price doubled, Min target reduced to 100
 // ============================================
 
 export default {
@@ -401,9 +401,9 @@ const GAME_CONSTANTS = {
     
     HOUR_IN_MS: 3600000,
     
-    // Task System Constants
+    // Task System Constants - Modified min target to 100
     TASK_REWARD: 0.001,
-    MIN_TASK_TARGET: 1000,
+    MIN_TASK_TARGET: 100,  // Changed from 1000 to 100
     MAX_TASK_DURATION_DAYS: 30,
     
     // Bounty System Constants
@@ -411,6 +411,36 @@ const GAME_CONSTANTS = {
     BOUNTY_MAX_REWARD: 50,
     BOUNTY_MIN_FOLLOWERS: 500
 };
+
+// Partner Tasks - Fixed tasks
+const PARTNER_TASKS = [
+    {
+        id: 'partner_news_channel',
+        type: 'channel',
+        link: 'https://t.me/earnmoney139482',
+        name: 'News Channel',
+        reward: 0.02,
+        targetUsers: 1000000, // Large number so it never expires
+        completions: 0,
+        completedBy: [],
+        status: 'active',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (365 * 24 * 60 * 60 * 1000) // 1 year
+    },
+    {
+        id: 'partner_support_channel',
+        type: 'channel',
+        link: 'https://t.me/Crystal_Ranch_chat',
+        name: 'Chat & Support',
+        reward: 0.02,
+        targetUsers: 1000000,
+        completions: 0,
+        completedBy: [],
+        status: 'active',
+        createdAt: Date.now(),
+        expiresAt: Date.now() + (365 * 24 * 60 * 60 * 1000)
+    }
+];
 
 // Admin IDs (set these in environment variables)
 const ADMIN_IDS = ['123456789', '987654321']; // Replace with actual admin IDs
@@ -2960,8 +2990,18 @@ async function handleGetReferralInfo(env, userId) {
 }
 
 // ============================================
-// TASK SYSTEM - NEW (With double price)
+// TASK SYSTEM - NEW (With double price and reduced min target)
 // ============================================
+
+async function initializePartnerTasks(env) {
+    // Check if partner tasks exist, if not create them
+    for (const task of PARTNER_TASKS) {
+        const taskResult = await dbGet(env, `tasks/partner/${task.id}`);
+        if (!taskResult.success || !taskResult.data) {
+            await dbSet(env, `tasks/partner/${task.id}`, task);
+        }
+    }
+}
 
 async function handleCreateTask(env, userId, data) {
     try {
@@ -3217,6 +3257,9 @@ async function handleVerifyTask(env, userId, data) {
 
 async function handleGetTasks(env, userId) {
     try {
+        // Initialize partner tasks if needed
+        await initializePartnerTasks(env);
+        
         // Get partner tasks (system tasks)
         const partnerTasksResult = await dbGet(env, 'tasks/partner');
         let partnerTasks = [];
@@ -3992,7 +4035,8 @@ async function handleGetState(env, userId) {
                     
                     BOUNTY_MIN_REWARD: GAME_CONSTANTS.BOUNTY_MIN_REWARD,
                     BOUNTY_MAX_REWARD: GAME_CONSTANTS.BOUNTY_MAX_REWARD,
-                    BOUNTY_MIN_FOLLOWERS: GAME_CONSTANTS.BOUNTY_MIN_FOLLOWERS
+                    BOUNTY_MIN_FOLLOWERS: GAME_CONSTANTS.BOUNTY_MIN_FOLLOWERS,
+                    MIN_TASK_TARGET: GAME_CONSTANTS.MIN_TASK_TARGET
                 },
                 
                 referral: referralStats,
