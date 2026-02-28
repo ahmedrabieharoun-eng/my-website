@@ -3088,6 +3088,60 @@
             initialized: false
         };
 
+        // ===== NEW: Anti-auto clicker protection =====
+        // تخزين آخر وقت نقر لكل زر
+        const lastClickTimers = {};
+        const CLICK_COOLDOWN = 10000; // 10 ثواني بالمللي ثانية
+        
+        // دالة للتحقق من وقت النقر
+        function checkClickCooldown(buttonId) {
+            const now = Date.now();
+            const lastClick = lastClickTimers[buttonId] || 0;
+            const timeLeft = CLICK_COOLDOWN - (now - lastClick);
+            
+            if (timeLeft > 0) {
+                const secondsLeft = Math.ceil(timeLeft / 1000);
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `⏳ الرجاء الانتظار ${secondsLeft} ثانية قبل الضغط مرة أخرى` : 
+                    `⏳ Please wait ${secondsLeft} seconds before clicking again`,
+                    'warning'
+                );
+                return false;
+            }
+            
+            // تحديث وقت آخر نقرة
+            lastClickTimers[buttonId] = now;
+            return true;
+        }
+        
+        // دالة لتعطيل الزر مؤقتاً
+        async function disableButtonTemporarily(buttonElement, buttonId) {
+            if (!buttonElement) return;
+            
+            // تعطيل الزر
+            buttonElement.disabled = true;
+            const originalText = buttonElement.innerHTML;
+            buttonElement.innerHTML = `<i class="fas fa-hourglass-half"></i> ⏳ ${Math.ceil(CLICK_COOLDOWN / 1000)}s`;
+            
+            // إعادة تمكين الزر بعد 10 ثواني
+            setTimeout(() => {
+                buttonElement.disabled = false;
+                buttonElement.innerHTML = originalText;
+            }, CLICK_COOLDOWN);
+        }
+        
+        // دالة مجمعة للتحقق وتعطيل الزر
+        function validateAndCooldown(buttonId, buttonElement) {
+            if (!checkClickCooldown(buttonId)) {
+                return false;
+            }
+            
+            // تعطيل الزر مؤقتاً
+            disableButtonTemporarily(buttonElement, buttonId);
+            return true;
+        }
+
         function showNotification(message, type = 'success', duration = 5000) {
             const container = document.getElementById('notificationContainer');
             const notification = document.createElement('div');
@@ -3341,8 +3395,15 @@
             }
         }
 
-        // ===== MODIFIED: Buy Cow Multiple Times Function =====
+        // ===== MODIFIED: Buy Cow Multiple Times Function with Cooldown =====
         window.buyCow = async function() {
+            const buttonId = 'buyCowBtn';
+            const button = document.getElementById('buyCowBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
             try {
                 // عرض مودال إدخال الكمية
                 const modal = document.createElement('div');
@@ -3470,6 +3531,418 @@
                 
             } catch (error) {
                 console.error('Buy cow error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Buy Chicken with Cooldown =====
+        window.buyChicken = async function() {
+            const buttonId = 'buyChickenBtn';
+            const button = document.getElementById('buyChickenBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                await callAPI('buyChicken');
+                await loadGameState();
+                animateTonBalance();
+                showNotification(
+                    App.currentLanguage === 'ru' ? '✅ Курица куплена!' : '✅ Chicken machine purchased!',
+                    'success'
+                );
+            } catch (error) {
+                console.error('Buy chicken error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Buy Diamond Engine with Cooldown =====
+        window.buyDiamondEngine = async function() {
+            const buttonId = 'buyDiamondBtn';
+            const button = document.getElementById('buyDiamondBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                await callAPI('buyDiamondEngine');
+                await loadGameState();
+                animateTonBalance();
+                showNotification(
+                    App.currentLanguage === 'ru' ? '✅ Кристальный двигатель куплен!' : '✅ Crystal Engine purchased!',
+                    'success'
+                );
+            } catch (error) {
+                console.error('Buy crystal engine error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Start Diamond Production with Cooldown =====
+        window.startDiamondProduction = async function() {
+            const buttonId = 'startDiamondBtn';
+            const button = document.getElementById('startDiamondBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                await callAPI('startDiamondProduction');
+                await loadGameState();
+                showNotification(
+                    App.currentLanguage === 'ru' ? '💎 Кристалл создан!' : '💎 Crystal produced!',
+                    'success'
+                );
+            } catch (error) {
+                console.error('Crystal production error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Hatch Cow with Cooldown =====
+        window.hatchCow = async function() {
+            const buttonId = 'hatchCowConfirm';
+            const button = document.getElementById('hatchCowConfirm');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const amount = parseInt(document.getElementById('hatchCowAmount').value) || 1;
+            
+            try {
+                await callAPI('hatchCow', { amount });
+                await loadGameState();
+                showNotification(
+                    App.currentLanguage === 'ru' ? `🐮 Выведено ${amount} коров(а)!` : `🐮 Hatched ${amount} Cow(s)!`,
+                    'success'
+                );
+                window.closeAllModals();
+            } catch (error) {
+                console.error('Hatch cow error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Hatch Chicken with Cooldown =====
+        window.hatchChicken = async function() {
+            const buttonId = 'hatchChickenConfirm';
+            const button = document.getElementById('hatchChickenConfirm');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const amount = parseInt(document.getElementById('hatchChickenAmount').value) || 1;
+            
+            try {
+                await callAPI('hatchChicken', { amount });
+                await loadGameState();
+                showNotification(
+                    App.currentLanguage === 'ru' ? `🐔 Выведено ${amount} куриц(а)!` : `🐔 Hatched ${amount} Chicken(s)!`,
+                    'success'
+                );
+                window.closeAllModals();
+            } catch (error) {
+                console.error('Hatch chicken error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Convert Diamond with Cooldown =====
+        window.convertDiamond = async function() {
+            const buttonId = 'convertDiamondBtn';
+            const button = document.getElementById('convertDiamondBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const amount = parseInt(document.getElementById('convertAmount').value);
+            
+            if (!amount || amount <= 0) {
+                alert(App.currentLanguage === 'ru' ? 'Введите корректную сумму' : 'Enter valid amount');
+                return;
+            }
+            
+            if (amount > App.user.diamond) {
+                alert(App.currentLanguage === 'ru' ? 'Недостаточно кристаллов' : 'Insufficient crystals');
+                return;
+            }
+            
+            try {
+                const result = await callAPI('convertDiamond', { amount });
+                await loadGameState();
+                document.getElementById('convertAmount').value = '';
+                animateTonBalance();
+                showNotification(
+                    App.currentLanguage === 'ru' ? `✅ Конвертировано ${amount} 💎 в ${result.tonReceived} TON` : `✅ Converted ${amount} 💎 to ${result.tonReceived} TON`,
+                    'success'
+                );
+            } catch (error) {
+                console.error('Convert crystal error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Withdraw with Cooldown =====
+        window.withdraw = async function() {
+            const buttonId = 'withdrawBtn';
+            const button = document.getElementById('withdrawBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const address = document.getElementById('withdrawAddress').value.trim();
+            
+            if (!amount || amount < 0.1) {
+                alert(App.currentLanguage === 'ru' ? 'Минимальный вывод: 0.1 TON' : 'Minimum withdrawal: 0.1 TON');
+                return;
+            }
+            
+            if (!address || address.length < 10) {
+                alert(App.currentLanguage === 'ru' ? 'Введите корректный TON адрес' : 'Enter valid TON address');
+                return;
+            }
+            
+            if (amount > App.user.tonBalance) {
+                alert(App.currentLanguage === 'ru' ? 'Недостаточно средств' : 'Insufficient balance');
+                return;
+            }
+            
+            try {
+                const result = await callAPI('withdraw', { amount, address });
+                await loadGameState();
+                document.getElementById('withdrawAmount').value = '';
+                document.getElementById('withdrawAddress').value = '';
+                
+                const message = App.currentLanguage === 'ru' ? 
+                    `✅ Запрос на вывод: ${result.netAmount} TON` : 
+                    `✅ Withdrawal requested: ${result.netAmount} TON`;
+                
+                showNotification(message, 'success');
+                window.closeAllModals();
+            } catch (error) {
+                console.error('Withdraw error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Claim Referral Earnings with Cooldown =====
+        window.claimReferral = async function() {
+            const buttonId = 'claimReferralBtn';
+            const button = document.getElementById('claimReferralBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                const result = await callAPI('claimReferralEarnings');
+                await loadGameState();
+                animateTonBalance();
+                
+                const message = App.currentLanguage === 'ru' ? 
+                    `✅ Забрано ${result.claimedAmount} TON!` : 
+                    `✅ Claimed ${result.claimedAmount} TON!`;
+                
+                showNotification(message, 'success');
+            } catch (error) {
+                console.error('Claim referral error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Create Sell Order with Cooldown =====
+        window.createSellOrder = async function() {
+            const buttonId = 'submitSellOrderBtn';
+            const button = document.getElementById('submitSellOrderBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const resource = document.querySelector('input[name="sellResource"]:checked')?.value;
+            const quantity = parseInt(document.getElementById('sellQuantity').value);
+            const price = parseFloat(document.getElementById('sellPrice').value);
+            
+            if (!resource || !quantity || !price) {
+                alert(App.currentLanguage === 'ru' ? 'Заполните все поля' : 'Fill all fields');
+                return;
+            }
+            
+            if (quantity < 100) {
+                alert(App.currentLanguage === 'ru' ? 'Минимум 100 единиц' : 'Minimum 100 units');
+                return;
+            }
+            
+            if (price <= 0) {
+                alert(App.currentLanguage === 'ru' ? 'Цена должна быть > 0' : 'Price must be > 0');
+                return;
+            }
+            
+            try {
+                await callAPI('createSellOrder', {
+                    resource: resource,
+                    quantity: quantity,
+                    pricePerUnit: price
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? '✅ Заказ на продажу создан' : '✅ Sell order created',
+                    'success'
+                );
+                window.closeAllModals();
+                loadGameState();
+                
+            } catch (error) {
+                console.error('Create sell order error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Execute Order (Buy) with Cooldown =====
+        window.executeOrder = async function(orderId, quantity) {
+            const buttonId = 'confirmExecuteBtn';
+            const button = document.getElementById('confirmExecuteBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                const result = await callAPI('executeOrder', {
+                    orderId: orderId,
+                    quantity: quantity
+                });
+                
+                const resourceEmoji = result.resource === 'milk' ? '🥛' : '🥚';
+                const resourceName = result.resource === 'milk' ? 'MILK' : 'EGG';
+                
+                const message = TRANSLATIONS[App.currentLanguage]['notify.order.sold']
+                    .replace('{quantity}', formatNumber(quantity))
+                    .replace('{resource}', resourceEmoji + ' ' + resourceName)
+                    .replace('{amount}', formatTON(result.totalCost))
+                    .replace('{orderId}', result.orderId.substring(0, 6));
+                
+                showNotification(message, 'success');
+                
+                loadGameState();
+                window.closeAllModals();
+                
+            } catch (error) {
+                console.error('Execute order error:', error);
+            }
+        };
+
+        // ===== MODIFIED: Create Task with Cooldown =====
+        window.createTask = async function() {
+            const buttonId = 'submitTaskBtn';
+            const button = document.getElementById('submitTaskBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const taskType = document.querySelector('input[name="taskType"]:checked')?.value;
+            const link = document.getElementById('taskLink').value.trim();
+            const target = parseInt(document.getElementById('taskTarget').value);
+            
+            if (!taskType || !link || !target || target < 100) {
+                alert(App.currentLanguage === 'ru' ? 
+                    'Заполните все поля корректно (минимум 100 пользователей)' : 
+                    'Fill all fields correctly (minimum 100 users)');
+                return;
+            }
+            
+            const totalCost = target * CONFIG.TASK_REWARD * 2;
+            
+            if (totalCost > (App.user?.tonBalance || 0)) {
+                alert(App.currentLanguage === 'ru' ? 
+                    'Недостаточно средств' : 
+                    'Insufficient balance');
+                return;
+            }
+            
+            try {
+                const result = await callAPI('createTask', {
+                    type: taskType,
+                    link: link,
+                    targetUsers: target,
+                    reward: CONFIG.TASK_REWARD
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Задание создано! Стоимость: ${formatTON(totalCost)} TON` : 
+                    `✅ Task created! Cost: ${formatTON(totalCost)} TON`,
+                    'success'
+                );
+                
+                window.closeAllModals();
+                loadGameState();
+                
+            } catch (error) {
+                console.error('Create task error:', error);
+                showNotification(error.message, 'error');
+            }
+        };
+
+        // ===== MODIFIED: Submit Bounty with Cooldown =====
+        window.submitBounty = async function() {
+            const buttonId = 'submitBountyBtn';
+            const button = document.getElementById('submitBountyBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const link = document.getElementById('bountyPostLink').value.trim();
+            const platform = document.getElementById('bountyPlatform').value;
+            
+            if (!link) {
+                alert(App.currentLanguage === 'ru' ? 'الرجاء إدخال رابط المنشور' : 'Please enter post link');
+                return;
+            }
+            
+            try {
+                const result = await callAPI('submitBounty', {
+                    link: link,
+                    platform: platform
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    '✅ تم إرسال الطلب بنجاح! قيد المراجعة' : 
+                    '✅ Bounty submitted successfully! Pending review',
+                    'success'
+                );
+                
+                document.getElementById('bountyPostLink').value = '';
+                await loadBounties();
+                
+            } catch (error) {
+                console.error('Submit bounty error:', error);
+                showNotification(error.message, 'error');
+            }
+        };
+
+        // ===== MODIFIED: Cancel Order with Cooldown =====
+        window.cancelOrder = async function(orderId) {
+            const buttonId = 'cancelOrder_' + orderId;
+            const button = event?.target;
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            if (!confirm(App.currentLanguage === 'ru' ? 'Отменить этот заказ?' : 'Cancel this order?')) return;
+            
+            try {
+                await callAPI('cancelOrder', { orderId });
+                showNotification(
+                    App.currentLanguage === 'ru' ? '✅ Заказ отменен' : '✅ Order cancelled',
+                    'success'
+                );
+                loadGameState();
+            } catch (error) {
+                console.error('Cancel order error:', error);
             }
         };
 
@@ -3637,6 +4110,13 @@
         };
 
         async function performTaskVerification(task) {
+            const buttonId = 'verifyCheckBtn';
+            const button = document.getElementById('verifyCheckBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
             try {
                 const statusDiv = document.getElementById('verifyStatus');
                 statusDiv.style.display = 'block';
@@ -3712,82 +4192,6 @@
                 document.getElementById('taskTotalCost').style.color = 'var(--crystal-blue)';
             }
         }
-
-        async function createTask() {
-            const taskType = document.querySelector('input[name="taskType"]:checked')?.value;
-            const link = document.getElementById('taskLink').value.trim();
-            const target = parseInt(document.getElementById('taskTarget').value);
-            
-            if (!taskType || !link || !target || target < 100) {
-                alert(App.currentLanguage === 'ru' ? 
-                    'Заполните все поля корректно (минимум 100 пользователей)' : 
-                    'Fill all fields correctly (minimum 100 users)');
-                return;
-            }
-            
-            const totalCost = target * CONFIG.TASK_REWARD * 2;
-            
-            if (totalCost > (App.user?.tonBalance || 0)) {
-                alert(App.currentLanguage === 'ru' ? 
-                    'Недостаточно средств' : 
-                    'Insufficient balance');
-                return;
-            }
-            
-            try {
-                const result = await callAPI('createTask', {
-                    type: taskType,
-                    link: link,
-                    targetUsers: target,
-                    reward: CONFIG.TASK_REWARD
-                });
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Задание создано! Стоимость: ${formatTON(totalCost)} TON` : 
-                    `✅ Task created! Cost: ${formatTON(totalCost)} TON`,
-                    'success'
-                );
-                
-                window.closeAllModals();
-                loadGameState();
-                
-            } catch (error) {
-                console.error('Create task error:', error);
-                showNotification(error.message, 'error');
-            }
-        }
-
-        window.submitBounty = async function() {
-            const link = document.getElementById('bountyPostLink').value.trim();
-            const platform = document.getElementById('bountyPlatform').value;
-            
-            if (!link) {
-                alert(App.currentLanguage === 'ru' ? 'الرجاء إدخال رابط المنشور' : 'Please enter post link');
-                return;
-            }
-            
-            try {
-                const result = await callAPI('submitBounty', {
-                    link: link,
-                    platform: platform
-                });
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    '✅ تم إرسال الطلب بنجاح! قيد المراجعة' : 
-                    '✅ Bounty submitted successfully! Pending review',
-                    'success'
-                );
-                
-                document.getElementById('bountyPostLink').value = '';
-                await loadBounties();
-                
-            } catch (error) {
-                console.error('Submit bounty error:', error);
-                showNotification(error.message, 'error');
-            }
-        };
 
         function updateBountyUI() {
             const historyList = document.getElementById('bountyHistoryList');
@@ -4270,51 +4674,10 @@
             `;
             
             document.getElementById('confirmExecuteBtn').onclick = function() {
-                executeOrder(orderId, maxQuantity);
+                window.executeOrder(orderId, maxQuantity);
             };
             
             modal.classList.add('active');
-        };
-
-        async function executeOrder(orderId, quantity) {
-            try {
-                const result = await callAPI('executeOrder', {
-                    orderId: orderId,
-                    quantity: quantity
-                });
-                
-                const resourceEmoji = result.resource === 'milk' ? '🥛' : '🥚';
-                const resourceName = result.resource === 'milk' ? 'MILK' : 'EGG';
-                
-                const message = TRANSLATIONS[App.currentLanguage]['notify.order.sold']
-                    .replace('{quantity}', formatNumber(quantity))
-                    .replace('{resource}', resourceEmoji + ' ' + resourceName)
-                    .replace('{amount}', formatTON(result.totalCost))
-                    .replace('{orderId}', result.orderId.substring(0, 6));
-                
-                showNotification(message, 'success');
-                
-                loadGameState();
-                window.closeAllModals();
-                
-            } catch (error) {
-                console.error('Execute order error:', error);
-            }
-        }
-
-        window.cancelOrder = async function(orderId) {
-            if (!confirm(App.currentLanguage === 'ru' ? 'Отменить этот заказ?' : 'Cancel this order?')) return;
-            
-            try {
-                await callAPI('cancelOrder', { orderId });
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Заказ отменен' : '✅ Order cancelled',
-                    'success'
-                );
-                loadGameState();
-            } catch (error) {
-                console.error('Cancel order error:', error);
-            }
         };
 
         async function loadMyOrders() {
@@ -4391,178 +4754,6 @@
             }
         }
 
-        window.buyChicken = async function() {
-            try {
-                await callAPI('buyChicken');
-                await loadGameState();
-                animateTonBalance();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Курица куплена!' : '✅ Chicken machine purchased!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Buy chicken error:', error);
-            }
-        };
-
-        window.buyDiamondEngine = async function() {
-            try {
-                await callAPI('buyDiamondEngine');
-                await loadGameState();
-                animateTonBalance();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Кристальный двигатель куплен!' : '✅ Crystal Engine purchased!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Buy crystal engine error:', error);
-            }
-        };
-
-        window.startDiamondProduction = async function() {
-            try {
-                await callAPI('startDiamondProduction');
-                await loadGameState();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '💎 Кристалл создан!' : '💎 Crystal produced!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Crystal production error:', error);
-            }
-        };
-
-        window.hatchCow = async function() {
-            const amount = parseInt(document.getElementById('hatchCowAmount').value) || 1;
-            
-            try {
-                await callAPI('hatchCow', { amount });
-                await loadGameState();
-                showNotification(
-                    App.currentLanguage === 'ru' ? `🐮 Выведено ${amount} коров(а)!` : `🐮 Hatched ${amount} Cow(s)!`,
-                    'success'
-                );
-                window.closeAllModals();
-            } catch (error) {
-                console.error('Hatch cow error:', error);
-            }
-        };
-
-        window.hatchChicken = async function() {
-            const amount = parseInt(document.getElementById('hatchChickenAmount').value) || 1;
-            
-            try {
-                await callAPI('hatchChicken', { amount });
-                await loadGameState();
-                showNotification(
-                    App.currentLanguage === 'ru' ? `🐔 Выведено ${amount} куриц(а)!` : `🐔 Hatched ${amount} Chicken(s)!`,
-                    'success'
-                );
-                window.closeAllModals();
-            } catch (error) {
-                console.error('Hatch chicken error:', error);
-            }
-        };
-
-        window.convertDiamond = async function() {
-            const amount = parseInt(document.getElementById('convertAmount').value);
-            
-            if (!amount || amount <= 0) {
-                alert(App.currentLanguage === 'ru' ? 'Введите корректную сумму' : 'Enter valid amount');
-                return;
-            }
-            
-            if (amount > App.user.diamond) {
-                alert(App.currentLanguage === 'ru' ? 'Недостаточно кристаллов' : 'Insufficient crystals');
-                return;
-            }
-            
-            try {
-                const result = await callAPI('convertDiamond', { amount });
-                await loadGameState();
-                document.getElementById('convertAmount').value = '';
-                animateTonBalance();
-                showNotification(
-                    App.currentLanguage === 'ru' ? `✅ Конвертировано ${amount} 💎 в ${result.tonReceived} TON` : `✅ Converted ${amount} 💎 to ${result.tonReceived} TON`,
-                    'success'
-                );
-            } catch (error) {
-                console.error('Convert crystal error:', error);
-            }
-        };
-
-        window.claimReferral = async function() {
-            try {
-                const result = await callAPI('claimReferralEarnings');
-                await loadGameState();
-                animateTonBalance();
-                
-                const message = App.currentLanguage === 'ru' ? 
-                    `✅ Забрано ${result.claimedAmount} TON!` : 
-                    `✅ Claimed ${result.claimedAmount} TON!`;
-                
-                showNotification(message, 'success');
-            } catch (error) {
-                console.error('Claim referral error:', error);
-            }
-        };
-
-        window.withdraw = async function() {
-            const amount = parseFloat(document.getElementById('withdrawAmount').value);
-            const address = document.getElementById('withdrawAddress').value.trim();
-            
-            if (!amount || amount < 0.1) {
-                alert(App.currentLanguage === 'ru' ? 'Минимальный вывод: 0.1 TON' : 'Minimum withdrawal: 0.1 TON');
-                return;
-            }
-            
-            if (!address || address.length < 10) {
-                alert(App.currentLanguage === 'ru' ? 'Введите корректный TON адрес' : 'Enter valid TON address');
-                return;
-            }
-            
-            if (amount > App.user.tonBalance) {
-                alert(App.currentLanguage === 'ru' ? 'Недостаточно средств' : 'Insufficient balance');
-                return;
-            }
-            
-            try {
-                const result = await callAPI('withdraw', { amount, address });
-                await loadGameState();
-                document.getElementById('withdrawAmount').value = '';
-                document.getElementById('withdrawAddress').value = '';
-                
-                const message = App.currentLanguage === 'ru' ? 
-                    `✅ Запрос на вывод: ${result.netAmount} TON` : 
-                    `✅ Withdrawal requested: ${result.netAmount} TON`;
-                
-                showNotification(message, 'success');
-                window.closeAllModals();
-            } catch (error) {
-                console.error('Withdraw error:', error);
-            }
-        };
-
-        window.copyReferralLink = function() {
-            const input = document.getElementById('referralLink');
-            input.select();
-            navigator.clipboard.writeText(input.value);
-            
-            showNotification(
-                App.currentLanguage === 'ru' ? '✅ Ссылка скопирована!' : '✅ Link copied!',
-                'success'
-            );
-        };
-
-        window.updateSellTotal = function() {
-            const qty = parseFloat(document.getElementById('sellQuantity').value) || 0;
-            const price = parseFloat(document.getElementById('sellPrice').value) || 0;
-            const total = qty * price;
-            const fee = total * 0.1;
-            const sellerGets = total - fee;
-            document.getElementById('sellTotalTon').innerHTML = `Total: ${formatTON(total)} TON (You get: ${formatTON(sellerGets)} TON after 10% fee)`;
-        };
-
         function updateProductionTimer() {
             if (App.user && App.user.secondsUntilNext !== undefined) {
                 const seconds = App.user.secondsUntilNext;
@@ -4634,43 +4825,24 @@
             App.pendingTask = null;
         };
 
-        window.createSellOrder = async function() {
-            const resource = document.querySelector('input[name="sellResource"]:checked')?.value;
-            const quantity = parseInt(document.getElementById('sellQuantity').value);
-            const price = parseFloat(document.getElementById('sellPrice').value);
+        window.copyReferralLink = function() {
+            const input = document.getElementById('referralLink');
+            input.select();
+            navigator.clipboard.writeText(input.value);
             
-            if (!resource || !quantity || !price) {
-                alert(App.currentLanguage === 'ru' ? 'Заполните все поля' : 'Fill all fields');
-                return;
-            }
-            
-            if (quantity < 100) {
-                alert(App.currentLanguage === 'ru' ? 'Минимум 100 единиц' : 'Minimum 100 units');
-                return;
-            }
-            
-            if (price <= 0) {
-                alert(App.currentLanguage === 'ru' ? 'Цена должна быть > 0' : 'Price must be > 0');
-                return;
-            }
-            
-            try {
-                await callAPI('createSellOrder', {
-                    resource: resource,
-                    quantity: quantity,
-                    pricePerUnit: price
-                });
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Заказ на продажу создан' : '✅ Sell order created',
-                    'success'
-                );
-                window.closeAllModals();
-                loadGameState();
-                
-            } catch (error) {
-                console.error('Create sell order error:', error);
-            }
+            showNotification(
+                App.currentLanguage === 'ru' ? '✅ Ссылка скопирована!' : '✅ Link copied!',
+                'success'
+            );
+        };
+
+        window.updateSellTotal = function() {
+            const qty = parseFloat(document.getElementById('sellQuantity').value) || 0;
+            const price = parseFloat(document.getElementById('sellPrice').value) || 0;
+            const total = qty * price;
+            const fee = total * 0.1;
+            const sellerGets = total - fee;
+            document.getElementById('sellTotalTon').innerHTML = `Total: ${formatTON(total)} TON (You get: ${formatTON(sellerGets)} TON after 10% fee)`;
         };
 
         window.initiateDeposit = async function() {
@@ -4968,7 +5140,7 @@
             document.getElementById('submitDepositBtn').addEventListener('click', window.initiateDeposit);
             
             document.getElementById('addTaskBtn').addEventListener('click', window.openAddTaskModal);
-            document.getElementById('submitTaskBtn').addEventListener('click', createTask);
+            document.getElementById('submitTaskBtn').addEventListener('click', window.createTask);
             
             document.getElementById('taskTarget').addEventListener('input', calculateTaskPrice);
             
