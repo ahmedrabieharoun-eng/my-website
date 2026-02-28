@@ -1,282 +1,335 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔍 نظام كشف وتنظيف الحسابات المشبوهة - Crystal Ranch</title>
+    <title>Crystal Ranch · Suspicious Orders Detector + Auto Delete</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e);
+            color: white;
             min-height: 100vh;
             padding: 20px;
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
         
+        /* Header Styles */
         .header {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 92, 168, 0.3);
+            flex-wrap: wrap;
+            gap: 20px;
         }
         
         .header h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2.5em;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .header h1 i {
+            color: #FF5CA8;
         }
         
         .header h1 span {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .header p {
-            color: #666;
-            font-size: 1.1em;
-        }
-        
-        .warning-badge {
-            background: #ff4757;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 50px;
-            display: inline-block;
-            margin-top: 15px;
-            font-weight: bold;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            background: rgba(255, 75, 92, 0.2);
+            color: #FF4B5C;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
         }
         
         .stats-grid {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            min-width: 120px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 30px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(145deg, #FF5CA8, #D94A8F);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 92, 168, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(145deg, #FF4B5C, #d63f4f);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 75, 92, 0.4);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            color: black;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(145deg, #00F27A, #00b35e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 242, 122, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: scale(1.02);
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+        
+        /* Summary Cards */
+        .summary-section {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
         
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            text-align: center;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
+        .summary-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
         }
         
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-icon {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 0.9em;
-        }
-        
-        .stat-card.warning {
-            border-left: 4px solid #ff4757;
-        }
-        
-        .stat-card.success {
-            border-left: 4px solid #00d25b;
-        }
-        
-        .stat-card.info {
-            border-left: 4px solid #0dcaf0;
-        }
-        
-        .controls {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        }
-        
-        .btn {
-            padding: 12px 30px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1em;
+        .summary-title {
+            font-size: 16px;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
+            color: #FFD700;
+            margin-bottom: 15px;
+            display: flex;
             align-items: center;
             gap: 8px;
         }
         
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
+        .summary-list {
+            max-height: 200px;
+            overflow-y: auto;
         }
         
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 13px;
         }
         
-        .btn-danger {
-            background: #ff4757;
-            color: white;
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
         }
         
-        .btn-danger:hover {
-            background: #ff2e3f;
-            transform: translateY(-2px);
+        .badge-danger {
+            background: rgba(255, 75, 92, 0.2);
+            color: #FF4B5C;
+            border: 1px solid rgba(255, 75, 92, 0.3);
         }
         
-        .btn-warning {
-            background: #ffa502;
-            color: white;
+        .badge-warning {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
         }
         
-        .btn-warning:hover {
-            background: #ff9500;
-            transform: translateY(-2px);
+        .badge-success {
+            background: rgba(0, 242, 122, 0.2);
+            color: #00F27A;
+            border: 1px solid rgba(0, 242, 122, 0.3);
         }
         
-        .btn-success {
-            background: #00d25b;
-            color: white;
+        .badge-info {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00D4FF;
+            border: 1px solid rgba(0, 212, 255, 0.3);
         }
         
-        .btn-success:hover {
-            background: #00b34a;
-            transform: translateY(-2px);
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+            padding-bottom: 10px;
+            flex-wrap: wrap;
         }
         
-        .search-box {
-            flex: 1;
-            padding: 12px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: all 0.3s;
+        .tab {
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.05);
         }
         
-        .search-box:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        .tab.active {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
         }
         
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .tab.danger-tab {
+            background: rgba(255, 75, 92, 0.1);
+            color: #FF4B5C;
+        }
+        
+        .tab.danger-tab.active {
+            background: rgba(255, 75, 92, 0.3);
+            border-color: #FF4B5C;
+        }
+        
+        /* Tables */
         .table-container {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            overflow-x: auto;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            overflow: auto;
+            margin-bottom: 30px;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
+            min-width: 1200px;
         }
         
         th {
-            background: #f8f9fa;
+            background: rgba(0, 0, 0, 0.5);
             padding: 15px 10px;
             text-align: left;
+            font-size: 12px;
             font-weight: 600;
-            color: #333;
-            border-bottom: 2px solid #e0e0e0;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #FFD700;
         }
         
         td {
             padding: 15px 10px;
-            border-bottom: 1px solid #e0e0e0;
-            color: #666;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+            font-size: 13px;
         }
         
         tr:hover {
-            background: #f8f9fa;
+            background: rgba(255, 215, 0, 0.05);
         }
         
-        .badge {
-            padding: 5px 10px;
-            border-radius: 50px;
-            font-size: 0.85em;
-            font-weight: 600;
+        tr.suspicious-user {
+            background: rgba(255, 75, 92, 0.15);
+            border-left: 3px solid #FF4B5C;
         }
         
-        .badge-danger {
-            background: #ff4757;
-            color: white;
+        tr.suspicious-order {
+            background: rgba(255, 215, 0, 0.1);
         }
         
-        .badge-warning {
-            background: #ffa502;
-            color: white;
+        tr.deleted-order {
+            background: rgba(100, 100, 100, 0.1);
+            opacity: 0.6;
+            text-decoration: line-through;
         }
         
-        .badge-success {
-            background: #00d25b;
-            color: white;
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        .badge-info {
-            background: #0dcaf0;
-            color: white;
-        }
-        
-        .suspicious-score {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            line-height: 40px;
-            text-align: center;
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(145deg, #FF5CA8, #00D4FF);
             border-radius: 50%;
-            font-weight: bold;
-        }
-        
-        .score-high {
-            background: #ff4757;
-            color: white;
-        }
-        
-        .score-medium {
-            background: #ffa502;
-            color: white;
-        }
-        
-        .score-low {
-            background: #0dcaf0;
-            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
         }
         
         .action-buttons {
@@ -285,34 +338,82 @@
             flex-wrap: wrap;
         }
         
-        .btn-sm {
-            padding: 5px 10px;
-            font-size: 0.85em;
+        .action-btn {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
         }
         
-        .modal {
-            display: none;
+        .action-btn.reset {
+            background: rgba(255, 75, 92, 0.2);
+            color: #FF4B5C;
+            border: 1px solid rgba(255, 75, 92, 0.3);
+        }
+        
+        .action-btn.reset:hover {
+            background: rgba(255, 75, 92, 0.4);
+        }
+        
+        .action-btn.view {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00D4FF;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .action-btn.view:hover {
+            background: rgba(0, 212, 255, 0.4);
+        }
+        
+        .action-btn.delete {
+            background: rgba(255, 75, 92, 0.3);
+            color: white;
+            border: 1px solid rgba(255, 75, 92, 0.5);
+        }
+        
+        .action-btn.delete:hover {
+            background: rgba(255, 75, 92, 0.6);
+        }
+        
+        .action-btn.delete-order {
+            background: rgba(255, 165, 0, 0.2);
+            color: #FFA500;
+            border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+        
+        /* Modal */
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
             align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
         }
         
-        .modal.active {
-            display: flex;
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
         }
         
         .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 500px;
+            background: #1a1a2e;
+            border: 1px solid #FFD700;
+            border-radius: 24px;
+            padding: 25px;
             width: 90%;
+            max-width: 800px;
             max-height: 80vh;
             overflow-y: auto;
         }
@@ -324,200 +425,428 @@
             margin-bottom: 20px;
         }
         
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+        
         .modal-close {
-            font-size: 1.5em;
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.5);
             cursor: pointer;
-            color: #999;
         }
         
-        .modal-close:hover {
-            color: #333;
+        .orders-list {
+            max-height: 400px;
+            overflow-y: auto;
         }
         
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px 0;
+        .order-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.1);
         }
         
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            transition: width 0.3s;
+        .order-item.deleted {
+            opacity: 0.5;
+            background: rgba(100, 100, 100, 0.2);
         }
         
-        .log-entry {
-            padding: 8px;
-            border-bottom: 1px solid #e0e0e0;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-        
-        .log-entry.success {
-            color: #00d25b;
-        }
-        
-        .log-entry.error {
-            color: #ff4757;
-        }
-        
-        .log-entry.warning {
-            color: #ffa502;
-        }
-        
-        .tabs {
+        .order-header {
             display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .order-id {
+            font-family: monospace;
+            color: #FFD700;
+        }
+        
+        .order-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 20px;
+        }
+        
+        .status-active { background: rgba(0, 242, 122, 0.2); color: #00F27A; }
+        .status-cancelled { background: rgba(255, 75, 92, 0.2); color: #FF4B5C; }
+        .status-filled { background: rgba(0, 212, 255, 0.2); color: #00D4FF; }
+        
+        .order-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            font-size: 12px;
         }
         
-        .tab {
-            padding: 10px 20px;
-            background: #f0f0f0;
+        .reason-list {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 75, 92, 0.1);
             border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s;
         }
         
-        .tab.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-        }
-        
-        .tab:hover {
-            background: #e0e0e0;
-        }
-        
-        .tab.active:hover {
-            background: linear-gradient(135deg, #764ba2, #667eea);
+        .reason-item {
+            color: #FF4B5C;
+            font-size: 13px;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
+            text-align: center;
+            padding: 50px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .loading i {
+            font-size: 40px;
+            margin-bottom: 15px;
             animation: spin 1s linear infinite;
         }
         
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
         
-        .footer {
-            text-align: center;
-            margin-top: 30px;
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FF5CA8);
+            transition: width 0.3s;
+        }
+        
+        .metric-highlight {
+            color: #FFD700;
+            font-weight: 600;
+        }
+        
+        .deleted-text {
+            color: #808080;
+            font-style: italic;
+        }
+        
+        .delete-count {
+            background: #FF4B5C;
             color: white;
-            opacity: 0.8;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #00F27A;
+            color: black;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            z-index: 2000;
+            animation: slideIn 0.3s;
+            box-shadow: 0 5px 20px rgba(0, 242, 122, 0.4);
+        }
+        
+        .toast.error {
+            background: #FF4B5C;
+            color: white;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <h1>🔍 <span>Crystal Ranch</span> Anti-Cheat System</h1>
-            <p>نظام متقدم لكشف وتنظيف الحسابات المشبوهة تلقائياً</p>
-            <div class="warning-badge">⚠️ تنبيه: هذا النظام سيقوم بتصفير الحسابات المخالفة</div>
+            <h1>
+                <i class="fas fa-trash-alt"></i>
+                Suspicious Orders Detector 
+                <span>with Auto-Delete</span>
+            </h1>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalOrders">0</div>
+                    <div class="stat-label">Total Orders</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="activeOrders">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="cancelledOrders">0</div>
+                    <div class="stat-label">Cancelled</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="suspiciousUsers">0</div>
+                    <div class="stat-label">Suspicious Users</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="suspiciousOrders">0</div>
+                    <div class="stat-label">Suspicious Orders</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="deletedOrders">0</div>
+                    <div class="stat-label">Deleted</div>
+                </div>
+            </div>
         </div>
-
-        <div class="stats-grid" id="stats">
-            <div class="stat-card">
-                <div class="stat-icon">👥</div>
-                <div class="stat-value" id="totalUsers">0</div>
-                <div class="stat-label">إجمالي المستخدمين</div>
-            </div>
-            <div class="stat-card warning">
-                <div class="stat-icon">⚠️</div>
-                <div class="stat-value" id="suspiciousUsers">0</div>
-                <div class="stat-label">حسابات مشبوهة</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">📦</div>
-                <div class="stat-value" id="totalOrders">0</div>
-                <div class="stat-label">إجمالي الطلبات</div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-icon">✅</div>
-                <div class="stat-value" id="cleanedUsers">0</div>
-                <div class="stat-label">تم تنظيفها</div>
-            </div>
-        </div>
-
+        
+        <!-- Controls -->
         <div class="controls">
-            <input type="text" class="search-box" id="searchInput" placeholder="🔍 بحث برقم المستخدم أو اسم المستخدم...">
-            <button class="btn btn-primary" onclick="scanAllUsers()">
-                <span>🔍</span> فحص الكل
+            <button class="btn btn-primary" id="scanBtn">
+                <i class="fas fa-search"></i> Scan Orders
             </button>
-            <button class="btn btn-danger" onclick="cleanAllSuspicious()">
-                <span>🧹</span> تنظيف الكل
+            <button class="btn btn-danger" id="resetAllBtn">
+                <i class="fas fa-skull-crosswalk"></i> Reset All Suspicious Users
             </button>
-            <button class="btn btn-success" onclick="exportData()">
-                <span>📥</span> تصدير التقرير
+            <button class="btn btn-warning" id="deleteAllSuspiciousOrdersBtn">
+                <i class="fas fa-trash"></i> Delete All Suspicious Orders
+            </button>
+            <button class="btn btn-success" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Refresh Data
             </button>
         </div>
-
+        
+        <!-- Summary Cards -->
+        <div class="summary-section">
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-exclamation-triangle" style="color: #FF4B5C;"></i>
+                    Top Suspicious Users
+                </div>
+                <div class="summary-list" id="topSuspiciousList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-clone" style="color: #FFD700;"></i>
+                    Duplicate Orders Detected
+                </div>
+                <div class="summary-list" id="duplicateOrdersList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-clock" style="color: #00D4FF;"></i>
+                    Recent Suspicious Activity
+                </div>
+                <div class="summary-list" id="recentActivityList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('all')">كل المستخدمين</div>
-            <div class="tab" onclick="switchTab('suspicious')">المشبوهة فقط</div>
-            <div class="tab" onclick="switchTab('cleaned')">المنظفة</div>
+            <div class="tab active" data-tab="suspicious-users">Suspicious Users</div>
+            <div class="tab" data-tab="suspicious-orders">Suspicious Orders</div>
+            <div class="tab" data-tab="all-orders">All Orders</div>
+            <div class="tab danger-tab" data-tab="deleted-orders">Deleted Orders</div>
         </div>
-
-        <div class="table-container">
-            <table id="usersTable">
+        
+        <!-- Progress -->
+        <div id="progressContainer" style="display: none; margin-bottom: 20px;">
+            <div class="summary-card">
+                <div class="summary-row" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <span>Processing...</span>
+                    <span id="progressText">0/0</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Suspicious Users Table -->
+        <div class="table-container" id="suspiciousUsersTable" style="display: block;">
+            <table>
                 <thead>
                     <tr>
-                        <th>المعرف</th>
-                        <th>المستخدم</th>
-                        <th>الرصيد</th>
-                        <th>الموارد</th>
-                        <th>الطلبات النشطة</th>
-                        <th>نسبة الاشتباه</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
+                        <th>User</th>
+                        <th>User ID</th>
+                        <th>Total Orders</th>
+                        <th>Active</th>
+                        <th>Cancelled</th>
+                        <th>Filled</th>
+                        <th>Suspicious Reasons</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
+                <tbody id="suspiciousUsersBody">
                     <tr>
-                        <td colspan="8" style="text-align: center;">جاري تحميل البيانات...</td>
+                        <td colspan="8" class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <div>Click "Scan Orders" to begin</div>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-
-        <div class="footer">
-            <p>© 2026 Crystal Ranch - جميع الحقوق محفوظة</p>
+        
+        <!-- Suspicious Orders Table -->
+        <div class="table-container" id="suspiciousOrdersTable" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Resource</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Suspicious Reason</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="suspiciousOrdersBody">
+                    <tr>
+                        <td colspan="10" class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <div>No suspicious orders found</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- All Orders Table -->
+        <div class="table-container" id="allOrdersTable" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Resource</th>
+                        <th>Quantity</th>
+                        <th>Remaining</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="allOrdersBody">
+                    <tr>
+                        <td colspan="10" class="loading">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <div>Loading orders...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Deleted Orders Table -->
+        <div class="table-container" id="deletedOrdersTable" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>User</th>
+                        <th>Type</th>
+                        <th>Resource</th>
+                        <th>Quantity</th>
+                        <th>Deleted At</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody id="deletedOrdersBody">
+                    <tr>
+                        <td colspan="7" class="loading">
+                            <i class="fas fa-trash"></i>
+                            <div>No deleted orders</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <!-- Modal for cleaning progress -->
-    <div class="modal" id="cleanModal">
+    
+    <!-- User Details Modal -->
+    <div class="modal-overlay" id="userModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🧹 جاري تنظيف الحسابات</h2>
-                <span class="modal-close" onclick="closeModal()">&times;</span>
+                <div class="modal-title">
+                    <i class="fas fa-user"></i> User Orders Details
+                </div>
+                <i class="fas fa-times modal-close" id="closeModal"></i>
             </div>
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
-            </div>
-            <div id="progressText">0 / 0</div>
-            <div style="max-height: 300px; overflow-y: auto; margin-top: 20px;" id="logContainer">
-                <div class="log-entry">بدء عملية التنظيف...</div>
+            <div id="userOrdersList" class="orders-list"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <button class="btn btn-danger" id="resetUserBtn" style="flex: 1;">
+                    <i class="fas fa-skull-crosswalk"></i> Reset & Delete All
+                </button>
+                <button class="btn btn-warning" id="deleteUserOrdersBtn" style="flex: 1;">
+                    <i class="fas fa-trash"></i> Delete Orders Only
+                </button>
+                <button class="btn btn-secondary" id="closeModalBtn" style="flex: 1;">
+                    Close
+                </button>
             </div>
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Delete Single Order Confirmation Modal -->
+    <div class="modal-overlay" id="deleteOrderModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-exclamation-triangle" style="color: #FF4B5C;"></i> Confirm Delete
+                </div>
+                <i class="fas fa-times modal-close" id="closeDeleteModal"></i>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-trash" style="font-size: 48px; color: #FF4B5C; margin-bottom: 15px;"></i>
+                <p>Are you sure you want to delete this order?</p>
+                <p id="deleteOrderInfo" style="color: #FFD700; font-size: 12px; margin-top: 10px;"></p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-danger" id="confirmDeleteOrderBtn" style="flex: 1;">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+                <button class="btn btn-secondary" id="cancelDeleteOrderBtn" style="flex: 1;">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        // Firebase configuration
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
             authDomain: "earnmoney124553.firebaseapp.com",
@@ -533,527 +862,892 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Global variables
-        let allUsers = [];
-        let suspiciousUsers = [];
-        let cleanedUsers = [];
-        let currentTab = 'all';
-        let cleaningInProgress = false;
-
-        // Load data on page load
-        window.onload = function() {
-            loadAllData();
+        // ============================================
+        // STATE
+        // ============================================
+        let App = {
+            orders: {},
+            users: {},
+            suspiciousUsers: [],
+            suspiciousOrders: [],
+            duplicateOrders: [],
+            largeOrders: [],
+            quickCancelOrders: [],
+            deletedOrders: [],
+            
+            stats: {
+                total: 0,
+                active: 0,
+                cancelled: 0,
+                filled: 0,
+                deleted: 0
+            },
+            
+            pendingDelete: null
         };
 
-        // Load all data from Firebase
-        async function loadAllData() {
+        // ============================================
+        // LOAD DATA FROM FIREBASE
+        // ============================================
+        async function loadData() {
+            showProgress(true, 'Loading data...');
+            
             try {
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" style="text-align: center;"><div class="loading" style="margin: 20px auto;"></div> جاري تحميل البيانات...</td></tr>';
+                // Load orders
+                const ordersSnapshot = await database.ref('orders').once('value');
+                App.orders = ordersSnapshot.val() || {};
                 
                 // Load users
                 const usersSnapshot = await database.ref('users').once('value');
-                const users = usersSnapshot.val() || {};
+                App.users = usersSnapshot.val() || {};
                 
-                // Load orders
-                const ordersSnapshot = await database.ref('orders').once('value');
-                const orders = ordersSnapshot.val() || {};
+                // Load deleted orders log (from a special path)
+                const deletedSnapshot = await database.ref('deleted_orders').once('value');
+                App.deletedOrders = deletedSnapshot.val() || {};
                 
-                // Process users data
-                allUsers = [];
-                let suspiciousCount = 0;
-                
-                for (const [userId, userData] of Object.entries(users)) {
-                    // Get user orders count
-                    let userOrdersCount = 0;
-                    let userOrders = [];
-                    
-                    if (orders) {
-                        for (const [orderId, order] of Object.entries(orders)) {
-                            if (order.userId === userId && order.status === 'active') {
-                                userOrdersCount++;
-                                userOrders.push(order);
-                            }
-                        }
-                    }
-                    
-                    // Calculate suspicious score
-                    const suspiciousScore = calculateSuspiciousScore(userData, userOrdersCount, userOrders);
-                    const isSuspicious = suspiciousScore >= 70;
-                    
-                    if (isSuspicious) {
-                        suspiciousCount++;
-                    }
-                    
-                    allUsers.push({
-                        id: userId,
-                        data: userData,
-                        ordersCount: userOrdersCount,
-                        orders: userOrders,
-                        suspiciousScore: suspiciousScore,
-                        isSuspicious: isSuspicious
-                    });
-                }
-                
-                // Sort by suspicious score (highest first)
-                allUsers.sort((a, b) => b.suspiciousScore - a.suspiciousScore);
-                suspiciousUsers = allUsers.filter(u => u.isSuspicious);
-                
-                // Update stats
                 updateStats();
+                renderAllOrders();
+                renderDeletedOrders();
                 
-                // Render table
-                renderTable();
+                showToast('Data loaded successfully');
                 
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('tableBody').innerHTML = `<tr><td colspan="8" style="text-align: center; color: #ff4757;">❌ خطأ في تحميل البيانات: ${error.message}</td></tr>`;
+                showToast('Error loading data: ' + error.message, 'error');
+            } finally {
+                showProgress(false);
             }
         }
 
-        // Calculate suspicious score (0-100)
-        function calculateSuspiciousScore(userData, ordersCount, orders) {
-            let score = 0;
+        // ============================================
+        // SCAN FOR SUSPICIOUS ACTIVITY
+        // ============================================
+        function scanSuspicious() {
+            showProgress(true, 'Scanning orders...');
             
-            // Check 1: Multiple active orders with total > balance
-            if (ordersCount > 3) {
-                let totalResourceInOrders = 0;
-                for (const order of orders) {
-                    if (order.type === 'sell') {
-                        totalResourceInOrders += order.remaining || 0;
-                    }
+            App.suspiciousUsers = [];
+            App.suspiciousOrders = [];
+            App.duplicateOrders = [];
+            App.largeOrders = [];
+            App.quickCancelOrders = [];
+            
+            const orders = App.orders;
+            const userOrders = {};
+            const valueFrequency = {};
+            const timestampGroups = {};
+            
+            // First pass: collect data
+            for (const [orderId, order] of Object.entries(orders)) {
+                if (!order) continue;
+                
+                const userId = order.userId;
+                const quantity = order.quantity || 0;
+                const resource = order.resource;
+                const status = order.status;
+                const createdAt = order.createdAt;
+                
+                // Group orders by user
+                if (!userOrders[userId]) {
+                    userOrders[userId] = [];
+                }
+                userOrders[userId].push({ orderId, ...order });
+                
+                // Track large orders (> 3000)
+                if (quantity > 3000) {
+                    App.largeOrders.push({
+                        orderId,
+                        userId,
+                        quantity,
+                        resource,
+                        status,
+                        createdAt
+                    });
                 }
                 
-                const userResource = userData.milk || 0;
-                if (totalResourceInOrders > userResource * 2) {
-                    score += 50;
+                // Track value frequency (for duplicates)
+                const valueKey = `${userId}_${resource}_${quantity}`;
+                if (!valueFrequency[valueKey]) {
+                    valueFrequency[valueKey] = [];
                 }
-            }
-            
-            // Check 2: Cancelled orders pattern
-            if (userData.transactions) {
-                let cancelCount = 0;
-                for (const [txId, tx] of Object.entries(userData.transactions)) {
-                    if (tx.type === 'cancel_order') {
-                        cancelCount++;
+                valueFrequency[valueKey].push({ orderId, createdAt, status });
+                
+                // Group by timestamp (within 5 seconds)
+                if (createdAt) {
+                    const timeKey = Math.floor(createdAt / 5000) * 5000; // Group every 5 seconds
+                    if (!timestampGroups[timeKey]) {
+                        timestampGroups[timeKey] = [];
+                    }
+                    timestampGroups[timeKey].push({ orderId, userId, quantity, resource, createdAt });
+                }
+                
+                // Track quick cancels (created and cancelled within 1 minute)
+                if (status === 'cancelled' && order.updatedAt) {
+                    const timeDiff = order.updatedAt - createdAt;
+                    if (timeDiff < 60000) { // Less than 1 minute
+                        App.quickCancelOrders.push({
+                            orderId,
+                            userId,
+                            quantity,
+                            resource,
+                            timeDiff,
+                            createdAt,
+                            cancelledAt: order.updatedAt
+                        });
                     }
                 }
-                if (cancelCount > 5) {
-                    score += 30;
+            }
+            
+            // Find duplicate orders (same user, same value, multiple times)
+            for (const [key, orders] of Object.entries(valueFrequency)) {
+                if (orders.length >= 3) { // 3 or more identical orders
+                    const [userId, resource, quantity] = key.split('_');
+                    App.duplicateOrders.push({
+                        userId,
+                        resource,
+                        quantity: parseInt(quantity),
+                        count: orders.length,
+                        orders: orders.map(o => o.orderId)
+                    });
                 }
             }
             
-            // Check 3: Negative balance or impossible values
-            if (userData.tonBalance < 0 || userData.milk < 0 || userData.eggs < 0) {
-                score += 100;
+            // Find suspicious users
+            for (const [userId, orders] of Object.entries(userOrders)) {
+                const reasons = [];
+                const metrics = {
+                    total: orders.length,
+                    active: orders.filter(o => o.status === 'active').length,
+                    cancelled: orders.filter(o => o.status === 'cancelled').length,
+                    filled: orders.filter(o => o.status === 'filled').length,
+                    largeOrders: orders.filter(o => (o.quantity || 0) > 3000).length,
+                    totalMilk: orders.filter(o => o.resource === 'milk').reduce((sum, o) => sum + (o.quantity || 0), 0),
+                    totalEggs: orders.filter(o => o.resource === 'eggs').reduce((sum, o) => sum + (o.quantity || 0), 0)
+                };
+                
+                // Check for large orders
+                if (metrics.largeOrders > 0) {
+                    reasons.push(`Has ${metrics.largeOrders} order(s) with quantity > 3000`);
+                }
+                
+                // Check for duplicate pattern
+                const userDuplicates = App.duplicateOrders.filter(d => d.userId === userId);
+                if (userDuplicates.length > 0) {
+                    reasons.push(`Duplicate orders pattern: ${userDuplicates.length} duplicate sets`);
+                }
+                
+                // Check for quick cancels
+                const userQuickCancels = App.quickCancelOrders.filter(q => q.userId === userId);
+                if (userQuickCancels.length >= 3) {
+                    reasons.push(`Quick cancel pattern: ${userQuickCancels.length} orders cancelled within 1 minute`);
+                }
+                
+                // Check for abnormal total quantity
+                if (metrics.totalMilk > 50000) {
+                    reasons.push(`Suspicious total milk: ${formatNumber(metrics.totalMilk)}`);
+                }
+                if (metrics.totalEggs > 50000) {
+                    reasons.push(`Suspicious total eggs: ${formatNumber(metrics.totalEggs)}`);
+                }
+                
+                // Check for high cancellation rate
+                if (metrics.total > 5 && (metrics.cancelled / metrics.total) > 0.7) {
+                    reasons.push(`High cancellation rate: ${Math.round(metrics.cancelled / metrics.total * 100)}%`);
+                }
+                
+                if (reasons.length > 0) {
+                    App.suspiciousUsers.push({
+                        userId,
+                        user: App.users[userId] || {},
+                        orders,
+                        metrics,
+                        reasons
+                    });
+                    
+                    // Add individual suspicious orders
+                    orders.forEach(order => {
+                        const orderReasons = [];
+                        
+                        if ((order.quantity || 0) > 3000) {
+                            orderReasons.push('Quantity > 3000');
+                        }
+                        
+                        if (order.status === 'cancelled' && order.updatedAt && (order.updatedAt - order.createdAt) < 60000) {
+                            orderReasons.push('Quick cancel (< 1 min)');
+                        }
+                        
+                        if (orderReasons.length > 0) {
+                            App.suspiciousOrders.push({
+                                ...order,
+                                orderId: order.orderId,
+                                reasons: orderReasons
+                            });
+                        }
+                    });
+                }
             }
             
-            // Check 4: Too many orders in short time
-            if (ordersCount > 10) {
-                score += 40;
-            }
+            // Sort by severity
+            App.suspiciousUsers.sort((a, b) => b.reasons.length - a.reasons.length);
+            App.suspiciousOrders.sort((a, b) => b.createdAt - a.createdAt);
             
-            // Check 5: Referral abuse
-            if (userData.referralEarnings && userData.referralEarnings > userData.tonBalance * 2) {
-                score += 20;
-            }
+            updateStats();
+            renderSuspiciousUsers();
+            renderSuspiciousOrders();
+            updateSummaryCards();
             
-            return Math.min(score, 100);
+            showProgress(false);
+            showToast(`Scan complete: ${App.suspiciousUsers.length} suspicious users, ${App.suspiciousOrders.length} suspicious orders`);
         }
 
-        // Update statistics
+        // ============================================
+        // DELETE ORDER FUNCTION
+        // ============================================
+        async function deleteOrder(orderId, order) {
+            try {
+                // Save to deleted orders log
+                const deletedRef = database.ref('deleted_orders').child(orderId);
+                await deletedRef.set({
+                    ...order,
+                    deletedAt: Date.now(),
+                    deletedBy: 'admin'
+                });
+                
+                // Delete from orders
+                await database.ref('orders').child(orderId).remove();
+                
+                // Update local state
+                delete App.orders[orderId];
+                
+                // Add to deleted orders list
+                App.deletedOrders[orderId] = {
+                    ...order,
+                    deletedAt: Date.now()
+                };
+                
+                updateStats();
+                
+                showToast(`Order ${orderId.substring(0, 8)}... deleted successfully`);
+                
+                // Rescan to update suspicious lists
+                scanSuspicious();
+                
+                return true;
+                
+            } catch (error) {
+                console.error('Delete order error:', error);
+                showToast('Error deleting order: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        // ============================================
+        // DELETE ALL SUSPICIOUS ORDERS
+        // ============================================
+        async function deleteAllSuspiciousOrders() {
+            if (App.suspiciousOrders.length === 0) {
+                showToast('No suspicious orders to delete', 'error');
+                return;
+            }
+            
+            if (!confirm(`⚠️ Are you sure you want to delete ALL ${App.suspiciousOrders.length} suspicious orders?\nThis action cannot be undone!`)) {
+                return;
+            }
+            
+            showProgress(true, `Deleting ${App.suspiciousOrders.length} orders...`);
+            
+            let success = 0;
+            let failed = 0;
+            
+            for (const order of App.suspiciousOrders) {
+                try {
+                    const result = await deleteOrder(order.orderId, order);
+                    if (result) success++;
+                    else failed++;
+                } catch (error) {
+                    console.error('Delete error:', error);
+                    failed++;
+                }
+                
+                // Update progress
+                const progress = ((success + failed) / App.suspiciousOrders.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('progressText').textContent = `${success + failed}/${App.suspiciousOrders.length}`;
+            }
+            
+            showProgress(false);
+            showToast(`✅ Deletion complete! Success: ${success}, Failed: ${failed}`);
+            
+            // Reload data
+            await loadData();
+            scanSuspicious();
+        }
+
+        // ============================================
+        // RESET USER FUNCTION (WITH ORDER DELETION)
+        // ============================================
+        async function resetUser(userId, deleteOrdersOnly = false) {
+            const user = App.users[userId] || {};
+            const userOrders = App.suspiciousUsers.find(s => s.userId === userId)?.orders || [];
+            
+            const orderCount = userOrders.length;
+            
+            if (!deleteOrdersOnly) {
+                if (!confirm(`⚠️ Are you sure you want to reset user ${userId}?\nThis will delete ALL ${orderCount} orders and reset their account!`)) {
+                    return;
+                }
+            } else {
+                if (!confirm(`⚠️ Delete ALL ${orderCount} orders for user ${userId}?\nThe user account will NOT be reset.`)) {
+                    return;
+                }
+            }
+            
+            showProgress(true, `Processing user ${userId}...`);
+            
+            try {
+                // Delete all user's orders
+                for (const order of userOrders) {
+                    await deleteOrder(order.orderId, order);
+                }
+                
+                if (!deleteOrdersOnly) {
+                    // Reset user data
+                    const userRef = database.ref(`users/${userId}`);
+                    
+                    const now = Date.now();
+                    const newUserData = {
+                        tonBalance: 0,
+                        milk: 0,
+                        eggs: 0,
+                        diamond: 0,
+                        
+                        cows_owned: 0,
+                        chickens_owned: 0,
+                        diamond_engines_owned: 0,
+                        
+                        lastProduction: now,
+                        
+                        referralCode: user.referralCode || `ref_${userId}`,
+                        referredBy: user.referredBy || null,
+                        referralEarnings: 0,
+                        referralEarningsClaimed: 0,
+                        
+                        firstName: user.firstName || '',
+                        lastName: user.lastName || '',
+                        username: user.username || '',
+                        photoUrl: user.photoUrl || '',
+                        
+                        language: user.language || 'en',
+                        
+                        completedTasks: user.completedTasks || [],
+                        
+                        createdAt: user.createdAt || now,
+                        updatedAt: now
+                    };
+                    
+                    await userRef.update(newUserData);
+                    
+                    // Delete user's transactions
+                    await database.ref(`users/${userId}/transactions`).remove();
+                    await database.ref(`users/${userId}/deposits`).remove();
+                    await database.ref(`users/${userId}/withdrawals`).remove();
+                    await database.ref(`users/${userId}/orders`).remove();
+                    
+                    showToast(`✅ User ${userId} reset successfully! ${orderCount} orders deleted.`);
+                } else {
+                    showToast(`✅ Deleted ${orderCount} orders for user ${userId}`);
+                }
+                
+                // Reload data
+                await loadData();
+                scanSuspicious();
+                
+            } catch (error) {
+                console.error('Reset error:', error);
+                showToast(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                showProgress(false);
+                document.getElementById('userModal').classList.remove('active');
+            }
+        }
+
+        // ============================================
+        // RENDER FUNCTIONS
+        // ============================================
         function updateStats() {
-            document.getElementById('totalUsers').textContent = allUsers.length;
-            document.getElementById('suspiciousUsers').textContent = suspiciousUsers.length;
+            const orders = App.orders;
+            let active = 0, cancelled = 0, filled = 0;
             
-            let totalOrders = 0;
-            for (const user of allUsers) {
-                totalOrders += user.ordersCount;
+            for (const order of Object.values(orders)) {
+                if (!order) continue;
+                switch(order.status) {
+                    case 'active': active++; break;
+                    case 'cancelled': cancelled++; break;
+                    case 'filled': filled++; break;
+                }
             }
-            document.getElementById('totalOrders').textContent = totalOrders;
-            document.getElementById('cleanedUsers').textContent = cleanedUsers.length;
+            
+            App.stats = {
+                total: Object.keys(orders).length,
+                active,
+                cancelled,
+                filled,
+                deleted: Object.keys(App.deletedOrders).length
+            };
+            
+            document.getElementById('totalOrders').textContent = App.stats.total;
+            document.getElementById('activeOrders').textContent = App.stats.active;
+            document.getElementById('cancelledOrders').textContent = App.stats.cancelled;
+            document.getElementById('suspiciousUsers').textContent = App.suspiciousUsers.length;
+            document.getElementById('suspiciousOrders').textContent = App.suspiciousOrders.length;
+            document.getElementById('deletedOrders').textContent = App.stats.deleted;
         }
 
-        // Render table based on current tab
-        function renderTable() {
-            let usersToShow = [];
+        function renderSuspiciousUsers() {
+            const tbody = document.getElementById('suspiciousUsersBody');
             
-            switch(currentTab) {
-                case 'all':
-                    usersToShow = allUsers;
-                    break;
-                case 'suspicious':
-                    usersToShow = suspiciousUsers;
-                    break;
-                case 'cleaned':
-                    usersToShow = cleanedUsers;
-                    break;
-            }
-            
-            // Apply search filter
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            if (searchTerm) {
-                usersToShow = usersToShow.filter(u => 
-                    u.id.toLowerCase().includes(searchTerm) || 
-                    (u.data.username && u.data.username.toLowerCase().includes(searchTerm)) ||
-                    (u.data.firstName && u.data.firstName.toLowerCase().includes(searchTerm))
-                );
-            }
-            
-            if (usersToShow.length === 0) {
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="8" style="text-align: center;">لا توجد بيانات</td></tr>';
+            if (App.suspiciousUsers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-check-circle" style="font-size: 40px; color: #00F27A; margin-bottom: 10px;"></i>
+                            <div>No suspicious users found</div>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
             
             let html = '';
-            for (const user of usersToShow) {
-                const scoreClass = user.suspiciousScore >= 80 ? 'score-high' : (user.suspiciousScore >= 50 ? 'score-medium' : 'score-low');
+            
+            App.suspiciousUsers.forEach(item => {
+                const user = item.user;
+                const userName = user ? (user.firstName || 'Unknown') : 'Unknown';
+                const userAvatar = user && user.photoUrl ? 
+                    `<img src="${user.photoUrl}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">` :
+                    `<div class="user-avatar">${userName.charAt(0).toUpperCase()}</div>`;
+                
+                const reasonsHtml = item.reasons.map(r => 
+                    `<div style="font-size: 11px; color: #FF4B5C; margin-bottom: 3px;">• ${r}</div>`
+                ).join('');
                 
                 html += `
-                    <tr>
-                        <td>${user.id.substring(0, 8)}...</td>
+                    <tr class="suspicious-user">
                         <td>
-                            ${user.data.firstName || ''} ${user.data.lastName || ''}<br>
-                            <small style="color: #999;">@${user.data.username || 'لا يوجد'}</small>
+                            <div class="user-cell">
+                                ${userAvatar}
+                                <span>${userName}</span>
+                            </div>
                         </td>
-                        <td>💰 ${(user.data.tonBalance || 0).toFixed(2)} TON</td>
+                        <td><code style="color: #FFD700;">${item.userId.substring(0, 8)}...</code></td>
+                        <td>${item.metrics.total}</td>
+                        <td><span class="badge badge-success">${item.metrics.active}</span></td>
+                        <td><span class="badge badge-danger">${item.metrics.cancelled}</span></td>
+                        <td><span class="badge badge-info">${item.metrics.filled}</span></td>
+                        <td>${reasonsHtml}</td>
                         <td>
-                            🥛 ${formatNumber(user.data.milk || 0)}<br>
-                            🥚 ${formatNumber(user.data.eggs || 0)}
-                        </td>
-                        <td>
-                            <span class="badge ${user.ordersCount > 0 ? 'badge-warning' : 'badge-success'}">
-                                ${user.ordersCount}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="suspicious-score ${scoreClass}">${user.suspiciousScore}</span>
-                        </td>
-                        <td>
-                            ${user.isSuspicious ? 
-                                '<span class="badge badge-danger">مشبوه</span>' : 
-                                '<span class="badge badge-success">طبيعي</span>'}
-                        </td>
-                        <td class="action-buttons">
-                            <button class="btn btn-sm btn-warning" onclick="viewUserDetails('${user.id}')" title="عرض التفاصيل">👁️</button>
-                            ${user.isSuspicious ? 
-                                `<button class="btn btn-sm btn-danger" onclick="cleanSingleUser('${user.id}')" title="تنظيف الحساب">🧹</button>` : 
-                                ''}
-                            <button class="btn btn-sm btn-primary" onclick="viewUserOrders('${user.id}')" title="عرض الطلبات">📦</button>
+                            <div class="action-buttons">
+                                <button class="action-btn view" onclick="showUserOrders('${item.userId}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn reset" onclick="resetUser('${item.userId}', false)">
+                                    <i class="fas fa-skull-crosswalk"></i>
+                                </button>
+                                <button class="action-btn delete" onclick="resetUser('${item.userId}', true)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
-            }
+            });
             
-            document.getElementById('tableBody').innerHTML = html;
+            tbody.innerHTML = html;
         }
 
-        // Format numbers
+        function renderSuspiciousOrders() {
+            const tbody = document.getElementById('suspiciousOrdersBody');
+            
+            if (App.suspiciousOrders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-check-circle" style="font-size: 40px; color: #00F27A;"></i>
+                            <div>No suspicious orders found</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            App.suspiciousOrders.slice(0, 100).forEach(order => {
+                const user = App.users[order.userId] || {};
+                const userName = user.firstName || 'Unknown';
+                const date = new Date(order.createdAt).toLocaleString();
+                
+                const statusClass = `status-${order.status}`;
+                const reasonsHtml = order.reasons.join(', ');
+                
+                html += `
+                    <tr class="suspicious-order">
+                        <td><code>${order.orderId.substring(0, 12)}...</code></td>
+                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
+                        <td><span class="badge ${order.type === 'sell' ? 'badge-warning' : 'badge-info'}">${order.type}</span></td>
+                        <td>${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</td>
+                        <td><span class="metric-highlight">${formatNumber(order.quantity)}</span></td>
+                        <td>${formatTON(order.pricePerUnit)} TON</td>
+                        <td><span class="badge ${statusClass}">${order.status}</span></td>
+                        <td>${date}</td>
+                        <td style="color: #FF4B5C;">${reasonsHtml}</td>
+                        <td>
+                            <button class="action-btn delete-order" onclick="promptDeleteOrder('${order.orderId}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        function renderAllOrders() {
+            const tbody = document.getElementById('allOrdersBody');
+            const orders = App.orders;
+            
+            if (Object.keys(orders).length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-inbox" style="font-size: 40px;"></i>
+                            <div>No orders found</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const sortedOrders = Object.entries(orders)
+                .sort((a, b) => (b[1]?.createdAt || 0) - (a[1]?.createdAt || 0))
+                .slice(0, 100);
+            
+            sortedOrders.forEach(([orderId, order]) => {
+                if (!order) return;
+                
+                const user = App.users[order.userId] || {};
+                const userName = user.firstName || 'Unknown';
+                const date = new Date(order.createdAt).toLocaleString();
+                const statusClass = `status-${order.status}`;
+                
+                const isSuspicious = App.suspiciousOrders.some(o => o.orderId === orderId);
+                const rowClass = isSuspicious ? 'suspicious-order' : '';
+                
+                html += `
+                    <tr class="${rowClass}">
+                        <td><code>${orderId.substring(0, 12)}...</code></td>
+                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
+                        <td><span class="badge ${order.type === 'sell' ? 'badge-warning' : 'badge-info'}">${order.type}</span></td>
+                        <td>${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</td>
+                        <td>${formatNumber(order.quantity)}</td>
+                        <td>${formatNumber(order.remaining)}</td>
+                        <td>${formatTON(order.pricePerUnit)} TON</td>
+                        <td><span class="badge ${statusClass}">${order.status}</span></td>
+                        <td>${date}</td>
+                        <td>
+                            <button class="action-btn delete-order" onclick="promptDeleteOrder('${orderId}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        function renderDeletedOrders() {
+            const tbody = document.getElementById('deletedOrdersBody');
+            const deleted = App.deletedOrders;
+            
+            if (Object.keys(deleted).length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-trash" style="font-size: 40px;"></i>
+                            <div>No deleted orders</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            let html = '';
+            const sortedDeleted = Object.entries(deleted)
+                .sort((a, b) => (b[1]?.deletedAt || 0) - (a[1]?.deletedAt || 0))
+                .slice(0, 50);
+            
+            sortedDeleted.forEach(([orderId, order]) => {
+                const date = new Date(order.deletedAt).toLocaleString();
+                const user = App.users[order.userId] || {};
+                const userName = user.firstName || 'Unknown';
+                
+                html += `
+                    <tr class="deleted-order">
+                        <td><code>${orderId.substring(0, 12)}...</code></td>
+                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
+                        <td>${order.type}</td>
+                        <td>${order.resource}</td>
+                        <td>${formatNumber(order.quantity)}</td>
+                        <td>${date}</td>
+                        <td><span class="badge badge-danger">Deleted</span></td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        function updateSummaryCards() {
+            // Top Suspicious Users
+            const topList = document.getElementById('topSuspiciousList');
+            if (App.suspiciousUsers.length > 0) {
+                let html = '';
+                App.suspiciousUsers.slice(0, 5).forEach(user => {
+                    const userName = user.user?.firstName || 'Unknown';
+                    html += `
+                        <div class="summary-item">
+                            <span>${userName} (${user.userId.substring(0, 6)}...)</span>
+                            <span class="badge badge-danger">${user.reasons.length} reasons</span>
+                        </div>
+                    `;
+                });
+                topList.innerHTML = html;
+            } else {
+                topList.innerHTML = '<div style="text-align: center; padding: 20px;">No suspicious users</div>';
+            }
+            
+            // Duplicate Orders
+            const dupList = document.getElementById('duplicateOrdersList');
+            if (App.duplicateOrders.length > 0) {
+                let html = '';
+                App.duplicateOrders.slice(0, 5).forEach(dup => {
+                    const userName = App.users[dup.userId]?.firstName || 'Unknown';
+                    html += `
+                        <div class="summary-item">
+                            <span>${userName}: ${dup.count}x ${dup.quantity} ${dup.resource}</span>
+                            <span class="badge badge-warning">${dup.count} dupes</span>
+                        </div>
+                    `;
+                });
+                dupList.innerHTML = html;
+            } else {
+                dupList.innerHTML = '<div style="text-align: center; padding: 20px;">No duplicate orders</div>';
+            }
+            
+            // Recent Activity
+            const recentList = document.getElementById('recentActivityList');
+            if (App.suspiciousOrders.length > 0) {
+                let html = '';
+                App.suspiciousOrders.slice(0, 5).forEach(order => {
+                    const date = new Date(order.createdAt).toLocaleTimeString();
+                    html += `
+                        <div class="summary-item">
+                            <span>${order.resource} ${formatNumber(order.quantity)}</span>
+                            <span class="badge badge-danger">${date}</span>
+                        </div>
+                    `;
+                });
+                recentList.innerHTML = html;
+            } else {
+                recentList.innerHTML = '<div style="text-align: center; padding: 20px;">No recent activity</div>';
+            }
+        }
+
+        // ============================================
+        // USER INTERACTION FUNCTIONS
+        // ============================================
+        window.showUserOrders = function(userId) {
+            const user = App.users[userId] || {};
+            const userOrders = App.suspiciousUsers.find(s => s.userId === userId)?.orders || [];
+            
+            const modal = document.getElementById('userModal');
+            const ordersList = document.getElementById('userOrdersList');
+            
+            let html = `
+                <div style="margin-bottom: 15px;">
+                    <div style="font-size: 16px; font-weight: 600;">${user.firstName || 'Unknown'} (${userId})</div>
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.5);">Total Orders: ${userOrders.length}</div>
+                </div>
+            `;
+            
+            if (userOrders.length === 0) {
+                html += '<div style="text-align: center; padding: 20px;">No orders found</div>';
+            } else {
+                userOrders.sort((a, b) => b.createdAt - a.createdAt).forEach(order => {
+                    const date = new Date(order.createdAt).toLocaleString();
+                    const statusClass = `status-${order.status}`;
+                    
+                    html += `
+                        <div class="order-item">
+                            <div class="order-header">
+                                <span class="order-id">${order.orderId}</span>
+                                <span class="order-status ${statusClass}">${order.status}</span>
+                            </div>
+                            <div class="order-details">
+                                <div><span style="color: rgba(255,255,255,0.5);">Type:</span> ${order.type}</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Resource:</span> ${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Quantity:</span> ${formatNumber(order.quantity)}</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Remaining:</span> ${formatNumber(order.remaining)}</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Price:</span> ${formatTON(order.pricePerUnit)} TON</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Created:</span> ${date}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            
+            ordersList.innerHTML = html;
+            
+            document.getElementById('resetUserBtn').onclick = () => resetUser(userId, false);
+            document.getElementById('deleteUserOrdersBtn').onclick = () => resetUser(userId, true);
+            
+            modal.classList.add('active');
+        };
+
+        window.promptDeleteOrder = function(orderId) {
+            const order = App.orders[orderId];
+            if (!order) return;
+            
+            const modal = document.getElementById('deleteOrderModal');
+            const info = document.getElementById('deleteOrderInfo');
+            
+            info.innerHTML = `Order: ${orderId.substring(0, 12)}...<br>User: ${order.userId}<br>Quantity: ${formatNumber(order.quantity)} ${order.resource}`;
+            
+            App.pendingDelete = { orderId, order };
+            
+            modal.classList.add('active');
+        };
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
         function formatNumber(num) {
-            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num === null || num === undefined) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
             return num.toString();
         }
 
-        // Switch between tabs
-        function switchTab(tab) {
-            currentTab = tab;
-            
-            // Update tab styling
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            renderTable();
+        function formatTON(amount) {
+            if (amount === null || amount === undefined || isNaN(amount)) return '0.0000';
+            return parseFloat(amount).toFixed(4);
         }
 
-        // Scan all users for suspicious activity
-        async function scanAllUsers() {
-            addLog('🔍 بدء فحص جميع المستخدمين...', 'info');
-            await loadAllData();
-            addLog('✅ تم الانتهاء من الفحص', 'success');
-            alert(`تم العثور على ${suspiciousUsers.length} حساب مشبوه`);
+        function showProgress(show, text = 'Processing...') {
+            const container = document.getElementById('progressContainer');
+            if (show) {
+                container.style.display = 'block';
+                document.getElementById('progressText').textContent = text;
+            } else {
+                container.style.display = 'none';
+            }
         }
 
-        // Clean single user
-        async function cleanSingleUser(userId) {
-            if (!confirm('هل أنت متأكد من تنظيف هذا الحساب؟ سيتم حذف جميع بياناته وإعادة تعيينه.')) {
-                return;
-            }
-            
-            showModal();
-            addLog(`🧹 بدء تنظيف المستخدم: ${userId}`, 'warning');
-            
-            try {
-                await resetUserToDefault(userId);
-                addLog(`✅ تم تنظيف المستخدم ${userId} بنجاح`, 'success');
-                
-                // Add to cleaned users list
-                const user = allUsers.find(u => u.id === userId);
-                if (user && !cleanedUsers.includes(user)) {
-                    cleanedUsers.push(user);
-                }
-                
-                updateStats();
-                
-            } catch (error) {
-                addLog(`❌ خطأ في تنظيف المستخدم ${userId}: ${error.message}`, 'error');
-            }
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
             
             setTimeout(() => {
-                closeModal();
-                loadAllData();
-            }, 2000);
+                toast.remove();
+            }, 3000);
         }
 
-        // Clean all suspicious users
-        async function cleanAllSuspicious() {
-            if (suspiciousUsers.length === 0) {
-                alert('لا توجد حسابات مشبوهة للتنظيف');
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+        document.getElementById('scanBtn').addEventListener('click', scanSuspicious);
+
+        document.getElementById('resetAllBtn').addEventListener('click', () => {
+            if (App.suspiciousUsers.length === 0) {
+                showToast('No suspicious users to reset', 'error');
                 return;
             }
             
-            if (!confirm(`هل أنت متأكد من تنظيف ${suspiciousUsers.length} حساب مشبوه؟ هذا الإجراء لا يمكن التراجع عنه.`)) {
+            if (!confirm(`⚠️ Reset ALL ${App.suspiciousUsers.length} suspicious users?\nThis will delete all their orders and reset their accounts!`)) {
                 return;
             }
             
-            showModal();
-            cleaningInProgress = true;
-            
-            let cleaned = 0;
-            let failed = 0;
-            
-            for (let i = 0; i < suspiciousUsers.length; i++) {
-                const user = suspiciousUsers[i];
-                
-                // Update progress
-                const progress = Math.round(((i + 1) / suspiciousUsers.length) * 100);
-                document.getElementById('progressFill').style.width = progress + '%';
-                document.getElementById('progressText').textContent = `${i + 1} / ${suspiciousUsers.length}`;
-                
-                addLog(`🧹 (${i + 1}/${suspiciousUsers.length}) تنظيف المستخدم: ${user.id}`, 'warning');
-                
-                try {
-                    await resetUserToDefault(user.id);
-                    cleaned++;
-                    
-                    // Add to cleaned users list
-                    if (!cleanedUsers.find(u => u.id === user.id)) {
-                        cleanedUsers.push(user);
-                    }
-                    
-                    addLog(`✅ تم تنظيف المستخدم ${user.id} بنجاح`, 'success');
-                } catch (error) {
-                    failed++;
-                    addLog(`❌ فشل تنظيف المستخدم ${user.id}: ${error.message}`, 'error');
+            (async () => {
+                for (const user of App.suspiciousUsers) {
+                    await resetUser(user.userId, false);
                 }
-                
-                // Small delay to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            addLog(`✅ تم الانتهاء: ${cleaned} تم تنظيفها بنجاح، ${failed} فشل`, cleaned > 0 ? 'success' : 'error');
-            
-            cleaningInProgress = false;
-            
-            setTimeout(() => {
-                closeModal();
-                loadAllData();
-                alert(`تم تنظيف ${cleaned} حساب بنجاح`);
-            }, 2000);
-        }
-
-        // Reset user to default (clean slate)
-        async function resetUserToDefault(userId) {
-            const defaultUserData = {
-                tonBalance: 0,
-                milk: 0,
-                eggs: 0,
-                diamond: 0,
-                cows_owned: 0,
-                chickens_owned: 0,
-                diamond_engines_owned: 0,
-                lastProduction: Date.now(),
-                referralCode: `ref_${userId}`,
-                referredBy: null,
-                referralEarnings: 0,
-                referralEarningsClaimed: 0,
-                firstName: '',
-                lastName: '',
-                username: '',
-                photoUrl: '',
-                language: 'en',
-                completedTasks: [],
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                cleanedAt: Date.now(),
-                cleanedBy: 'anti-cheat-system'
-            };
-            
-            // Get current user data to preserve some info
-            const snapshot = await database.ref(`users/${userId}`).once('value');
-            const currentData = snapshot.val();
-            
-            if (currentData) {
-                // Preserve basic info
-                defaultUserData.firstName = currentData.firstName || '';
-                defaultUserData.lastName = currentData.lastName || '';
-                defaultUserData.username = currentData.username || '';
-                defaultUserData.photoUrl = currentData.photoUrl || '';
-                defaultUserData.referralCode = currentData.referralCode || `ref_${userId}`;
-                defaultUserData.referredBy = currentData.referredBy || null;
-                defaultUserData.createdAt = currentData.createdAt || Date.now();
-            }
-            
-            // 1️⃣ Delete all user's orders
-            const ordersSnapshot = await database.ref('orders').once('value');
-            const orders = ordersSnapshot.val() || {};
-            
-            for (const [orderId, order] of Object.entries(orders)) {
-                if (order.userId === userId) {
-                    await database.ref(`orders/${orderId}`).remove();
-                    await database.ref(`users/${userId}/orders/${orderId}`).remove();
-                }
-            }
-            
-            // 2️⃣ Delete user's transactions
-            await database.ref(`users/${userId}/transactions`).remove();
-            
-            // 3️⃣ Delete user's deposits
-            await database.ref(`users/${userId}/deposits`).remove();
-            
-            // 4️⃣ Delete user's withdrawals
-            await database.ref(`users/${userId}/withdrawals`).remove();
-            
-            // 5️⃣ Reset user data to default
-            await database.ref(`users/${userId}`).set(defaultUserData);
-            
-            // 6️⃣ Add cleanup record
-            await database.ref(`cleaned_users/${userId}`).set({
-                userId: userId,
-                cleanedAt: Date.now(),
-                previousData: {
-                    tonBalance: currentData?.tonBalance,
-                    milk: currentData?.milk,
-                    eggs: currentData?.eggs,
-                    ordersCount: Object.keys(orders).filter(o => orders[o].userId === userId).length
-                }
-            });
-            
-            return true;
-        }
-
-        // View user details
-        function viewUserDetails(userId) {
-            const user = allUsers.find(u => u.id === userId);
-            if (!user) return;
-            
-            const details = `
-                🆔 المستخدم: ${userId}
-                👤 الاسم: ${user.data.firstName || ''} ${user.data.lastName || ''}
-                📧 اليوزرنيم: @${user.data.username || 'لا يوجد'}
-                
-                💰 الرصيد: ${(user.data.tonBalance || 0).toFixed(2)} TON
-                🥛 الحليب: ${formatNumber(user.data.milk || 0)}
-                🥚 البيض: ${formatNumber(user.data.eggs || 0)}
-                💎 الألماس: ${user.data.diamond || 0}
-                
-                🐮 الأبقار: ${user.data.cows_owned || 0}
-                🐔 الدجاج: ${user.data.chickens_owned || 0}
-                ⚙️ محركات الألماس: ${user.data.diamond_engines_owned || 0}
-                
-                🔗 كود الإحالة: ${user.data.referralCode || 'لا يوجد'}
-                👥 تمت إحالته بواسطة: ${user.data.referredBy || 'لا يوجد'}
-                💵 أرباح الإحالة: ${(user.data.referralEarnings || 0).toFixed(4)} TON
-                
-                📊 نسبة الاشتباه: ${user.suspiciousScore}%
-                📦 الطلبات النشطة: ${user.ordersCount}
-                
-                📅 تاريخ الإنشاء: ${user.data.createdAt ? new Date(user.data.createdAt).toLocaleString('ar-EG') : 'غير معروف'}
-            `;
-            
-            alert(details);
-        }
-
-        // View user orders
-        function viewUserOrders(userId) {
-            const user = allUsers.find(u => u.id === userId);
-            if (!user || user.orders.length === 0) {
-                alert('لا توجد طلبات لهذا المستخدم');
-                return;
-            }
-            
-            let ordersText = `طلبات المستخدم ${userId}:\n\n`;
-            
-            for (const order of user.orders) {
-                ordersText += `📦 ${order.id.substring(0, 8)}...\n`;
-                ordersText += `   نوع: ${order.type === 'sell' ? 'بيع' : 'شراء'}\n`;
-                ordersText += `   مورد: ${order.resource === 'milk' ? '🥛 حليب' : '🥚 بيض'}\n`;
-                ordersText += `   الكمية: ${order.remaining}/${order.quantity}\n`;
-                ordersText += `   السعر: ${order.pricePerUnit} TON\n`;
-                ordersText += `   التاريخ: ${new Date(order.createdAt).toLocaleString('ar-EG')}\n\n`;
-            }
-            
-            alert(ordersText);
-        }
-
-        // Export data as JSON
-        function exportData() {
-            const exportData = {
-                timestamp: Date.now(),
-                stats: {
-                    totalUsers: allUsers.length,
-                    suspiciousUsers: suspiciousUsers.length,
-                    cleanedUsers: cleanedUsers.length
-                },
-                suspiciousUsers: suspiciousUsers.map(u => ({
-                    id: u.id,
-                    username: u.data.username,
-                    score: u.suspiciousScore,
-                    tonBalance: u.data.tonBalance,
-                    ordersCount: u.ordersCount
-                }))
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            
-            const exportFileDefaultName = `crystal-ranch-report-${Date.now()}.json`;
-            
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
-        }
-
-        // Modal functions
-        function showModal() {
-            document.getElementById('cleanModal').classList.add('active');
-            document.getElementById('logContainer').innerHTML = '<div class="log-entry">بدء عملية التنظيف...</div>';
-            document.getElementById('progressFill').style.width = '0%';
-            document.getElementById('progressText').textContent = '0 / 0';
-        }
-
-        function closeModal() {
-            if (!cleaningInProgress) {
-                document.getElementById('cleanModal').classList.remove('active');
-            }
-        }
-
-        function addLog(message, type = 'info') {
-            const logContainer = document.getElementById('logContainer');
-            const logEntry = document.createElement('div');
-            logEntry.className = `log-entry ${type}`;
-            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logContainer.appendChild(logEntry);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }
-
-        // Search input handler
-        document.getElementById('searchInput').addEventListener('input', function() {
-            renderTable();
+            })();
         });
 
-        // Refresh data every 30 seconds
-        setInterval(loadAllData, 30000);
+        document.getElementById('deleteAllSuspiciousOrdersBtn').addEventListener('click', deleteAllSuspiciousOrders);
+
+        document.getElementById('refreshBtn').addEventListener('click', () => {
+            loadData();
+        });
+
+        // Tabs
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                const tabName = this.dataset.tab;
+                
+                document.getElementById('suspiciousUsersTable').style.display = tabName === 'suspicious-users' ? 'block' : 'none';
+                document.getElementById('suspiciousOrdersTable').style.display = tabName === 'suspicious-orders' ? 'block' : 'none';
+                document.getElementById('allOrdersTable').style.display = tabName === 'all-orders' ? 'block' : 'none';
+                document.getElementById('deletedOrdersTable').style.display = tabName === 'deleted-orders' ? 'block' : 'none';
+            });
+        });
+
+        // Modal controls
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('userModal').classList.remove('active');
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            document.getElementById('userModal').classList.remove('active');
+        });
+
+        document.getElementById('closeDeleteModal').addEventListener('click', () => {
+            document.getElementById('deleteOrderModal').classList.remove('active');
+        });
+
+        document.getElementById('cancelDeleteOrderBtn').addEventListener('click', () => {
+            document.getElementById('deleteOrderModal').classList.remove('active');
+        });
+
+        document.getElementById('confirmDeleteOrderBtn').addEventListener('click', async () => {
+            if (App.pendingDelete) {
+                await deleteOrder(App.pendingDelete.orderId, App.pendingDelete.order);
+                document.getElementById('deleteOrderModal').classList.remove('active');
+                App.pendingDelete = null;
+            }
+        });
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('userModal');
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+            
+            const deleteModal = document.getElementById('deleteOrderModal');
+            if (e.target === deleteModal) {
+                deleteModal.classList.remove('active');
+            }
+        });
+
+        // Initialize
+        loadData();
     </script>
 </body>
 </html>
