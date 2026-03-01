@@ -1154,7 +1154,21 @@
         }
 
         // ============================================
-        // CLEAN UP DEAD ORDERS (محدث - بدون تأكيد)
+        // DELETE DEAD ORDER (حذف الطلب الميت نهائياً)
+        // ============================================
+        async function deleteDeadOrder(userId, orderId) {
+            try {
+                // حذف الطلب من المستخدم فقط (لأنه غير موجود في السوق)
+                await database.ref(`users/${userId}/orders/${orderId}`).remove();
+                return true;
+            } catch (error) {
+                console.error(`Error deleting dead order ${orderId}:`, error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // CLEAN UP DEAD ORDERS (محدث بالكامل)
         // ============================================
         async function cleanupDeadOrders() {
             if (App.isProcessing) {
@@ -1163,7 +1177,12 @@
             }
             
             // تأكيد مرة واحدة فقط
-            if (!confirm('🧹 هل أنت متأكد من تنظيف جميع الطلبات الميتة؟\nسيتم حذف جميع الطلبات الموجودة في حسابات المستخدمين غير الموجودة في السوق.')) {
+            if (!confirm('🧹 هل أنت متأكد من تنظيف جميع الطلبات الميتة؟\n\n' +
+                         'سيتم حذف:\n' +
+                         '• الطلبات غير الموجودة في السوق نهائياً\n' +
+                         '• الطلبات النشطة غير الموجودة في السوق\n' +
+                         '• الطلبات التي تختلف حالتها عن حالة السوق\n' +
+                         '• جميع الطلبات التالفة في حسابات المستخدمين')) {
                 return;
             }
             
@@ -1175,21 +1194,79 @@
             try {
                 // تجميع قائمة بالطلبات الميتة
                 const deadOrders = [];
+                const marketOrderIds = new Set(Object.keys(App.orders));
+                
+                console.log('🔍 بدء فحص الطلبات الميتة...');
+                console.log(`📊 عدد الطلبات في السوق: ${marketOrderIds.size}`);
+                console.log(`👥 عدد المستخدمين: ${Object.keys(App.users).length}`);
                 
                 for (const [userId, user] of Object.entries(App.users)) {
                     if (user.orders) {
                         for (const [orderId, userOrder] of Object.entries(user.orders)) {
-                            // إذا كان الطلب غير موجود في السوق العام
-                            if (!App.orders[orderId]) {
+                            // التحقق من وجود الطلب في السوق
+                            const marketOrder = App.orders[orderId];
+                            
+                            let isDead = false;
+                            let reason = '';
+                            
+                            if (!marketOrder) {
+                                // الحالة 1: الطلب غير موجود في السوق نهائياً
+                                isDead = true;
+                                reason = 'غير موجود في السوق';
+                                
+                                // تسجيل في الكونسول
+                                console.log(`⚠️ طلب ميت: ${orderId}`, {
+                                    userId,
+                                    userOrder,
+                                    reason
+                                });
+                                
+                            } else {
+                                // الطلب موجود في السوق - نتحقق من التطابق
+                                if (marketOrder.status !== userOrder.status) {
+                                    isDead = true;
+                                    reason = `حالة مختلفة (السوق: ${marketOrder.status}, المستخدم: ${userOrder.status})`;
+                                } else if (marketOrder.quantity !== userOrder.quantity) {
+                                    isDead = true;
+                                    reason = `كمية مختلفة (السوق: ${marketOrder.quantity}, المستخدم: ${userOrder.quantity})`;
+                                } else if (marketOrder.remaining !== userOrder.remaining) {
+                                    isDead = true;
+                                    reason = `متبقي مختلف (السوق: ${marketOrder.remaining}, المستخدم: ${userOrder.remaining})`;
+                                } else if (marketOrder.pricePerUnit !== userOrder.pricePerUnit) {
+                                    isDead = true;
+                                    reason = `سعر مختلف (السوق: ${marketOrder.pricePerUnit}, المستخدم: ${userOrder.pricePerUnit})`;
+                                } else if (marketOrder.type !== userOrder.type) {
+                                    isDead = true;
+                                    reason = `نوع مختلف (السوق: ${marketOrder.type}, المستخدم: ${userOrder.type})`;
+                                } else if (marketOrder.resource !== userOrder.resource) {
+                                    isDead = true;
+                                    reason = `مورد مختلف (السوق: ${marketOrder.resource}, المستخدم: ${userOrder.resource})`;
+                                }
+                                
+                                if (isDead) {
+                                    console.log(`⚠️ طلب غير متطابق: ${orderId}`, {
+                                        userId,
+                                        reason,
+                                        marketOrder,
+                                        userOrder
+                                    });
+                                }
+                            }
+                            
+                            if (isDead) {
                                 deadOrders.push({
                                     userId,
                                     orderId,
-                                    order: userOrder
+                                    userOrder,
+                                    marketOrder,
+                                    reason
                                 });
                             }
                         }
                     }
                 }
+                
+                console.log(`📊 إجمالي الطلبات الميتة: ${deadOrders.length}`);
                 
                 if (deadOrders.length === 0) {
                     showToast('✅ لا توجد طلبات ميتة!', 'success');
@@ -1199,6 +1276,15 @@
                     return;
                 }
                 
+                // عرض تفاصيل الطلبات الميتة في جدول
+                console.table(deadOrders.map(d => ({
+                    userId: d.userId.substring(0, 8) + '...',
+                    orderId: d.orderId.substring(0, 12) + '...',
+                    reason: d.reason,
+                    status: d.userOrder.status,
+                    quantity: d.userOrder.quantity
+                })));
+                
                 // تحديث واجهة المستخدم
                 document.getElementById('progressTotal').textContent = deadOrders.length;
                 document.getElementById('progressCurrent').textContent = '0';
@@ -1207,18 +1293,23 @@
                 
                 let success = 0;
                 let failed = 0;
+                let failedDetails = [];
                 
                 // حذف الطلبات الميتة
                 for (let i = 0; i < deadOrders.length; i++) {
-                    const { userId, orderId } = deadOrders[i];
+                    const { userId, orderId, reason } = deadOrders[i];
                     
                     try {
                         // حذف الطلب من المستخدم
                         await database.ref(`users/${userId}/orders/${orderId}`).remove();
                         success++;
+                        
+                        console.log(`✅ تم حذف: ${orderId} (${reason})`);
+                        
                     } catch (error) {
-                        console.error(`فشل حذف ${orderId}:`, error);
+                        console.error(`❌ فشل حذف ${orderId}:`, error);
                         failed++;
+                        failedDetails.push({ orderId, userId, error: error.message });
                     }
                     
                     // تحديث شريط التقدم
@@ -1227,17 +1318,23 @@
                     document.getElementById('progressCurrent').textContent = i + 1;
                     document.getElementById('progressSuccess').textContent = `✅ ${success}`;
                     document.getElementById('progressFailed').textContent = `❌ ${failed}`;
-                    document.getElementById('progressText').textContent = 
+                    document.getElementById('progressText').textHTML = 
                         `جاري التنظيف... ${i + 1}/${deadOrders.length}`;
                 }
                 
-                showToast(`✅ تم تنظيف ${success} طلب ميت، فشل ${failed}`);
+                // عرض تفاصيل الفاشل إن وجدت
+                if (failed > 0) {
+                    console.error('❌ الطلبات التي فشل حذفها:', failedDetails);
+                    showToast(`⚠️ تم حذف ${success} طلب، فشل ${failed} طلب`, 'warning');
+                } else {
+                    showToast(`✅ تم تنظيف ${success} طلب ميت بنجاح!`, 'success');
+                }
                 
                 // إعادة تحميل البيانات
                 await loadData();
                 
             } catch (error) {
-                console.error('Cleanup error:', error);
+                console.error('❌ خطأ في التنظيف:', error);
                 showToast('❌ خطأ في التنظيف: ' + error.message, 'error');
             } finally {
                 App.isProcessing = false;
