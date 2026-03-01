@@ -5,6 +5,8 @@
 // ADDED: Max active orders limit (2 orders per user)
 // ADDED: Total price input for sell orders
 // ADDED: Leaderboard competition system (150 TON prizes based on cow ownership)
+// FIXED: Leaderboard counter now uses global cows_sold statistic (same as main page progress bar)
+// UPDATED: Leaderboard prizes distribution (40,30,20,10,8,6,5,4,3,3,2,2,2,2,2,2,2,2,2,1)
 // ============================================
 
 export default {
@@ -292,7 +294,7 @@ export default {
                         result = await handleGetTasks(env, userId);
                         break;
                     
-                    // ===== NEW LEADERBOARD ACTIONS =====
+                    // ===== LEADERBOARD ACTIONS =====
                     case 'getLeaderboard':
                         result = await handleGetLeaderboard(env, userId);
                         break;
@@ -432,6 +434,8 @@ const GAME_CONSTANTS = {
     MIN_ORDER_AMOUNT: 100,
     MAX_ACTIVE_ORDERS: 2, // Maximum 2 active orders per user
     MARKET_FEE_PERCENT: 10,
+    MIN_ORDER_PRICE: 0.0002, // Minimum price per unit to avoid penalty
+    ORDER_PENALTY_FEE: 0.2, // Penalty fee for orders below minimum price
     
     MIN_WITHDRAW_AMOUNT: 0.1,
     WITHDRAW_FEE_PERCENT: 5,
@@ -449,19 +453,19 @@ const GAME_CONSTANTS = {
     MAX_RETRY_ATTEMPTS: 3,
     RETRY_DELAY_MS: 100,
     
-    // ===== LEADERBOARD CONSTANTS =====
+    // ===== LEADERBOARD CONSTANTS - UPDATED PRIZES =====
     LEADERBOARD_COW_CAP: 1000,
     LEADERBOARD_TOTAL_PRIZE: 150,
     LEADERBOARD_PRIZES: {
-        1: 50,
-        2: 20,
-        3: 15,
+        1: 40,
+        2: 30,
+        3: 20,
         4: 10,
         5: 8,
-        6: 7,
-        7: 6,
-        8: 5,
-        9: 4,
+        6: 6,
+        7: 5,
+        8: 4,
+        9: 3,
         10: 3,
         11: 2,
         12: 2,
@@ -472,7 +476,7 @@ const GAME_CONSTANTS = {
         17: 2,
         18: 2,
         19: 2,
-        20: 2
+        20: 1
     }
 };
 
@@ -508,7 +512,7 @@ const PARTNER_TASKS = [
 const ADMIN_IDS = ['123456789', '987654321'];
 
 // ============================================
-// LEADERBOARD FUNCTIONS - NEW SYSTEM
+// LEADERBOARD FUNCTIONS - FIXED TO USE GLOBAL COW SALES
 // ============================================
 
 async function initializeLeaderboard(env) {
@@ -521,7 +525,6 @@ async function initializeLeaderboard(env) {
                 isActive: true,
                 endedAt: null,
                 prizesDistributed: false,
-                totalCowSales: 0,
                 lastUpdated: now,
                 createdAt: now
             });
@@ -544,7 +547,7 @@ async function updateLeaderboard(env, userId, oldCowCount, newCowCount) {
             await initializeLeaderboard(env);
         }
         
-        const leaderboard = leaderboardResult.data || { isActive: true, totalCowSales: 0 };
+        const leaderboard = leaderboardResult.data || { isActive: true };
         
         if (!leaderboard.isActive) {
             return null;
@@ -563,7 +566,8 @@ async function updateLeaderboard(env, userId, oldCowCount, newCowCount) {
             achievedAt: now,
             firstName: '',
             lastName: '',
-            username: ''
+            username: '',
+            photoUrl: ''
         };
         
         const userResult = await dbGet(env, `users/${userId}`);
@@ -571,24 +575,19 @@ async function updateLeaderboard(env, userId, oldCowCount, newCowCount) {
             userRecord.firstName = userResult.data.firstName || '';
             userRecord.lastName = userResult.data.lastName || '';
             userRecord.username = userResult.data.username || '';
+            userRecord.photoUrl = userResult.data.photoUrl || '';
         }
         
         if (currentCowCount > previousCowCount) {
-            const increase = currentCowCount - previousCowCount;
             userRecord.cowCount = currentCowCount;
             userRecord.achievedAt = now;
             
             await dbSet(env, `leaderboard_cows/${userId}`, userRecord);
             
-            await dbSet(env, 'leaderboard', {
-                ...leaderboard,
-                totalCowSales: (leaderboard.totalCowSales || 0) + increase,
+            // تحديث وقت آخر تحديث فقط، لا نعدل totalCowSales هنا
+            await dbUpdate(env, 'leaderboard', {
                 lastUpdated: now
             });
-        }
-        
-        if ((leaderboard.totalCowSales || 0) >= GAME_CONSTANTS.LEADERBOARD_COW_CAP && leaderboard.isActive) {
-            await finalizeLeaderboard(env);
         }
         
         return userRecord;
@@ -605,9 +604,17 @@ async function getLeaderboardData(env, currentUserId) {
         
         const leaderboardResult = await dbGet(env, 'leaderboard');
         const cowsResult = await dbGet(env, 'leaderboard_cows');
+        const globalResult = await dbGet(env, 'global'); // نجلب البيانات العالمية
         
-        let leaderboard = leaderboardResult.data || { isActive: true, totalCowSales: 0 };
+        let leaderboard = leaderboardResult.data || { 
+            isActive: true, 
+            prizesDistributed: false 
+        };
         let cowsData = cowsResult.success ? cowsResult.data || {} : {};
+        let global = globalResult.success ? globalResult.data : { cows_sold: 0 }; // نأخذ cows_sold من global
+        
+        // نستخدم cows_sold من global بدلاً من leaderboard.totalCowSales
+        const totalCowSales = global.cows_sold || 0;
         
         const usersArray = Object.values(cowsData);
         
@@ -624,6 +631,7 @@ async function getLeaderboardData(env, currentUserId) {
             firstName: user.firstName || '',
             lastName: user.lastName || '',
             username: user.username || '',
+            photoUrl: user.photoUrl || '',
             cowCount: user.cowCount || 0,
             points: user.cowCount || 0,
             prize: leaderboard.isActive ? 
@@ -645,9 +653,9 @@ async function getLeaderboardData(env, currentUserId) {
             success: true,
             data: {
                 isActive: leaderboard.isActive,
-                totalCowSales: leaderboard.totalCowSales || 0,
+                totalCowSales: totalCowSales, // الآن يستخدم global.cows_sold
                 cowCap: GAME_CONSTANTS.LEADERBOARD_COW_CAP,
-                remainingCows: Math.max(0, GAME_CONSTANTS.LEADERBOARD_COW_CAP - (leaderboard.totalCowSales || 0)),
+                remainingCows: Math.max(0, GAME_CONSTANTS.LEADERBOARD_COW_CAP - totalCowSales),
                 leaderboard: rankedUsers.slice(0, 100),
                 currentUser: currentUserEntry,
                 prizesDistributed: leaderboard.prizesDistributed || false,
@@ -669,6 +677,7 @@ async function finalizeLeaderboard(env) {
     try {
         const leaderboardResult = await dbGet(env, 'leaderboard');
         const cowsResult = await dbGet(env, 'leaderboard_cows');
+        const globalResult = await dbGet(env, 'global');
         
         if (!leaderboardResult.success || !leaderboardResult.data) {
             return null;
@@ -681,6 +690,7 @@ async function finalizeLeaderboard(env) {
         }
         
         let cowsData = cowsResult.success ? cowsResult.data || {} : {};
+        let global = globalResult.success ? globalResult.data : { cows_sold: 0 };
         
         const usersArray = Object.values(cowsData);
         
@@ -704,7 +714,10 @@ async function finalizeLeaderboard(env) {
                     rank: rank,
                     prize: prize,
                     cowCount: user.cowCount,
-                    awardedAt: now
+                    awardedAt: now,
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    username: user.username || ''
                 };
                 
                 const userResult = await dbGet(env, `users/${user.userId}`);
@@ -2756,8 +2769,63 @@ async function handleCreateSellOrder(env, userId, data) {
                 };
             }
             
+            // ===== CHECK PRICE PENALTY =====
+            let penaltyFee = 0;
+            if (orderPrice < GAME_CONSTANTS.MIN_ORDER_PRICE) {
+                penaltyFee = GAME_CONSTANTS.ORDER_PENALTY_FEE;
+                
+                // Check if user has enough balance for penalty
+                const userResult = await dbGet(env, `users/${userId}`);
+                if (!userResult.success || !userResult.data) {
+                    return {
+                        success: false,
+                        error: 'User not found',
+                        errorCode: 'USER_NOT_FOUND'
+                    };
+                }
+                
+                if ((userResult.data.tonBalance || 0) < penaltyFee) {
+                    return {
+                        success: false,
+                        error: `Price too low. Penalty fee of ${penaltyFee} TON required. Insufficient balance.`,
+                        errorCode: 'INSUFFICIENT_TON_FOR_PENALTY',
+                        requiredBalance: penaltyFee,
+                        currentBalance: userResult.data.tonBalance
+                    };
+                }
+                
+                // Deduct penalty fee
+                const penaltyResult = await atomicUpdateUserResource(
+                    env,
+                    userId,
+                    'tonBalance',
+                    penaltyFee
+                );
+                
+                if (!penaltyResult.success) {
+                    if (penaltyResult.errorCode === 'RACE_CONDITION_DETECTED') {
+                        attempt++;
+                        if (attempt < maxAttempts) {
+                            console.log(`Race condition detected for user ${userId} (penalty fee), retry attempt ${attempt}/${maxAttempts}`);
+                            await new Promise(resolve => setTimeout(resolve, GAME_CONSTANTS.RETRY_DELAY_MS * attempt));
+                            continue;
+                        }
+                    } else {
+                        return {
+                            success: false,
+                            error: penaltyResult.error,
+                            errorCode: penaltyResult.errorCode || 'PENALTY_FEE_FAILED'
+                        };
+                    }
+                }
+            }
+            
             const userResult = await dbGet(env, `users/${userId}`);
             if (!userResult.success || !userResult.data) {
+                // If penalty was deducted and we fail here, we should note that penalty is non-refundable
+                if (penaltyFee > 0) {
+                    console.log(`Penalty fee ${penaltyFee} deducted from user ${userId} but order creation failed later. Penalty is non-refundable.`);
+                }
                 return {
                     success: false,
                     error: 'User not found',
@@ -2780,6 +2848,11 @@ async function handleCreateSellOrder(env, userId, data) {
             );
             
             if (!atomicResult.success) {
+                // Note: Penalty fee is non-refundable even if resource update fails
+                if (penaltyFee > 0) {
+                    console.log(`Penalty fee ${penaltyFee} deducted from user ${userId} but resource update failed. Penalty is non-refundable.`);
+                }
+                
                 if (atomicResult.errorCode === 'RACE_CONDITION_DETECTED') {
                     attempt++;
                     if (attempt < maxAttempts) {
@@ -2820,6 +2893,8 @@ async function handleCreateSellOrder(env, userId, data) {
                 remaining: orderQuantity,
                 pricePerUnit: orderPrice,
                 status: 'active',
+                penaltyPaid: penaltyFee > 0,
+                penaltyAmount: penaltyFee,
                 createdAt: now,
                 updatedAt: now
             };
@@ -2833,6 +2908,8 @@ async function handleCreateSellOrder(env, userId, data) {
                 remaining: orderQuantity,
                 pricePerUnit: orderPrice,
                 status: 'active',
+                penaltyPaid: penaltyFee > 0,
+                penaltyAmount: penaltyFee,
                 createdAt: now
             });
             
@@ -2843,17 +2920,25 @@ async function handleCreateSellOrder(env, userId, data) {
                 quantity: orderQuantity,
                 pricePerUnit: orderPrice,
                 totalValue: orderQuantity * orderPrice,
+                penaltyFee: penaltyFee,
                 timestamp: now
             });
             
+            let responseData = {
+                orderId: orderId,
+                order: orderData,
+                newBalance: atomicResult.data.newBalance,
+                deducted: atomicResult.data.deducted
+            };
+            
+            if (penaltyFee > 0) {
+                responseData.penaltyFee = penaltyFee;
+                responseData.message = `Warning: Price below ${GAME_CONSTANTS.MIN_ORDER_PRICE} TON. Penalty fee of ${penaltyFee} TON deducted (non-refundable).`;
+            }
+            
             return {
                 success: true,
-                data: {
-                    orderId: orderId,
-                    order: orderData,
-                    newBalance: atomicResult.data.newBalance,
-                    deducted: atomicResult.data.deducted
-                }
+                data: responseData
             };
             
         } catch (error) {
@@ -4851,13 +4936,13 @@ async function handleGetState(env, userId) {
         const tasksResult = await handleGetTasks(env, userId);
         let tasks = tasksResult.success ? tasksResult.data : { partner: [], community: [] };
         
-        // ===== Get Leaderboard Data =====
+        // ===== Get Leaderboard Data with Global Cow Sales =====
         const leaderboardResult = await getLeaderboardData(env, userId);
         const leaderboard = leaderboardResult.success ? leaderboardResult.data : {
             isActive: true,
-            totalCowSales: 0,
+            totalCowSales: global.cows_sold || 0, // استخدام cows_sold من global
             cowCap: GAME_CONSTANTS.LEADERBOARD_COW_CAP,
-            remainingCows: GAME_CONSTANTS.LEADERBOARD_COW_CAP,
+            remainingCows: Math.max(0, GAME_CONSTANTS.LEADERBOARD_COW_CAP - (global.cows_sold || 0)),
             leaderboard: [],
             currentUser: { rank: 0, cowCount: 0, points: 0, prize: 0 },
             prizesDistributed: false,
@@ -4950,6 +5035,8 @@ async function handleGetState(env, userId) {
                     REFERRAL_REWARD_PERCENT: GAME_CONSTANTS.REFERRAL_REWARD_PERCENT,
                     MIN_ORDER_AMOUNT: GAME_CONSTANTS.MIN_ORDER_AMOUNT,
                     MARKET_FEE_PERCENT: GAME_CONSTANTS.MARKET_FEE_PERCENT,
+                    MIN_ORDER_PRICE: GAME_CONSTANTS.MIN_ORDER_PRICE,
+                    ORDER_PENALTY_FEE: GAME_CONSTANTS.ORDER_PENALTY_FEE,
                     TASK_REWARD: GAME_CONSTANTS.TASK_REWARD,
                     
                     MIN_TASK_TARGET: GAME_CONSTANTS.MIN_TASK_TARGET,
