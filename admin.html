@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crystal Ranch · Suspicious Orders Detector + Auto Delete</title>
+    <title>Crystal Ranch · Auto-Cancel Excessive Orders</title>
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -91,6 +91,99 @@
         .stat-label {
             font-size: 12px;
             color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+        }
+        
+        /* Warning Banner */
+        .warning-banner {
+            background: rgba(255, 75, 92, 0.15);
+            border: 1px solid #FF4B5C;
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .warning-icon {
+            font-size: 30px;
+            color: #FF4B5C;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .warning-text {
+            flex: 1;
+        }
+        
+        .warning-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #FF4B5C;
+            margin-bottom: 5px;
+        }
+        
+        .warning-desc {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .warning-stats {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .warning-stat {
+            text-align: center;
+        }
+        
+        .warning-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+        
+        .warning-stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        /* Threshold Cards */
+        .threshold-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .threshold-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .threshold-title {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 5px;
+        }
+        
+        .threshold-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+        
+        .threshold-note {
+            font-size: 11px;
+            color: #FF4B5C;
             margin-top: 5px;
         }
         
@@ -253,16 +346,6 @@
             background: rgba(255, 255, 255, 0.1);
         }
         
-        .tab.danger-tab {
-            background: rgba(255, 75, 92, 0.1);
-            color: #FF4B5C;
-        }
-        
-        .tab.danger-tab.active {
-            background: rgba(255, 75, 92, 0.3);
-            border-color: #FF4B5C;
-        }
-        
         /* Tables */
         .table-container {
             background: rgba(0, 0, 0, 0.3);
@@ -305,14 +388,9 @@
             border-left: 3px solid #FF4B5C;
         }
         
-        tr.suspicious-order {
-            background: rgba(255, 215, 0, 0.1);
-        }
-        
-        tr.deleted-order {
-            background: rgba(100, 100, 100, 0.1);
-            opacity: 0.6;
-            text-decoration: line-through;
+        tr.high-orders {
+            background: rgba(255, 165, 0, 0.15);
+            border-left: 3px solid #FFA500;
         }
         
         .user-cell {
@@ -368,20 +446,14 @@
             background: rgba(0, 212, 255, 0.4);
         }
         
-        .action-btn.delete {
-            background: rgba(255, 75, 92, 0.3);
-            color: white;
-            border: 1px solid rgba(255, 75, 92, 0.5);
-        }
-        
-        .action-btn.delete:hover {
-            background: rgba(255, 75, 92, 0.6);
-        }
-        
-        .action-btn.delete-order {
+        .action-btn.cancel {
             background: rgba(255, 165, 0, 0.2);
             color: #FFA500;
             border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+        
+        .action-btn.cancel:hover {
+            background: rgba(255, 165, 0, 0.4);
         }
         
         /* Modal */
@@ -450,9 +522,9 @@
             border: 1px solid rgba(255, 215, 0, 0.1);
         }
         
-        .order-item.deleted {
-            opacity: 0.5;
-            background: rgba(100, 100, 100, 0.2);
+        .order-item.cancelled {
+            opacity: 0.7;
+            background: rgba(255, 75, 92, 0.1);
         }
         
         .order-header {
@@ -485,7 +557,7 @@
         
         .reason-list {
             margin-top: 15px;
-            padding: 10px;
+            padding: 15px;
             background: rgba(255, 75, 92, 0.1);
             border-radius: 10px;
         }
@@ -493,10 +565,10 @@
         .reason-item {
             color: #FF4B5C;
             font-size: 13px;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
         
         .loading {
@@ -536,20 +608,6 @@
             font-weight: 600;
         }
         
-        .deleted-text {
-            color: #808080;
-            font-style: italic;
-        }
-        
-        .delete-count {
-            background: #FF4B5C;
-            color: white;
-            border-radius: 20px;
-            padding: 2px 8px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        
         .toast {
             position: fixed;
             top: 20px;
@@ -569,6 +627,11 @@
             color: white;
         }
         
+        .toast.warning {
+            background: #FFA500;
+            color: black;
+        }
+        
         @keyframes slideIn {
             from { transform: translateX(100px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -580,11 +643,15 @@
         <!-- Header -->
         <div class="header">
             <h1>
-                <i class="fas fa-trash-alt"></i>
-                Suspicious Orders Detector 
-                <span>with Auto-Delete</span>
+                <i class="fas fa-robot"></i>
+                Auto-Cancel Excessive Orders
+                <span>Active Orders Monitor</span>
             </h1>
             <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalUsers">0</div>
+                    <div class="stat-label">Total Users</div>
+                </div>
                 <div class="stat-box">
                     <div class="stat-value" id="totalOrders">0</div>
                     <div class="stat-label">Total Orders</div>
@@ -594,34 +661,68 @@
                     <div class="stat-label">Active</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value" id="cancelledOrders">0</div>
-                    <div class="stat-label">Cancelled</div>
+                    <div class="stat-value" id="usersWithExcess">0</div>
+                    <div class="stat-label">Excess Users</div>
                 </div>
                 <div class="stat-box">
-                    <div class="stat-value" id="suspiciousUsers">0</div>
-                    <div class="stat-label">Suspicious Users</div>
+                    <div class="stat-value" id="excessOrders">0</div>
+                    <div class="stat-label">Excess Orders</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="suspiciousOrders">0</div>
-                    <div class="stat-label">Suspicious Orders</div>
+            </div>
+        </div>
+        
+        <!-- Warning Banner (shown when excess orders found) -->
+        <div class="warning-banner" id="warningBanner" style="display: none;">
+            <div class="warning-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="warning-text">
+                <div class="warning-title">⚠️ Excessive Active Orders Detected</div>
+                <div class="warning-desc">
+                    Users with more than 2 active orders will have their excess orders automatically cancelled and refunded.
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="deletedOrders">0</div>
-                    <div class="stat-label">Deleted</div>
+            </div>
+            <div class="warning-stats">
+                <div class="warning-stat">
+                    <div class="warning-stat-value" id="warningUserCount">0</div>
+                    <div class="warning-stat-label">Users</div>
                 </div>
+                <div class="warning-stat">
+                    <div class="warning-stat-value" id="warningOrderCount">0</div>
+                    <div class="warning-stat-label">Orders</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Threshold Cards -->
+        <div class="threshold-section">
+            <div class="threshold-card">
+                <div class="threshold-title">Max Active Orders</div>
+                <div class="threshold-value">> 2</div>
+                <div class="threshold-note">Any user with > 2 active orders</div>
+            </div>
+            <div class="threshold-card">
+                <div class="threshold-title">Auto-Cancel Action</div>
+                <div class="threshold-value">Cancel Excess</div>
+                <div class="threshold-note">Keep only 2 newest orders</div>
+            </div>
+            <div class="threshold-card">
+                <div class="threshold-title">Refund</div>
+                <div class="threshold-value">100%</div>
+                <div class="threshold-note">Resource returned to user</div>
             </div>
         </div>
         
         <!-- Controls -->
         <div class="controls">
             <button class="btn btn-primary" id="scanBtn">
-                <i class="fas fa-search"></i> Scan Orders
+                <i class="fas fa-search"></i> Scan & Auto-Cancel
+            </button>
+            <button class="btn btn-warning" id="cancelAllExcessBtn">
+                <i class="fas fa-ban"></i> Cancel All Excess Orders
             </button>
             <button class="btn btn-danger" id="resetAllBtn">
-                <i class="fas fa-skull-crosswalk"></i> Reset All Suspicious Users
-            </button>
-            <button class="btn btn-warning" id="deleteAllSuspiciousOrdersBtn">
-                <i class="fas fa-trash"></i> Delete All Suspicious Orders
+                <i class="fas fa-skull-crosswalk"></i> Reset All Suspicious
             </button>
             <button class="btn btn-success" id="refreshBtn">
                 <i class="fas fa-sync-alt"></i> Refresh Data
@@ -633,9 +734,9 @@
             <div class="summary-card">
                 <div class="summary-title">
                     <i class="fas fa-exclamation-triangle" style="color: #FF4B5C;"></i>
-                    Top Suspicious Users
+                    Users with Excess Orders
                 </div>
-                <div class="summary-list" id="topSuspiciousList">
+                <div class="summary-list" id="excessUsersList">
                     <div class="loading" style="padding: 20px;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
@@ -644,10 +745,10 @@
             
             <div class="summary-card">
                 <div class="summary-title">
-                    <i class="fas fa-clone" style="color: #FFD700;"></i>
-                    Duplicate Orders Detected
+                    <i class="fas fa-coins" style="color: #FFD700;"></i>
+                    High Balance Users
                 </div>
-                <div class="summary-list" id="duplicateOrdersList">
+                <div class="summary-list" id="highBalanceList">
                     <div class="loading" style="padding: 20px;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
@@ -656,23 +757,15 @@
             
             <div class="summary-card">
                 <div class="summary-title">
-                    <i class="fas fa-clock" style="color: #00D4FF;"></i>
-                    Recent Suspicious Activity
+                    <i class="fas fa-tint" style="color: #00D4FF;"></i>
+                    High Resource Users
                 </div>
-                <div class="summary-list" id="recentActivityList">
+                <div class="summary-list" id="highResourcesList">
                     <div class="loading" style="padding: 20px;">
                         <i class="fas fa-spinner fa-spin"></i>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Tabs -->
-        <div class="tabs">
-            <div class="tab active" data-tab="suspicious-users">Suspicious Users</div>
-            <div class="tab" data-tab="suspicious-orders">Suspicious Orders</div>
-            <div class="tab" data-tab="all-orders">All Orders</div>
-            <div class="tab danger-tab" data-tab="deleted-orders">Deleted Orders</div>
         </div>
         
         <!-- Progress -->
@@ -688,107 +781,27 @@
             </div>
         </div>
         
-        <!-- Suspicious Users Table -->
-        <div class="table-container" id="suspiciousUsersTable" style="display: block;">
+        <!-- Users Table -->
+        <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>User</th>
                         <th>User ID</th>
-                        <th>Total Orders</th>
-                        <th>Active</th>
-                        <th>Cancelled</th>
-                        <th>Filled</th>
+                        <th>TON Balance</th>
+                        <th>Milk</th>
+                        <th>Eggs</th>
+                        <th>Active Orders</th>
+                        <th>Excess Orders</th>
                         <th>Suspicious Reasons</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="suspiciousUsersBody">
+                <tbody id="usersTableBody">
                     <tr>
-                        <td colspan="8" class="loading">
+                        <td colspan="9" class="loading">
                             <i class="fas fa-spinner fa-spin"></i>
-                            <div>Click "Scan Orders" to begin</div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Suspicious Orders Table -->
-        <div class="table-container" id="suspiciousOrdersTable" style="display: none;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>User</th>
-                        <th>Type</th>
-                        <th>Resource</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Suspicious Reason</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="suspiciousOrdersBody">
-                    <tr>
-                        <td colspan="10" class="loading">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <div>No suspicious orders found</div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- All Orders Table -->
-        <div class="table-container" id="allOrdersTable" style="display: none;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>User</th>
-                        <th>Type</th>
-                        <th>Resource</th>
-                        <th>Quantity</th>
-                        <th>Remaining</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="allOrdersBody">
-                    <tr>
-                        <td colspan="10" class="loading">
-                            <i class="fas fa-spinner fa-spin"></i>
-                            <div>Loading orders...</div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        
-        <!-- Deleted Orders Table -->
-        <div class="table-container" id="deletedOrdersTable" style="display: none;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>User</th>
-                        <th>Type</th>
-                        <th>Resource</th>
-                        <th>Quantity</th>
-                        <th>Deleted At</th>
-                        <th>Reason</th>
-                    </tr>
-                </thead>
-                <tbody id="deletedOrdersBody">
-                    <tr>
-                        <td colspan="7" class="loading">
-                            <i class="fas fa-trash"></i>
-                            <div>No deleted orders</div>
+                            <div>Loading users...</div>
                         </td>
                     </tr>
                 </tbody>
@@ -801,17 +814,17 @@
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">
-                    <i class="fas fa-user"></i> User Orders Details
+                    <i class="fas fa-user"></i> User Orders
                 </div>
                 <i class="fas fa-times modal-close" id="closeModal"></i>
             </div>
             <div id="userOrdersList" class="orders-list"></div>
             <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
-                <button class="btn btn-danger" id="resetUserBtn" style="flex: 1;">
-                    <i class="fas fa-skull-crosswalk"></i> Reset & Delete All
+                <button class="btn btn-warning" id="cancelExcessBtn" style="flex: 1;">
+                    <i class="fas fa-ban"></i> Cancel Excess Orders
                 </button>
-                <button class="btn btn-warning" id="deleteUserOrdersBtn" style="flex: 1;">
-                    <i class="fas fa-trash"></i> Delete Orders Only
+                <button class="btn btn-danger" id="resetUserBtn" style="flex: 1;">
+                    <i class="fas fa-skull-crosswalk"></i> Reset User
                 </button>
                 <button class="btn btn-secondary" id="closeModalBtn" style="flex: 1;">
                     Close
@@ -820,25 +833,24 @@
         </div>
     </div>
 
-    <!-- Delete Single Order Confirmation Modal -->
-    <div class="modal-overlay" id="deleteOrderModal">
+    <!-- Cancel Confirmation Modal -->
+    <div class="modal-overlay" id="cancelConfirmModal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
                 <div class="modal-title">
-                    <i class="fas fa-exclamation-triangle" style="color: #FF4B5C;"></i> Confirm Delete
+                    <i class="fas fa-exclamation-triangle" style="color: #FFA500;"></i> Confirm Cancel
                 </div>
-                <i class="fas fa-times modal-close" id="closeDeleteModal"></i>
+                <i class="fas fa-times modal-close" id="closeCancelModal"></i>
             </div>
             <div style="text-align: center; padding: 20px;">
-                <i class="fas fa-trash" style="font-size: 48px; color: #FF4B5C; margin-bottom: 15px;"></i>
-                <p>Are you sure you want to delete this order?</p>
-                <p id="deleteOrderInfo" style="color: #FFD700; font-size: 12px; margin-top: 10px;"></p>
+                <i class="fas fa-ban" style="font-size: 48px; color: #FFA500; margin-bottom: 15px;"></i>
+                <p id="cancelConfirmText">Are you sure?</p>
             </div>
             <div style="display: flex; gap: 10px;">
-                <button class="btn btn-danger" id="confirmDeleteOrderBtn" style="flex: 1;">
-                    <i class="fas fa-trash"></i> Delete
+                <button class="btn btn-warning" id="confirmCancelBtn" style="flex: 1;">
+                    <i class="fas fa-check"></i> Confirm
                 </button>
-                <button class="btn btn-secondary" id="cancelDeleteOrderBtn" style="flex: 1;">
+                <button class="btn btn-secondary" id="cancelCancelBtn" style="flex: 1;">
                     Cancel
                 </button>
             </div>
@@ -863,27 +875,38 @@
         const database = firebase.database();
 
         // ============================================
+        // THRESHOLDS
+        // ============================================
+        const THRESHOLDS = {
+            MAX_ACTIVE_ORDERS: 2,           // أكثر من طلبين نشطين
+            TON_BALANCE: 3,                  // أكثر من 3 تون
+            MILK: 10000,                      // أكثر من 10,000 حليب
+            EGGS: 10000                        // أكثر من 10,000 بيض
+        };
+
+        // ============================================
         // STATE
         // ============================================
         let App = {
-            orders: {},
             users: {},
+            orders: {},
+            userOrders: {},
+            
             suspiciousUsers: [],
-            suspiciousOrders: [],
-            duplicateOrders: [],
-            largeOrders: [],
-            quickCancelOrders: [],
-            deletedOrders: [],
+            excessUsers: [],
+            highBalanceUsers: [],
+            highMilkUsers: [],
+            highEggsUsers: [],
             
             stats: {
-                total: 0,
-                active: 0,
-                cancelled: 0,
-                filled: 0,
-                deleted: 0
+                totalUsers: 0,
+                totalOrders: 0,
+                activeOrders: 0,
+                usersWithExcess: 0,
+                excessOrders: 0
             },
             
-            pendingDelete: null
+            pendingCancel: null
         };
 
         // ============================================
@@ -893,23 +916,21 @@
             showProgress(true, 'Loading data...');
             
             try {
-                // Load orders
-                const ordersSnapshot = await database.ref('orders').once('value');
-                App.orders = ordersSnapshot.val() || {};
-                
                 // Load users
                 const usersSnapshot = await database.ref('users').once('value');
                 App.users = usersSnapshot.val() || {};
                 
-                // Load deleted orders log (from a special path)
-                const deletedSnapshot = await database.ref('deleted_orders').once('value');
-                App.deletedOrders = deletedSnapshot.val() || {};
+                // Load orders
+                const ordersSnapshot = await database.ref('orders').once('value');
+                App.orders = ordersSnapshot.val() || {};
+                
+                // Group orders by user
+                groupOrdersByUser();
                 
                 updateStats();
-                renderAllOrders();
-                renderDeletedOrders();
+                scanUsers();
                 
-                showToast('Data loaded successfully');
+                showToast(`Loaded ${App.stats.totalUsers} users, ${App.stats.totalOrders} orders`);
                 
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -920,346 +941,308 @@
         }
 
         // ============================================
-        // SCAN FOR SUSPICIOUS ACTIVITY
+        // GROUP ORDERS BY USER
         // ============================================
-        function scanSuspicious() {
-            showProgress(true, 'Scanning orders...');
+        function groupOrdersByUser() {
+            App.userOrders = {};
             
-            App.suspiciousUsers = [];
-            App.suspiciousOrders = [];
-            App.duplicateOrders = [];
-            App.largeOrders = [];
-            App.quickCancelOrders = [];
-            
-            const orders = App.orders;
-            const userOrders = {};
-            const valueFrequency = {};
-            const timestampGroups = {};
-            
-            // First pass: collect data
-            for (const [orderId, order] of Object.entries(orders)) {
+            for (const [orderId, order] of Object.entries(App.orders)) {
                 if (!order) continue;
                 
                 const userId = order.userId;
-                const quantity = order.quantity || 0;
-                const resource = order.resource;
-                const status = order.status;
-                const createdAt = order.createdAt;
-                
-                // Group orders by user
-                if (!userOrders[userId]) {
-                    userOrders[userId] = [];
-                }
-                userOrders[userId].push({ orderId, ...order });
-                
-                // Track large orders (> 3000)
-                if (quantity > 3000) {
-                    App.largeOrders.push({
-                        orderId,
-                        userId,
-                        quantity,
-                        resource,
-                        status,
-                        createdAt
-                    });
+                if (!App.userOrders[userId]) {
+                    App.userOrders[userId] = [];
                 }
                 
-                // Track value frequency (for duplicates)
-                const valueKey = `${userId}_${resource}_${quantity}`;
-                if (!valueFrequency[valueKey]) {
-                    valueFrequency[valueKey] = [];
-                }
-                valueFrequency[valueKey].push({ orderId, createdAt, status });
-                
-                // Group by timestamp (within 5 seconds)
-                if (createdAt) {
-                    const timeKey = Math.floor(createdAt / 5000) * 5000; // Group every 5 seconds
-                    if (!timestampGroups[timeKey]) {
-                        timestampGroups[timeKey] = [];
-                    }
-                    timestampGroups[timeKey].push({ orderId, userId, quantity, resource, createdAt });
-                }
-                
-                // Track quick cancels (created and cancelled within 1 minute)
-                if (status === 'cancelled' && order.updatedAt) {
-                    const timeDiff = order.updatedAt - createdAt;
-                    if (timeDiff < 60000) { // Less than 1 minute
-                        App.quickCancelOrders.push({
-                            orderId,
-                            userId,
-                            quantity,
-                            resource,
-                            timeDiff,
-                            createdAt,
-                            cancelledAt: order.updatedAt
-                        });
-                    }
-                }
+                App.userOrders[userId].push({
+                    orderId,
+                    ...order
+                });
             }
             
-            // Find duplicate orders (same user, same value, multiple times)
-            for (const [key, orders] of Object.entries(valueFrequency)) {
-                if (orders.length >= 3) { // 3 or more identical orders
-                    const [userId, resource, quantity] = key.split('_');
-                    App.duplicateOrders.push({
-                        userId,
-                        resource,
-                        quantity: parseInt(quantity),
-                        count: orders.length,
-                        orders: orders.map(o => o.orderId)
-                    });
-                }
+            // Sort orders by date (newest first)
+            for (const userId in App.userOrders) {
+                App.userOrders[userId].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             }
+        }
+
+        // ============================================
+        // SCAN USERS (WITH AUTO-CANCEL)
+        // ============================================
+        function scanUsers() {
+            showProgress(true, 'Scanning users...');
             
-            // Find suspicious users
-            for (const [userId, orders] of Object.entries(userOrders)) {
+            App.suspiciousUsers = [];
+            App.excessUsers = [];
+            App.highBalanceUsers = [];
+            App.highMilkUsers = [];
+            App.highEggsUsers = [];
+            
+            const users = App.users;
+            
+            for (const [userId, user] of Object.entries(users)) {
+                if (!user) continue;
+                
                 const reasons = [];
                 const metrics = {
-                    total: orders.length,
-                    active: orders.filter(o => o.status === 'active').length,
-                    cancelled: orders.filter(o => o.status === 'cancelled').length,
-                    filled: orders.filter(o => o.status === 'filled').length,
-                    largeOrders: orders.filter(o => (o.quantity || 0) > 3000).length,
-                    totalMilk: orders.filter(o => o.resource === 'milk').reduce((sum, o) => sum + (o.quantity || 0), 0),
-                    totalEggs: orders.filter(o => o.resource === 'eggs').reduce((sum, o) => sum + (o.quantity || 0), 0)
+                    tonBalance: user.tonBalance || 0,
+                    milk: user.milk || 0,
+                    eggs: user.eggs || 0,
+                    diamond: user.diamond || 0
                 };
                 
-                // Check for large orders
-                if (metrics.largeOrders > 0) {
-                    reasons.push(`Has ${metrics.largeOrders} order(s) with quantity > 3000`);
+                // Get user's active orders
+                const userOrders = App.userOrders[userId] || [];
+                const activeOrders = userOrders.filter(o => o.status === 'active');
+                const activeCount = activeOrders.length;
+                
+                // ========== معيار الطلبات النشطة ==========
+                if (activeCount > THRESHOLDS.MAX_ACTIVE_ORDERS) {
+                    const excessCount = activeCount - THRESHOLDS.MAX_ACTIVE_ORDERS;
+                    reasons.push(`Excessive active orders: ${activeCount} (max ${THRESHOLDS.MAX_ACTIVE_ORDERS})`);
+                    
+                    App.excessUsers.push({
+                        userId,
+                        user,
+                        activeOrders: activeOrders,
+                        activeCount,
+                        excessCount
+                    });
                 }
                 
-                // Check for duplicate pattern
-                const userDuplicates = App.duplicateOrders.filter(d => d.userId === userId);
-                if (userDuplicates.length > 0) {
-                    reasons.push(`Duplicate orders pattern: ${userDuplicates.length} duplicate sets`);
+                // ========== رصيد تون كبير ==========
+                if (metrics.tonBalance > THRESHOLDS.TON_BALANCE) {
+                    reasons.push(`High TON balance: ${formatTON(metrics.tonBalance)} TON`);
+                    App.highBalanceUsers.push({ userId, user, balance: metrics.tonBalance });
                 }
                 
-                // Check for quick cancels
-                const userQuickCancels = App.quickCancelOrders.filter(q => q.userId === userId);
-                if (userQuickCancels.length >= 3) {
-                    reasons.push(`Quick cancel pattern: ${userQuickCancels.length} orders cancelled within 1 minute`);
+                // ========== حليب كبير ==========
+                if (metrics.milk > THRESHOLDS.MILK) {
+                    reasons.push(`High milk: ${formatNumber(metrics.milk)} 🥛`);
+                    App.highMilkUsers.push({ userId, user, milk: metrics.milk });
                 }
                 
-                // Check for abnormal total quantity
-                if (metrics.totalMilk > 50000) {
-                    reasons.push(`Suspicious total milk: ${formatNumber(metrics.totalMilk)}`);
-                }
-                if (metrics.totalEggs > 50000) {
-                    reasons.push(`Suspicious total eggs: ${formatNumber(metrics.totalEggs)}`);
-                }
-                
-                // Check for high cancellation rate
-                if (metrics.total > 5 && (metrics.cancelled / metrics.total) > 0.7) {
-                    reasons.push(`High cancellation rate: ${Math.round(metrics.cancelled / metrics.total * 100)}%`);
+                // ========== بيض كبير ==========
+                if (metrics.eggs > THRESHOLDS.EGGS) {
+                    reasons.push(`High eggs: ${formatNumber(metrics.eggs)} 🥚`);
+                    App.highEggsUsers.push({ userId, user, eggs: metrics.eggs });
                 }
                 
                 if (reasons.length > 0) {
                     App.suspiciousUsers.push({
                         userId,
-                        user: App.users[userId] || {},
-                        orders,
+                        user,
                         metrics,
+                        activeCount,
                         reasons
                     });
-                    
-                    // Add individual suspicious orders
-                    orders.forEach(order => {
-                        const orderReasons = [];
-                        
-                        if ((order.quantity || 0) > 3000) {
-                            orderReasons.push('Quantity > 3000');
-                        }
-                        
-                        if (order.status === 'cancelled' && order.updatedAt && (order.updatedAt - order.createdAt) < 60000) {
-                            orderReasons.push('Quick cancel (< 1 min)');
-                        }
-                        
-                        if (orderReasons.length > 0) {
-                            App.suspiciousOrders.push({
-                                ...order,
-                                orderId: order.orderId,
-                                reasons: orderReasons
-                            });
-                        }
-                    });
                 }
             }
             
-            // Sort by severity
+            // Sort lists
             App.suspiciousUsers.sort((a, b) => b.reasons.length - a.reasons.length);
-            App.suspiciousOrders.sort((a, b) => b.createdAt - a.createdAt);
+            App.excessUsers.sort((a, b) => b.excessCount - a.excessCount);
+            App.highBalanceUsers.sort((a, b) => b.balance - a.balance);
+            App.highMilkUsers.sort((a, b) => b.milk - a.milk);
+            App.highEggsUsers.sort((a, b) => b.eggs - a.eggs);
             
             updateStats();
-            renderSuspiciousUsers();
-            renderSuspiciousOrders();
+            renderTable();
             updateSummaryCards();
             
+            // Show warning banner if excess users found
+            const warningBanner = document.getElementById('warningBanner');
+            if (App.excessUsers.length > 0) {
+                warningBanner.style.display = 'flex';
+                document.getElementById('warningUserCount').textContent = App.excessUsers.length;
+                document.getElementById('warningOrderCount').textContent = App.stats.excessOrders;
+            } else {
+                warningBanner.style.display = 'none';
+            }
+            
             showProgress(false);
-            showToast(`Scan complete: ${App.suspiciousUsers.length} suspicious users, ${App.suspiciousOrders.length} suspicious orders`);
+            showToast(`Scan complete: ${App.suspiciousUsers.length} suspicious users, ${App.excessUsers.length} with excess orders`);
         }
 
         // ============================================
-        // DELETE ORDER FUNCTION
+        // AUTO-CANCEL EXCESS ORDERS
         // ============================================
-        async function deleteOrder(orderId, order) {
-            try {
-                // Save to deleted orders log
-                const deletedRef = database.ref('deleted_orders').child(orderId);
-                await deletedRef.set({
-                    ...order,
-                    deletedAt: Date.now(),
-                    deletedBy: 'admin'
-                });
-                
-                // Delete from orders
-                await database.ref('orders').child(orderId).remove();
-                
-                // Update local state
-                delete App.orders[orderId];
-                
-                // Add to deleted orders list
-                App.deletedOrders[orderId] = {
-                    ...order,
-                    deletedAt: Date.now()
-                };
-                
-                updateStats();
-                
-                showToast(`Order ${orderId.substring(0, 8)}... deleted successfully`);
-                
-                // Rescan to update suspicious lists
-                scanSuspicious();
-                
-                return true;
-                
-            } catch (error) {
-                console.error('Delete order error:', error);
-                showToast('Error deleting order: ' + error.message, 'error');
-                return false;
-            }
-        }
-
-        // ============================================
-        // DELETE ALL SUSPICIOUS ORDERS
-        // ============================================
-        async function deleteAllSuspiciousOrders() {
-            if (App.suspiciousOrders.length === 0) {
-                showToast('No suspicious orders to delete', 'error');
-                return;
+        async function cancelExcessOrders(userId, keepCount = THRESHOLDS.MAX_ACTIVE_ORDERS) {
+            const userOrders = App.userOrders[userId] || [];
+            const activeOrders = userOrders
+                .filter(o => o.status === 'active')
+                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // newest first
+            
+            if (activeOrders.length <= keepCount) {
+                return { cancelled: 0, message: 'No excess orders' };
             }
             
-            if (!confirm(`⚠️ Are you sure you want to delete ALL ${App.suspiciousOrders.length} suspicious orders?\nThis action cannot be undone!`)) {
-                return;
-            }
+            // Keep the newest 'keepCount' orders, cancel the rest
+            const ordersToKeep = activeOrders.slice(0, keepCount);
+            const ordersToCancel = activeOrders.slice(keepCount);
             
-            showProgress(true, `Deleting ${App.suspiciousOrders.length} orders...`);
-            
-            let success = 0;
+            let cancelled = 0;
             let failed = 0;
             
-            for (const order of App.suspiciousOrders) {
+            for (const order of ordersToCancel) {
                 try {
-                    const result = await deleteOrder(order.orderId, order);
-                    if (result) success++;
-                    else failed++;
+                    await cancelSingleOrder(order);
+                    cancelled++;
                 } catch (error) {
-                    console.error('Delete error:', error);
+                    console.error(`Failed to cancel order ${order.orderId}:`, error);
                     failed++;
                 }
+            }
+            
+            return { cancelled, failed };
+        }
+
+        // ============================================
+        // CANCEL SINGLE ORDER AND REFUND
+        // ============================================
+        async function cancelSingleOrder(order) {
+            // 1. تحديث حالة الطلب إلى cancelled
+            await database.ref(`orders/${order.orderId}`).update({
+                status: 'cancelled',
+                updatedAt: Date.now(),
+                cancelledBy: 'auto-system',
+                cancelReason: 'Excessive active orders'
+            });
+            
+            // 2. استرجاع الرصيد للمستخدم
+            const userRef = database.ref(`users/${order.userId}`);
+            const userSnapshot = await userRef.once('value');
+            const user = userSnapshot.val() || {};
+            
+            const resource = order.resource; // 'milk' or 'eggs'
+            const quantity = order.remaining || order.quantity;
+            
+            const updates = {};
+            updates[resource] = (user[resource] || 0) + quantity;
+            updates.updatedAt = Date.now();
+            
+            await userRef.update(updates);
+            
+            // 3. تحديث في userOrders
+            if (App.userOrders[order.userId]) {
+                const orderIndex = App.userOrders[order.userId].findIndex(o => o.orderId === order.orderId);
+                if (orderIndex !== -1) {
+                    App.userOrders[order.userId][orderIndex].status = 'cancelled';
+                }
+            }
+            
+            // 4. تسجيل المعاملة
+            await database.ref(`users/${order.userId}/transactions`).push({
+                type: 'auto_cancel',
+                orderId: order.orderId,
+                resource: resource,
+                quantity: quantity,
+                reason: 'Excessive active orders',
+                timestamp: Date.now()
+            });
+            
+            return true;
+        }
+
+        // ============================================
+        // CANCEL ALL EXCESS ORDERS (BATCH)
+        // ============================================
+        async function cancelAllExcessOrders() {
+            if (App.excessUsers.length === 0) {
+                showToast('No excess orders to cancel', 'error');
+                return;
+            }
+            
+            if (!confirm(`⚠️ Cancel all excess orders for ${App.excessUsers.length} users?\nThis will refund all resources.`)) {
+                return;
+            }
+            
+            showProgress(true, `Cancelling excess orders...`);
+            
+            let totalCancelled = 0;
+            let totalFailed = 0;
+            
+            for (let i = 0; i < App.excessUsers.length; i++) {
+                const user = App.excessUsers[i];
                 
-                // Update progress
-                const progress = ((success + failed) / App.suspiciousOrders.length) * 100;
+                const result = await cancelExcessOrders(user.userId);
+                totalCancelled += result.cancelled || 0;
+                totalFailed += result.failed || 0;
+                
+                const progress = ((i + 1) / App.excessUsers.length) * 100;
                 document.getElementById('progressFill').style.width = `${progress}%`;
-                document.getElementById('progressText').textContent = `${success + failed}/${App.suspiciousOrders.length}`;
+                document.getElementById('progressText').textContent = `${i + 1}/${App.excessUsers.length}`;
             }
             
             showProgress(false);
-            showToast(`✅ Deletion complete! Success: ${success}, Failed: ${failed}`);
+            showToast(`✅ Cancelled ${totalCancelled} orders, Failed: ${totalFailed}`);
             
             // Reload data
             await loadData();
-            scanSuspicious();
         }
 
         // ============================================
-        // RESET USER FUNCTION (WITH ORDER DELETION)
+        // RESET USER FUNCTION
         // ============================================
-        async function resetUser(userId, deleteOrdersOnly = false) {
-            const user = App.users[userId] || {};
-            const userOrders = App.suspiciousUsers.find(s => s.userId === userId)?.orders || [];
+        async function resetUser(userId) {
+            const user = App.users[userId];
+            if (!user) return;
             
-            const orderCount = userOrders.length;
-            
-            if (!deleteOrdersOnly) {
-                if (!confirm(`⚠️ Are you sure you want to reset user ${userId}?\nThis will delete ALL ${orderCount} orders and reset their account!`)) {
-                    return;
-                }
-            } else {
-                if (!confirm(`⚠️ Delete ALL ${orderCount} orders for user ${userId}?\nThe user account will NOT be reset.`)) {
-                    return;
-                }
+            if (!confirm(`⚠️ Are you sure you want to reset user ${userId}?\nThis will delete all their data!`)) {
+                return;
             }
             
-            showProgress(true, `Processing user ${userId}...`);
+            showProgress(true, `Resetting user ${userId}...`);
             
             try {
-                // Delete all user's orders
-                for (const order of userOrders) {
-                    await deleteOrder(order.orderId, order);
-                }
+                // Cancel all active orders first
+                await cancelExcessOrders(userId, 0); // cancel all
                 
-                if (!deleteOrdersOnly) {
-                    // Reset user data
-                    const userRef = database.ref(`users/${userId}`);
+                // Reset user data
+                const userRef = database.ref(`users/${userId}`);
+                
+                const now = Date.now();
+                const newUserData = {
+                    tonBalance: 0,
+                    milk: 0,
+                    eggs: 0,
+                    diamond: 0,
                     
-                    const now = Date.now();
-                    const newUserData = {
-                        tonBalance: 0,
-                        milk: 0,
-                        eggs: 0,
-                        diamond: 0,
-                        
-                        cows_owned: 0,
-                        chickens_owned: 0,
-                        diamond_engines_owned: 0,
-                        
-                        lastProduction: now,
-                        
-                        referralCode: user.referralCode || `ref_${userId}`,
-                        referredBy: user.referredBy || null,
-                        referralEarnings: 0,
-                        referralEarningsClaimed: 0,
-                        
-                        firstName: user.firstName || '',
-                        lastName: user.lastName || '',
-                        username: user.username || '',
-                        photoUrl: user.photoUrl || '',
-                        
-                        language: user.language || 'en',
-                        
-                        completedTasks: user.completedTasks || [],
-                        
-                        createdAt: user.createdAt || now,
-                        updatedAt: now
-                    };
+                    cows_owned: 0,
+                    chickens_owned: 0,
+                    diamond_engines_owned: 0,
                     
-                    await userRef.update(newUserData);
+                    lastProduction: now,
                     
-                    // Delete user's transactions
-                    await database.ref(`users/${userId}/transactions`).remove();
-                    await database.ref(`users/${userId}/deposits`).remove();
-                    await database.ref(`users/${userId}/withdrawals`).remove();
-                    await database.ref(`users/${userId}/orders`).remove();
+                    referralCode: user.referralCode || `ref_${userId}`,
+                    referredBy: user.referredBy || null,
+                    referralEarnings: 0,
+                    referralEarningsClaimed: 0,
                     
-                    showToast(`✅ User ${userId} reset successfully! ${orderCount} orders deleted.`);
-                } else {
-                    showToast(`✅ Deleted ${orderCount} orders for user ${userId}`);
-                }
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    username: user.username || '',
+                    photoUrl: user.photoUrl || '',
+                    
+                    language: user.language || 'en',
+                    
+                    completedTasks: user.completedTasks || [],
+                    
+                    createdAt: user.createdAt || now,
+                    updatedAt: now
+                };
+                
+                await userRef.update(newUserData);
+                
+                // Delete user's transactions
+                await database.ref(`users/${userId}/transactions`).remove();
+                await database.ref(`users/${userId}/deposits`).remove();
+                await database.ref(`users/${userId}/withdrawals`).remove();
+                
+                showToast(`✅ User ${userId} reset successfully!`);
                 
                 // Reload data
                 await loadData();
-                scanSuspicious();
                 
             } catch (error) {
                 console.error('Reset error:', error);
@@ -1274,43 +1257,40 @@
         // RENDER FUNCTIONS
         // ============================================
         function updateStats() {
-            const orders = App.orders;
-            let active = 0, cancelled = 0, filled = 0;
+            let activeOrders = 0;
+            for (const orders of Object.values(App.userOrders)) {
+                activeOrders += orders.filter(o => o.status === 'active').length;
+            }
             
-            for (const order of Object.values(orders)) {
-                if (!order) continue;
-                switch(order.status) {
-                    case 'active': active++; break;
-                    case 'cancelled': cancelled++; break;
-                    case 'filled': filled++; break;
-                }
+            let excessOrders = 0;
+            for (const user of App.excessUsers) {
+                excessOrders += user.excessCount;
             }
             
             App.stats = {
-                total: Object.keys(orders).length,
-                active,
-                cancelled,
-                filled,
-                deleted: Object.keys(App.deletedOrders).length
+                totalUsers: Object.keys(App.users).length,
+                totalOrders: Object.keys(App.orders).length,
+                activeOrders: activeOrders,
+                usersWithExcess: App.excessUsers.length,
+                excessOrders: excessOrders
             };
             
-            document.getElementById('totalOrders').textContent = App.stats.total;
-            document.getElementById('activeOrders').textContent = App.stats.active;
-            document.getElementById('cancelledOrders').textContent = App.stats.cancelled;
-            document.getElementById('suspiciousUsers').textContent = App.suspiciousUsers.length;
-            document.getElementById('suspiciousOrders').textContent = App.suspiciousOrders.length;
-            document.getElementById('deletedOrders').textContent = App.stats.deleted;
+            document.getElementById('totalUsers').textContent = App.stats.totalUsers;
+            document.getElementById('totalOrders').textContent = App.stats.totalOrders;
+            document.getElementById('activeOrders').textContent = App.stats.activeOrders;
+            document.getElementById('usersWithExcess').textContent = App.stats.usersWithExcess;
+            document.getElementById('excessOrders').textContent = App.stats.excessOrders;
         }
 
-        function renderSuspiciousUsers() {
-            const tbody = document.getElementById('suspiciousUsersBody');
+        function renderTable() {
+            const tbody = document.getElementById('usersTableBody');
             
-            if (App.suspiciousUsers.length === 0) {
+            if (Object.keys(App.users).length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-check-circle" style="font-size: 40px; color: #00F27A; margin-bottom: 10px;"></i>
-                            <div>No suspicious users found</div>
+                        <td colspan="9" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-users-slash" style="font-size: 40px;"></i>
+                            <div>No users found</div>
                         </td>
                     </tr>
                 `;
@@ -1319,290 +1299,218 @@
             
             let html = '';
             
-            App.suspiciousUsers.forEach(item => {
-                const user = item.user;
-                const userName = user ? (user.firstName || 'Unknown') : 'Unknown';
-                const userAvatar = user && user.photoUrl ? 
+            for (const [userId, user] of Object.entries(App.users)) {
+                if (!user) continue;
+                
+                const suspicious = App.suspiciousUsers.find(s => s.userId === userId);
+                const excess = App.excessUsers.find(e => e.userId === userId);
+                
+                const isSuspicious = !!suspicious;
+                const hasExcess = !!excess;
+                
+                const rowClass = hasExcess ? 'high-orders' : (isSuspicious ? 'suspicious-user' : '');
+                
+                const userName = user.firstName || 'Unknown';
+                const userAvatar = user.photoUrl ? 
                     `<img src="${user.photoUrl}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">` :
                     `<div class="user-avatar">${userName.charAt(0).toUpperCase()}</div>`;
                 
-                const reasonsHtml = item.reasons.map(r => 
-                    `<div style="font-size: 11px; color: #FF4B5C; margin-bottom: 3px;">• ${r}</div>`
-                ).join('');
+                const tonBalance = user.tonBalance || 0;
+                const milk = user.milk || 0;
+                const eggs = user.eggs || 0;
+                
+                const activeOrders = App.userOrders[userId]?.filter(o => o.status === 'active').length || 0;
+                
+                const excessOrders = excess ? excess.excessCount : 0;
+                
+                // Highlight values that exceed thresholds
+                const tonClass = tonBalance > THRESHOLDS.TON_BALANCE ? 'metric-highlight' : '';
+                const milkClass = milk > THRESHOLDS.MILK ? 'metric-highlight' : '';
+                const eggsClass = eggs > THRESHOLDS.EGGS ? 'metric-highlight' : '';
+                
+                const reasonsHtml = suspicious ? 
+                    `<div style="max-width: 250px;">
+                        ${suspicious.reasons.slice(0, 2).map(r => 
+                            `<div style="font-size: 11px; color: #FF4B5C; margin-bottom: 3px;">• ${r}</div>`
+                        ).join('')}
+                        ${suspicious.reasons.length > 2 ? 
+                            `<div style="font-size: 10px; color: rgba(255,75,92,0.7);">+${suspicious.reasons.length - 2} more</div>` : 
+                            ''}
+                    </div>` : 
+                    '<span style="color: #00F27A;">✓ Clean</span>';
                 
                 html += `
-                    <tr class="suspicious-user">
+                    <tr class="${rowClass}">
                         <td>
                             <div class="user-cell">
                                 ${userAvatar}
                                 <span>${userName}</span>
                             </div>
                         </td>
-                        <td><code style="color: #FFD700;">${item.userId.substring(0, 8)}...</code></td>
-                        <td>${item.metrics.total}</td>
-                        <td><span class="badge badge-success">${item.metrics.active}</span></td>
-                        <td><span class="badge badge-danger">${item.metrics.cancelled}</span></td>
-                        <td><span class="badge badge-info">${item.metrics.filled}</span></td>
+                        <td><code style="color: #FFD700;">${userId.substring(0, 8)}...</code></td>
+                        <td class="${tonClass}">${formatTON(tonBalance)} TON</td>
+                        <td class="${milkClass}">${formatNumber(milk)}</td>
+                        <td class="${eggsClass}">${formatNumber(eggs)}</td>
+                        <td>
+                            ${activeOrders}
+                            ${hasExcess ? `<span class="badge badge-danger" style="margin-left: 5px;">+${excessOrders}</span>` : ''}
+                        </td>
+                        <td>${excessOrders > 0 ? excessOrders : '-'}</td>
                         <td>${reasonsHtml}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="action-btn view" onclick="showUserOrders('${item.userId}')">
+                                <button class="action-btn view" onclick="showUserDetails('${userId}')">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <button class="action-btn reset" onclick="resetUser('${item.userId}', false)">
-                                    <i class="fas fa-skull-crosswalk"></i>
-                                </button>
-                                <button class="action-btn delete" onclick="resetUser('${item.userId}', true)">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                ${hasExcess ? `
+                                    <button class="action-btn cancel" onclick="promptCancelExcess('${userId}')">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                ` : ''}
+                                ${isSuspicious ? `
+                                    <button class="action-btn reset" onclick="resetUser('${userId}')">
+                                        <i class="fas fa-skull-crosswalk"></i>
+                                    </button>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
                 `;
-            });
-            
-            tbody.innerHTML = html;
-        }
-
-        function renderSuspiciousOrders() {
-            const tbody = document.getElementById('suspiciousOrdersBody');
-            
-            if (App.suspiciousOrders.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="10" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-check-circle" style="font-size: 40px; color: #00F27A;"></i>
-                            <div>No suspicious orders found</div>
-                        </td>
-                    </tr>
-                `;
-                return;
             }
-            
-            let html = '';
-            
-            App.suspiciousOrders.slice(0, 100).forEach(order => {
-                const user = App.users[order.userId] || {};
-                const userName = user.firstName || 'Unknown';
-                const date = new Date(order.createdAt).toLocaleString();
-                
-                const statusClass = `status-${order.status}`;
-                const reasonsHtml = order.reasons.join(', ');
-                
-                html += `
-                    <tr class="suspicious-order">
-                        <td><code>${order.orderId.substring(0, 12)}...</code></td>
-                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
-                        <td><span class="badge ${order.type === 'sell' ? 'badge-warning' : 'badge-info'}">${order.type}</span></td>
-                        <td>${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</td>
-                        <td><span class="metric-highlight">${formatNumber(order.quantity)}</span></td>
-                        <td>${formatTON(order.pricePerUnit)} TON</td>
-                        <td><span class="badge ${statusClass}">${order.status}</span></td>
-                        <td>${date}</td>
-                        <td style="color: #FF4B5C;">${reasonsHtml}</td>
-                        <td>
-                            <button class="action-btn delete-order" onclick="promptDeleteOrder('${order.orderId}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            tbody.innerHTML = html;
-        }
-
-        function renderAllOrders() {
-            const tbody = document.getElementById('allOrdersBody');
-            const orders = App.orders;
-            
-            if (Object.keys(orders).length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="10" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-inbox" style="font-size: 40px;"></i>
-                            <div>No orders found</div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            const sortedOrders = Object.entries(orders)
-                .sort((a, b) => (b[1]?.createdAt || 0) - (a[1]?.createdAt || 0))
-                .slice(0, 100);
-            
-            sortedOrders.forEach(([orderId, order]) => {
-                if (!order) return;
-                
-                const user = App.users[order.userId] || {};
-                const userName = user.firstName || 'Unknown';
-                const date = new Date(order.createdAt).toLocaleString();
-                const statusClass = `status-${order.status}`;
-                
-                const isSuspicious = App.suspiciousOrders.some(o => o.orderId === orderId);
-                const rowClass = isSuspicious ? 'suspicious-order' : '';
-                
-                html += `
-                    <tr class="${rowClass}">
-                        <td><code>${orderId.substring(0, 12)}...</code></td>
-                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
-                        <td><span class="badge ${order.type === 'sell' ? 'badge-warning' : 'badge-info'}">${order.type}</span></td>
-                        <td>${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</td>
-                        <td>${formatNumber(order.quantity)}</td>
-                        <td>${formatNumber(order.remaining)}</td>
-                        <td>${formatTON(order.pricePerUnit)} TON</td>
-                        <td><span class="badge ${statusClass}">${order.status}</span></td>
-                        <td>${date}</td>
-                        <td>
-                            <button class="action-btn delete-order" onclick="promptDeleteOrder('${orderId}')">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            tbody.innerHTML = html;
-        }
-
-        function renderDeletedOrders() {
-            const tbody = document.getElementById('deletedOrdersBody');
-            const deleted = App.deletedOrders;
-            
-            if (Object.keys(deleted).length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px;">
-                            <i class="fas fa-trash" style="font-size: 40px;"></i>
-                            <div>No deleted orders</div>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            let html = '';
-            const sortedDeleted = Object.entries(deleted)
-                .sort((a, b) => (b[1]?.deletedAt || 0) - (a[1]?.deletedAt || 0))
-                .slice(0, 50);
-            
-            sortedDeleted.forEach(([orderId, order]) => {
-                const date = new Date(order.deletedAt).toLocaleString();
-                const user = App.users[order.userId] || {};
-                const userName = user.firstName || 'Unknown';
-                
-                html += `
-                    <tr class="deleted-order">
-                        <td><code>${orderId.substring(0, 12)}...</code></td>
-                        <td>${userName} (${order.userId.substring(0, 6)}...)</td>
-                        <td>${order.type}</td>
-                        <td>${order.resource}</td>
-                        <td>${formatNumber(order.quantity)}</td>
-                        <td>${date}</td>
-                        <td><span class="badge badge-danger">Deleted</span></td>
-                    </tr>
-                `;
-            });
             
             tbody.innerHTML = html;
         }
 
         function updateSummaryCards() {
-            // Top Suspicious Users
-            const topList = document.getElementById('topSuspiciousList');
-            if (App.suspiciousUsers.length > 0) {
+            // Excess Users List
+            const excessList = document.getElementById('excessUsersList');
+            if (App.excessUsers.length > 0) {
                 let html = '';
-                App.suspiciousUsers.slice(0, 5).forEach(user => {
-                    const userName = user.user?.firstName || 'Unknown';
+                App.excessUsers.slice(0, 5).forEach(item => {
+                    const userName = item.user?.firstName || 'Unknown';
                     html += `
                         <div class="summary-item">
-                            <span>${userName} (${user.userId.substring(0, 6)}...)</span>
-                            <span class="badge badge-danger">${user.reasons.length} reasons</span>
+                            <span>${userName} (${item.userId.substring(0, 6)}...)</span>
+                            <span class="badge badge-warning">+${item.excessCount} orders</span>
                         </div>
                     `;
                 });
-                topList.innerHTML = html;
+                excessList.innerHTML = html;
             } else {
-                topList.innerHTML = '<div style="text-align: center; padding: 20px;">No suspicious users</div>';
+                excessList.innerHTML = '<div style="text-align: center; padding: 20px;">No excess orders</div>';
             }
             
-            // Duplicate Orders
-            const dupList = document.getElementById('duplicateOrdersList');
-            if (App.duplicateOrders.length > 0) {
+            // High Balance Users
+            const balanceList = document.getElementById('highBalanceList');
+            if (App.highBalanceUsers.length > 0) {
                 let html = '';
-                App.duplicateOrders.slice(0, 5).forEach(dup => {
-                    const userName = App.users[dup.userId]?.firstName || 'Unknown';
+                App.highBalanceUsers.slice(0, 5).forEach(item => {
+                    const userName = item.user?.firstName || 'Unknown';
                     html += `
                         <div class="summary-item">
-                            <span>${userName}: ${dup.count}x ${dup.quantity} ${dup.resource}</span>
-                            <span class="badge badge-warning">${dup.count} dupes</span>
+                            <span>${userName}</span>
+                            <span class="badge badge-warning">${formatTON(item.balance)} TON</span>
                         </div>
                     `;
                 });
-                dupList.innerHTML = html;
+                balanceList.innerHTML = html;
             } else {
-                dupList.innerHTML = '<div style="text-align: center; padding: 20px;">No duplicate orders</div>';
+                balanceList.innerHTML = '<div style="text-align: center; padding: 20px;">No high balance users</div>';
             }
             
-            // Recent Activity
-            const recentList = document.getElementById('recentActivityList');
-            if (App.suspiciousOrders.length > 0) {
+            // High Resources
+            const resourcesList = document.getElementById('highResourcesList');
+            const combined = [];
+            
+            App.highMilkUsers.slice(0, 3).forEach(item => {
+                combined.push({
+                    name: item.user?.firstName || 'Unknown',
+                    text: `🥛 ${formatNumber(item.milk)}`
+                });
+            });
+            
+            App.highEggsUsers.slice(0, 3).forEach(item => {
+                combined.push({
+                    name: item.user?.firstName || 'Unknown',
+                    text: `🥚 ${formatNumber(item.eggs)}`
+                });
+            });
+            
+            if (combined.length > 0) {
                 let html = '';
-                App.suspiciousOrders.slice(0, 5).forEach(order => {
-                    const date = new Date(order.createdAt).toLocaleTimeString();
+                combined.forEach(item => {
                     html += `
                         <div class="summary-item">
-                            <span>${order.resource} ${formatNumber(order.quantity)}</span>
-                            <span class="badge badge-danger">${date}</span>
+                            <span>${item.name}</span>
+                            <span class="badge badge-info">${item.text}</span>
                         </div>
                     `;
                 });
-                recentList.innerHTML = html;
+                resourcesList.innerHTML = html;
             } else {
-                recentList.innerHTML = '<div style="text-align: center; padding: 20px;">No recent activity</div>';
+                resourcesList.innerHTML = '<div style="text-align: center; padding: 20px;">No high resource users</div>';
             }
         }
 
         // ============================================
-        // USER INTERACTION FUNCTIONS
+        // USER DETAILS MODAL
         // ============================================
-        window.showUserOrders = function(userId) {
-            const user = App.users[userId] || {};
-            const userOrders = App.suspiciousUsers.find(s => s.userId === userId)?.orders || [];
+        window.showUserDetails = function(userId) {
+            const user = App.users[userId];
+            const userOrders = App.userOrders[userId] || [];
+            const excess = App.excessUsers.find(e => e.userId === userId);
+            
+            if (!user) return;
             
             const modal = document.getElementById('userModal');
             const ordersList = document.getElementById('userOrdersList');
             
+            const activeOrders = userOrders.filter(o => o.status === 'active');
+            
             let html = `
                 <div style="margin-bottom: 15px;">
                     <div style="font-size: 16px; font-weight: 600;">${user.firstName || 'Unknown'} (${userId})</div>
-                    <div style="font-size: 12px; color: rgba(255,255,255,0.5);">Total Orders: ${userOrders.length}</div>
+                    <div style="font-size: 12px; color: rgba(255,255,255,0.5);">
+                        Active Orders: ${activeOrders.length} | 
+                        Total Orders: ${userOrders.length}
+                    </div>
+                    ${excess ? `
+                        <div style="margin-top: 10px; padding: 8px; background: rgba(255,165,0,0.2); border-radius: 8px; color: #FFA500;">
+                            ⚠️ Has ${excess.excessCount} excess order(s) (max ${THRESHOLDS.MAX_ACTIVE_ORDERS} allowed)
+                        </div>
+                    ` : ''}
                 </div>
             `;
             
             if (userOrders.length === 0) {
                 html += '<div style="text-align: center; padding: 20px;">No orders found</div>';
             } else {
-                userOrders.sort((a, b) => b.createdAt - a.createdAt).forEach(order => {
+                // Sort by date (newest first)
+                userOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                
+                userOrders.forEach(order => {
                     const date = new Date(order.createdAt).toLocaleString();
                     const statusClass = `status-${order.status}`;
+                    const isExcess = excess && order.status === 'active' && 
+                                     activeOrders.indexOf(order) >= THRESHOLDS.MAX_ACTIVE_ORDERS;
+                    
+                    const orderClass = isExcess ? 'order-item cancelled' : 'order-item';
                     
                     html += `
-                        <div class="order-item">
+                        <div class="${orderClass}">
                             <div class="order-header">
-                                <span class="order-id">${order.orderId}</span>
+                                <span class="order-id">${order.orderId.substring(0, 16)}...</span>
                                 <span class="order-status ${statusClass}">${order.status}</span>
                             </div>
                             <div class="order-details">
                                 <div><span style="color: rgba(255,255,255,0.5);">Type:</span> ${order.type}</div>
-                                <div><span style="color: rgba(255,255,255,0.5);">Resource:</span> ${order.resource === 'milk' ? '🥛' : '🥚'} ${order.resource}</div>
+                                <div><span style="color: rgba(255,255,255,0.5);">Resource:</span> ${order.resource === 'milk' ? '🥛' : '🥚'}</div>
                                 <div><span style="color: rgba(255,255,255,0.5);">Quantity:</span> ${formatNumber(order.quantity)}</div>
                                 <div><span style="color: rgba(255,255,255,0.5);">Remaining:</span> ${formatNumber(order.remaining)}</div>
                                 <div><span style="color: rgba(255,255,255,0.5);">Price:</span> ${formatTON(order.pricePerUnit)} TON</div>
                                 <div><span style="color: rgba(255,255,255,0.5);">Created:</span> ${date}</div>
                             </div>
+                            ${isExcess ? '<div style="margin-top: 8px; color: #FFA500; font-size: 11px;"><i class="fas fa-exclamation-circle"></i> Excess order (will be auto-cancelled)</div>' : ''}
                         </div>
                     `;
                 });
@@ -1610,23 +1518,25 @@
             
             ordersList.innerHTML = html;
             
-            document.getElementById('resetUserBtn').onclick = () => resetUser(userId, false);
-            document.getElementById('deleteUserOrdersBtn').onclick = () => resetUser(userId, true);
+            document.getElementById('cancelExcessBtn').onclick = () => promptCancelExcess(userId);
+            document.getElementById('resetUserBtn').onclick = () => resetUser(userId);
             
             modal.classList.add('active');
         };
 
-        window.promptDeleteOrder = function(orderId) {
-            const order = App.orders[orderId];
-            if (!order) return;
+        window.promptCancelExcess = function(userId) {
+            const excess = App.excessUsers.find(e => e.userId === userId);
+            if (!excess) {
+                showToast('No excess orders for this user', 'error');
+                return;
+            }
             
-            const modal = document.getElementById('deleteOrderModal');
-            const info = document.getElementById('deleteOrderInfo');
+            const modal = document.getElementById('cancelConfirmModal');
+            document.getElementById('cancelConfirmText').innerHTML = 
+                `Cancel ${excess.excessCount} excess order(s) for user ${userId.substring(0, 8)}...?<br>
+                <small style="color: #FFA500;">Resources will be refunded.</small>`;
             
-            info.innerHTML = `Order: ${orderId.substring(0, 12)}...<br>User: ${order.userId}<br>Quantity: ${formatNumber(order.quantity)} ${order.resource}`;
-            
-            App.pendingDelete = { orderId, order };
-            
+            App.pendingCancel = userId;
             modal.classList.add('active');
         };
 
@@ -1669,45 +1579,26 @@
         // ============================================
         // EVENT LISTENERS
         // ============================================
-        document.getElementById('scanBtn').addEventListener('click', scanSuspicious);
-
+        document.getElementById('scanBtn').addEventListener('click', scanUsers);
+        document.getElementById('cancelAllExcessBtn').addEventListener('click', cancelAllExcessOrders);
         document.getElementById('resetAllBtn').addEventListener('click', () => {
             if (App.suspiciousUsers.length === 0) {
                 showToast('No suspicious users to reset', 'error');
                 return;
             }
             
-            if (!confirm(`⚠️ Reset ALL ${App.suspiciousUsers.length} suspicious users?\nThis will delete all their orders and reset their accounts!`)) {
+            if (!confirm(`Reset ALL ${App.suspiciousUsers.length} suspicious users?`)) {
                 return;
             }
             
             (async () => {
                 for (const user of App.suspiciousUsers) {
-                    await resetUser(user.userId, false);
+                    await resetUser(user.userId);
                 }
             })();
         });
-
-        document.getElementById('deleteAllSuspiciousOrdersBtn').addEventListener('click', deleteAllSuspiciousOrders);
-
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            loadData();
-        });
-
-        // Tabs
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                
-                const tabName = this.dataset.tab;
-                
-                document.getElementById('suspiciousUsersTable').style.display = tabName === 'suspicious-users' ? 'block' : 'none';
-                document.getElementById('suspiciousOrdersTable').style.display = tabName === 'suspicious-orders' ? 'block' : 'none';
-                document.getElementById('allOrdersTable').style.display = tabName === 'all-orders' ? 'block' : 'none';
-                document.getElementById('deletedOrdersTable').style.display = tabName === 'deleted-orders' ? 'block' : 'none';
-            });
-        });
+        
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
 
         // Modal controls
         document.getElementById('closeModal').addEventListener('click', () => {
@@ -1718,19 +1609,20 @@
             document.getElementById('userModal').classList.remove('active');
         });
 
-        document.getElementById('closeDeleteModal').addEventListener('click', () => {
-            document.getElementById('deleteOrderModal').classList.remove('active');
+        document.getElementById('closeCancelModal').addEventListener('click', () => {
+            document.getElementById('cancelConfirmModal').classList.remove('active');
         });
 
-        document.getElementById('cancelDeleteOrderBtn').addEventListener('click', () => {
-            document.getElementById('deleteOrderModal').classList.remove('active');
+        document.getElementById('cancelCancelBtn').addEventListener('click', () => {
+            document.getElementById('cancelConfirmModal').classList.remove('active');
         });
 
-        document.getElementById('confirmDeleteOrderBtn').addEventListener('click', async () => {
-            if (App.pendingDelete) {
-                await deleteOrder(App.pendingDelete.orderId, App.pendingDelete.order);
-                document.getElementById('deleteOrderModal').classList.remove('active');
-                App.pendingDelete = null;
+        document.getElementById('confirmCancelBtn').addEventListener('click', async () => {
+            if (App.pendingCancel) {
+                await cancelExcessOrders(App.pendingCancel);
+                document.getElementById('cancelConfirmModal').classList.remove('active');
+                App.pendingCancel = null;
+                await loadData(); // Reload to show changes
             }
         });
 
@@ -1740,9 +1632,9 @@
                 modal.classList.remove('active');
             }
             
-            const deleteModal = document.getElementById('deleteOrderModal');
-            if (e.target === deleteModal) {
-                deleteModal.classList.remove('active');
+            const cancelModal = document.getElementById('cancelConfirmModal');
+            if (e.target === cancelModal) {
+                cancelModal.classList.remove('active');
             }
         });
 
