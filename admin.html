@@ -3,15 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crystal Ranch · Delete Orphaned Orders</title>
+    <title>Crystal Ranch · Market Dashboard (20k+ Orders)</title>
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     
     <style>
         * {
@@ -29,7 +32,7 @@
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 0 auto;
         }
         
@@ -59,101 +62,111 @@
         }
         
         .header h1 span {
-            background: rgba(255, 75, 92, 0.2);
-            color: #FF4B5C;
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            color: black;
             padding: 5px 20px;
             border-radius: 30px;
             font-size: 16px;
-            margin-left: 10px;
+            font-weight: 600;
         }
         
-        /* Stats Grid */
         .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
             gap: 20px;
-            margin-bottom: 30px;
+            flex-wrap: wrap;
         }
         
-        .stat-card {
+        .stat-box {
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            padding: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.2);
-        }
-        
-        .stat-title {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 10px;
+            border-radius: 12px;
+            padding: 15px 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            min-width: 140px;
         }
         
         .stat-value {
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
             color: #FFD700;
         }
         
-        .stat-sub {
+        .stat-label {
             font-size: 12px;
-            color: rgba(255, 255, 255, 0.5);
+            color: rgba(255, 255, 255, 0.7);
             margin-top: 5px;
         }
         
-        /* Control Panel */
-        .control-panel {
-            background: rgba(0, 0, 0, 0.3);
+        /* Threshold Banner */
+        .threshold-banner {
+            background: linear-gradient(145deg, rgba(255, 92, 168, 0.2), rgba(255, 215, 0, 0.2));
+            border: 2px solid #FFD700;
             border-radius: 16px;
-            padding: 25px;
+            padding: 20px;
             margin-bottom: 30px;
-            border: 2px solid #FF4B5C;
-        }
-        
-        .panel-title {
-            font-size: 18px;
-            font-weight: 600;
-            color: #FF4B5C;
-            margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 10px;
-        }
-        
-        .user-input-group {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            gap: 20px;
             flex-wrap: wrap;
         }
         
-        .user-input {
-            flex: 1;
-            min-width: 300px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid #FFD700;
-            border-radius: 12px;
-            padding: 15px 20px;
-            color: white;
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
+        .threshold-icon {
+            font-size: 48px;
+            color: #FFD700;
         }
         
-        .user-input::placeholder {
-            color: rgba(255, 255, 255, 0.3);
+        .threshold-text {
+            flex: 1;
+        }
+        
+        .threshold-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FFD700;
+            margin-bottom: 5px;
+        }
+        
+        .threshold-desc {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .threshold-value {
+            background: rgba(255, 215, 0, 0.2);
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-size: 32px;
+            font-weight: 800;
+            color: #FFD700;
+            border: 2px solid #FFD700;
+        }
+        
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
         }
         
         .btn {
-            padding: 15px 30px;
-            border-radius: 12px;
+            padding: 12px 24px;
+            border-radius: 30px;
             border: none;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             transition: all 0.2s;
             font-family: 'Inter', sans-serif;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(145deg, #FF5CA8, #D94A8F);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 92, 168, 0.4);
         }
         
         .btn-danger {
@@ -168,16 +181,16 @@
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
         }
         
-        .btn-primary {
-            background: linear-gradient(145deg, #FF5CA8, #D94A8F);
-            color: white;
-            box-shadow: 0 4px 15px rgba(255, 92, 168, 0.4);
-        }
-        
         .btn-success {
             background: linear-gradient(145deg, #00F27A, #00b35e);
             color: white;
             box-shadow: 0 4px 15px rgba(0, 242, 122, 0.4);
+        }
+        
+        .btn-info {
+            background: linear-gradient(145deg, #00D4FF, #0099cc);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
         }
         
         .btn:hover {
@@ -188,91 +201,76 @@
             transform: scale(0.98);
         }
         
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
         
-        /* Info Box */
-        .info-box {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid #FFD700;
-            border-radius: 12px;
-            padding: 15px;
-            margin: 20px 0;
+        .chart-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
         }
         
-        .info-title {
-            color: #FFD700;
+        .chart-title {
+            font-size: 16px;
             font-weight: 600;
-            margin-bottom: 10px;
+            color: #FFD700;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         
-        /* Progress */
-        .progress-container {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 20px;
-            margin: 20px 0;
+        .chart-container {
+            height: 300px;
+            position: relative;
         }
         
-        .progress-bar {
-            width: 100%;
-            height: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 10px 0;
+        /* Summary Cards */
+        .summary-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
         }
         
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #FFD700, #FF5CA8);
-            transition: width 0.3s;
-        }
-        
-        /* Table */
-        .table-container {
+        .summary-card {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 16px;
+            padding: 20px;
             border: 1px solid rgba(255, 215, 0, 0.2);
-            overflow: auto;
-            margin: 20px 0;
         }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px;
-        }
-        
-        th {
-            background: rgba(0, 0, 0, 0.5);
-            padding: 15px 10px;
-            text-align: left;
-            font-size: 12px;
+        .summary-title {
+            font-size: 16px;
             font-weight: 600;
             color: #FFD700;
-            text-transform: uppercase;
-            border-bottom: 2px solid #FFD700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
-        td {
-            padding: 15px 10px;
-            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+        .summary-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 13px;
         }
         
-        tr.orphaned {
-            background: rgba(255, 75, 92, 0.1);
-            border-left: 3px solid #FF4B5C;
-        }
-        
-        tr:hover {
-            background: rgba(255, 215, 0, 0.05);
+        .summary-item:hover {
+            background: rgba(255, 215, 0, 0.1);
         }
         
         .badge {
@@ -289,55 +287,345 @@
             border: 1px solid rgba(255, 75, 92, 0.3);
         }
         
+        .badge-warning {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .badge-success {
+            background: rgba(0, 242, 122, 0.2);
+            color: #00F27A;
+            border: 1px solid rgba(0, 242, 122, 0.3);
+        }
+        
+        .badge-info {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00D4FF;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .badge-purple {
+            background: rgba(155, 93, 229, 0.2);
+            color: #9B5DE5;
+            border: 1px solid rgba(155, 93, 229, 0.3);
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+            padding-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .tab.active {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Filter Bar */
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .filter-input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 13px;
+            min-width: 100px;
+        }
+        
+        .filter-select {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 13px;
+        }
+        
+        /* Table */
+        .table-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+            overflow: auto;
+            margin-bottom: 30px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1400px;
+        }
+        
+        th {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px 10px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #FFD700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #FFD700;
+        }
+        
+        td {
+            padding: 15px 10px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background: rgba(255, 215, 0, 0.05);
+        }
+        
+        tr.high-value {
+            background: rgba(255, 75, 92, 0.1);
+            border-left: 3px solid #FF4B5C;
+        }
+        
+        tr.suspicious {
+            background: rgba(255, 215, 0, 0.15);
+            border-left: 3px solid #FFD700;
+        }
+        
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(145deg, #FF5CA8, #00D4FF);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
         .action-btn {
-            padding: 6px 12px;
+            padding: 6px 10px;
             border-radius: 8px;
             border: none;
             font-size: 11px;
             font-weight: 600;
             cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .action-btn.view {
+            background: rgba(0, 212, 255, 0.2);
+            color: #00D4FF;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+        
+        .action-btn.view:hover {
+            background: rgba(0, 212, 255, 0.4);
+        }
+        
+        .action-btn.cancel {
             background: rgba(255, 75, 92, 0.2);
             color: #FF4B5C;
             border: 1px solid rgba(255, 75, 92, 0.3);
         }
         
-        .action-btn:hover {
+        .action-btn.cancel:hover {
             background: rgba(255, 75, 92, 0.4);
         }
         
-        /* Log */
-        .log-container {
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
-            max-height: 200px;
+        .action-btn.refund {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+        
+        .action-btn.refund:hover {
+            background: rgba(255, 215, 0, 0.4);
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: #1a1a2e;
+            border: 1px solid #FFD700;
+            border-radius: 24px;
+            padding: 25px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
             overflow-y: auto;
-            font-family: monospace;
-            font-size: 12px;
         }
         
-        .log-entry {
-            padding: 5px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.8);
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
         }
         
-        .log-entry.success {
-            color: #00F27A;
-        }
-        
-        .log-entry.error {
-            color: #FF4B5C;
-        }
-        
-        .log-entry.warning {
+        .modal-title {
+            font-size: 20px;
+            font-weight: 700;
             color: #FFD700;
         }
         
+        .modal-close {
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 215, 0, 0.1);
+        }
+        
+        .detail-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #FFD700;
+        }
+        
+        .detail-value.high {
+            color: #FF4B5C;
+        }
+        
+        /* Progress */
+        .progress-container {
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FF5CA8);
+            transition: width 0.3s;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 5px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #00F27A;
+            color: black;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            z-index: 2000;
+            animation: slideIn 0.3s;
+            box-shadow: 0 5px 20px rgba(0, 242, 122, 0.4);
+        }
+        
+        .toast.error {
+            background: #FF4B5C;
+            color: white;
+        }
+        
+        .toast.warning {
+            background: #FFA500;
+            color: black;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Loading */
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 50px;
             color: rgba(255, 255, 255, 0.5);
         }
         
@@ -352,33 +640,16 @@
             to { transform: rotate(360deg); }
         }
         
-        /* User Summary */
-        .user-summary {
-            background: rgba(255, 215, 0, 0.05);
-            border-radius: 12px;
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 215, 0, 0.2);
-        }
-        
-        .user-detail {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .user-label {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .user-value {
-            font-weight: 600;
-            color: #FFD700;
-        }
-        
-        .user-value.highlight {
-            color: #FF4B5C;
+        /* Responsive */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .threshold-banner {
+                flex-direction: column;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -387,113 +658,259 @@
         <!-- Header -->
         <div class="header">
             <h1>
-                <i class="fas fa-trash-alt"></i>
-                Delete Orphaned Orders
-                <span>Fix My Orders</span>
+                <i class="fas fa-chart-line"></i>
+                Market Dashboard
+                <span>20k+ Monitor</span>
             </h1>
-        </div>
-        
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-title">Total Users</div>
-                <div class="stat-value" id="totalUsers">0</div>
-                <div class="stat-sub">in database</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Main Orders</div>
-                <div class="stat-value" id="mainOrders">0</div>
-                <div class="stat-sub">in /orders</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">User Orders</div>
-                <div class="stat-value" id="userOrders">0</div>
-                <div class="stat-sub">in /users/*/orders</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-title">Orphaned Orders</div>
-                <div class="stat-value" id="orphanedCount">0</div>
-                <div class="stat-sub">need deletion</div>
-            </div>
-        </div>
-        
-        <!-- Control Panel -->
-        <div class="control-panel">
-            <div class="panel-title">
-                <i class="fas fa-exclamation-triangle"></i>
-                Fix Specific User
-            </div>
-            
-            <div class="user-input-group">
-                <input type="text" class="user-input" id="userIdInput" placeholder="Enter User ID (e.g., 6970148965)" value="6970148965">
-                <button class="btn btn-primary" id="loadUserBtn">
-                    <i class="fas fa-search"></i> Load User
-                </button>
-            </div>
-            
-            <div class="info-box" id="userInfoBox" style="display: none;">
-                <div class="info-title">
-                    <i class="fas fa-user"></i>
-                    User Information
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalOrders">0</div>
+                    <div class="stat-label">Total Orders</div>
                 </div>
-                <div id="userDetails"></div>
+                <div class="stat-box">
+                    <div class="stat-value" id="activeOrders">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="largeOrders">0</div>
+                    <div class="stat-label">20k+ Orders</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="totalVolume">0</div>
+                    <div class="stat-label">Total Volume</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="uniqueUsers">0</div>
+                    <div class="stat-label">Unique Users</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Threshold Banner -->
+        <div class="threshold-banner">
+            <div class="threshold-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="threshold-text">
+                <div class="threshold-title">Large Orders Monitor</div>
+                <div class="threshold-desc">Showing all orders with quantity greater than 20,000 units</div>
+            </div>
+            <div class="threshold-value">
+                > 20,000
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn btn-primary" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+            </button>
+            <button class="btn btn-warning" id="scanLargeBtn">
+                <i class="fas fa-search"></i> Scan Large Orders
+            </button>
+            <button class="btn btn-danger" id="cancelAllLargeBtn">
+                <i class="fas fa-ban"></i> Cancel All 20k+ Orders
+            </button>
+            <button class="btn btn-info" id="exportBtn">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+            <button class="btn btn-success" id="cleanupDeadOrdersBtn">
+                <i class="fas fa-broom"></i> تنظيف الطلبات الميتة
+            </button>
+        </div>
+        
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Orders by Resource
+                </div>
+                <div class="chart-container">
+                    <canvas id="resourceChart"></canvas>
+                </div>
             </div>
             
-            <div style="display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
-                <button class="btn btn-danger" id="scanOrphanedBtn">
-                    <i class="fas fa-search"></i> Scan All Users
-                </button>
-                <button class="btn btn-warning" id="deleteAllOrphanedBtn" disabled>
-                    <i class="fas fa-trash"></i> Delete All Orphaned Orders
-                </button>
-                <button class="btn btn-success" id="refreshBtn">
-                    <i class="fas fa-sync-alt"></i> Refresh Stats
-                </button>
+            <div class="chart-card">
+                <div class="chart-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Orders by Status
+                </div>
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">
+                    <i class="fas fa-chart-line"></i>
+                    Order Volume Trend
+                </div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="summary-section">
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-trophy" style="color: #FFD700;"></i>
+                    Top 10 Largest Orders
+                </div>
+                <div class="summary-list" id="topOrdersList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-users" style="color: #FF5CA8;"></i>
+                    Top Users by Volume
+                </div>
+                <div class="summary-list" id="topUsersList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-title">
+                    <i class="fas fa-clock" style="color: #00D4FF;"></i>
+                    Recent Large Orders
+                </div>
+                <div class="summary-list" id="recentOrdersList">
+                    <div class="loading" style="padding: 20px;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </div>
+                </div>
             </div>
         </div>
         
         <!-- Progress -->
-        <div class="progress-container" id="progressContainer" style="display: none;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span><i class="fas fa-spinner fa-spin"></i> <span id="progressMessage">Processing...</span></span>
-                <span id="progressPercentage">0%</span>
-            </div>
+        <div class="progress-container" id="progressContainer">
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
             </div>
-            <div class="progress-stats" style="display: flex; justify-content: space-between; margin-top: 10px;">
-                <span id="progressCurrent">0</span> / <span id="progressTotal">0</span> operations
+            <div class="progress-text" id="progressText">Processing...</div>
+        </div>
+        
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="filter-group">
+                <span class="filter-label">Show:</span>
+                <select class="filter-select" id="filterType">
+                    <option value="all">All Orders</option>
+                    <option value="large" selected>20k+ Only</option>
+                    <option value="active">Active Only</option>
+                    <option value="cancelled">Cancelled Only</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">Resource:</span>
+                <select class="filter-select" id="filterResource">
+                    <option value="all">All</option>
+                    <option value="milk">Milk 🥛</option>
+                    <option value="eggs">Eggs 🥚</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">Min Quantity:</span>
+                <input type="number" class="filter-input" id="minQuantity" value="20000" step="1000">
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">Sort by:</span>
+                <select class="filter-select" id="sortBy">
+                    <option value="quantity-desc">Quantity (High to Low)</option>
+                    <option value="quantity-asc">Quantity (Low to High)</option>
+                    <option value="date-desc">Date (Newest)</option>
+                    <option value="date-asc">Date (Oldest)</option>
+                    <option value="price-desc">Price (High to Low)</option>
+                    <option value="price-asc">Price (Low to High)</option>
+                </select>
             </div>
         </div>
         
-        <!-- Orphaned Orders Table -->
+        <!-- Orders Table -->
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>Order ID</th>
-                        <th>User ID</th>
+                        <th>User</th>
+                        <th>Type</th>
                         <th>Resource</th>
                         <th>Quantity</th>
+                        <th>Remaining</th>
+                        <th>Price/Unit</th>
+                        <th>Total Value</th>
                         <th>Status</th>
                         <th>Created</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="orphanedTableBody">
+                <tbody id="ordersTableBody">
                     <tr>
-                        <td colspan="7" class="loading">
+                        <td colspan="11" class="loading">
                             <i class="fas fa-spinner fa-spin"></i>
-                            <div>Click "Scan All Users" to find orphaned orders</div>
+                            <div>Loading orders...</div>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        
-        <!-- Log -->
-        <div class="log-container" id="logContainer">
-            <div class="log-entry">Ready to fix orphaned orders...</div>
+    </div>
+    
+    <!-- Order Details Modal -->
+    <div class="modal-overlay" id="orderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-receipt"></i> Order Details
+                </div>
+                <i class="fas fa-times modal-close" id="closeModal"></i>
+            </div>
+            <div id="orderDetails"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-danger" id="cancelOrderBtn" style="flex: 1;">
+                    <i class="fas fa-ban"></i> Cancel Order
+                </button>
+                <button class="btn btn-secondary" id="closeModalBtn" style="flex: 1;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirm Cancel Modal -->
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-exclamation-triangle" style="color: #FF4B5C;"></i> Confirm Cancel
+                </div>
+                <i class="fas fa-times modal-close" id="closeConfirmModal"></i>
+            </div>
+            <div style="text-align: center; padding: 20px;">
+                <i class="fas fa-ban" style="font-size: 48px; color: #FF4B5C; margin-bottom: 15px;"></i>
+                <p id="confirmText">Are you sure you want to cancel this order?</p>
+                <p style="font-size: 12px; color: #FFD700; margin-top: 10px;" id="confirmDetails"></p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-danger" id="confirmCancelBtn" style="flex: 1;">
+                    Yes, Cancel
+                </button>
+                <button class="btn btn-secondary" id="cancelConfirmBtn" style="flex: 1;">
+                    No
+                </button>
+            </div>
         </div>
     </div>
 
@@ -515,356 +932,423 @@
         const database = firebase.database();
 
         // ============================================
+        // CONSTANTS
+        // ============================================
+        const LARGE_ORDER_THRESHOLD = 20000; // 20,000 units
+        
+        // ============================================
         // STATE
         // ============================================
         let App = {
-            mainOrders: {},
+            orders: {},
             users: {},
-            userOrders: {},
-            orphanedOrders: [],
+            filteredOrders: [],
+            largeOrders: [],
             
             stats: {
-                totalUsers: 0,
-                mainCount: 0,
-                userCount: 0,
-                orphanedCount: 0
+                total: 0,
+                active: 0,
+                cancelled: 0,
+                filled: 0,
+                large: 0,
+                milkVolume: 0,
+                eggsVolume: 0,
+                totalVolume: 0,
+                uniqueUsers: 0
             },
             
-            currentUser: null,
-            logs: []
+            charts: {
+                resource: null,
+                status: null,
+                trend: null
+            },
+            
+            filters: {
+                type: 'large',
+                resource: 'all',
+                minQuantity: LARGE_ORDER_THRESHOLD,
+                sortBy: 'quantity-desc'
+            },
+            
+            pendingOrder: null
         };
-
-        // ============================================
-        // LOGGING
-        // ============================================
-        function addLog(message, type = 'info') {
-            const time = new Date().toLocaleTimeString('en-US', { 
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            
-            const logEntry = `[${time}] ${message}`;
-            App.logs.unshift(logEntry);
-            if (App.logs.length > 50) App.logs.pop();
-            
-            renderLogs();
-            console.log(`${type.toUpperCase()}: ${message}`);
-        }
-
-        function renderLogs() {
-            const container = document.getElementById('logContainer');
-            let html = '';
-            
-            App.logs.forEach(log => {
-                let typeClass = 'info';
-                if (log.includes('✅')) typeClass = 'success';
-                else if (log.includes('❌')) typeClass = 'error';
-                else if (log.includes('⚠️')) typeClass = 'warning';
-                else if (log.includes('🗑️')) typeClass = 'warning';
-                
-                html += `<div class="log-entry ${typeClass}">${log}</div>`;
-            });
-            
-            container.innerHTML = html;
-        }
-
-        // ============================================
-        // PROGRESS
-        // ============================================
-        function showProgress(show, message = 'Processing...', total = 0) {
-            const container = document.getElementById('progressContainer');
-            if (show) {
-                container.style.display = 'block';
-                document.getElementById('progressMessage').textContent = message;
-                document.getElementById('progressPercentage').textContent = '0%';
-                document.getElementById('progressCurrent').textContent = '0';
-                document.getElementById('progressTotal').textContent = total || '?';
-                document.getElementById('progressFill').style.width = '0%';
-            } else {
-                container.style.display = 'none';
-            }
-        }
-
-        function updateProgress(current, total) {
-            const percentage = (current / total) * 100;
-            document.getElementById('progressFill').style.width = `${percentage}%`;
-            document.getElementById('progressPercentage').textContent = `${Math.round(percentage)}%`;
-            document.getElementById('progressCurrent').textContent = current;
-        }
 
         // ============================================
         // LOAD DATA
         // ============================================
         async function loadData() {
-            addLog('📥 Loading data from Firebase...');
+            showProgress(true, 'Loading data...');
             
             try {
-                // Load main orders
-                const mainSnapshot = await database.ref('orders').once('value');
-                App.mainOrders = mainSnapshot.val() || {};
-                App.stats.mainCount = Object.keys(App.mainOrders).length;
+                // Load orders
+                const ordersSnapshot = await database.ref('orders').once('value');
+                App.orders = ordersSnapshot.val() || {};
                 
-                // Load all users
+                // Load users
                 const usersSnapshot = await database.ref('users').once('value');
                 App.users = usersSnapshot.val() || {};
-                App.stats.totalUsers = Object.keys(App.users).length;
                 
-                // Load user orders
-                App.userOrders = {};
-                let userOrderCount = 0;
-                
-                for (const userId of Object.keys(App.users)) {
-                    const ordersSnapshot = await database.ref(`users/${userId}/orders`).once('value');
-                    const orders = ordersSnapshot.val();
-                    if (orders && Object.keys(orders).length > 0) {
-                        App.userOrders[userId] = orders;
-                        userOrderCount += Object.keys(orders).length;
-                    }
-                }
-                
-                App.stats.userCount = userOrderCount;
-                
+                processOrders();
                 updateStats();
-                addLog(`✅ Loaded ${App.stats.mainCount} main orders, ${App.stats.userCount} user orders`);
+                filterOrders();
+                renderTable();
+                updateSummaryCards();
+                updateCharts();
+                
+                showToast(`Loaded ${App.stats.total} orders, ${App.stats.large} large orders`);
                 
             } catch (error) {
                 console.error('Error loading data:', error);
-                addLog(`❌ Error loading data: ${error.message}`, 'error');
-            }
-        }
-
-        // ============================================
-        // SCAN FOR ORPHANED ORDERS
-        // ============================================
-        async function scanOrphaned() {
-            addLog('🔍 Scanning for orphaned orders...');
-            showProgress(true, 'Scanning for orphaned orders...', 1);
-            
-            App.orphanedOrders = [];
-            
-            // Check each user's orders
-            for (const [userId, orders] of Object.entries(App.userOrders)) {
-                for (const [orderId, userOrder] of Object.entries(orders)) {
-                    const mainOrder = App.mainOrders[orderId];
-                    
-                    // If order doesn't exist in main orders, it's orphaned
-                    if (!mainOrder) {
-                        App.orphanedOrders.push({
-                            orderId: orderId,
-                            userId: userId,
-                            order: userOrder
-                        });
-                    }
-                }
-            }
-            
-            App.stats.orphanedCount = App.orphanedOrders.length;
-            updateStats();
-            renderOrphanedTable();
-            
-            document.getElementById('deleteAllOrphanedBtn').disabled = App.orphanedOrders.length === 0;
-            
-            showProgress(false);
-            
-            if (App.orphanedOrders.length === 0) {
-                addLog('✅ No orphaned orders found!', 'success');
-            } else {
-                addLog(`⚠️ Found ${App.orphanedOrders.length} orphaned orders`, 'warning');
-            }
-        }
-
-        // ============================================
-        // LOAD SPECIFIC USER
-        // ============================================
-        async function loadUser(userId) {
-            addLog(`🔍 Loading user: ${userId}`);
-            showProgress(true, `Loading user ${userId}...`, 1);
-            
-            try {
-                // Load user data
-                const userSnapshot = await database.ref(`users/${userId}`).once('value');
-                const userData = userSnapshot.val();
-                
-                if (!userData) {
-                    addLog(`❌ User ${userId} not found`, 'error');
-                    showProgress(false);
-                    return;
-                }
-                
-                App.currentUser = {
-                    id: userId,
-                    data: userData
-                };
-                
-                // Load user's orders
-                const ordersSnapshot = await database.ref(`users/${userId}/orders`).once('value');
-                const userOrders = ordersSnapshot.val() || {};
-                
-                // Find orphaned orders for this user
-                const userOrphaned = [];
-                for (const [orderId, order] of Object.entries(userOrders)) {
-                    if (!App.mainOrders[orderId]) {
-                        userOrphaned.push({
-                            orderId: orderId,
-                            order: order
-                        });
-                    }
-                }
-                
-                // Display user info
-                const infoBox = document.getElementById('userInfoBox');
-                const details = document.getElementById('userDetails');
-                
-                let orphanedHtml = '';
-                if (userOrphaned.length > 0) {
-                    orphanedHtml = `<div style="margin-top: 10px; color: #FF4B5C;">
-                        <i class="fas fa-exclamation-triangle"></i> 
-                        Has ${userOrphaned.length} orphaned order(s) in My Orders
-                    </div>`;
-                }
-                
-                details.innerHTML = `
-                    <div class="user-detail">
-                        <span class="user-label">User ID:</span>
-                        <span class="user-value">${userId}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">Name:</span>
-                        <span class="user-value">${userData.firstName || 'Unknown'}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">Milk:</span>
-                        <span class="user-value ${userData.milk > 10000 ? 'highlight' : ''}">${formatNumber(userData.milk || 0)}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">TON Balance:</span>
-                        <span class="user-value">${formatTON(userData.tonBalance || 0)}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">Cows Owned:</span>
-                        <span class="user-value">${userData.cows_owned || 0}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">Total Orders:</span>
-                        <span class="user-value">${Object.keys(userOrders).length}</span>
-                    </div>
-                    <div class="user-detail">
-                        <span class="user-label">Orphaned Orders:</span>
-                        <span class="user-value highlight">${userOrphaned.length}</span>
-                    </div>
-                    ${orphanedHtml}
-                `;
-                
-                infoBox.style.display = 'block';
-                
-                // Show user's orphaned orders in table
-                if (userOrphaned.length > 0) {
-                    renderOrphanedTable(userOrphaned, userId);
-                } else {
-                    addLog(`✅ User ${userId} has no orphaned orders`, 'success');
-                }
-                
-            } catch (error) {
-                console.error('Error loading user:', error);
-                addLog(`❌ Error loading user: ${error.message}`, 'error');
+                showToast('Error loading data: ' + error.message, 'error');
             } finally {
                 showProgress(false);
             }
         }
 
         // ============================================
-        // DELETE ORPHANED ORDER
+        // PROCESS ORDERS
         // ============================================
-        async function deleteOrphanedOrder(orderId, userId) {
+        function processOrders() {
+            App.largeOrders = [];
+            App.stats = {
+                total: 0,
+                active: 0,
+                cancelled: 0,
+                filled: 0,
+                large: 0,
+                milkVolume: 0,
+                eggsVolume: 0,
+                totalVolume: 0,
+                uniqueUsers: new Set()
+            };
+            
+            for (const [orderId, order] of Object.entries(App.orders)) {
+                if (!order) continue;
+                
+                App.stats.total++;
+                App.stats.uniqueUsers.add(order.userId);
+                
+                switch(order.status) {
+                    case 'active': App.stats.active++; break;
+                    case 'cancelled': App.stats.cancelled++; break;
+                    case 'filled': App.stats.filled++; break;
+                }
+                
+                const quantity = order.quantity || 0;
+                if (order.resource === 'milk') {
+                    App.stats.milkVolume += quantity;
+                } else if (order.resource === 'eggs') {
+                    App.stats.eggsVolume += quantity;
+                }
+                App.stats.totalVolume += quantity;
+                
+                // Check if large order
+                if (quantity >= LARGE_ORDER_THRESHOLD) {
+                    App.stats.large++;
+                    App.largeOrders.push({
+                        orderId,
+                        ...order
+                    });
+                }
+            }
+            
+            App.stats.uniqueUsers = App.stats.uniqueUsers.size;
+            
+            // Sort large orders by quantity
+            App.largeOrders.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+        }
+
+        // ============================================
+        // FILTER ORDERS
+        // ============================================
+        function filterOrders() {
+            const { type, resource, minQuantity, sortBy } = App.filters;
+            
+            let orders = Object.entries(App.orders).map(([orderId, order]) => ({
+                orderId,
+                ...order
+            }));
+            
+            // Apply type filter
+            if (type === 'large') {
+                orders = orders.filter(o => (o.quantity || 0) >= minQuantity);
+            } else if (type === 'active') {
+                orders = orders.filter(o => o.status === 'active');
+            } else if (type === 'cancelled') {
+                orders = orders.filter(o => o.status === 'cancelled');
+            }
+            
+            // Apply resource filter
+            if (resource !== 'all') {
+                orders = orders.filter(o => o.resource === resource);
+            }
+            
+            // Apply sorting
+            switch(sortBy) {
+                case 'quantity-desc':
+                    orders.sort((a, b) => (b.quantity || 0) - (a.quantity || 0));
+                    break;
+                case 'quantity-asc':
+                    orders.sort((a, b) => (a.quantity || 0) - (b.quantity || 0));
+                    break;
+                case 'date-desc':
+                    orders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                    break;
+                case 'date-asc':
+                    orders.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+                    break;
+                case 'price-desc':
+                    orders.sort((a, b) => (b.pricePerUnit || 0) - (a.pricePerUnit || 0));
+                    break;
+                case 'price-asc':
+                    orders.sort((a, b) => (a.pricePerUnit || 0) - (b.pricePerUnit || 0));
+                    break;
+            }
+            
+            App.filteredOrders = orders;
+        }
+
+        // ============================================
+        // IMPROVED CANCEL ORDER FUNCTION
+        // الآن يقوم بحذف الطلب من مكانين:
+        // 1. من /orders (السوق العام)
+        // 2. من /users/{userId}/orders/{orderId}
+        // ============================================
+        async function cancelOrder(orderId, order, shouldRefund = true) {
             try {
-                addLog(`🗑️ Deleting orphaned order ${orderId.substring(0, 8)}... from user ${userId}`, 'warning');
+                const updates = {};
                 
-                // Delete from user's orders
-                await database.ref(`users/${userId}/orders/${orderId}`).remove();
+                // 1. تحديث الطلب في السوق العام
+                updates[`orders/${orderId}`] = {
+                    ...order,
+                    status: 'cancelled',
+                    updatedAt: Date.now(),
+                    cancelledBy: 'admin-dashboard',
+                    cancelReason: 'Cancelled from Market Dashboard'
+                };
                 
-                addLog(`✅ Successfully deleted order ${orderId.substring(0, 8)}...`, 'success');
+                // 2. تحديث/حذف الطلب من قائمة طلبات المستخدم
+                // يمكنك اختيار إما تحديث حالته أو حذفه بالكامل
+                // الخيار الأفضل: تحديث حالته ليصبح cancelled
+                if (order.userId) {
+                    updates[`users/${order.userId}/orders/${orderId}`] = {
+                        ...order,
+                        status: 'cancelled',
+                        updatedAt: Date.now(),
+                        cancelledBy: 'admin-dashboard',
+                        cancelReason: 'Cancelled from Market Dashboard'
+                    };
+                }
                 
-                // Remove from list
-                App.orphanedOrders = App.orphanedOrders.filter(o => 
-                    !(o.orderId === orderId && o.userId === userId));
+                // 3. إعادة الموارد للمستخدم إذا كان الطلب active
+                if (shouldRefund && order.status === 'active' && order.userId) {
+                    const userRef = database.ref(`users/${order.userId}`);
+                    const userSnapshot = await userRef.once('value');
+                    const user = userSnapshot.val() || {};
+                    
+                    const resource = order.resource;
+                    const quantity = order.remaining || order.quantity;
+                    
+                    // تحديث رصيد المستخدم
+                    updates[`users/${order.userId}/${resource}`] = (user[resource] || 0) + quantity;
+                    updates[`users/${order.userId}/updatedAt`] = Date.now();
+                    
+                    // إضافة معاملة للسجل
+                    const transactionId = `transaction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    updates[`users/${order.userId}/transactions/${transactionId}`] = {
+                        type: 'admin_cancel',
+                        orderId: orderId,
+                        resource: resource,
+                        quantity: quantity,
+                        reason: 'Cancelled from Market Dashboard',
+                        timestamp: Date.now()
+                    };
+                }
                 
-                App.stats.orphanedCount = App.orphanedOrders.length;
-                updateStats();
-                renderOrphanedTable();
-                
-                document.getElementById('deleteAllOrphanedBtn').disabled = App.orphanedOrders.length === 0;
+                // تنفيذ جميع التحديثات دفعة واحدة
+                await database.ref().update(updates);
                 
                 return true;
                 
             } catch (error) {
-                console.error('Delete error:', error);
-                addLog(`❌ Error deleting order: ${error.message}`, 'error');
-                return false;
+                console.error('Cancel error:', error);
+                throw error;
             }
         }
 
         // ============================================
-        // DELETE ALL ORPHANED ORDERS
+        // DELETE ORDER COMPLETELY
+        // هذه الدالة تحذف الطلب نهائياً من كلا المكانين
         // ============================================
-        async function deleteAllOrphaned() {
-            if (App.orphanedOrders.length === 0) {
-                addLog('⚠️ No orphaned orders to delete', 'warning');
+        async function deleteOrderCompletely(orderId, order) {
+            try {
+                const updates = {};
+                
+                // حذف من السوق العام
+                updates[`orders/${orderId}`] = null;
+                
+                // حذف من طلبات المستخدم
+                if (order.userId) {
+                    updates[`users/${order.userId}/orders/${orderId}`] = null;
+                }
+                
+                await database.ref().update(updates);
+                return true;
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                throw error;
+            }
+        }
+
+        // ============================================
+        // CLEAN UP DEAD ORDERS
+        // هذه الدالة تبحث عن الطلبات الميتة (موجودة في users/orders ولكن غير موجودة في orders)
+        // وتحذفها
+        // ============================================
+        async function cleanupDeadOrders() {
+            showProgress(true, 'Scanning for dead orders...');
+            
+            try {
+                let deadOrdersCount = 0;
+                let cleanedCount = 0;
+                
+                // فحص كل مستخدم
+                for (const [userId, user] of Object.entries(App.users)) {
+                    if (user.orders) {
+                        for (const [orderId, userOrder] of Object.entries(user.orders)) {
+                            // إذا كان الطلب غير موجود في السوق العام
+                            if (!App.orders[orderId]) {
+                                deadOrdersCount++;
+                                
+                                // تحقق إذا كان الطلب "ميت" (غير موجود في السوق)
+                                if (confirm(`هل تريد حذف الطلب الميت: ${orderId} للمستخدم ${userId}؟`)) {
+                                    await database.ref(`users/${userId}/orders/${orderId}`).remove();
+                                    cleanedCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                showToast(`✅ تم العثور على ${deadOrdersCount} طلب ميت، تم تنظيف ${cleanedCount}`);
+                
+                // إعادة تحميل البيانات
+                await loadData();
+                
+            } catch (error) {
+                console.error('Cleanup error:', error);
+                showToast('Error cleaning up: ' + error.message, 'error');
+            } finally {
+                showProgress(false);
+            }
+        }
+
+        // ============================================
+        // CANCEL ALL LARGE ORDERS (محدث)
+        // ============================================
+        async function cancelAllLargeOrders() {
+            if (App.largeOrders.length === 0) {
+                showToast('No large orders to cancel', 'error');
                 return;
             }
             
-            if (!confirm(`Delete all ${App.orphanedOrders.length} orphaned orders from user profiles?\n\nThis will fix the "My Orders" section for affected users.`)) {
+            if (!confirm(`⚠️ Cancel ALL ${App.largeOrders.length} large orders (20k+)?\nThis will refund all resources and update user orders.`)) {
                 return;
             }
             
-            showProgress(true, 'Deleting orphaned orders...', App.orphanedOrders.length);
+            showProgress(true, `Cancelling ${App.largeOrders.length} orders...`);
             
-            let deleted = 0;
+            let success = 0;
             let failed = 0;
             
-            for (let i = 0; i < App.orphanedOrders.length; i++) {
-                const orphan = App.orphanedOrders[i];
+            for (let i = 0; i < App.largeOrders.length; i++) {
+                const order = App.largeOrders[i];
                 try {
-                    await database.ref(`users/${orphan.userId}/orders/${orphan.orderId}`).remove();
-                    deleted++;
-                    addLog(`✅ Deleted ${orphan.orderId.substring(0, 8)}...`, 'success');
+                    await cancelOrder(order.orderId, order, true);
+                    success++;
                 } catch (error) {
-                    console.error('Delete error:', error);
+                    console.error(`Failed to cancel ${order.orderId}:`, error);
                     failed++;
                 }
                 
-                updateProgress(i + 1, App.orphanedOrders.length);
+                const progress = ((i + 1) / App.largeOrders.length) * 100;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('progressText').textContent = `${i + 1}/${App.largeOrders.length} orders`;
             }
             
             showProgress(false);
-            addLog(`✅ Deleted ${deleted} orphaned orders, Failed: ${failed}`, 'success');
+            showToast(`✅ Cancelled ${success} orders, Failed: ${failed}`);
             
-            // Refresh data
+            // Reload data
             await loadData();
-            await scanOrphaned();
+        }
+
+        // ============================================
+        // EXPORT TO CSV
+        // ============================================
+        function exportToCSV() {
+            const orders = App.filteredOrders;
+            
+            if (orders.length === 0) {
+                showToast('No orders to export', 'error');
+                return;
+            }
+            
+            const headers = ['Order ID', 'User ID', 'Type', 'Resource', 'Quantity', 'Remaining', 'Price/Unit', 'Total Value', 'Status', 'Created At'];
+            const csvRows = [];
+            
+            csvRows.push(headers.join(','));
+            
+            orders.forEach(order => {
+                const row = [
+                    order.orderId,
+                    order.userId,
+                    order.type,
+                    order.resource,
+                    order.quantity || 0,
+                    order.remaining || 0,
+                    order.pricePerUnit || 0,
+                    (order.quantity || 0) * (order.pricePerUnit || 0),
+                    order.status,
+                    new Date(order.createdAt).toISOString()
+                ];
+                csvRows.push(row.join(','));
+            });
+            
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `market-orders-${Date.now()}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+            
+            showToast(`Exported ${orders.length} orders`);
         }
 
         // ============================================
         // RENDER FUNCTIONS
         // ============================================
         function updateStats() {
-            document.getElementById('totalUsers').textContent = App.stats.totalUsers;
-            document.getElementById('mainOrders').textContent = App.stats.mainCount;
-            document.getElementById('userOrders').textContent = App.stats.userCount;
-            document.getElementById('orphanedCount').textContent = App.stats.orphanedCount;
+            document.getElementById('totalOrders').textContent = App.stats.total;
+            document.getElementById('activeOrders').textContent = App.stats.active;
+            document.getElementById('largeOrders').textContent = App.stats.large;
+            document.getElementById('totalVolume').textContent = formatNumber(App.stats.totalVolume);
+            document.getElementById('uniqueUsers').textContent = App.stats.uniqueUsers;
         }
 
-        function renderOrphanedTable(orders = null, highlightUserId = null) {
-            const tbody = document.getElementById('orphanedTableBody');
-            const ordersToShow = orders || App.orphanedOrders;
+        function renderTable() {
+            const tbody = document.getElementById('ordersTableBody');
+            const orders = App.filteredOrders.slice(0, 100); // Show top 100
             
-            if (ordersToShow.length === 0) {
+            if (orders.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="loading">
-                            <i class="fas fa-check-circle" style="color: #00F27A;"></i>
-                            <div>No orphaned orders found!</div>
+                        <td colspan="11" style="text-align: center; padding: 40px;">
+                            <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 10px;"></i>
+                            <div>No orders found</div>
                         </td>
                     </tr>
                 `;
@@ -873,23 +1357,50 @@
             
             let html = '';
             
-            ordersToShow.forEach(orphan => {
-                const order = orphan.order;
-                const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Unknown';
-                const isHighlighted = orphan.userId === highlightUserId;
+            orders.forEach(order => {
+                const user = App.users[order.userId] || {};
+                const userName = user.firstName || 'Unknown';
+                const userAvatar = user.photoUrl ? 
+                    `<img src="${user.photoUrl}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">` :
+                    `<div class="user-avatar">${userName.charAt(0).toUpperCase()}</div>`;
+                
+                const isLarge = (order.quantity || 0) >= LARGE_ORDER_THRESHOLD;
+                const rowClass = isLarge ? 'high-value' : '';
+                
+                const date = new Date(order.createdAt).toLocaleString();
+                const totalValue = (order.quantity || 0) * (order.pricePerUnit || 0);
+                
+                const statusClass = order.status === 'active' ? 'badge-success' : 
+                                   order.status === 'cancelled' ? 'badge-danger' : 'badge-info';
                 
                 html += `
-                    <tr class="orphaned" ${isHighlighted ? 'style="background: rgba(255, 215, 0, 0.2);"' : ''}>
-                        <td><code>${orphan.orderId.substring(0, 12)}...</code></td>
-                        <td><code>${orphan.userId.substring(0, 8)}...</code></td>
+                    <tr class="${rowClass}">
+                        <td><code>${order.orderId.substring(0, 12)}...</code></td>
+                        <td>
+                            <div class="user-cell">
+                                ${userAvatar}
+                                <span>${userName}</span>
+                            </div>
+                        </td>
+                        <td><span class="badge ${order.type === 'sell' ? 'badge-warning' : 'badge-info'}">${order.type}</span></td>
                         <td>${order.resource === 'milk' ? '🥛 Milk' : '🥚 Eggs'}</td>
-                        <td>${formatNumber(order.quantity || 0)}</td>
-                        <td><span class="badge badge-danger">${order.status || 'unknown'}</span></td>
+                        <td><span class="metric-highlight">${formatNumber(order.quantity)}</span></td>
+                        <td>${formatNumber(order.remaining)}</td>
+                        <td>${formatTON(order.pricePerUnit)} TON</td>
+                        <td>${formatTON(totalValue)} TON</td>
+                        <td><span class="badge ${statusClass}">${order.status}</span></td>
                         <td>${date}</td>
                         <td>
-                            <button class="action-btn" onclick="deleteSingleOrder('${orphan.orderId}', '${orphan.userId}')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
+                            <div class="action-buttons">
+                                <button class="action-btn view" onclick="showOrderDetails('${order.orderId}')">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${order.status === 'active' ? `
+                                    <button class="action-btn cancel" onclick="promptCancelOrder('${order.orderId}')">
+                                        <i class="fas fa-ban"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -897,6 +1408,265 @@
             
             tbody.innerHTML = html;
         }
+
+        function updateSummaryCards() {
+            // Top 10 Largest Orders
+            const topList = document.getElementById('topOrdersList');
+            if (App.largeOrders.length > 0) {
+                let html = '';
+                App.largeOrders.slice(0, 10).forEach(order => {
+                    const user = App.users[order.userId] || {};
+                    const userName = user.firstName || 'Unknown';
+                    html += `
+                        <div class="summary-item">
+                            <span>${userName}</span>
+                            <span class="badge badge-danger">${formatNumber(order.quantity)} ${order.resource}</span>
+                        </div>
+                    `;
+                });
+                topList.innerHTML = html;
+            } else {
+                topList.innerHTML = '<div style="text-align: center; padding: 20px;">No large orders</div>';
+            }
+            
+            // Top Users by Volume
+            const userVolumes = {};
+            for (const order of App.largeOrders) {
+                if (!userVolumes[order.userId]) {
+                    userVolumes[order.userId] = 0;
+                }
+                userVolumes[order.userId] += order.quantity || 0;
+            }
+            
+            const topUsers = Object.entries(userVolumes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const usersList = document.getElementById('topUsersList');
+            if (topUsers.length > 0) {
+                let html = '';
+                topUsers.forEach(([userId, volume]) => {
+                    const user = App.users[userId] || {};
+                    const userName = user.firstName || 'Unknown';
+                    html += `
+                        <div class="summary-item">
+                            <span>${userName}</span>
+                            <span class="badge badge-warning">${formatNumber(volume)} total</span>
+                        </div>
+                    `;
+                });
+                usersList.innerHTML = html;
+            } else {
+                usersList.innerHTML = '<div style="text-align: center; padding: 20px;">No data</div>';
+            }
+            
+            // Recent Large Orders
+            const recentList = document.getElementById('recentOrdersList');
+            const recent = [...App.largeOrders]
+                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+                .slice(0, 10);
+            
+            if (recent.length > 0) {
+                let html = '';
+                recent.forEach(order => {
+                    const user = App.users[order.userId] || {};
+                    const userName = user.firstName || 'Unknown';
+                    const date = new Date(order.createdAt).toLocaleDateString();
+                    html += `
+                        <div class="summary-item">
+                            <span>${userName}</span>
+                            <span class="badge badge-info">${date}</span>
+                        </div>
+                    `;
+                });
+                recentList.innerHTML = html;
+            } else {
+                recentList.innerHTML = '<div style="text-align: center; padding: 20px;">No recent orders</div>';
+            }
+        }
+
+        function updateCharts() {
+            // Resource Chart
+            const resourceCtx = document.getElementById('resourceChart').getContext('2d');
+            if (App.charts.resource) App.charts.resource.destroy();
+            
+            App.charts.resource = new Chart(resourceCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Milk', 'Eggs'],
+                    datasets: [{
+                        data: [App.stats.milkVolume, App.stats.eggsVolume],
+                        backgroundColor: ['#FF5CA8', '#00D4FF'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            labels: { color: 'white' }
+                        }
+                    }
+                }
+            });
+            
+            // Status Chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            if (App.charts.status) App.charts.status.destroy();
+            
+            App.charts.status = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Active', 'Cancelled', 'Filled'],
+                    datasets: [{
+                        data: [App.stats.active, App.stats.cancelled, App.stats.filled],
+                        backgroundColor: ['#00F27A', '#FF4B5C', '#FFD700'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            labels: { color: 'white' }
+                        }
+                    }
+                }
+            });
+            
+            // Trend Chart (last 7 days)
+            const trendCtx = document.getElementById('trendChart').getContext('2d');
+            if (App.charts.trend) App.charts.trend.destroy();
+            
+            const last7Days = [];
+            const volumes = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                date.setHours(0, 0, 0, 0);
+                
+                const nextDate = new Date(date);
+                nextDate.setDate(nextDate.getDate() + 1);
+                
+                let volume = 0;
+                for (const order of App.largeOrders) {
+                    if (order.createdAt >= date.getTime() && order.createdAt < nextDate.getTime()) {
+                        volume += order.quantity || 0;
+                    }
+                }
+                
+                last7Days.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                volumes.push(volume);
+            }
+            
+            App.charts.trend = new Chart(trendCtx, {
+                type: 'line',
+                data: {
+                    labels: last7Days,
+                    datasets: [{
+                        label: 'Daily Volume',
+                        data: volumes,
+                        borderColor: '#FFD700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: 'white' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: 'white' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // MODAL FUNCTIONS
+        // ============================================
+        window.showOrderDetails = function(orderId) {
+            const order = App.orders[orderId];
+            const user = App.users[order.userId] || {};
+            
+            if (!order) return;
+            
+            const modal = document.getElementById('orderModal');
+            const details = document.getElementById('orderDetails');
+            
+            const date = new Date(order.createdAt).toLocaleString();
+            const totalValue = (order.quantity || 0) * (order.pricePerUnit || 0);
+            
+            details.innerHTML = `
+                <div class="detail-row">
+                    <span class="detail-label">Order ID:</span>
+                    <span class="detail-value"><code>${orderId}</code></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">User:</span>
+                    <span class="detail-value">${user.firstName || 'Unknown'} (${order.userId})</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Type:</span>
+                    <span class="detail-value">${order.type}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Resource:</span>
+                    <span class="detail-value">${order.resource === 'milk' ? '🥛 Milk' : '🥚 Eggs'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Quantity:</span>
+                    <span class="detail-value ${(order.quantity || 0) >= LARGE_ORDER_THRESHOLD ? 'high' : ''}">${formatNumber(order.quantity)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Remaining:</span>
+                    <span class="detail-value">${formatNumber(order.remaining)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Price per Unit:</span>
+                    <span class="detail-value">${formatTON(order.pricePerUnit)} TON</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Value:</span>
+                    <span class="detail-value">${formatTON(totalValue)} TON</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value">${order.status}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Created:</span>
+                    <span class="detail-value">${date}</span>
+                </div>
+            `;
+            
+            document.getElementById('cancelOrderBtn').style.display = order.status === 'active' ? 'block' : 'none';
+            App.pendingOrder = { orderId, order };
+            
+            modal.classList.add('active');
+        };
+
+        window.promptCancelOrder = function(orderId) {
+            const order = App.orders[orderId];
+            if (!order) return;
+            
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmText').innerHTML = 'Cancel this order?';
+            document.getElementById('confirmDetails').innerHTML = 
+                `Order: ${orderId.substring(0, 12)}...<br>
+                Quantity: ${formatNumber(order.quantity)} ${order.resource}<br>
+                User: ${order.userId.substring(0, 8)}...`;
+            
+            App.pendingOrder = { orderId, order };
+            modal.classList.add('active');
+        };
 
         // ============================================
         // UTILITY FUNCTIONS
@@ -913,48 +1683,114 @@
             return parseFloat(amount).toFixed(4);
         }
 
-        // ============================================
-        // GLOBAL FUNCTIONS
-        // ============================================
-        window.deleteSingleOrder = async function(orderId, userId) {
-            if (confirm(`Delete orphaned order ${orderId.substring(0, 12)}...?`)) {
-                await deleteOrphanedOrder(orderId, userId);
+        function showProgress(show, text = 'Processing...') {
+            const container = document.getElementById('progressContainer');
+            if (show) {
+                container.style.display = 'block';
+                document.getElementById('progressText').textContent = text;
+            } else {
+                container.style.display = 'none';
             }
-        };
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
 
         // ============================================
         // EVENT LISTENERS
         // ============================================
-        document.getElementById('loadUserBtn').addEventListener('click', async () => {
-            const userId = document.getElementById('userIdInput').value.trim();
-            if (userId) {
-                await loadUser(userId);
+        document.getElementById('refreshBtn').addEventListener('click', loadData);
+        document.getElementById('scanLargeBtn').addEventListener('click', () => {
+            App.filters.type = 'large';
+            document.getElementById('filterType').value = 'large';
+            filterOrders();
+            renderTable();
+        });
+        
+        document.getElementById('cancelAllLargeBtn').addEventListener('click', cancelAllLargeOrders);
+        document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+        document.getElementById('cleanupDeadOrdersBtn').addEventListener('click', cleanupDeadOrders);
+
+        // Filter controls
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            App.filters.type = e.target.value;
+            filterOrders();
+            renderTable();
+        });
+
+        document.getElementById('filterResource').addEventListener('change', (e) => {
+            App.filters.resource = e.target.value;
+            filterOrders();
+            renderTable();
+        });
+
+        document.getElementById('minQuantity').addEventListener('change', (e) => {
+            App.filters.minQuantity = parseInt(e.target.value) || LARGE_ORDER_THRESHOLD;
+            filterOrders();
+            renderTable();
+        });
+
+        document.getElementById('sortBy').addEventListener('change', (e) => {
+            App.filters.sortBy = e.target.value;
+            filterOrders();
+            renderTable();
+        });
+
+        // Modal controls
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('orderModal').classList.remove('active');
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            document.getElementById('orderModal').classList.remove('active');
+        });
+
+        document.getElementById('closeConfirmModal').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.remove('active');
+        });
+
+        document.getElementById('cancelConfirmBtn').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.remove('active');
+        });
+
+        document.getElementById('cancelOrderBtn').addEventListener('click', async () => {
+            if (App.pendingOrder) {
+                await cancelOrder(App.pendingOrder.orderId, App.pendingOrder.order, true);
+                document.getElementById('orderModal').classList.remove('active');
+                await loadData();
             }
         });
 
-        document.getElementById('scanOrphanedBtn').addEventListener('click', async () => {
-            await loadData();
-            await scanOrphaned();
+        document.getElementById('confirmCancelBtn').addEventListener('click', async () => {
+            if (App.pendingOrder) {
+                await cancelOrder(App.pendingOrder.orderId, App.pendingOrder.order, true);
+                document.getElementById('confirmModal').classList.remove('active');
+                await loadData();
+            }
         });
 
-        document.getElementById('deleteAllOrphanedBtn').addEventListener('click', deleteAllOrphaned);
-
-        document.getElementById('refreshBtn').addEventListener('click', async () => {
-            await loadData();
-        });
-
-        // Enter key in input
-        document.getElementById('userIdInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('loadUserBtn').click();
+        window.addEventListener('click', (e) => {
+            const orderModal = document.getElementById('orderModal');
+            if (e.target === orderModal) {
+                orderModal.classList.remove('active');
+            }
+            
+            const confirmModal = document.getElementById('confirmModal');
+            if (e.target === confirmModal) {
+                confirmModal.classList.remove('active');
             }
         });
 
         // Initialize
-        window.onload = async () => {
-            addLog('🗑️ Orphaned Orders Deleter initialized');
-            await loadData();
-        };
+        loadData();
     </script>
 </body>
 </html>
