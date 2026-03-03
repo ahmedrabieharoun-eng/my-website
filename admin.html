@@ -26,6 +26,10 @@
             transform: translateY(-5px);
             box-shadow: 0 20px 30px -10px rgba(102, 126, 234, 0.5);
         }
+        .negative-value {
+            color: #ef4444;
+            font-style: italic;
+        }
         .table-container {
             max-height: 400px;
             overflow-y: auto;
@@ -73,10 +77,10 @@
                 <input type="text" id="appId" placeholder="App ID" value="1:325528918523:web:73d84f48a24c1e0cbfd35e" class="p-2 border rounded col-span-2" readonly>
             </div>
             <div class="flex gap-4 mt-4">
-                <button onclick="initFirebase()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-sync-alt ml-2"></i>اتصال وتحديث البيانات
+                <button onclick="location.reload()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-sync-alt ml-2"></i>تحديث البيانات
                 </button>
-                <div id="firebaseStatus" class="text-sm text-green-600 hidden items-center">
+                <div id="firebaseStatus" class="text-sm text-green-600 flex items-center">
                     <i class="fas fa-check-circle ml-1"></i> متصل
                 </div>
             </div>
@@ -94,11 +98,11 @@
                     <i class="fas fa-users text-5xl opacity-50"></i>
                 </div>
             </div>
-            <!-- إجمالي الحليب -->
+            <!-- إجمالي الحليب (بدون سالب) -->
             <div class="stat-card text-white p-6" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 <div class="flex justify-between items-center">
                     <div>
-                        <p class="text-lg opacity-90">إجمالي الحليب 🥛</p>
+                        <p class="text-lg opacity-90">إجمالي الحليب الفعلي 🥛</p>
                         <p id="totalMilk" class="text-4xl font-bold">0</p>
                     </div>
                     <i class="fas fa-fill-drip text-5xl opacity-50"></i>
@@ -126,12 +130,20 @@
             </div>
         </div>
 
+        <!-- ملاحظة عن الحليب السالب -->
+        <div class="bg-yellow-100 border-r-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle ml-2 text-xl"></i>
+                <p><strong>ملاحظة:</strong> المستخدمون الذين لديهم رصيد حليب سالب <span class="font-bold">لا يتم احتسابهم</span> في إجمالي الحليب ولا في قائمة أفضل المنتجين.</p>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- ترتيب أفضل 10 حاملين حليب -->
+            <!-- ترتيب أفضل 10 حاملين حليب (الموجب فقط) -->
             <div class="lg:col-span-1 bg-white rounded-xl shadow-md p-6">
                 <h2 class="text-xl font-semibold mb-4 flex items-center">
                     <i class="fas fa-trophy ml-2 text-yellow-500"></i>
-                    أفضل 10 منتجين للحليب
+                    أفضل 10 منتجين للحليب (الموجب فقط)
                 </h2>
                 <div class="table-container">
                     <table class="w-full">
@@ -146,6 +158,10 @@
                             <tr><td colspan="3" class="text-center p-4 text-gray-500">جاري التحميل...</td></tr>
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    <i class="fas fa-info-circle ml-1 text-blue-500"></i>
+                    يتم عرض المستخدمين الذين لديهم حليب <span class="font-bold text-green-600">أكبر من 0</span> فقط
                 </div>
             </div>
 
@@ -213,7 +229,6 @@
 
         // تحميل البيانات عند فتح الصفحة
         window.onload = function() {
-            document.getElementById('firebaseStatus').classList.remove('hidden');
             loadAllData();
             
             // تحديث كل 30 ثانية
@@ -225,7 +240,8 @@
                 // تحميل المستخدمين
                 const usersSnapshot = await database.ref('users').once('value');
                 usersData = [];
-                let totalMilk = 0;
+                let totalMilkPositive = 0; // فقط الحليب الموجب
+                let usersWithNegativeMilk = 0; // عدد المستخدمين الذين لديهم حليب سالب
                 const milkHolders = [];
 
                 usersSnapshot.forEach(childSnapshot => {
@@ -241,21 +257,26 @@
                         ...user
                     });
 
-                    totalMilk += milk;
+                    // ❗ التعديل المهم: فقط الحليب الأكبر من 0 يُحتسب
                     if (milk > 0) {
+                        totalMilkPositive += milk;
                         milkHolders.push({
                             id: userId,
                             name: user.firstName || userId.slice(0, 6) + '...',
                             milk: milk
                         });
+                    } else if (milk < 0) {
+                        usersWithNegativeMilk++;
+                        console.log(`مستخدم برصيد سالب: ${userId} - الرصيد: ${milk}`);
                     }
+                    // إذا كان milk = 0 يتم تجاهله (لا يضاف للإجمالي ولا للقائمة)
                 });
 
-                // تحديث الإحصائيات
+                // تحديث إحصائيات المستخدمين
                 document.getElementById('totalUsers').textContent = usersData.length.toLocaleString();
-                document.getElementById('totalMilk').textContent = totalMilk.toLocaleString();
+                document.getElementById('totalMilk').textContent = totalMilkPositive.toLocaleString();
 
-                // ترتيب أفضل 10 حاملين حليب
+                // ترتيب أفضل 10 حاملين حليب (الموجب فقط)
                 const top10 = milkHolders.sort((a, b) => b.milk - a.milk).slice(0, 10);
                 displayTopMilkHolders(top10);
 
@@ -287,6 +308,9 @@
                 // عرض الطلبات
                 displayOrders(ordersData);
 
+                // عرض إحصائية المستخدمين ذوي الرصيد السالب في الكونسول
+                console.log(`عدد المستخدمين برصيد حليب سالب: ${usersWithNegativeMilk}`);
+
             } catch (error) {
                 console.error('خطأ في تحميل البيانات:', error);
                 alert('حدث خطأ في تحميل البيانات. تأكد من اتصالك بالإنترنت.');
@@ -310,7 +334,7 @@
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-2 font-bold">${index + 1}</td>
                     <td class="p-2">${rankIcon} ${holder.name}</td>
-                    <td class="p-2 text-left font-mono font-bold">${holder.milk.toLocaleString()}</td>
+                    <td class="p-2 text-left font-mono font-bold text-green-600">${holder.milk.toLocaleString()}</td>
                 </tr>
             `}).join('');
         }
