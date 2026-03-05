@@ -1,9 +1,11 @@
+[file name]: index (12).html
+[file content begin]
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Crystal Ranch · Ranch System</title>
+    <title>Crystal Ranch · Ranch Management</title>
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -36,17 +38,14 @@
             --blue-glow: rgba(0, 212, 255, 0.4);
             --danger-red: #FF4B5C;
             --red-glow: rgba(255, 75, 92, 0.3);
-            --warning-orange: #FFA500;
-            --orange-glow: rgba(255, 165, 0, 0.4);
             
-            /* Level colors */
-            --level-1: #CD7F32; /* Bronze */
-            --level-2: #C0C0C0; /* Silver */
-            --level-3: #FFD700; /* Gold */
-            
+            /* Leaderboard colors */
             --leaderboard-gold: #FFD700;
             --leaderboard-silver: #C0C0C0;
             --leaderboard-bronze: #CD7F32;
+            --leaderboard-gold-gradient: linear-gradient(145deg, #FFD700, #FDB931);
+            --leaderboard-silver-gradient: linear-gradient(145deg, #E0E0E0, #B0B0B0);
+            --leaderboard-bronze-gradient: linear-gradient(145deg, #CD7F32, #B87333);
             
             --bg-image: url('https://i.ibb.co/kVGZmG6x/Chat-GPT-Image-15-2026-06-52-13.png');
             --dark-overlay: rgba(10, 10, 25, 0.25);
@@ -118,11 +117,6 @@
             50% { box-shadow: 0 0 25px var(--blue-glow); }
         }
         
-        @keyframes pulse-orange {
-            0%, 100% { box-shadow: 0 0 10px var(--orange-glow); }
-            50% { box-shadow: 0 0 25px var(--orange-glow); }
-        }
-        
         @keyframes pulse-gold {
             0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
             50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
@@ -172,17 +166,11 @@
             100% { filter: drop-shadow(0 0 5px gold); transform: scale(1); }
         }
         
-        @keyframes fill-bar {
-            from { width: 0%; }
-            to { width: var(--target-width); }
-        }
-        
         .float { animation: float 3s infinite ease-in-out; }
         .float-slow { animation: float-slow 4s infinite ease-in-out; }
         .pulse-pink { animation: pulse-glow 2s infinite ease-in-out; }
         .pulse-green { animation: pulse-green 2s infinite ease-in-out; }
         .pulse-blue { animation: pulse-blue 2s infinite ease-in-out; }
-        .pulse-orange { animation: pulse-orange 2s infinite ease-in-out; }
         .pulse-gold { animation: pulse-gold 2s infinite ease-in-out; }
         .spin-slow { animation: spin-slow 8s infinite linear; }
         .shine { animation: shine 2.5s infinite linear; }
@@ -330,10 +318,6 @@
             white-space: nowrap;
         }
         
-        .deposit-button i {
-            font-size: 11px;
-        }
-        
         .deposit-button:active {
             transform: scale(0.96);
         }
@@ -429,6 +413,8 @@
             margin-bottom: 12px;
             transition: transform 0.2s;
             animation: fade-in 0.4s ease;
+            position: relative;
+            overflow: hidden;
         }
         
         .card:hover {
@@ -451,410 +437,762 @@
         
         /* ===== RANCH CARD STYLES ===== */
         .ranch-card {
-            position: relative;
-            background: linear-gradient(145deg, #2a1b3d, #1a1a2e);
-            border-radius: 24px;
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 0;
+            margin-bottom: 12px;
             overflow: hidden;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
         }
         
-        .ranch-card-image {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-            opacity: 0.7;
-            transition: transform 0.3s;
-        }
-        
-        .ranch-card:hover .ranch-card-image {
-            transform: scale(1.05);
-        }
-        
-        .ranch-card-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
+        .ranch-card-header {
             padding: 16px;
+            background: linear-gradient(145deg, rgba(255, 92, 168, 0.2), rgba(0, 212, 255, 0.2));
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
         
-        .ranch-title {
-            font-size: 24px;
-            font-weight: 800;
-            margin-bottom: 8px;
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .ranch-title i {
-            color: var(--primary-pink);
-            font-size: 28px;
-        }
-        
-        .ranch-stats-grid {
+        .ranch-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 16px;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            padding: 12px;
         }
         
         .ranch-stat-item {
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-            border-radius: 16px;
-            padding: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 14px;
+            padding: 8px 4px;
         }
         
         .ranch-stat-label {
-            font-size: 10px;
+            font-size: 9px;
             color: var(--text-muted);
             margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
         
         .ranch-stat-value {
-            font-size: 20px;
+            font-size: 16px;
             font-weight: 700;
-        }
-        
-        .ranch-stat-value small {
-            font-size: 11px;
-            color: var(--text-secondary);
-            font-weight: 400;
+            color: var(--crystal-blue);
         }
         
         .ranch-progress {
-            margin-bottom: 12px;
+            padding: 0 12px 12px 12px;
         }
         
         .ranch-progress-header {
             display: flex;
             justify-content: space-between;
-            font-size: 11px;
+            font-size: 10px;
             margin-bottom: 4px;
         }
         
         .ranch-progress-bar {
-            height: 8px;
+            height: 6px;
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 4px;
+            border-radius: 3px;
             overflow: hidden;
         }
         
         .ranch-progress-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--primary-pink), var(--crystal-blue));
-            border-radius: 4px;
+            border-radius: 3px;
             transition: width 0.3s ease;
         }
         
-        .ranch-button {
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
+        .ranch-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .ranch-btn {
+            flex: 1;
+            background: linear-gradient(145deg, var(--primary-pink), #D94A8F);
             border: none;
             border-radius: 30px;
-            padding: 14px;
+            padding: 10px;
             color: white;
-            font-weight: 700;
-            font-size: 16px;
+            font-weight: 600;
+            font-size: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px var(--green-glow);
-            width: 100%;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px var(--pink-glow);
         }
         
-        .ranch-button i {
-            font-size: 18px;
+        .ranch-btn:active {
+            transform: scale(0.96);
         }
         
-        .ranch-button:active {
-            transform: scale(0.97);
-        }
-        
-        /* ===== COW LEVELS CARD ===== */
-        .level-card {
-            background: var(--glass-strong);
+        /* ===== COW LEVEL CARD ===== */
+        .cow-level-card {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
             border-radius: 20px;
-            padding: 14px;
+            padding: 12px;
             margin-bottom: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 92, 168, 0.3);
         }
         
-        .level-header {
+        .cow-level-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         
-        .level-badge {
+        .cow-level-title {
             display: flex;
             align-items: center;
-            gap: 8px;
-        }
-        
-        .level-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
+            gap: 6px;
+            font-size: 14px;
             font-weight: 700;
         }
         
-        .level-1 {
-            background: rgba(205, 127, 50, 0.2);
-            border: 1px solid var(--level-1);
-            color: var(--level-1);
+        .cow-level-badge {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid #FFD700;
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 10px;
+            color: #FFD700;
         }
         
-        .level-2 {
-            background: rgba(192, 192, 192, 0.2);
-            border: 1px solid var(--level-2);
-            color: var(--level-2);
+        .cow-level-stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
         }
         
-        .level-3 {
-            background: rgba(255, 215, 0, 0.2);
-            border: 1px solid var(--level-3);
-            color: var(--level-3);
-        }
-        
-        .level-stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .level-stat {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 8px;
+        .cow-level-stat {
+            flex: 1;
             text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 6px;
         }
         
-        .level-stat-label {
-            font-size: 9px;
+        .cow-level-stat-label {
+            font-size: 8px;
             color: var(--text-muted);
             margin-bottom: 2px;
         }
         
-        .level-stat-number {
-            font-size: 16px;
-            font-weight: 700;
+        .cow-level-stat-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--neon-green);
         }
         
-        .level-actions {
+        .cow-level-actions {
             display: flex;
             gap: 8px;
         }
         
-        .level-btn {
+        .cow-level-btn {
             flex: 1;
-            padding: 10px;
+            padding: 6px;
             border-radius: 30px;
             border: none;
+            font-size: 10px;
             font-weight: 600;
-            font-size: 11px;
             cursor: pointer;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
         }
         
-        .level-btn:active {
-            transform: scale(0.96);
+        .cow-level-btn.upgrade {
+            background: rgba(0, 242, 122, 0.15);
+            border: 1px solid rgba(0, 242, 122, 0.3);
+            color: var(--neon-green);
         }
         
-        .btn-activate {
+        .cow-level-btn.activate {
             background: rgba(255, 92, 168, 0.15);
-            border: 1px solid var(--primary-pink);
+            border: 1px solid rgba(255, 92, 168, 0.3);
             color: var(--primary-pink);
-        }
-        
-        .btn-upgrade {
-            background: linear-gradient(145deg, var(--crystal-blue), #0099cc);
-            color: white;
-            box-shadow: 0 2px 8px var(--blue-glow);
-        }
-        
-        .btn-upgrade:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
         
         /* ===== MILK STORAGE CARD ===== */
         .storage-card {
-            position: relative;
-            border-radius: 24px;
-            overflow: hidden;
-            margin-bottom: 16px;
-            border: 1px solid var(--crystal-blue);
-            box-shadow: 0 5px 20px var(--blue-glow);
-        }
-        
-        .storage-image {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            filter: brightness(0.7);
-        }
-        
-        .storage-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(90deg, rgba(0,212,255,0.3) 0%, rgba(0,0,0,0.7) 100%);
+            background: linear-gradient(145deg, #1e3a5f, #0a2a44);
+            border-radius: 20px;
             padding: 16px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            margin-bottom: 12px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .storage-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            animation: spin-slow 20s infinite linear;
+            z-index: 0;
+        }
+        
+        .storage-content {
+            position: relative;
+            z-index: 1;
         }
         
         .storage-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
         }
         
         .storage-title {
-            font-size: 18px;
-            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 6px;
+            font-size: 14px;
+            font-weight: 700;
         }
         
         .storage-level {
-            background: rgba(0, 212, 255, 0.2);
+            background: rgba(0, 212, 255, 0.15);
             border: 1px solid var(--crystal-blue);
-            border-radius: 30px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        
-        .storage-inactive-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: var(--danger-red);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 11px;
-            font-weight: 700;
-            box-shadow: 0 2px 10px var(--red-glow);
-            z-index: 10;
-        }
-        
-        .storage-content {
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
             border-radius: 20px;
-            padding: 14px;
-            margin-top: 10px;
-        }
-        
-        .storage-numbers {
-            display: flex;
-            justify-content: space-between;
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-        
-        .storage-numbers span:first-child {
+            padding: 2px 8px;
+            font-size: 10px;
             color: var(--crystal-blue);
         }
         
-        .storage-bar {
+        .storage-full-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--danger-red);
+            border-radius: 20px;
+            padding: 2px 8px;
+            font-size: 9px;
+            font-weight: 600;
+            color: white;
+            box-shadow: 0 2px 8px var(--red-glow);
+            z-index: 2;
+        }
+        
+        .storage-progress {
+            margin-bottom: 12px;
+        }
+        
+        .storage-progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+        
+        .storage-progress-bar {
             height: 10px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 5px;
             overflow: hidden;
-            margin-bottom: 16px;
+            margin-bottom: 4px;
         }
         
-        .storage-bar-fill {
+        .storage-progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--crystal-blue), var(--primary-pink));
+            background: linear-gradient(90deg, var(--neon-green), var(--crystal-blue));
             border-radius: 5px;
             transition: width 0.3s ease;
         }
         
         .storage-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         
         .storage-btn {
             flex: 1;
-            padding: 12px;
+            padding: 10px;
             border-radius: 30px;
             border: none;
-            font-weight: 700;
-            font-size: 13px;
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
         }
         
-        .storage-btn:active {
-            transform: scale(0.96);
-        }
-        
-        .btn-claim {
+        .storage-btn.claim {
             background: linear-gradient(145deg, var(--neon-green), #00b35e);
             color: white;
             box-shadow: 0 4px 12px var(--green-glow);
         }
         
-        .btn-upgrade-storage {
+        .storage-btn.upgrade {
             background: rgba(0, 212, 255, 0.15);
             border: 1px solid var(--crystal-blue);
             color: var(--crystal-blue);
         }
         
-        .btn-upgrade-storage:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .storage-btn.inactive {
+            background: var(--danger-red);
+            color: white;
+            box-shadow: 0 4px 12px var(--red-glow);
+            cursor: default;
         }
         
-        .next-upgrade-info {
+        /* ===== LEADERBOARD STYLES ===== */
+        .leaderboard-header {
+            background: linear-gradient(145deg, rgba(106, 13, 173, 0.8), rgba(193, 67, 255, 0.8));
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .leaderboard-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            justify-content: center;
+            position: relative;
+        }
+        
+        .leaderboard-title i {
+            color: #FFD700;
+            font-size: 28px;
+            animation: trophy-glow 2s infinite;
+        }
+        
+        .leaderboard-help-icon {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid #FFD700;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFD700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .leaderboard-help-icon:hover {
+            background: #FFD700;
+            color: black;
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .prize-pool {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 40px;
+            padding: 8px 16px;
+            margin-bottom: 12px;
+            border: 1px solid #FFD700;
+        }
+        
+        .prize-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .prize-amount {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFD700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .prize-amount span {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .leaderboard-note {
+            background: rgba(255, 215, 0, 0.15);
+            border-radius: 20px;
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            font-size: 11px;
+            text-align: center;
+            border: 1px dashed #FFD700;
+        }
+        
+        .leaderboard-note i {
+            color: #FFD700;
+            margin-right: 4px;
+        }
+        
+        .progress-counter {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 24px;
+            padding: 12px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        
+        .counter-main {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--crystal-blue);
+            margin-bottom: 4px;
+        }
+        
+        .counter-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        .counter-progress {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
             margin-top: 8px;
-            font-size: 10px;
-            color: var(--text-muted);
+        }
+        
+        .counter-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--crystal-blue), var(--primary-pink));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .end-message {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            padding: 8px;
+            font-size: 11px;
+            color: var(--warning);
+            text-align: center;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .end-message i {
+            margin-right: 4px;
+            color: #FFD700;
+        }
+        
+        .your-position-card {
+            background: linear-gradient(145deg, rgba(255, 92, 168, 0.2), rgba(0, 212, 255, 0.2));
+            border-radius: 30px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .position-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 0;
+            flex-wrap: wrap;
+        }
+        
+        .position-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            min-width: 70px;
+        }
+        
+        .position-value {
+            font-size: 20px;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 12px;
+            border-radius: 30px;
+            color: #FFD700;
+            min-width: 60px;
             text-align: center;
         }
         
-        /* باقي الأنماط من الملف الأصلي */
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .stat-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 30px;
+            padding: 4px 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-box-label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+        
+        .stat-box-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--crystal-blue);
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        
+        .prize-badge {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid #FFD700;
+            border-radius: 30px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #FFD700;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .prize-badge i {
+            color: #FFD700;
+        }
+        
+        .prize-badge img {
+            width: 14px;
+            height: 14px;
+            object-fit: contain;
+        }
+        
+        .leaderboard-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .leaderboard-card {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            border-radius: 20px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .leaderboard-card:hover {
+            transform: translateX(4px);
+            border-color: rgba(255, 92, 168, 0.3);
+        }
+        
+        .leaderboard-card.top-1 {
+            background: linear-gradient(145deg, #2a1b3d, #4a1f4a);
+            border: 2px solid #FFD700;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+        
+        .leaderboard-card.top-2 {
+            background: linear-gradient(145deg, #1a2a3a, #2a3a4a);
+            border: 2px solid #C0C0C0;
+        }
+        
+        .leaderboard-card.top-3 {
+            background: linear-gradient(145deg, #2a1a1a, #3a2a1a);
+            border: 2px solid #CD7F32;
+        }
+        
+        .card-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .rank-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .rank-badge.gold {
+            background: var(--leaderboard-gold-gradient);
+            color: #000;
+            border: 2px solid #FFD700;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+        
+        .rank-badge.silver {
+            background: var(--leaderboard-silver-gradient);
+            color: #000;
+            border: 2px solid #C0C0C0;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+        
+        .rank-badge.bronze {
+            background: var(--leaderboard-bronze-gradient);
+            color: #000;
+            border: 2px solid #CD7F32;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.5);
+        }
+        
+        .user-avatar-small {
+            display: none;
+        }
+        
+        .user-info {
+            flex: 1;
+        }
+        
+        .user-name-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        
+        .user-name {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        
+        .user-crown {
+            color: #FFD700;
+            font-size: 14px;
+        }
+        
+        .points-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .points-box {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 30px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--crystal-blue);
+        }
+        
+        .points-box i {
+            color: var(--crystal-blue);
+            font-size: 14px;
+        }
+        
+        .prize-pill {
+            background: rgba(255, 215, 0, 0.15);
+            border: 1px solid #FFD700;
+            border-radius: 30px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #FFD700;
+        }
+        
+        .prize-pill i {
+            color: #FFD700;
+            font-size: 14px;
+        }
+        
+        .prize-pill img {
+            width: 16px;
+            height: 16px;
+            object-fit: contain;
+        }
+        
+        .winners-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .winners-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #FFD700;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .winners-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .winner-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        
+        .winner-rank {
+            font-weight: 700;
+            color: #FFD700;
+            margin-right: 10px;
+        }
+        
+        .winner-name {
+            flex: 1;
+            color: var(--text-secondary);
+        }
+        
+        .winner-prize {
+            color: #FFD700;
+            font-weight: 600;
+        }
+        
+        /* ===== FARM GRID (OLD) - KEPT FOR COMPATIBILITY ===== */
         .farm-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1649,7 +1987,7 @@
             margin-top: 16px;
         }
         
-        .hatch-option {
+        .activate-option {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--glass-border);
             border-radius: 18px;
@@ -1661,28 +1999,28 @@
             transition: all 0.2s;
         }
         
-        .hatch-info {
+        .activate-info {
             display: flex;
             flex-direction: column;
             gap: 3px;
         }
         
-        .hatch-title {
+        .activate-title {
             font-size: 14px;
             font-weight: 700;
         }
         
-        .hatch-cost {
+        .activate-cost {
             font-size: 11px;
             color: var(--text-secondary);
         }
         
-        .hatch-balance {
+        .activate-balance {
             font-size: 10px;
             color: var(--text-muted);
         }
         
-        .hatch-input {
+        .activate-input {
             width: 60px;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--glass-border);
@@ -2026,9 +2364,54 @@
             .leaderboard-title { font-size: 20px; }
             .counter-main { font-size: 24px; }
             .prize-amount { font-size: 18px; }
-            .ranch-title { font-size: 20px; }
-            .ranch-stat-value { font-size: 16px; }
-            .storage-numbers { font-size: 14px; }
+            
+            .position-row {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .position-label {
+                min-width: 60px;
+                font-size: 12px;
+            }
+            
+            .position-value {
+                font-size: 16px;
+                padding: 2px 8px;
+                min-width: 50px;
+            }
+            
+            .stat-box {
+                padding: 2px 6px;
+            }
+            
+            .stat-box-label {
+                font-size: 9px;
+            }
+            
+            .stat-box-value {
+                font-size: 12px;
+            }
+            
+            .points-box {
+                font-size: 14px;
+                padding: 4px 8px;
+            }
+            
+            .prize-pill {
+                font-size: 14px;
+                padding: 4px 8px;
+            }
+            
+            .rank-badge {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+            
+            .ranch-stats {
+                grid-template-columns: 1fr 1fr;
+            }
         }
     </style>
 </head>
@@ -2083,7 +2466,7 @@
             <div class="help-emoji"><img src="https://i.ibb.co/j9zxzsQB/photo-5807836880429583588-m.jpg" style="width: 30px; height: 30px; border-radius: 8px;"></div>
             <div class="help-text">
                 <h4 data-i18n="help.cow.title">Cow Machine</h4>
-                <p data-i18n="help.cow.desc">1 TON · Levels 1-3<br>Activate every 24h with Milk<br>Upgrade for more production</p>
+                <p data-i18n="help.cow.desc">1 TON · Level system (20-104 Milk/hour)<br>Activate every 24h with Milk</p>
             </div>
         </div>
         
@@ -2104,18 +2487,10 @@
         </div>
         
         <div class="help-item">
-            <div class="help-emoji">🥛</div>
+            <div class="help-emoji">🥛→🐮</div>
             <div class="help-text">
-                <h4 data-i18n="help.storage.title">Milk Storage</h4>
-                <p data-i18n="help.storage.desc">Milk goes to storage first<br>Claim to balance · Upgrade capacity</p>
-            </div>
-        </div>
-        
-        <div class="help-item">
-            <div class="help-emoji">⏰</div>
-            <div class="help-text">
-                <h4 data-i18n="help.activation.title">Activation System</h4>
-                <p data-i18n="help.activation.desc">Cows work for 24 hours only<br>Pay Milk to reactivate them</p>
+                <h4 data-i18n="help.activate.title">Activation System</h4>
+                <p data-i18n="help.activate.desc">Cows work 24h only · Must reactivate with Milk<br>Level 1: 200 Milk · Level 2: 350 · Level 3: 1200</p>
             </div>
         </div>
         
@@ -2147,7 +2522,15 @@
             <div class="help-emoji">🏆</div>
             <div class="help-text">
                 <h4 data-i18n="help.leaderboard.title">Leaderboard Competition</h4>
-                <p data-i18n="help.leaderboard.desc">1 new cow = 10 points · Top 20 win 150 TON total<br>Ends when 1000 cows sold</p>
+                <p data-i18n="help.leaderboard.desc">1 new cow = 10 points · Top 20 win 150 TON total<br>Ends when 1000 cows sold<br>⚠️ You must buy a cow to appear on leaderboard!</p>
+            </div>
+        </div>
+        
+        <div class="help-item">
+            <div class="help-emoji">🥛</div>
+            <div class="help-text">
+                <h4 data-i18n="help.storage.title">Milk Storage</h4>
+                <p data-i18n="help.storage.desc">Milk goes to storage first · Claim when ready<br>Upgrade capacity with Milk (up to 1,000,000)</p>
             </div>
         </div>
     </div>
@@ -2290,49 +2673,247 @@
             </div>
         </div>
         
-        <div id="sectionFarm" class="section active">
-            <!-- Ranch Card - New Design with Image -->
-            <div class="ranch-card" id="ranchCard" onclick="window.openRanchPage()">
-                <img src="https://i.ibb.co/BKzShL8s/00.jpg" class="ranch-card-image" alt="Ranch">
-                <div class="ranch-card-overlay">
-                    <div class="ranch-title">
-                        <i class="fas fa-home"></i> MY RANCH
+        <!-- ===== NEW: RANCH SECTION (MAIN FARM MANAGEMENT) ===== -->
+        <div id="sectionRanch" class="section active">
+            <!-- Ranch Overview Card -->
+            <div class="ranch-card">
+                <div class="ranch-card-header">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                        <img src="https://i.ibb.co/BKzShL8s/00.jpg" style="width: 60px; height: 60px; border-radius: 20px; object-fit: cover; border: 2px solid var(--primary-pink);">
+                        <div>
+                            <div style="font-size: 18px; font-weight: 800;">🐄 RANCH OVERVIEW</div>
+                            <div style="font-size: 11px; color: var(--text-secondary);" id="ranchUserName">Farmer</div>
+                        </div>
                     </div>
-                    <div class="ranch-stats-grid">
+                    
+                    <div class="ranch-stats">
                         <div class="ranch-stat-item">
-                            <div class="ranch-stat-label"><i class="fas fa-cow"></i> Total Cows</div>
+                            <div class="ranch-stat-label">Total Cows</div>
                             <div class="ranch-stat-value" id="ranchTotalCows">0</div>
                         </div>
                         <div class="ranch-stat-item">
-                            <div class="ranch-stat-label"><i class="fas fa-check-circle" style="color: var(--neon-green);"></i> Active</div>
-                            <div class="ranch-stat-value" id="ranchActiveCows">0</div>
+                            <div class="ranch-stat-label">Active</div>
+                            <div class="ranch-stat-value" style="color: var(--neon-green);" id="ranchActiveCows">0</div>
                         </div>
                         <div class="ranch-stat-item">
-                            <div class="ranch-stat-label"><i class="fas fa-clock" style="color: var(--warning);"></i> Inactive</div>
-                            <div class="ranch-stat-value" id="ranchInactiveCows">0</div>
-                        </div>
-                        <div class="ranch-stat-item">
-                            <div class="ranch-stat-label"><i class="fas fa-tachometer-alt"></i> Production</div>
-                            <div class="ranch-stat-value" id="ranchHourlyProduction">0 <small>/h</small></div>
+                            <div class="ranch-stat-label">Inactive</div>
+                            <div class="ranch-stat-value" style="color: var(--danger-red);" id="ranchInactiveCows">0</div>
                         </div>
                     </div>
-                    <div class="ranch-progress">
-                        <div class="ranch-progress-header">
-                            <span>Cows sold: <span id="ranchCowsSold">0</span>/1000</span>
-                            <span id="ranchCowsRemaining">1000 left</span>
-                        </div>
-                        <div class="ranch-progress-bar">
-                            <div class="ranch-progress-fill" id="ranchProgressFill" style="width: 0%;"></div>
-                        </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 600;"><i class="fas fa-clock" style="color: var(--crystal-blue);"></i> Hourly Production</span>
+                        <span style="font-size: 16px; font-weight: 700; color: var(--neon-green);" id="ranchHourlyProduction">0</span>
                     </div>
-                    <button class="ranch-button" onclick="event.stopPropagation(); window.openRanchPage()">
-                        <i class="fas fa-door-open"></i> OPEN RANCH
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 12px; font-weight: 600;"><i class="fas fa-hourglass-half" style="color: var(--primary-pink);"></i> Next Production</span>
+                        <span style="font-size: 14px; font-weight: 600; color: var(--primary-pink);" id="ranchProductionTimer">00:00</span>
+                    </div>
+                </div>
+                
+                <div class="ranch-progress">
+                    <div class="ranch-progress-header">
+                        <span>Cows sold: <span id="ranchCowsSold">0</span> / 1000</span>
+                        <span id="ranchCowsRemaining">1000 left</span>
+                    </div>
+                    <div class="ranch-progress-bar">
+                        <div class="ranch-progress-fill" id="ranchProgressFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                
+                <div class="ranch-actions">
+                    <button class="ranch-btn" id="ranchBuyCowBtn">
+                        <i class="fas fa-shopping-cart"></i> Buy Cow (1 TON)
                     </button>
                 </div>
             </div>
             
-            <!-- باقي الماكينات -->
+            <!-- Milk Storage Card -->
+            <div class="storage-card" id="milkStorageCard">
+                <div class="storage-full-badge" id="storageFullBadge" style="display: none;">INACTIVE</div>
+                <div class="storage-content">
+                    <div class="storage-header">
+                        <div class="storage-title">
+                            <i class="fas fa-warehouse" style="color: var(--crystal-blue);"></i> Milk Storage
+                        </div>
+                        <div class="storage-level" id="storageLevel">Lvl 1</div>
+                    </div>
+                    
+                    <div class="storage-progress">
+                        <div class="storage-progress-header">
+                            <span id="milkStored">0</span>
+                            <span id="milkCapacity">/ 2,000</span>
+                        </div>
+                        <div class="storage-progress-bar">
+                            <div class="storage-progress-fill" id="storageProgressFill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="storage-actions">
+                        <button class="storage-btn claim" id="claimMilkBtn">
+                            <i class="fas fa-hand-holding-heart"></i> CLAIM
+                        </button>
+                        <button class="storage-btn upgrade" id="upgradeStorageBtn">
+                            <i class="fas fa-arrow-up"></i> UPGRADE
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cow Levels Card -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-chart-simple"></i> Cow Levels
+                </div>
+                
+                <!-- Level 1 -->
+                <div class="cow-level-card" id="level1Card">
+                    <div class="cow-level-header">
+                        <div class="cow-level-title">
+                            <span>🐮 Level 1 Cow</span>
+                            <span class="cow-level-badge" id="level1Count">0</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--neon-green);">500/day</div>
+                    </div>
+                    <div class="cow-level-stats">
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Active</div>
+                            <div class="cow-level-stat-value" id="level1Active">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Inactive</div>
+                            <div class="cow-level-stat-value" style="color: var(--danger-red);" id="level1Inactive">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Activation</div>
+                            <div class="cow-level-stat-value">200 🥛</div>
+                        </div>
+                    </div>
+                    <div class="cow-level-actions">
+                        <button class="cow-level-btn upgrade" id="upgradeLevel1Btn" disabled>
+                            <i class="fas fa-arrow-up"></i> Upgrade (6000 🥛)
+                        </button>
+                        <button class="cow-level-btn activate" id="activateLevel1Btn">
+                            <i class="fas fa-power-off"></i> Activate
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Level 2 -->
+                <div class="cow-level-card" id="level2Card">
+                    <div class="cow-level-header">
+                        <div class="cow-level-title">
+                            <span>🐮 Level 2 Cow</span>
+                            <span class="cow-level-badge" id="level2Count">0</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--neon-green);">1000/day</div>
+                    </div>
+                    <div class="cow-level-stats">
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Active</div>
+                            <div class="cow-level-stat-value" id="level2Active">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Inactive</div>
+                            <div class="cow-level-stat-value" style="color: var(--danger-red);" id="level2Inactive">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Activation</div>
+                            <div class="cow-level-stat-value">350 🥛</div>
+                        </div>
+                    </div>
+                    <div class="cow-level-actions">
+                        <button class="cow-level-btn upgrade" id="upgradeLevel2Btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade (20000 🥛)
+                        </button>
+                        <button class="cow-level-btn activate" id="activateLevel2Btn">
+                            <i class="fas fa-power-off"></i> Activate
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Level 3 -->
+                <div class="cow-level-card" id="level3Card">
+                    <div class="cow-level-header">
+                        <div class="cow-level-title">
+                            <span>🐮 Level 3 Cow</span>
+                            <span class="cow-level-badge" id="level3Count">0</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--neon-green);">2500/day</div>
+                    </div>
+                    <div class="cow-level-stats">
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Active</div>
+                            <div class="cow-level-stat-value" id="level3Active">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Inactive</div>
+                            <div class="cow-level-stat-value" style="color: var(--danger-red);" id="level3Inactive">0</div>
+                        </div>
+                        <div class="cow-level-stat">
+                            <div class="cow-level-stat-label">Activation</div>
+                            <div class="cow-level-stat-value">1200 🥛</div>
+                        </div>
+                    </div>
+                    <div class="cow-level-actions">
+                        <button class="cow-level-btn upgrade" id="upgradeLevel3Btn" disabled>
+                            <i class="fas fa-ban"></i> Max Level
+                        </button>
+                        <button class="cow-level-btn activate" id="activateLevel3Btn">
+                            <i class="fas fa-power-off"></i> Activate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Farm Section (Old - Kept for Chicken & Diamond) -->
+        <div id="sectionFarm" class="section">
             <div class="farm-grid">
+                <!-- Cow Card (Redirect to Ranch) -->
+                <div class="machine-card cow" id="cowCard" style="cursor: pointer;" onclick="switchToRanch()">
+                    <div class="machine-header">
+                        <div class="machine-emoji float-slow">
+                            <img src="https://i.ibb.co/j9zxzsQB/photo-5807836880429583588-m.jpg" alt="Cow Machine">
+                        </div>
+                        <div class="machine-info">
+                            <div class="machine-name-row">
+                                <span class="machine-name" data-i18n="farm.cow.name">Cow</span>
+                                <span class="machine-badge" id="cowBadge">Manage</span>
+                            </div>
+                            <div class="machine-price">
+                                <i class="fas fa-bolt"></i> 1 TON
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="machine-stats">
+                        <div class="stat-item">
+                            <div class="stat-label" data-i18n="farm.prod">Prod</div>
+                            <div class="stat-number" id="cowProdDisplay">20-104/h</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label" data-i18n="farm.owned">Owned</div>
+                            <div class="stat-number" id="cowsOwnedFarm">0</div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span data-i18n="farm.supply">Supply</span>
+                            <span id="cowProgressTextFarm">0/1000</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="cowProgressFillFarm" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary pulse-pink" onclick="switchToRanch()">
+                        <i class="fas fa-arrow-right"></i> OPEN RANCH
+                    </button>
+                </div>
+                
                 <div class="machine-card chicken" id="chickenCard">
                     <div class="machine-header">
                         <div class="machine-emoji float-slow">
@@ -2384,273 +2965,69 @@
                         <div class="unlock-timer" id="chickenUnlockTimer"></div>
                     </div>
                 </div>
-                
-                <div class="machine-card diamond" id="diamondCard">
-                    <div class="machine-header">
-                        <div class="machine-emoji spin-slow">
-                            <img src="https://i.ibb.co/JFb1bY8K/photo-5807836880429583587-m.jpg" alt="Crystal Engine">
-                        </div>
-                        <div class="machine-info">
-                            <div class="machine-name-row">
-                                <span class="machine-name" data-i18n="farm.crystal.name">Crystal Engine</span>
-                                <span class="machine-badge" id="diamondBadge">Locked</span>
-                            </div>
-                            <div class="machine-price">
-                                <i class="fas fa-bolt"></i> 20 TON
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="crystal-recipe">
-                        <div class="crystal-recipe-item">
-                            <span class="crystal-recipe-emoji">🥛</span>
-                            <span>20k</span>
-                        </div>
-                        <span class="crystal-recipe-plus">+</span>
-                        <div class="crystal-recipe-item">
-                            <span class="crystal-recipe-emoji">🥚</span>
-                            <span>20k</span>
-                        </div>
-                        <span class="crystal-recipe-equal">=</span>
-                        <div class="crystal-recipe-item">
-                            <span class="crystal-recipe-emoji">💎</span>
-                            <span>1</span>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 14px; background: rgba(0,0,0,0.2); border-radius: 14px; padding: 8px;">
-                        <div style="text-align: center; flex: 1;">
-                            <div style="font-size: 10px; color: var(--text-muted);" data-i18n="farm.owned">Owned</div>
-                            <div style="font-size: 16px; font-weight: 700;" id="diamondEnginesOwned">0</div>
-                        </div>
-                        <div style="text-align: center; flex: 1;">
-                            <div style="font-size: 10px; color: var(--text-muted);" data-i18n="farm.yield">Yield</div>
-                            <div style="font-size: 16px; font-weight: 700;">1 💎</div>
-                        </div>
-                    </div>
-                    
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" id="buyDiamondBtn" disabled>
-                            <i class="fas fa-lock"></i> <span data-i18n="farm.buy">Buy</span>
-                        </button>
-                        <button class="btn btn-hatch" id="startDiamondBtn" disabled>
-                            <i class="fas fa-play"></i> <span data-i18n="farm.start">Start</span>
-                        </button>
-                    </div>
-                    
-                    <div class="locked-overlay" id="diamondLockedOverlay" style="display: flex;">
-                        <div class="big-lock">🔒</div>
-                        <div class="unlock-timer" id="diamondUnlockTimer"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Ranch Management Page (New Section) -->
-        <div id="sectionRanch" class="section">
-            <!-- Ranch Overview Card -->
-            <div class="card" style="background: linear-gradient(145deg, #2a1b3d, #1a1a2e); border: 1px solid var(--primary-pink);">
-                <div class="card-title">
-                    <i class="fas fa-home" style="color: var(--primary-pink);"></i> 🐄 Ranch Overview
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 12px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: 800; color: var(--crystal-blue);" id="ranchDetailTotalCows">0</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">Total Cows</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 12px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: 800; color: var(--neon-green);" id="ranchDetailActiveCows">0</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">Active</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 12px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: 800; color: var(--warning);" id="ranchDetailInactiveCows">0</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">Inactive</div>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 12px; text-align: center;">
-                        <div style="font-size: 28px; font-weight: 800; color: var(--primary-pink);" id="ranchDetailHourlyProduction">0</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">Milk/hour</div>
-                    </div>
-                </div>
-                
-                <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); border-radius: 30px; padding: 10px 16px; margin-bottom: 8px;">
-                    <span><i class="fas fa-clock" style="color: var(--warning);"></i> Next Production:</span>
-                    <span style="font-weight: 700; color: var(--crystal-blue);" id="ranchNextProduction">00:00</span>
-                </div>
-                
-                <div class="progress-section" style="margin-bottom: 16px;">
-                    <div class="progress-header">
-                        <span>Cows sold: <span id="ranchDetailCowsSold">0</span>/1000</span>
-                        <span id="ranchDetailCowsRemaining">1000 left</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="ranchDetailProgressFill" style="width: 0%;"></div>
-                    </div>
-                </div>
-                
-                <button class="btn btn-primary" id="buyCowFromRanchBtn" onclick="window.buyCow()" style="margin-bottom: 8px;">
-                    <i class="fas fa-shopping-cart"></i> Buy Cow (1 TON)
-                </button>
             </div>
             
-            <!-- Cow Levels Card -->
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-layer-group"></i> Cow Levels
-                </div>
-                
-                <!-- Level 1 -->
-                <div class="level-card">
-                    <div class="level-header">
-                        <div class="level-badge">
-                            <div class="level-icon level-1">L1</div>
-                            <div>
-                                <div style="font-weight: 700;">Level 1 Cow</div>
-                                <div style="font-size: 10px; color: var(--text-muted;"><span id="level1Count">0</span> cows · 500/day</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 11px; color: var(--text-muted);">Active: <span id="level1Active">0</span></div>
-                            <div style="font-size: 11px; color: var(--text-muted);">Inactive: <span id="level1Inactive">0</span></div>
-                        </div>
+            <div class="machine-card diamond" id="diamondCard">
+                <div class="machine-header">
+                    <div class="machine-emoji spin-slow">
+                        <img src="https://i.ibb.co/JFb1bY8K/photo-5807836880429583587-m.jpg" alt="Crystal Engine">
                     </div>
-                    
-                    <div class="level-stats">
-                        <div class="level-stat">
-                            <div class="level-stat-label">Activation Cost</div>
-                            <div class="level-stat-number">200 🥛</div>
+                    <div class="machine-info">
+                        <div class="machine-name-row">
+                            <span class="machine-name" data-i18n="farm.crystal.name">Crystal Engine</span>
+                            <span class="machine-badge" id="diamondBadge">Locked</span>
                         </div>
-                        <div class="level-stat">
-                            <div class="level-stat-label">Production</div>
-                            <div class="level-stat-number">500/day</div>
+                        <div class="machine-price">
+                            <i class="fas fa-bolt"></i> 20 TON
                         </div>
-                    </div>
-                    
-                    <div class="level-actions">
-                        <button class="level-btn btn-activate" onclick="window.openActivateModal(1)" id="activateLevel1Btn">
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                        <button class="level-btn btn-upgrade" onclick="window.openUpgradeModal(1)" id="upgradeLevel1Btn" disabled>
-                            <i class="fas fa-arrow-up"></i> Upgrade to L2
-                        </button>
                     </div>
                 </div>
                 
-                <!-- Level 2 -->
-                <div class="level-card">
-                    <div class="level-header">
-                        <div class="level-badge">
-                            <div class="level-icon level-2">L2</div>
-                            <div>
-                                <div style="font-weight: 700;">Level 2 Cow</div>
-                                <div style="font-size: 10px; color: var(--text-muted;"><span id="level2Count">0</span> cows · 1000/day</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 11px; color: var(--text-muted);">Active: <span id="level2Active">0</span></div>
-                            <div style="font-size: 11px; color: var(--text-muted);">Inactive: <span id="level2Inactive">0</span></div>
-                        </div>
+                <div class="crystal-recipe">
+                    <div class="crystal-recipe-item">
+                        <span class="crystal-recipe-emoji">🥛</span>
+                        <span>20k</span>
                     </div>
-                    
-                    <div class="level-stats">
-                        <div class="level-stat">
-                            <div class="level-stat-label">Activation</div>
-                            <div class="level-stat-number">350 🥛</div>
-                        </div>
-                        <div class="level-stat">
-                            <div class="level-stat-label">Upgrade Cost</div>
-                            <div class="level-stat-number">6,000 🥛</div>
-                        </div>
+                    <span class="crystal-recipe-plus">+</span>
+                    <div class="crystal-recipe-item">
+                        <span class="crystal-recipe-emoji">🥚</span>
+                        <span>20k</span>
                     </div>
-                    
-                    <div class="level-actions">
-                        <button class="level-btn btn-activate" onclick="window.openActivateModal(2)" id="activateLevel2Btn">
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                        <button class="level-btn btn-upgrade" onclick="window.openUpgradeModal(2)" id="upgradeLevel2Btn">
-                            <i class="fas fa-arrow-up"></i> Upgrade to L3
-                        </button>
+                    <span class="crystal-recipe-equal">=</span>
+                    <div class="crystal-recipe-item">
+                        <span class="crystal-recipe-emoji">💎</span>
+                        <span>1</span>
                     </div>
                 </div>
                 
-                <!-- Level 3 -->
-                <div class="level-card">
-                    <div class="level-header">
-                        <div class="level-badge">
-                            <div class="level-icon level-3">L3</div>
-                            <div>
-                                <div style="font-weight: 700;">Level 3 Cow</div>
-                                <div style="font-size: 10px; color: var(--text-muted;"><span id="level3Count">0</span> cows · 2500/day</div>
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 11px; color: var(--text-muted);">Active: <span id="level3Active">0</span></div>
-                            <div style="font-size: 11px; color: var(--text-muted);">Inactive: <span id="level3Inactive">0</span></div>
-                        </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 14px; background: rgba(0,0,0,0.2); border-radius: 14px; padding: 8px;">
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 10px; color: var(--text-muted);" data-i18n="farm.owned">Owned</div>
+                        <div style="font-size: 16px; font-weight: 700;" id="diamondEnginesOwned">0</div>
                     </div>
-                    
-                    <div class="level-stats">
-                        <div class="level-stat">
-                            <div class="level-stat-label">Activation</div>
-                            <div class="level-stat-number">1,200 🥛</div>
-                        </div>
-                        <div class="level-stat">
-                            <div class="level-stat-label">Max Level</div>
-                            <div class="level-stat-number">🏆</div>
-                        </div>
-                    </div>
-                    
-                    <div class="level-actions">
-                        <button class="level-btn btn-activate" onclick="window.openActivateModal(3)" id="activateLevel3Btn">
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                        <button class="level-btn btn-upgrade" disabled style="opacity: 0.5;">
-                            <i class="fas fa-check"></i> Max Level
-                        </button>
+                    <div style="text-align: center; flex: 1;">
+                        <div style="font-size: 10px; color: var(--text-muted);" data-i18n="farm.yield">Yield</div>
+                        <div style="font-size: 16px; font-weight: 700;">1 💎</div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Milk Storage Card -->
-            <div class="storage-card" id="milkStorageCard">
-                <img src="https://i.ibb.co/BKHhxhh3/Chat-GPT-Image-4-2026-05-41-33.png" class="storage-image" alt="Milk Storage">
-                <div class="storage-inactive-badge" id="storageFullBadge" style="display: none;">INACTIVE</div>
-                <div class="storage-overlay">
-                    <div class="storage-header">
-                        <div class="storage-title">
-                            <i class="fas fa-database" style="color: var(--crystal-blue);"></i> Milk Storage
-                        </div>
-                        <div class="storage-level" id="storageLevel">Lv 1</div>
-                    </div>
-                    
-                    <div class="storage-content">
-                        <div class="storage-numbers">
-                            <span id="milkStored">0</span>
-                            <span>/ <span id="milkCapacity">2000</span></span>
-                        </div>
-                        <div class="storage-bar">
-                            <div class="storage-bar-fill" id="storageBarFill" style="width: 0%;"></div>
-                        </div>
-                        
-                        <div class="storage-actions">
-                            <button class="storage-btn btn-claim" onclick="window.claimMilk()" id="claimMilkBtn">
-                                <i class="fas fa-hand-holding-heart"></i> CLAIM
-                            </button>
-                            <button class="storage-btn btn-upgrade-storage" onclick="window.upgradeMilkStorage()" id="upgradeStorageBtn">
-                                <i class="fas fa-arrow-up"></i> UPGRADE
-                            </button>
-                        </div>
-                        
-                        <div class="next-upgrade-info" id="nextUpgradeInfo">
-                            Next: Lv 2 · 2,000 🥛 → 5,000 capacity
-                        </div>
-                    </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="buyDiamondBtn" disabled>
+                        <i class="fas fa-lock"></i> <span data-i18n="farm.buy">Buy</span>
+                    </button>
+                    <button class="btn btn-hatch" id="startDiamondBtn" disabled>
+                        <i class="fas fa-play"></i> <span data-i18n="farm.start">Start</span>
+                    </button>
+                </div>
+                
+                <div class="locked-overlay" id="diamondLockedOverlay" style="display: flex;">
+                    <div class="big-lock">🔒</div>
+                    <div class="unlock-timer" id="diamondUnlockTimer"></div>
                 </div>
             </div>
         </div>
         
         <div id="sectionMarket" class="section">
-            <!-- نفس محتوى الماركت من الملف الأصلي -->
             <div class="card">
                 <div class="card-title">
                     <i class="fas fa-chart-line"></i> <span data-i18n="market.title">P2P Market</span>
@@ -2774,7 +3151,6 @@
         </div>
         
         <div id="sectionFriends" class="section">
-            <!-- نفس محتوى الأصدقاء من الملف الأصلي -->
             <div class="card" style="background: linear-gradient(145deg, rgba(255,92,168,0.15), var(--glass-strong));">
                 <div class="card-title">
                     <i class="fas fa-users"></i> <span data-i18n="referral.title">Referral Program</span>
@@ -2842,7 +3218,6 @@
         </div>
         
         <div id="sectionTasks" class="section">
-            <!-- نفس محتوى المهام من الملف الأصلي -->
             <div class="card">
                 <div class="card-title">
                     <i class="fas fa-tasks"></i> <span data-i18n="tasks.title">Tasks & Rewards</span>
@@ -2872,7 +3247,6 @@
         </div>
         
         <div id="sectionProfile" class="section">
-            <!-- نفس محتوى البروفايل من الملف الأصلي -->
             <div class="card">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
                     <div style="width: 50px; height: 50px; background: linear-gradient(145deg, var(--primary-pink), var(--crystal-blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; overflow: hidden;" id="profileAvatar">
@@ -2983,7 +3357,11 @@
     </div>
 
     <nav class="bottom-nav">
-        <div class="nav-item active" data-section="sectionFarm">
+        <div class="nav-item active" data-section="sectionRanch">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-text" data-i18n="nav.ranch">Ranch</div>
+        </div>
+        <div class="nav-item" data-section="sectionFarm">
             <div class="nav-icon">🚜</div>
             <div class="nav-text" data-i18n="nav.farm">Farm</div>
         </div>
@@ -3057,79 +3435,6 @@
         </div>
     </div>
 
-    <!-- Activate Cows Modal -->
-    <div class="modal-overlay" id="activateModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fas fa-play" style="color: var(--primary-pink);"></i> <span>Activate Cows</span>
-                </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">How many cows?</label>
-                <input type="number" id="activateQuantity" class="form-input" placeholder="1" min="1" value="1">
-                <div class="preset-buttons">
-                    <span class="preset-btn" data-activate="1">1</span>
-                    <span class="preset-btn" data-activate="5">5</span>
-                    <span class="preset-btn" data-activate="10">10</span>
-                    <span class="preset-btn" data-activate="all">ALL</span>
-                </div>
-            </div>
-            
-            <div class="total-ton-result" id="activateCost">
-                Cost: 0 🥛
-            </div>
-            
-            <div style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="font-size: 11px; color: var(--text-secondary);">Your Milk Stored:</span>
-                    <span style="font-weight: 700; color: var(--crystal-blue);" id="activateUserMilk">0</span>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" id="confirmActivateBtn" style="background: linear-gradient(145deg, var(--primary-pink), #D94A8F);">
-                <i class="fas fa-check-circle"></i> Confirm Activation
-            </button>
-        </div>
-    </div>
-
-    <!-- Upgrade Cows Modal -->
-    <div class="modal-overlay" id="upgradeModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fas fa-arrow-up" style="color: var(--crystal-blue);"></i> <span>Upgrade Cows</span>
-                </h3>
-                <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
-            </div>
-            
-            <div class="form-group">
-                <label class="form-label">Select cows to upgrade</label>
-                <div id="cowList" style="max-height: 200px; overflow-y: auto; margin-bottom: 10px;">
-                    <!-- سيتم ملؤها بالجافاسكريبت -->
-                </div>
-            </div>
-            
-            <div class="total-ton-result" id="upgradeCost">
-                Total Cost: 0 🥛
-            </div>
-            
-            <div style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between;">
-                    <span style="font-size: 11px; color: var(--text-secondary);">Your Milk Stored:</span>
-                    <span style="font-weight: 700; color: var(--crystal-blue);" id="upgradeUserMilk">0</span>
-                </div>
-            </div>
-            
-            <button class="btn btn-primary" id="confirmUpgradeBtn" style="background: linear-gradient(145deg, var(--crystal-blue), #0099cc);">
-                <i class="fas fa-check-circle"></i> Confirm Upgrade
-            </button>
-        </div>
-    </div>
-
-    <!-- باقي المودالات من الملف الأصلي -->
     <div class="modal-overlay" id="confirmPurchaseModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -3158,25 +3463,54 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="hatchModal">
+    <!-- Activate Cows Modal -->
+    <div class="modal-overlay" id="activateModal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 class="modal-title">
-                    <i class="fas fa-egg" style="color: var(--neon-green);"></i> <span data-i18n="modal.hatch.title">Hatch Machine</span>
+                    <i class="fas fa-power-off" style="color: var(--neon-green);"></i> <span data-i18n="modal.activate.title">Activate Cows</span>
                 </h3>
                 <i class="fas fa-times modal-close" onclick="window.closeAllModals()"></i>
             </div>
             
-            <div class="hatch-option" id="hatchChickenOption">
-                <div class="hatch-info">
-                    <span class="hatch-title">🐔 <span data-i18n="farm.chicken.name">Chicken</span></span>
-                    <span class="hatch-cost" data-i18n="modal.hatch.chickenCost">5,000 Eggs</span>
-                    <span class="hatch-balance" id="hatchChickenBalance">Your eggs: 0</span>
+            <div class="form-group">
+                <label class="form-label" data-i18n="modal.activate.level">Level</label>
+                <div id="activateLevelDisplay" style="font-size: 16px; font-weight: 700; margin-bottom: 10px;">Level 1</div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" data-i18n="modal.activate.quantity">How many cows?</label>
+                <div style="display: flex; gap: 5px; margin-bottom: 10px;">
+                    <button class="preset-btn" data-activate-qty="1">1</button>
+                    <button class="preset-btn" data-activate-qty="5">5</button>
+                    <button class="preset-btn" data-activate-qty="10">10</button>
+                    <button class="preset-btn" data-activate-qty="all">ALL</button>
                 </div>
-                <div style="display: flex; align-items: center; gap: 5px;">
-                    <input type="number" id="hatchChickenAmount" class="hatch-input" placeholder="1" min="1" value="1">
-                    <button class="btn btn-hatch" id="hatchChickenConfirm" style="padding: 6px 10px;" data-i18n="modal.hatch.hatchBtn">Hatch</button>
+                <input type="number" id="activateQuantity" class="form-input" placeholder="Number of cows" min="1" value="1">
+            </div>
+            
+            <div class="total-ton-result" id="activateTotalCost">
+                Cost: 0 Milk
+            </div>
+            
+            <div style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-size: 11px; color: var(--text-secondary);">Your Milk Balance:</span>
+                    <span style="font-weight: 700; color: var(--crystal-blue);" id="activateUserMilk">0</span>
                 </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+                    <span style="font-size: 11px; color: var(--text-secondary);">Inactive Cows (Level <span id="activateLevelNum">1</span>):</span>
+                    <span style="font-weight: 700;" id="activateAvailableCows">0</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-secondary" onclick="window.closeAllModals()" style="flex: 1;">
+                    Cancel
+                </button>
+                <button class="btn btn-primary" id="confirmActivateBtn" style="flex: 1; background: linear-gradient(145deg, var(--neon-green), #00b35e);">
+                    <i class="fas fa-check-circle"></i> Confirm
+                </button>
             </div>
         </div>
     </div>
@@ -3327,9 +3661,6 @@
     </div>
 
     <script>
-        // ============================================
-        // CONFIG & CONSTANTS
-        // ============================================
         const CONFIG = {
             API_URL: 'https://noisy-dust-b9e8.mmrr2872008.workers.dev',
             BOT_USERNAME: '@Crystal_Ranch_bot',
@@ -3341,14 +3672,15 @@
             CRYSTAL_PRICE: 25,
             TASK_REWARD: 0.001,
             MAX_ACTIVE_ORDERS: 2,
-            MIN_ORDER_PRICE: 0.0002,
-            ORDER_PENALTY_FEE: 0.2,
-            COW_HATCH_COST: 10000, // لم يعد مستخدماً
+            
+            // NEW: Cow Level Constants
             COW_LEVELS: {
-                1: { productionPerDay: 500, activationCost: 200, upgradeCost: 0 },
-                2: { productionPerDay: 1000, activationCost: 350, upgradeCost: 6000 },
-                3: { productionPerDay: 2500, activationCost: 1200, upgradeCost: 20000 }
+                1: { production: 500, activationCost: 200, upgradeCost: 0 },
+                2: { production: 1000, activationCost: 350, upgradeCost: 6000 },
+                3: { production: 2500, activationCost: 1200, upgradeCost: 20000 }
             },
+            
+            // NEW: Milk Storage Constants
             MILK_STORAGE_LEVELS: {
                 1: { capacity: 2000, upgradeCost: 0 },
                 2: { capacity: 5000, upgradeCost: 2000 },
@@ -3360,12 +3692,12 @@
                 8: { capacity: 320000, upgradeCost: 160000 },
                 9: { capacity: 640000, upgradeCost: 320000 },
                 10: { capacity: 1000000, upgradeCost: 600000 }
-            },
-            ACTIVATION_DURATION_HOURS: 24
+            }
         };
 
         const TRANSLATIONS = {
             en: {
+                'nav.ranch': 'Ranch',
                 'nav.farm': 'Farm',
                 'nav.market': 'Market',
                 'nav.crystal': 'Crystal',
@@ -3465,9 +3797,9 @@
                 'modal.confirm.cancel': 'Cancel',
                 'modal.confirm.confirm': 'Confirm & Pay',
                 
-                'modal.hatch.title': 'Hatch Machine',
-                'modal.hatch.chickenCost': '5,000 Eggs',
-                'modal.hatch.hatchBtn': 'Hatch',
+                'modal.activate.title': 'Activate Cows',
+                'modal.activate.level': 'Level',
+                'modal.activate.quantity': 'How many cows?',
                 
                 'modal.deposit.title': 'Deposit TON',
                 'modal.deposit.wallet': 'Wallet',
@@ -3482,25 +3814,26 @@
                 
                 'help.title': 'How to Play',
                 'help.cow.title': 'Cow Machine',
-                'help.cow.desc': '1 TON · Levels 1-3<br>Activate every 24h with Milk<br>Upgrade for more production',
+                'help.cow.desc': '1 TON · Level system (20-104 Milk/hour)<br>Activate every 24h with Milk',
                 'help.chicken.title': 'Chicken Machine',
                 'help.chicken.desc': '1 TON · 41 Eggs/hour<br>Unlocks after all Cows sold',
                 'help.crystal.title': 'Crystal Engine',
                 'help.crystal.desc': '20 TON · 20k Milk + 20k Eggs = 1 Crystal<br>Convert Crystals → TON',
-                'help.storage.title': 'Milk Storage',
-                'help.storage.desc': 'Milk goes to storage first<br>Claim to balance · Upgrade capacity',
-                'help.activation.title': 'Activation System',
-                'help.activation.desc': 'Cows work for 24 hours only<br>Pay Milk to reactivate them',
+                'help.activate.title': 'Activation System',
+                'help.activate.desc': 'Cows work 24h only · Must reactivate with Milk<br>Level 1: 200 Milk · Level 2: 350 · Level 3: 1200',
                 'help.market.title': 'P2P Market',
                 'help.market.desc': 'Trade Milk & Eggs with other players<br>Card system · Best price 🔥',
                 'help.referral.title': 'Referral',
                 'help.referral.desc': 'Earn 10% of every TON purchase made by your friends<br>Auto-added to balance',
                 'help.tasks.title': 'Tasks & Rewards',
-                'help.tasks.desc': 'Complete tasks to earn 0.001 TON<br>Create your own community tasks (min 100 users)',
+                'help.tasks.desc': 'Complete tasks to earn TON<br>Create your own community tasks (min 100 users)',
                 'help.leaderboard.title': 'Leaderboard Competition',
-                'help.leaderboard.desc': '1 new cow = 10 points · Top 20 win 150 TON total<br>Ends when 1000 cows sold'
+                'help.leaderboard.desc': '1 new cow = 10 points · Top 20 win 150 TON total<br>Ends when 1000 cows sold<br>⚠️ You must buy a cow to appear on leaderboard!',
+                'help.storage.title': 'Milk Storage',
+                'help.storage.desc': 'Milk goes to storage first · Claim when ready<br>Upgrade capacity with Milk (up to 1,000,000)'
             },
             ru: {
+                'nav.ranch': 'Ранчо',
                 'nav.farm': 'Ферма',
                 'nav.market': 'Рынок',
                 'nav.crystal': 'Кристалл',
@@ -3600,9 +3933,9 @@
                 'modal.confirm.cancel': 'Отмена',
                 'modal.confirm.confirm': 'Подтвердить и оплатить',
                 
-                'modal.hatch.title': 'Вывести машину',
-                'modal.hatch.chickenCost': '5,000 Яиц',
-                'modal.hatch.hatchBtn': 'Вывести',
+                'modal.activate.title': 'Активировать коров',
+                'modal.activate.level': 'Уровень',
+                'modal.activate.quantity': 'Сколько коров?',
                 
                 'modal.deposit.title': 'Депозит TON',
                 'modal.deposit.wallet': 'Кошелек',
@@ -3617,23 +3950,23 @@
                 
                 'help.title': 'Как играть',
                 'help.cow.title': 'Корова',
-                'help.cow.desc': '1 TON · Уровни 1-3<br>Активация каждые 24ч Молоком<br>Улучшайте для большего производства',
+                'help.cow.desc': '1 TON · Система уровней (20-104 Молоко/час)<br>Активация каждые 24ч Молоком',
                 'help.chicken.title': 'Курица',
                 'help.chicken.desc': '1 TON · 41 Яйца/час<br>Открывается после всех коров',
                 'help.crystal.title': 'Кристальный двигатель',
                 'help.crystal.desc': '20 TON · 20k Молока + 20k Яиц = 1 Кристалл<br>Конвертация в TON',
-                'help.storage.title': 'Хранилище молока',
-                'help.storage.desc': 'Молоко сначала идёт в хранилище<br>Забирайте в баланс · Улучшайте ёмкость',
-                'help.activation.title': 'Система активации',
-                'help.activation.desc': 'Коровы работают только 24 часа<br>Платите Молоком для реактивации',
+                'help.activate.title': 'Система активации',
+                'help.activate.desc': 'Коровы работают 24ч · Нужно реактивировать Молоком<br>Уровень 1: 200 Молока · Уровень 2: 350 · Уровень 3: 1200',
                 'help.market.title': 'P2P Рынок',
                 'help.market.desc': 'Торгуйте молоком и яйцами<br>Карточная система',
                 'help.referral.title': 'Рефералы',
                 'help.referral.desc': '10% от покупок друзей',
                 'help.tasks.title': 'Задания',
-                'help.tasks.desc': 'Выполняйте задания за 0.001 TON',
+                'help.tasks.desc': 'Выполняйте задания за TON',
                 'help.leaderboard.title': 'Соревнование',
-                'help.leaderboard.desc': '1 новая корова = 10 очков · Топ-20 выигрывают 150 TON<br>Заканчивается когда продано 1000 коров'
+                'help.leaderboard.desc': '1 новая корова = 10 очков · Топ-20 выигрывают 150 TON<br>Заканчивается когда продано 1000 коров',
+                'help.storage.title': 'Хранилище молока',
+                'help.storage.desc': 'Молоко сначала идет в хранилище · Забирайте когда готово<br>Увеличивайте вместимость Молоком (до 1,000,000)'
             }
         };
 
@@ -3715,7 +4048,8 @@
             market: null,
             tasks: null,
             leaderboard: null,
-            ranch: null,
+            
+            ranch: null, // NEW: Ranch data
             
             telegram: null,
             wallet: null,
@@ -3732,7 +4066,7 @@
             currentTxHash: null,
             
             pendingOrder: null,
-            pendingTask: null,
+            pendingActivate: { level: null, cows: [] }, // NEW: For activation
             currentLanguage: 'en',
             
             referralsPage: 1,
@@ -3741,8 +4075,6 @@
             hasMoreEarnings: false,
             
             currentTaskTab: 'partner',
-            currentActivateLevel: 1,
-            currentUpgradeLevel: 2,
             
             initialized: false
         };
@@ -3866,7 +4198,7 @@
         }
 
         async function initApp() {
-            console.log('Crystal Ranch v6.0 · Ranch System');
+            console.log('Crystal Ranch v6.0 · Initializing with Cow Levels...');
             
             const savedLang = localStorage.getItem('crystal_ranch_lang') || 'en';
             setLanguage(savedLang);
@@ -3877,11 +4209,12 @@
             setTimeout(() => initTONConnect(), 1000);
             
             await loadGameState();
+            await loadRanch(); // NEW: Load ranch data
             
             setupIntervals();
             setupEventListeners();
             
-            console.log('Crystal Ranch · Ready');
+            console.log('Crystal Ranch v6.0 · Ready');
         }
 
         async function setupTelegram() {
@@ -3897,6 +4230,7 @@
                         
                         const fullName = `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() || 'Farmer';
                         document.getElementById('profileName').innerHTML = fullName;
+                        document.getElementById('ranchUserName').innerHTML = fullName;
                         document.getElementById('profileUsername').innerHTML = 
                             tgUser.username ? `@${tgUser.username}` : '@crystal_ranch';
                         document.getElementById('profileUserId').innerHTML = `ID: ${App.userId}`;
@@ -3920,6 +4254,7 @@
                 } else {
                     App.userId = 'demo_' + Math.floor(Math.random() * 1000000);
                     document.getElementById('profileName').innerHTML = 'Demo Farmer';
+                    document.getElementById('ranchUserName').innerHTML = 'Demo Farmer';
                     document.getElementById('profileUsername').innerHTML = '@demo';
                     document.getElementById('profileUserId').innerHTML = `ID: ${App.userId}`;
                     document.getElementById('depositUserIdDisplay').innerHTML = App.userId;
@@ -4073,6 +4408,17 @@
             }
         }
 
+        // NEW: Load ranch data
+        async function loadRanch() {
+            try {
+                const ranch = await callAPI('getRanch');
+                App.ranch = ranch;
+                updateRanchUI();
+            } catch (error) {
+                console.error('Load ranch error:', error);
+            }
+        }
+
         async function loadGameState() {
             try {
                 const state = await callAPI('getState');
@@ -4104,20 +4450,22 @@
                     prizesDistributed: false,
                     winners: {}
                 };
-                App.ranch = state.ranch || null;
                 
                 if (App.global) {
                     App.global.diamond_price = CONFIG.CRYSTAL_PRICE;
                 }
                 
                 updateAllUI();
-                updateRanchUI();
                 updateReferralUI();
                 updateTasksUI();
                 updateLeaderboardUI();
                 
                 animateTonBalance();
+                
                 updateLockedStates();
+                
+                // Also load ranch data
+                await loadRanch();
                 
                 if (state.pendingDeposits && state.pendingDeposits.length > 0) {
                     const pending = state.pendingDeposits[0];
@@ -4131,271 +4479,111 @@
             }
         }
 
+        // NEW: Update Ranch UI
         function updateRanchUI() {
             if (!App.ranch) return;
             
             const ranch = App.ranch;
             
-            // Update Ranch Overview Card
-            document.getElementById('ranchTotalCows').innerHTML = ranch.totalCows || 0;
-            document.getElementById('ranchActiveCows').innerHTML = ranch.activeCows || 0;
-            document.getElementById('ranchInactiveCows').innerHTML = ranch.inactiveCows || 0;
-            document.getElementById('ranchHourlyProduction').innerHTML = Math.round(ranch.hourlyProduction || 0);
+            // Ranch Overview
+            document.getElementById('ranchTotalCows').innerHTML = ranch.cowStats.total || 0;
+            document.getElementById('ranchActiveCows').innerHTML = ranch.cowStats.active || 0;
+            document.getElementById('ranchInactiveCows').innerHTML = ranch.cowStats.inactive || 0;
+            document.getElementById('ranchHourlyProduction').innerHTML = Math.floor(ranch.hourlyProduction);
             
-            const cowsSold = App.global?.cows_sold || 0;
-            document.getElementById('ranchCowsSold').innerHTML = cowsSold;
-            document.getElementById('ranchCowsRemaining').innerHTML = (1000 - cowsSold) + ' left';
-            document.getElementById('ranchProgressFill').style.width = (cowsSold / 10) + '%';
+            // Global sales
+            document.getElementById('ranchCowsSold').innerHTML = ranch.globalSales.sold || 0;
+            document.getElementById('ranchCowsRemaining').innerHTML = ranch.globalSales.remaining + ' left';
+            const progressPercent = (ranch.globalSales.sold / 1000) * 100;
+            document.getElementById('ranchProgressFill').style.width = progressPercent + '%';
             
-            // Update Ranch Details Page
-            document.getElementById('ranchDetailTotalCows').innerHTML = ranch.totalCows || 0;
-            document.getElementById('ranchDetailActiveCows').innerHTML = ranch.activeCows || 0;
-            document.getElementById('ranchDetailInactiveCows').innerHTML = ranch.inactiveCows || 0;
-            document.getElementById('ranchDetailHourlyProduction').innerHTML = Math.round(ranch.hourlyProduction || 0);
+            // Update farm card too
+            document.getElementById('cowsOwnedFarm').innerHTML = ranch.cowStats.total || 0;
+            document.getElementById('cowProgressTextFarm').innerHTML = `${ranch.globalSales.sold || 0}/${ranch.globalSales.cap}`;
+            document.getElementById('cowProgressFillFarm').style.width = progressPercent + '%';
             
-            const nextExpiry = ranch.secondsUntilNextExpiry || 0;
-            const minutes = Math.floor(nextExpiry / 60);
-            const seconds = nextExpiry % 60;
-            document.getElementById('ranchNextProduction').innerHTML = 
-                nextExpiry > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : '00:00';
+            // Milk Storage
+            const storage = ranch.milkStorage;
+            document.getElementById('storageLevel').innerHTML = `Lvl ${storage.level}`;
+            document.getElementById('milkStored').innerHTML = formatNumber(storage.stored);
+            document.getElementById('milkCapacity').innerHTML = `/ ${formatNumber(storage.capacity)}`;
+            const storagePercent = (storage.stored / storage.capacity) * 100;
+            document.getElementById('storageProgressFill').style.width = storagePercent + '%';
             
-            document.getElementById('ranchDetailCowsSold').innerHTML = cowsSold;
-            document.getElementById('ranchDetailCowsRemaining').innerHTML = (1000 - cowsSold) + ' left';
-            document.getElementById('ranchDetailProgressFill').style.width = (cowsSold / 10) + '%';
-            
-            // Update Level Stats
-            if (ranch.levelStats) {
-                document.getElementById('level1Count').innerHTML = ranch.levelStats[1]?.total || 0;
-                document.getElementById('level1Active').innerHTML = ranch.levelStats[1]?.active || 0;
-                document.getElementById('level1Inactive').innerHTML = ranch.levelStats[1]?.inactive || 0;
-                
-                document.getElementById('level2Count').innerHTML = ranch.levelStats[2]?.total || 0;
-                document.getElementById('level2Active').innerHTML = ranch.levelStats[2]?.active || 0;
-                document.getElementById('level2Inactive').innerHTML = ranch.levelStats[2]?.inactive || 0;
-                
-                document.getElementById('level3Count').innerHTML = ranch.levelStats[3]?.total || 0;
-                document.getElementById('level3Active').innerHTML = ranch.levelStats[3]?.active || 0;
-                document.getElementById('level3Inactive').innerHTML = ranch.levelStats[3]?.inactive || 0;
+            const fullBadge = document.getElementById('storageFullBadge');
+            if (storage.full) {
+                fullBadge.style.display = 'block';
+                document.getElementById('claimMilkBtn').classList.add('inactive');
+                document.getElementById('claimMilkBtn').innerHTML = '<i class="fas fa-ban"></i> INACTIVE';
+            } else {
+                fullBadge.style.display = 'none';
+                document.getElementById('claimMilkBtn').classList.remove('inactive');
+                document.getElementById('claimMilkBtn').innerHTML = '<i class="fas fa-hand-holding-heart"></i> CLAIM';
             }
             
-            // Enable/Disable upgrade buttons
-            const level1Count = ranch.levelStats?.[1]?.total || 0;
-            const level2Count = ranch.levelStats?.[2]?.total || 0;
-            
-            document.getElementById('upgradeLevel1Btn').disabled = level1Count === 0;
-            document.getElementById('upgradeLevel2Btn').disabled = level2Count === 0;
-            
-            // Update Milk Storage
-            const milkStored = App.user?.milkStored || 0;
-            const storageLevel = App.user?.milkStorageLevel || 1;
-            const storageCapacity = App.user?.milkStorageCapacity || 2000;
-            
-            document.getElementById('milkStored').innerHTML = formatNumber(milkStored);
-            document.getElementById('milkCapacity').innerHTML = formatNumber(storageCapacity);
-            document.getElementById('storageLevel').innerHTML = `Lv ${storageLevel}`;
-            
-            const percentage = (milkStored / storageCapacity) * 100;
-            document.getElementById('storageBarFill').style.width = percentage + '%';
-            
-            // Show/hide inactive badge
-            const storageFull = milkStored >= storageCapacity;
-            document.getElementById('storageFullBadge').style.display = storageFull ? 'block' : 'none';
-            
-            // Next upgrade info
-            const nextLevel = storageLevel < 10 ? storageLevel + 1 : null;
-            if (nextLevel) {
-                const nextCapacity = CONFIG.MILK_STORAGE_LEVELS[nextLevel].capacity;
-                const upgradeCost = CONFIG.MILK_STORAGE_LEVELS[nextLevel].upgradeCost;
-                document.getElementById('nextUpgradeInfo').innerHTML = 
-                    `Next: Lv ${nextLevel} · ${formatNumber(upgradeCost)} 🥛 → ${formatNumber(nextCapacity)} capacity`;
+            // Update upgrade button text
+            if (storage.nextLevel) {
+                document.getElementById('upgradeStorageBtn').innerHTML = `<i class="fas fa-arrow-up"></i> UPGRADE (${formatNumber(storage.nextLevel.upgradeCost)} 🥛)`;
             } else {
-                document.getElementById('nextUpgradeInfo').innerHTML = 'Max level reached!';
+                document.getElementById('upgradeStorageBtn').innerHTML = '<i class="fas fa-ban"></i> MAX LEVEL';
                 document.getElementById('upgradeStorageBtn').disabled = true;
             }
             
-            // Enable/disable claim button
-            document.getElementById('claimMilkBtn').disabled = milkStored === 0;
-        }
-
-        function updateAllUI() {
-            if (!App.user || !App.global) return;
+            // Cow Levels
+            const cows = ranch.cows || [];
+            const now = Date.now();
             
-            document.getElementById('statusMilk').innerHTML = formatNumber(App.user.milk);
-            document.getElementById('statusEggs').innerHTML = formatNumber(App.user.eggs);
-            document.getElementById('statusDiamond').innerHTML = formatNumber(App.user.diamond);
-            document.getElementById('statusTon').innerHTML = formatTON(App.user.tonBalance);
+            let level1Count = 0, level1Active = 0, level1Inactive = 0;
+            let level2Count = 0, level2Active = 0, level2Inactive = 0;
+            let level3Count = 0, level3Active = 0, level3Inactive = 0;
             
-            document.getElementById('milkPerHour').innerHTML = App.user.milkPerHour || 0;
-            document.getElementById('eggsPerHour').innerHTML = App.user.eggsPerHour || 0;
-            document.getElementById('crystalPriceHeader').innerHTML = CONFIG.CRYSTAL_PRICE;
-            
-            updateProductionTimer();
-            
-            document.getElementById('chickensOwned').innerHTML = App.user.chickens_owned || 0;
-            const chickenProgress = App.global.chickens_progress || 0;
-            document.getElementById('chickenProgressText').innerHTML = `${App.global.chickens_sold || 0}/${App.global.chickens_cap}`;
-            document.getElementById('chickenProgressFill').style.width = `${chickenProgress}%`;
-            
-            const chickenBtn = document.getElementById('buyChickenBtn');
-            const chickenBadge = document.getElementById('chickenBadge');
-            
-            if (!App.global.chicken_unlocked) {
-                chickenBtn.disabled = true;
-                chickenBtn.innerHTML = '<i class="fas fa-lock"></i> ' + (App.currentLanguage === 'ru' ? 'Заблокировано' : 'Locked');
-                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ЗАБЛОК' : 'LOCKED';
-                chickenBadge.className = 'machine-badge badge-locked';
-            } else if (App.user.chickens_owned > 0) {
-                chickenBtn.disabled = true;
-                chickenBtn.innerHTML = '<i class="fas fa-check"></i> ' + (App.currentLanguage === 'ru' ? 'Владею' : 'Owned');
-                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ВЛАДЕЮ' : 'OWNED';
-                chickenBadge.className = 'machine-badge badge-owned';
-            } else if (App.global.chickens_remaining <= 0) {
-                chickenBtn.disabled = true;
-                chickenBtn.innerHTML = '<i class="fas fa-ban"></i> ' + (App.currentLanguage === 'ru' ? 'Продано' : 'Sold Out');
-                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ПРОДАНО' : 'SOLD OUT';
-                chickenBadge.className = 'machine-badge badge-soldout';
-            } else {
-                chickenBtn.disabled = App.user.tonBalance < 1;
-                chickenBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> ' + (App.currentLanguage === 'ru' ? 'Купить' : 'Buy');
-                chickenBadge.innerHTML = `${App.global.chickens_remaining} ` + (App.currentLanguage === 'ru' ? 'ОСТАЛОСЬ' : 'LEFT');
-                chickenBadge.className = 'machine-badge badge-available';
-            }
-            
-            document.getElementById('diamondEnginesOwned').innerHTML = App.user.diamond_engines_owned || 0;
-            
-            const diamondBuyBtn = document.getElementById('buyDiamondBtn');
-            const diamondStartBtn = document.getElementById('startDiamondBtn');
-            const diamondBadge = document.getElementById('diamondBadge');
-            
-            if (!App.global.diamond_unlocked) {
-                diamondBuyBtn.disabled = true;
-                diamondBuyBtn.innerHTML = '<i class="fas fa-lock"></i> ' + (App.currentLanguage === 'ru' ? 'Заблокировано' : 'Locked');
-                diamondStartBtn.disabled = true;
-                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ЗАБЛОК' : 'LOCKED';
-                diamondBadge.className = 'machine-badge badge-locked';
-            } else if (App.user.diamond_engines_owned > 0) {
-                diamondBuyBtn.disabled = true;
-                diamondBuyBtn.innerHTML = '<i class="fas fa-check"></i> ' + (App.currentLanguage === 'ru' ? 'Владею' : 'Owned');
-                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ВЛАДЕЮ' : 'OWNED';
-                diamondBadge.className = 'machine-badge badge-owned';
+            cows.forEach(cow => {
+                const level = cow.level || 1;
+                const active = cow.activeUntil > now;
                 
-                const canProduce = (App.user.milk || 0) >= 20000 && (App.user.eggs || 0) >= 20000;
-                diamondStartBtn.disabled = !canProduce;
-                diamondStartBtn.innerHTML = canProduce ? 
-                    '<i class="fas fa-play"></i> ' + (App.currentLanguage === 'ru' ? 'Запустить' : 'Start') : 
-                    '<i class="fas fa-ban"></i> ' + (App.currentLanguage === 'ru' ? 'Нужно 20k' : 'Need 20k');
+                if (level === 1) {
+                    level1Count++;
+                    if (active) level1Active++; else level1Inactive++;
+                } else if (level === 2) {
+                    level2Count++;
+                    if (active) level2Active++; else level2Inactive++;
+                } else if (level === 3) {
+                    level3Count++;
+                    if (active) level3Active++; else level3Inactive++;
+                }
+            });
+            
+            document.getElementById('level1Count').innerHTML = level1Count;
+            document.getElementById('level1Active').innerHTML = level1Active;
+            document.getElementById('level1Inactive').innerHTML = level1Inactive;
+            
+            document.getElementById('level2Count').innerHTML = level2Count;
+            document.getElementById('level2Active').innerHTML = level2Active;
+            document.getElementById('level2Inactive').innerHTML = level2Inactive;
+            
+            document.getElementById('level3Count').innerHTML = level3Count;
+            document.getElementById('level3Active').innerHTML = level3Active;
+            document.getElementById('level3Inactive').innerHTML = level3Inactive;
+            
+            // Enable/disable upgrade buttons
+            const userMilk = App.user?.milk || 0;
+            
+            if (level1Count > 0 && userMilk >= 6000) {
+                document.getElementById('upgradeLevel1Btn').disabled = false;
             } else {
-                diamondBuyBtn.disabled = App.user.tonBalance < 20;
-                diamondBuyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> ' + (App.currentLanguage === 'ru' ? 'Купить' : 'Buy');
-                diamondStartBtn.disabled = true;
-                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ДОСТУПНО' : 'AVAILABLE';
-                diamondBadge.className = 'machine-badge badge-available';
+                document.getElementById('upgradeLevel1Btn').disabled = true;
             }
             
-            document.getElementById('diamondBalanceMain').innerHTML = formatNumber(App.user.diamond || 0);
-            document.getElementById('crystalPriceMain').innerHTML = CONFIG.CRYSTAL_PRICE;
-            document.getElementById('milkForDiamond').innerHTML = formatNumber(App.user.milk || 0);
-            document.getElementById('eggsForDiamond').innerHTML = formatNumber(App.user.eggs || 0);
-            
-            const convertAmount = document.getElementById('convertAmount').value || 0;
-            const tonReceive = convertAmount * CONFIG.CRYSTAL_PRICE;
-            document.getElementById('tonReceiveMain').innerHTML = formatTON(tonReceive);
-            
-            document.getElementById('profileMilk').innerHTML = formatNumber(App.user.milk || 0);
-            document.getElementById('profileEggs').innerHTML = formatNumber(App.user.eggs || 0);
-            document.getElementById('profileDiamond').innerHTML = formatNumber(App.user.diamond || 0);
-            document.getElementById('profileTon').innerHTML = formatTON(App.user.tonBalance || 0);
-            
-            document.getElementById('profileMilkRate').innerHTML = App.user.milkPerHour || 0;
-            document.getElementById('profileEggsRate').innerHTML = App.user.eggsPerHour || 0;
-            document.getElementById('profileDiamondPrice').innerHTML = CONFIG.CRYSTAL_PRICE;
-            
-            const totalMachines = (App.user.cows?.length || 0) + (App.user.chickens_owned || 0) + (App.user.diamond_engines_owned || 0);
-            document.getElementById('totalMachines').innerHTML = totalMachines;
-            document.getElementById('totalProduction').innerHTML = (App.user.milkPerHour + App.user.eggsPerHour) + '/h';
-            
-            if (App.user.referralCode) {
-                const botUsername = CONFIG.BOT_USERNAME.replace('@', '');
-                const referralLink = `https://t.me/${botUsername}?startapp=ref_${App.userId}`;
-                document.getElementById('referralLink').value = referralLink;
-            }
-            
-            document.getElementById('totalReferrals').innerHTML = App.referral?.totalReferrals || 0;
-            
-            const claimBtn = document.getElementById('claimReferralBtn');
-            if (App.user.referralEarnings > 0) {
-                claimBtn.disabled = false;
-                claimBtn.innerHTML = `<i class="fas fa-hand-holding-usd"></i> ` + 
-                    (App.currentLanguage === 'ru' ? 'Забрать ' : 'Claim ') + 
-                    `${formatTON(App.user.referralEarnings)} TON`;
+            if (level2Count > 0 && userMilk >= 20000) {
+                document.getElementById('upgradeLevel2Btn').disabled = false;
             } else {
-                claimBtn.disabled = true;
-                claimBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> ' + 
-                    (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
+                document.getElementById('upgradeLevel2Btn').disabled = true;
             }
             
-            const sellBalanceHint = document.getElementById('sellBalanceHint');
-            if (sellBalanceHint) {
-                const resource = document.querySelector('input[name="sellResource"]:checked')?.value || 'milk';
-                const balance = resource === 'milk' ? App.user.milk : App.user.eggs;
-                sellBalanceHint.innerHTML = (App.currentLanguage === 'ru' ? 'Доступно: ' : 'Available: ') + 
-                    `${formatNumber(balance)} ${resource === 'milk' ? 'Milk' : 'Eggs'}`;
-            }
-            
-            document.getElementById('hatchChickenBalance').innerHTML = (App.currentLanguage === 'ru' ? 'Ваши яйца: ' : 'Your eggs: ') + formatNumber(App.user.eggs || 0);
-            
-            const withdrawAmount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
-            const fee = withdrawAmount * 0.05;
-            const net = withdrawAmount - fee;
-            document.getElementById('withdrawFee').innerHTML = `${formatTON(fee)} TON`;
-            document.getElementById('withdrawNet').innerHTML = `${formatTON(net)} TON`;
-            
-            document.getElementById('taskUserBalance').innerHTML = formatTON(App.user.tonBalance || 0);
-            
-            // Update activate modal milk display
-            document.getElementById('activateUserMilk').innerHTML = formatNumber(App.user.milkStored || 0);
-            document.getElementById('upgradeUserMilk').innerHTML = formatNumber(App.user.milkStored || 0);
-        }
-
-        function updateLockedStates() {
-            const chickenLocked = document.getElementById('chickenLockedOverlay');
-            const chickenTimer = document.getElementById('chickenUnlockTimer');
-            
-            if (App.global && !App.global.chicken_unlocked) {
-                chickenLocked.style.display = 'flex';
-                const remaining = App.global.cows_remaining || 0;
-                chickenTimer.innerHTML = `🔓 Unlocks after ${remaining} more cows sold`;
-            } else {
-                chickenLocked.style.display = 'none';
-            }
-            
-            const diamondLocked = document.getElementById('diamondLockedOverlay');
-            const diamondTimer = document.getElementById('diamondUnlockTimer');
-            
-            if (App.global && !App.global.diamond_unlocked) {
-                diamondLocked.style.display = 'flex';
-                const chickenRemaining = App.global.chickens_remaining || 0;
-                diamondTimer.innerHTML = `🔓 Unlocks after ${chickenRemaining} more chickens sold`;
-            } else {
-                diamondLocked.style.display = 'none';
-            }
-        }
-
-        function animateTonBalance() {
-            const tonElement = document.getElementById('statusTon');
-            tonElement.classList.add('increased');
-            setTimeout(() => {
-                tonElement.classList.remove('increased');
-            }, 300);
-        }
-
-        function updateProductionTimer() {
-            if (App.user && App.user.secondsUntilNext !== undefined) {
-                const seconds = App.user.secondsUntilNext;
-                const minutes = Math.floor(seconds / 60);
-                const secs = seconds % 60;
-                document.getElementById('productionTimer').innerHTML = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            }
+            // Store level counts for activation
+            App.level1Inactive = level1Inactive;
+            App.level2Inactive = level2Inactive;
+            App.level3Inactive = level3Inactive;
         }
 
         function updateLeaderboardUI() {
@@ -4508,6 +4696,48 @@
             });
             
             container.innerHTML = html;
+        }
+
+        function updateLockedStates() {
+            const chickenLocked = document.getElementById('chickenLockedOverlay');
+            const chickenTimer = document.getElementById('chickenUnlockTimer');
+            
+            if (App.global && !App.global.chicken_unlocked) {
+                chickenLocked.style.display = 'flex';
+                const remaining = App.global.cows_remaining || 0;
+                chickenTimer.innerHTML = `🔓 Unlocks after ${remaining} more cows sold`;
+            } else {
+                chickenLocked.style.display = 'none';
+            }
+            
+            const diamondLocked = document.getElementById('diamondLockedOverlay');
+            const diamondTimer = document.getElementById('diamondUnlockTimer');
+            
+            if (App.global && !App.global.diamond_unlocked) {
+                diamondLocked.style.display = 'flex';
+                const chickenRemaining = App.global.chickens_remaining || 0;
+                diamondTimer.innerHTML = `🔓 Unlocks after ${chickenRemaining} more chickens sold`;
+            } else {
+                diamondLocked.style.display = 'none';
+            }
+        }
+
+        function animateTonBalance() {
+            const tonElement = document.getElementById('statusTon');
+            tonElement.classList.add('increased');
+            setTimeout(() => {
+                tonElement.classList.remove('increased');
+            }, 300);
+        }
+
+        function updateProductionTimer() {
+            if (App.user && App.user.secondsUntilNext !== undefined) {
+                const seconds = App.user.secondsUntilNext;
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                document.getElementById('productionTimer').innerHTML = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                document.getElementById('ranchProductionTimer').innerHTML = `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
         }
 
         async function updateMarketUI(page = 1, reset = true) {
@@ -4661,7 +4891,7 @@
                 });
                 
                 showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Ордер на продажу создан' : '✅ Sell order created', 
+                    App.currentLanguage === 'ru' ? '✅ Ордер на продажу создан' : '✅ Sell order created',
                     'success'
                 );
                 window.closeAllModals();
@@ -4931,10 +5161,10 @@
                     const name = earning.firstName || earning.username || `User ${earning.userId?.substring(0, 6)}`;
                     
                     let typeDisplay = '';
-                    if (earning.type === 'cow_purchase') typeDisplay = '🐮 Корова';
-                    else if (earning.type === 'chicken_purchase') typeDisplay = '🐔 Курица';
-                    else if (earning.type === 'diamond_engine_purchase') typeDisplay = '💎 Кристальный двигатель';
-                    else typeDisplay = earning.type || 'покупка';
+                    if (earning.type === 'cow_purchase') typeDisplay = '🐮 Cow';
+                    else if (earning.type === 'chicken_purchase') typeDisplay = '🐔 Chicken';
+                    else if (earning.type === 'diamond_engine_purchase') typeDisplay = '💎 Crystal Engine';
+                    else typeDisplay = earning.type || 'purchase';
                     
                     html += `<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <div>
@@ -4973,6 +5203,224 @@
         function loadMoreEarnings() {
             App.earningsPage++;
             displayEarnings(App.earningsPage, true);
+        }
+
+        function updateAllUI() {
+            if (!App.user || !App.global) return;
+            
+            document.getElementById('statusMilk').innerHTML = formatNumber(App.user.milk);
+            document.getElementById('statusEggs').innerHTML = formatNumber(App.user.eggs);
+            document.getElementById('statusDiamond').innerHTML = formatNumber(App.user.diamond);
+            document.getElementById('statusTon').innerHTML = formatTON(App.user.tonBalance);
+            
+            document.getElementById('milkPerHour').innerHTML = App.user.milkPerHour ? Math.floor(App.user.milkPerHour) : 0;
+            document.getElementById('eggsPerHour').innerHTML = App.user.eggsPerHour || 0;
+            document.getElementById('crystalPriceHeader').innerHTML = CONFIG.CRYSTAL_PRICE;
+            
+            updateProductionTimer();
+            
+            // Cow progress
+            const cowProgress = App.global.cows_progress || 0;
+            document.getElementById('cowProgressTextFarm').innerHTML = `${App.global.cows_sold || 0}/${App.global.cows_cap}`;
+            document.getElementById('cowProgressFillFarm').style.width = `${cowProgress}%`;
+            
+            const cowBadge = document.getElementById('cowBadge');
+            if (App.global.cows_remaining <= 0) {
+                cowBadge.innerHTML = App.currentLanguage === 'ru' ? 'ПРОДАНО' : 'SOLD OUT';
+                cowBadge.className = 'machine-badge badge-soldout';
+            } else {
+                cowBadge.innerHTML = `${App.global.cows_remaining} ` + (App.currentLanguage === 'ru' ? 'ОСТАЛОСЬ' : 'LEFT');
+                cowBadge.className = 'machine-badge badge-available';
+            }
+            
+            // Chicken
+            document.getElementById('chickensOwned').innerHTML = App.user.chickens_owned || 0;
+            const chickenProgress = App.global.chickens_progress || 0;
+            document.getElementById('chickenProgressText').innerHTML = `${App.global.chickens_sold || 0}/${App.global.chickens_cap}`;
+            document.getElementById('chickenProgressFill').style.width = `${chickenProgress}%`;
+            
+            const chickenBtn = document.getElementById('buyChickenBtn');
+            const chickenBadge = document.getElementById('chickenBadge');
+            
+            if (!App.global.chicken_unlocked) {
+                chickenBtn.disabled = true;
+                chickenBtn.innerHTML = '<i class="fas fa-lock"></i> ' + (App.currentLanguage === 'ru' ? 'Заблокировано' : 'Locked');
+                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ЗАБЛОК' : 'LOCKED';
+                chickenBadge.className = 'machine-badge badge-locked';
+            } else if (App.user.chickens_owned > 0) {
+                chickenBtn.disabled = true;
+                chickenBtn.innerHTML = '<i class="fas fa-check"></i> ' + (App.currentLanguage === 'ru' ? 'Владею' : 'Owned');
+                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ВЛАДЕЮ' : 'OWNED';
+                chickenBadge.className = 'machine-badge badge-owned';
+            } else if (App.global.chickens_remaining <= 0) {
+                chickenBtn.disabled = true;
+                chickenBtn.innerHTML = '<i class="fas fa-ban"></i> ' + (App.currentLanguage === 'ru' ? 'Продано' : 'Sold Out');
+                chickenBadge.innerHTML = App.currentLanguage === 'ru' ? 'ПРОДАНО' : 'SOLD OUT';
+                chickenBadge.className = 'machine-badge badge-soldout';
+            } else {
+                chickenBtn.disabled = App.user.tonBalance < 1;
+                chickenBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> ' + (App.currentLanguage === 'ru' ? 'Купить' : 'Buy');
+                chickenBadge.innerHTML = `${App.global.chickens_remaining} ` + (App.currentLanguage === 'ru' ? 'ОСТАЛОСЬ' : 'LEFT');
+                chickenBadge.className = 'machine-badge badge-available';
+            }
+            
+            // Diamond
+            document.getElementById('diamondEnginesOwned').innerHTML = App.user.diamond_engines_owned || 0;
+            
+            const diamondBuyBtn = document.getElementById('buyDiamondBtn');
+            const diamondStartBtn = document.getElementById('startDiamondBtn');
+            const diamondBadge = document.getElementById('diamondBadge');
+            
+            if (!App.global.diamond_unlocked) {
+                diamondBuyBtn.disabled = true;
+                diamondBuyBtn.innerHTML = '<i class="fas fa-lock"></i> ' + (App.currentLanguage === 'ru' ? 'Заблокировано' : 'Locked');
+                diamondStartBtn.disabled = true;
+                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ЗАБЛОК' : 'LOCKED';
+                diamondBadge.className = 'machine-badge badge-locked';
+            } else if (App.user.diamond_engines_owned > 0) {
+                diamondBuyBtn.disabled = true;
+                diamondBuyBtn.innerHTML = '<i class="fas fa-check"></i> ' + (App.currentLanguage === 'ru' ? 'Владею' : 'Owned');
+                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ВЛАДЕЮ' : 'OWNED';
+                diamondBadge.className = 'machine-badge badge-owned';
+                
+                const canProduce = (App.user.milk || 0) >= 20000 && (App.user.eggs || 0) >= 20000;
+                diamondStartBtn.disabled = !canProduce;
+                diamondStartBtn.innerHTML = canProduce ? 
+                    '<i class="fas fa-play"></i> ' + (App.currentLanguage === 'ru' ? 'Запустить' : 'Start') : 
+                    '<i class="fas fa-ban"></i> ' + (App.currentLanguage === 'ru' ? 'Нужно 20k' : 'Need 20k');
+            } else {
+                diamondBuyBtn.disabled = App.user.tonBalance < 20;
+                diamondBuyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> ' + (App.currentLanguage === 'ru' ? 'Купить' : 'Buy');
+                diamondStartBtn.disabled = true;
+                diamondBadge.innerHTML = App.currentLanguage === 'ru' ? 'ДОСТУПНО' : 'AVAILABLE';
+                diamondBadge.className = 'machine-badge badge-available';
+            }
+            
+            // Diamond conversion
+            document.getElementById('diamondBalanceMain').innerHTML = formatNumber(App.user.diamond || 0);
+            document.getElementById('crystalPriceMain').innerHTML = CONFIG.CRYSTAL_PRICE;
+            document.getElementById('milkForDiamond').innerHTML = formatNumber(App.user.milk || 0);
+            document.getElementById('eggsForDiamond').innerHTML = formatNumber(App.user.eggs || 0);
+            
+            const convertAmount = document.getElementById('convertAmount').value || 0;
+            const tonReceive = convertAmount * CONFIG.CRYSTAL_PRICE;
+            document.getElementById('tonReceiveMain').innerHTML = formatTON(tonReceive);
+            
+            // Profile
+            document.getElementById('profileMilk').innerHTML = formatNumber(App.user.milk || 0);
+            document.getElementById('profileEggs').innerHTML = formatNumber(App.user.eggs || 0);
+            document.getElementById('profileDiamond').innerHTML = formatNumber(App.user.diamond || 0);
+            document.getElementById('profileTon').innerHTML = formatTON(App.user.tonBalance || 0);
+            
+            document.getElementById('profileMilkRate').innerHTML = App.user.milkPerHour ? Math.floor(App.user.milkPerHour) : 0;
+            document.getElementById('profileEggsRate').innerHTML = App.user.eggsPerHour || 0;
+            document.getElementById('profileDiamondPrice').innerHTML = CONFIG.CRYSTAL_PRICE;
+            
+            const totalMachines = (App.user.cows_owned || 0) + (App.user.chickens_owned || 0) + (App.user.diamond_engines_owned || 0);
+            document.getElementById('totalMachines').innerHTML = totalMachines;
+            document.getElementById('totalProduction').innerHTML = (App.user.milkPerHour + App.user.eggsPerHour) + '/h';
+            
+            // Referral
+            if (App.user.referralCode) {
+                const botUsername = CONFIG.BOT_USERNAME.replace('@', '');
+                const referralLink = `https://t.me/${botUsername}?startapp=ref_${App.userId}`;
+                document.getElementById('referralLink').value = referralLink;
+            }
+            
+            const claimBtn = document.getElementById('claimReferralBtn');
+            if (App.user.referralEarnings > 0) {
+                claimBtn.disabled = false;
+                claimBtn.innerHTML = `<i class="fas fa-hand-holding-usd"></i> ` + 
+                    (App.currentLanguage === 'ru' ? 'Забрать ' : 'Claim ') + 
+                    `${formatTON(App.user.referralEarnings)} TON`;
+            } else {
+                claimBtn.disabled = true;
+                claimBtn.innerHTML = '<i class="fas fa-hand-holding-usd"></i> ' + 
+                    (App.currentLanguage === 'ru' ? 'Нет дохода' : 'No Earnings');
+            }
+            
+            // Withdraw
+            const withdrawAmount = parseFloat(document.getElementById('withdrawAmount').value) || 0;
+            const fee = withdrawAmount * 0.05;
+            const net = withdrawAmount - fee;
+            document.getElementById('withdrawFee').innerHTML = `${formatTON(fee)} TON`;
+            document.getElementById('withdrawNet').innerHTML = `${formatTON(net)} TON`;
+            
+            document.getElementById('taskUserBalance').innerHTML = formatTON(App.user.tonBalance || 0);
+        }
+
+        window.createTask = async function() {
+            const buttonId = 'submitTaskBtn';
+            const button = document.getElementById('submitTaskBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const taskType = document.querySelector('input[name="taskType"]:checked')?.value;
+            const link = document.getElementById('taskLink').value.trim();
+            const target = parseInt(document.getElementById('taskTarget').value);
+            
+            if (!taskType || !link || !target || target < 100) {
+                alert(App.currentLanguage === 'ru' ? 
+                    'Заполните все поля корректно (минимум 100 пользователей)' : 
+                    'Fill all fields correctly (minimum 100 users)');
+                return;
+            }
+            
+            const totalCost = target * CONFIG.TASK_REWARD * 2;
+            
+            if (totalCost > (App.user?.tonBalance || 0)) {
+                alert(App.currentLanguage === 'ru' ? 
+                    'Недостаточно средств' : 
+                    'Insufficient balance');
+                return;
+            }
+            
+            try {
+                const result = await callAPI('createTask', {
+                    type: taskType,
+                    link: link,
+                    targetUsers: target,
+                    reward: CONFIG.TASK_REWARD
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Задание создано! Стоимость: ${formatTON(totalCost)} TON` : 
+                    `✅ Task created! Cost: ${formatTON(totalCost)} TON`,
+                    'success'
+                );
+                
+                window.closeAllModals();
+                loadGameState();
+                
+            } catch (error) {
+                console.error('Create task error:', error);
+                showNotification(error.message, 'error');
+            }
+        };
+
+        function calculateTaskPrice() {
+            const target = parseInt(document.getElementById('taskTarget').value) || 100;
+            const reward = CONFIG.TASK_REWARD;
+            const totalCost = target * reward * 2;
+            
+            document.getElementById('taskTotalCost').innerHTML = 
+                `Total Cost: ${formatTON(totalCost)} TON`;
+            
+            const userBalance = App.user?.tonBalance || 0;
+            const submitBtn = document.getElementById('submitTaskBtn');
+            
+            if (userBalance < totalCost) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                document.getElementById('taskTotalCost').style.color = 'var(--danger-red)';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                document.getElementById('taskTotalCost').style.color = 'var(--crystal-blue)';
+            }
         }
 
         function updateTasksUI() {
@@ -5139,32 +5587,177 @@
             }
         }
 
-        window.buyCow = async function() {
-            const buttonId = 'buyCowBtn';
-            const button = document.getElementById('buyCowBtn');
+        // NEW: Activate cows
+        window.openActivateModal = function(level) {
+            const inactiveCount = level === 1 ? App.level1Inactive : level === 2 ? App.level2Inactive : App.level3Inactive;
             
-            if (!button) {
-                // Called from ranch page
-                const quantity = 1; // Simple buy 1 cow
-                
-                try {
-                    const result = await callAPI('buyCow', { quantity });
-                    
-                    await loadGameState();
-                    animateTonBalance();
-                    
-                    showNotification(
-                        App.currentLanguage === 'ru' ? 
-                        `✅ Куплена 1 корова за 1 TON` : 
-                        `✅ Bought 1 Cow for 1 TON`,
-                        'success'
-                    );
-                    
-                } catch (error) {
-                    console.error('Buy cow error:', error);
-                }
+            if (!inactiveCount || inactiveCount === 0) {
+                showNotification(
+                    App.currentLanguage === 'ru' ? `Нет неактивных коров уровня ${level}` : `No inactive level ${level} cows`,
+                    'warning'
+                );
                 return;
             }
+            
+            const modal = document.getElementById('activateModal');
+            document.getElementById('activateLevelDisplay').innerHTML = `Level ${level}`;
+            document.getElementById('activateLevelNum').innerHTML = level;
+            document.getElementById('activateAvailableCows').innerHTML = inactiveCount;
+            document.getElementById('activateUserMilk').innerHTML = formatNumber(App.user?.milk || 0);
+            
+            document.getElementById('activateQuantity').value = 1;
+            document.getElementById('activateQuantity').max = inactiveCount;
+            
+            updateActivateCost(level);
+            
+            App.pendingActivate = {
+                level: level,
+                maxCows: inactiveCount
+            };
+            
+            modal.classList.add('active');
+        };
+
+        function updateActivateCost(level) {
+            const quantity = parseInt(document.getElementById('activateQuantity').value) || 1;
+            const costPerCow = CONFIG.COW_LEVELS[level].activationCost;
+            const totalCost = quantity * costPerCow;
+            
+            document.getElementById('activateTotalCost').innerHTML = `Cost: ${formatNumber(totalCost)} Milk`;
+            
+            const userMilk = App.user?.milk || 0;
+            const confirmBtn = document.getElementById('confirmActivateBtn');
+            
+            if (totalCost > userMilk) {
+                confirmBtn.disabled = true;
+                confirmBtn.style.opacity = '0.5';
+                document.getElementById('activateTotalCost').style.color = 'var(--danger-red)';
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.style.opacity = '1';
+                document.getElementById('activateTotalCost').style.color = 'var(--crystal-blue)';
+            }
+        }
+
+        window.executeActivate = async function() {
+            const buttonId = 'confirmActivateBtn';
+            const button = document.getElementById('confirmActivateBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            const level = App.pendingActivate.level;
+            const quantity = parseInt(document.getElementById('activateQuantity').value) || 1;
+            
+            try {
+                const result = await callAPI('activateCows', {
+                    level: level,
+                    quantity: quantity
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Активировано ${result.activated} коров уровня ${level}` : 
+                    `✅ Activated ${result.activated} level ${level} cows`,
+                    'success'
+                );
+                
+                window.closeAllModals();
+                await loadGameState();
+                await loadRanch();
+                
+            } catch (error) {
+                console.error('Activate cows error:', error);
+            }
+        };
+
+        // NEW: Upgrade cow level
+        window.upgradeCowLevel = async function(level) {
+            const buttonId = `upgradeLevel${level}Btn`;
+            const button = document.getElementById(buttonId);
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                const result = await callAPI('upgradeCowLevel', {
+                    level: level
+                });
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Улучшена корова до уровня ${result.newLevel}` : 
+                    `✅ Cow upgraded to level ${result.newLevel}`,
+                    'success'
+                );
+                
+                await loadGameState();
+                await loadRanch();
+                
+            } catch (error) {
+                console.error('Upgrade cow level error:', error);
+            }
+        };
+
+        // NEW: Claim milk from storage
+        window.claimMilk = async function() {
+            const buttonId = 'claimMilkBtn';
+            const button = document.getElementById('claimMilkBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                const result = await callAPI('claimMilk');
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Забрано ${formatNumber(result.claimed)} молока!` : 
+                    `✅ Claimed ${formatNumber(result.claimed)} milk!`,
+                    'success'
+                );
+                
+                await loadGameState();
+                await loadRanch();
+                
+            } catch (error) {
+                console.error('Claim milk error:', error);
+            }
+        };
+
+        // NEW: Upgrade milk storage
+        window.upgradeStorage = async function() {
+            const buttonId = 'upgradeStorageBtn';
+            const button = document.getElementById('upgradeStorageBtn');
+            
+            if (!validateAndCooldown(buttonId, button)) {
+                return;
+            }
+            
+            try {
+                const result = await callAPI('upgradeMilkStorage');
+                
+                showNotification(
+                    App.currentLanguage === 'ru' ? 
+                    `✅ Хранилище улучшено до уровня ${result.newLevel}! Вместимость: ${formatNumber(result.newCapacity)}` : 
+                    `✅ Storage upgraded to level ${result.newLevel}! Capacity: ${formatNumber(result.newCapacity)}`,
+                    'success'
+                );
+                
+                await loadGameState();
+                await loadRanch();
+                
+            } catch (error) {
+                console.error('Upgrade storage error:', error);
+            }
+        };
+
+        window.buyCow = async function() {
+            const buttonId = 'ranchBuyCowBtn';
+            const button = document.getElementById('ranchBuyCowBtn');
             
             if (!validateAndCooldown(buttonId, button)) {
                 return;
@@ -5273,6 +5866,7 @@
                 const result = await callAPI('buyCow', { quantity });
                 
                 await loadGameState();
+                await loadRanch();
                 animateTonBalance();
                 
                 showNotification(
@@ -5490,238 +6084,8 @@
             updateSellDetails();
         };
 
-        window.openHatchModal = function() {
-            document.getElementById('hatchModal').classList.add('active');
-        };
-
-        window.openAddTaskModal = function() {
-            document.getElementById('addTaskModal').classList.add('active');
-            calculateTaskPrice();
-        };
-
         window.openDepositModal = function() {
             document.getElementById('depositModal').classList.add('active');
-        };
-
-        window.openRanchPage = function() {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById('sectionRanch').classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        };
-
-        window.openActivateModal = function(level) {
-            App.currentActivateLevel = level;
-            const modal = document.getElementById('activateModal');
-            const title = modal.querySelector('.modal-title span');
-            title.innerHTML = `Activate Level ${level} Cows`;
-            
-            const costPerCow = CONFIG.COW_LEVELS[level].activationCost;
-            const inactiveCount = App.ranch?.levelStats?.[level]?.inactive || 0;
-            
-            document.getElementById('activateQuantity').value = Math.min(1, inactiveCount);
-            document.getElementById('activateQuantity').max = inactiveCount;
-            updateActivateCost();
-            
-            modal.classList.add('active');
-            
-            // Setup preset buttons
-            document.querySelectorAll('[data-activate]').forEach(btn => {
-                btn.onclick = function() {
-                    const val = this.dataset.activate;
-                    if (val === 'all') {
-                        document.getElementById('activateQuantity').value = inactiveCount;
-                    } else {
-                        document.getElementById('activateQuantity').value = val;
-                    }
-                    updateActivateCost();
-                };
-            });
-            
-            document.getElementById('activateQuantity').oninput = updateActivateCost;
-        };
-
-        function updateActivateCost() {
-            const level = App.currentActivateLevel;
-            const quantity = parseInt(document.getElementById('activateQuantity').value) || 0;
-            const costPerCow = CONFIG.COW_LEVELS[level].activationCost;
-            const totalCost = quantity * costPerCow;
-            
-            document.getElementById('activateCost').innerHTML = `Cost: ${formatNumber(totalCost)} 🥛`;
-            
-            const milkStored = App.user?.milkStored || 0;
-            const confirmBtn = document.getElementById('confirmActivateBtn');
-            confirmBtn.disabled = totalCost > milkStored || quantity === 0;
-        }
-
-        window.confirmActivate = async function() {
-            const level = App.currentActivateLevel;
-            const quantity = parseInt(document.getElementById('activateQuantity').value);
-            const all = quantity === (App.ranch?.levelStats?.[level]?.inactive || 0);
-            
-            const buttonId = 'confirmActivateBtn';
-            const button = document.getElementById('confirmActivateBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('activateCows', {
-                    level: level,
-                    count: all ? null : quantity,
-                    all: all
-                });
-                
-                await loadGameState();
-                window.closeAllModals();
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Активировано ${result.activated} коров(а) уровня ${level}` : 
-                    `✅ Activated ${result.activated} Level ${level} cow(s)`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Activate cows error:', error);
-            }
-        };
-
-        window.openUpgradeModal = function(fromLevel) {
-            const toLevel = fromLevel + 1;
-            App.currentUpgradeLevel = toLevel;
-            
-            const modal = document.getElementById('upgradeModal');
-            const title = modal.querySelector('.modal-title span');
-            title.innerHTML = `Upgrade to Level ${toLevel}`;
-            
-            // Build cow list
-            const cows = App.ranch?.cows || [];
-            const eligibleCows = cows.filter(cow => cow.level === fromLevel);
-            
-            let cowHtml = '';
-            eligibleCows.forEach((cow, idx) => {
-                cowHtml += `
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 10px; margin-bottom: 5px;">
-                        <div>
-                            <span style="font-weight: 600;">Cow #${cow.index}</span>
-                            <span style="font-size: 9px; color: var(--text-muted); margin-left: 5px;">${cow.active ? '🟢 Active' : '🔴 Inactive'}</span>
-                        </div>
-                        <input type="checkbox" class="cow-checkbox" data-index="${cow.index}" value="${cow.index}" style="accent-color: var(--crystal-blue); width: 18px; height: 18px;">
-                    </div>
-                `;
-            });
-            
-            if (cowHtml === '') {
-                cowHtml = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">No eligible cows</div>';
-            }
-            
-            document.getElementById('cowList').innerHTML = cowHtml;
-            document.getElementById('upgradeCost').innerHTML = 'Total Cost: 0 🥛';
-            
-            // Add event listeners to checkboxes
-            document.querySelectorAll('.cow-checkbox').forEach(cb => {
-                cb.addEventListener('change', updateUpgradeCost);
-            });
-            
-            modal.classList.add('active');
-        };
-
-        function updateUpgradeCost() {
-            const toLevel = App.currentUpgradeLevel;
-            const checked = document.querySelectorAll('.cow-checkbox:checked');
-            const count = checked.length;
-            const costPerCow = CONFIG.COW_LEVELS[toLevel].upgradeCost;
-            const totalCost = count * costPerCow;
-            
-            document.getElementById('upgradeCost').innerHTML = `Total Cost: ${formatNumber(totalCost)} 🥛`;
-            
-            const milkStored = App.user?.milkStored || 0;
-            const confirmBtn = document.getElementById('confirmUpgradeBtn');
-            confirmBtn.disabled = totalCost > milkStored || count === 0;
-        }
-
-        window.confirmUpgrade = async function() {
-            const toLevel = App.currentUpgradeLevel;
-            const checked = document.querySelectorAll('.cow-checkbox:checked');
-            const indices = Array.from(checked).map(cb => parseInt(cb.dataset.index));
-            
-            if (indices.length === 0) return;
-            
-            const buttonId = 'confirmUpgradeBtn';
-            const button = document.getElementById('confirmUpgradeBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('upgradeCowLevel', {
-                    cowIndices: indices,
-                    targetLevel: toLevel
-                });
-                
-                await loadGameState();
-                window.closeAllModals();
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Улучшено ${result.upgraded} коров(а) до уровня ${toLevel}` : 
-                    `✅ Upgraded ${result.upgraded} cow(s) to Level ${toLevel}`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Upgrade cows error:', error);
-            }
-        };
-
-        window.claimMilk = async function() {
-            const buttonId = 'claimMilkBtn';
-            const button = document.getElementById('claimMilkBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('claimMilk');
-                await loadGameState();
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Забрано ${formatNumber(result.claimed)} 🥛 в баланс` : 
-                    `✅ Claimed ${formatNumber(result.claimed)} 🥛 to balance`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Claim milk error:', error);
-            }
-        };
-
-        window.upgradeMilkStorage = async function() {
-            const buttonId = 'upgradeStorageBtn';
-            const button = document.getElementById('upgradeStorageBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('upgradeMilkStorage');
-                await loadGameState();
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Хранилище улучшено до уровня ${result.newLevel} (${formatNumber(result.newCapacity)} 🥛)` : 
-                    `✅ Storage upgraded to Level ${result.newLevel} (${formatNumber(result.newCapacity)} 🥛)`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Upgrade storage error:', error);
-            }
         };
 
         window.closeAllModals = function() {
@@ -5729,7 +6093,14 @@
                 modal.classList.remove('active');
             });
             App.pendingOrder = null;
-            App.pendingTask = null;
+            App.pendingActivate = { level: null, cows: [] };
+        };
+
+        window.switchToRanch = function() {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById('sectionRanch').classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector('[data-section="sectionRanch"]').classList.add('active');
         };
 
         window.initiateDeposit = async function() {
@@ -5901,97 +6272,15 @@
             }, 10000);
         }
 
-        window.createTask = async function() {
-            const buttonId = 'submitTaskBtn';
-            const button = document.getElementById('submitTaskBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            const taskType = document.querySelector('input[name="taskType"]:checked')?.value;
-            const link = document.getElementById('taskLink').value.trim();
-            const target = parseInt(document.getElementById('taskTarget').value);
-            
-            if (!taskType || !link || !target || target < 100) {
-                alert(App.currentLanguage === 'ru' ? 
-                    'Заполните все поля корректно (минимум 100 пользователей)' : 
-                    'Fill all fields correctly (minimum 100 users)');
-                return;
-            }
-            
-            const totalCost = target * CONFIG.TASK_REWARD * 2;
-            
-            if (totalCost > (App.user?.tonBalance || 0)) {
-                alert(App.currentLanguage === 'ru' ? 
-                    'Недостаточно средств' : 
-                    'Insufficient balance');
-                return;
-            }
-            
-            try {
-                const result = await callAPI('createTask', {
-                    type: taskType,
-                    link: link,
-                    targetUsers: target,
-                    reward: CONFIG.TASK_REWARD
-                });
-                
-                showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Задание создано! Стоимость: ${formatTON(totalCost)} TON` : 
-                    `✅ Task created! Cost: ${formatTON(totalCost)} TON`,
-                    'success'
-                );
-                
-                window.closeAllModals();
-                loadGameState();
-                
-            } catch (error) {
-                console.error('Create task error:', error);
-                showNotification(error.message, 'error');
-            }
-        };
-
-        function calculateTaskPrice() {
-            const target = parseInt(document.getElementById('taskTarget').value) || 100;
-            const reward = CONFIG.TASK_REWARD;
-            const totalCost = target * reward * 2;
-            
-            document.getElementById('taskTotalCost').innerHTML = 
-                `Total Cost: ${formatTON(totalCost)} TON`;
-            
-            const userBalance = App.user?.tonBalance || 0;
-            const submitBtn = document.getElementById('submitTaskBtn');
-            
-            if (userBalance < totalCost) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.5';
-                document.getElementById('taskTotalCost').style.color = 'var(--danger-red)';
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                document.getElementById('taskTotalCost').style.color = 'var(--crystal-blue)';
-            }
-        }
-
         function setupIntervals() {
             if (App.timerInterval) clearInterval(App.timerInterval);
             App.timerInterval = setInterval(() => {
                 if (App.user && App.user.secondsUntilNext > 0) {
                     App.user.secondsUntilNext--;
                     updateProductionTimer();
-                    
-                    // Update ranch next expiry timer
-                    if (App.ranch && App.ranch.secondsUntilNextExpiry > 0) {
-                        App.ranch.secondsUntilNextExpiry--;
-                        const minutes = Math.floor(App.ranch.secondsUntilNextExpiry / 60);
-                        const seconds = App.ranch.secondsUntilNextExpiry % 60;
-                        document.getElementById('ranchNextProduction').innerHTML = 
-                            App.ranch.secondsUntilNextExpiry > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : '00:00';
-                    }
                 } else {
                     loadGameState();
+                    loadRanch();
                 }
             }, 1000);
             
@@ -6004,6 +6293,7 @@
             
             setInterval(() => {
                 loadGameState();
+                loadRanch();
             }, 30000);
         }
 
@@ -6025,7 +6315,7 @@
                     }
                     
                     if (sectionId === 'sectionRanch') {
-                        loadGameState(); // Refresh ranch data
+                        loadRanch();
                     }
                 });
             });
@@ -6047,7 +6337,6 @@
                     }
                     
                     updateAllUI();
-                    updateRanchUI();
                 });
             });
             
@@ -6093,6 +6382,37 @@
                 });
             });
             
+            // Ranch buttons
+            document.getElementById('ranchBuyCowBtn').addEventListener('click', window.buyCow);
+            document.getElementById('claimMilkBtn').addEventListener('click', window.claimMilk);
+            document.getElementById('upgradeStorageBtn').addEventListener('click', window.upgradeStorage);
+            
+            // Activate buttons
+            document.getElementById('activateLevel1Btn').addEventListener('click', () => openActivateModal(1));
+            document.getElementById('activateLevel2Btn').addEventListener('click', () => openActivateModal(2));
+            document.getElementById('activateLevel3Btn').addEventListener('click', () => openActivateModal(3));
+            
+            // Upgrade buttons
+            document.getElementById('upgradeLevel1Btn').addEventListener('click', () => upgradeCowLevel(1));
+            document.getElementById('upgradeLevel2Btn').addEventListener('click', () => upgradeCowLevel(2));
+            
+            // Activate modal
+            document.getElementById('activateQuantity').addEventListener('input', () => {
+                updateActivateCost(App.pendingActivate?.level || 1);
+            });
+            document.querySelectorAll('[data-activate-qty]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const qty = this.dataset.activateQty;
+                    if (qty === 'all') {
+                        document.getElementById('activateQuantity').value = App.pendingActivate?.maxCows || 1;
+                    } else {
+                        document.getElementById('activateQuantity').value = qty;
+                    }
+                    updateActivateCost(App.pendingActivate?.level || 1);
+                });
+            });
+            document.getElementById('confirmActivateBtn').addEventListener('click', window.executeActivate);
+            
             document.getElementById('refreshMarketBtn').addEventListener('click', function() {
                 App.currentMarketPage = 1;
                 updateMarketUI(1, true);
@@ -6118,13 +6438,13 @@
             document.getElementById('loadMoreReferralsBtn').addEventListener('click', loadMoreReferrals);
             document.getElementById('loadMoreEarningsBtn').addEventListener('click', loadMoreEarnings);
             
-            document.getElementById('buyCowBtn').addEventListener('click', window.buyCow);
-            document.getElementById('buyCowFromRanchBtn').addEventListener('click', window.buyCow);
             document.getElementById('buyChickenBtn').addEventListener('click', window.buyChicken);
             document.getElementById('buyDiamondBtn').addEventListener('click', window.buyDiamondEngine);
             document.getElementById('startDiamondBtn').addEventListener('click', window.startDiamondProduction);
             
-            document.getElementById('hatchChickenBtn').addEventListener('click', window.openHatchModal);
+            document.getElementById('hatchChickenBtn').addEventListener('click', function() {
+                document.getElementById('hatchModal').classList.add('active');
+            });
             document.getElementById('hatchChickenConfirm').addEventListener('click', window.hatchChicken);
             
             document.getElementById('convertDiamondBtn').addEventListener('click', window.convertDiamond);
@@ -6143,7 +6463,10 @@
             document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
             document.getElementById('submitDepositBtn').addEventListener('click', window.initiateDeposit);
             
-            document.getElementById('addTaskBtn').addEventListener('click', window.openAddTaskModal);
+            document.getElementById('addTaskBtn').addEventListener('click', function() {
+                document.getElementById('addTaskModal').classList.add('active');
+                calculateTaskPrice();
+            });
             document.getElementById('submitTaskBtn').addEventListener('click', window.createTask);
             document.getElementById('taskTarget').addEventListener('input', calculateTaskPrice);
             
@@ -6189,13 +6512,10 @@
             
             document.getElementById('sellQuantity').addEventListener('input', updateSellDetails);
             document.getElementById('sellTotalPrice').addEventListener('input', updateSellDetails);
-            
-            // Ranch modal buttons
-            document.getElementById('confirmActivateBtn').addEventListener('click', window.confirmActivate);
-            document.getElementById('confirmUpgradeBtn').addEventListener('click', window.confirmUpgrade);
         }
 
         document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
+[file content end]
