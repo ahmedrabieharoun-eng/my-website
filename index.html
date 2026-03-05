@@ -39,6 +39,13 @@
             --warning-yellow: #FFB547;
             --yellow-glow: rgba(255, 181, 71, 0.4);
             
+            --leaderboard-gold: #FFD700;
+            --leaderboard-silver: #C0C0C0;
+            --leaderboard-bronze: #CD7F32;
+            --leaderboard-gold-gradient: linear-gradient(145deg, #FFD700, #FDB931);
+            --leaderboard-silver-gradient: linear-gradient(145deg, #E0E0E0, #B0B0B0);
+            --leaderboard-bronze-gradient: linear-gradient(145deg, #CD7F32, #B87333);
+            
             --bg-image: url('https://i.ibb.co/kVGZmG6x/Chat-GPT-Image-15-2026-06-52-13.png');
             --dark-overlay: rgba(10, 10, 25, 0.25);
             
@@ -55,6 +62,10 @@
             --warning: #FFB547;
             --danger: var(--danger-red);
             --info: var(--crystal-blue);
+            
+            --ranch-card-bg: linear-gradient(145deg, #1a2a3a, #0d1a24);
+            --ranch-glow: rgba(0, 242, 122, 0.2);
+            --storage-bg: linear-gradient(145deg, #2a1b3d, #1a1a2e);
         }
         
         body {
@@ -80,6 +91,10 @@
             z-index: -1;
         }
         
+        h1 { font-size: 20px; }
+        h2 { font-size: 18px; }
+        h3 { font-size: 15px; }
+        
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-6px); }
@@ -103,6 +118,11 @@
         @keyframes pulse-blue {
             0%, 100% { box-shadow: 0 0 10px var(--blue-glow); }
             50% { box-shadow: 0 0 25px var(--blue-glow); }
+        }
+        
+        @keyframes pulse-gold {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
         }
         
         @keyframes pulse-lock {
@@ -133,9 +153,25 @@
             to { transform: rotate(360deg); }
         }
         
+        @keyframes slide-out {
+            0% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(100px); }
+        }
+        
         @keyframes fade-in {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes trophy-glow {
+            0% { filter: drop-shadow(0 0 5px gold); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 25px gold); transform: scale(1.1); }
+            100% { filter: drop-shadow(0 0 5px gold); transform: scale(1); }
+        }
+        
+        @keyframes milk-flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
         }
         
         .float { animation: float 3s infinite ease-in-out; }
@@ -143,9 +179,12 @@
         .pulse-pink { animation: pulse-glow 2s infinite ease-in-out; }
         .pulse-green { animation: pulse-green 2s infinite ease-in-out; }
         .pulse-blue { animation: pulse-blue 2s infinite ease-in-out; }
+        .pulse-gold { animation: pulse-gold 2s infinite ease-in-out; }
         .spin-slow { animation: spin-slow 8s infinite linear; }
         .shine { animation: shine 2.5s infinite linear; }
         .soft-shine { animation: soft-shine 3s infinite; }
+        .trophy-glow { animation: trophy-glow 3s infinite ease-in-out; }
+        .milk-flow { animation: milk-flow 2s infinite linear; }
         
         .container {
             max-width: 500px;
@@ -248,6 +287,10 @@
             font-weight: 700;
         }
         
+        .ton-amount.increased {
+            animation: bounce 0.3s ease;
+        }
+        
         .mining-timer {
             display: flex;
             align-items: center;
@@ -336,7 +379,7 @@
             z-index: 99;
             transition: all 0.2s;
             border: 3px solid rgba(255, 255, 255, 0.3);
-            animation: pulse-glow 2s infinite;
+            animation: trophy-glow 2s infinite;
         }
         
         .leaderboard-float i {
@@ -385,6 +428,10 @@
             animation: fade-in 0.4s ease;
         }
         
+        .card:hover {
+            transform: scale(1.01);
+        }
+        
         .card-title {
             display: flex;
             align-items: center;
@@ -399,7 +446,19 @@
             color: var(--primary-pink);
         }
         
-        /* ===== MODIFIED COW MACHINE CARD ===== */
+        /* ===== RANCH STYLES ===== */
+        .ranch-section {
+            display: block;
+        }
+        
+        /* Ranch specific sizes - 25% smaller */
+        .ranch-section .card-title { font-size: 18px; }
+        .ranch-section .sub-title { font-size: 13px; }
+        .ranch-section .stat-number { font-size: 16px; }
+        .ranch-section .stat-label { font-size: 11px; }
+        .ranch-section .small-text { font-size: 10px; }
+        
+        /* ===== COW CARD MODIFIED ===== */
         .cow-machine-card {
             width: 100%;
             height: 180px;
@@ -409,20 +468,81 @@
             background-position: center;
             overflow: hidden;
             position: relative;
-            cursor: pointer;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
             margin-bottom: 16px;
-            border: 1px solid var(--neon-green);
-            box-shadow: 0 0 15px var(--green-glow);
         }
         
-        .cow-machine-card .card-overlay {
+        .cow-machine-card::before {
+            content: '';
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.7));
-            pointer-events: none;
+            background: linear-gradient(145deg, rgba(0,0,0,0.5), rgba(0,0,0,0.2));
+            z-index: 1;
+        }
+        
+        .cow-machine-card .content {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+        }
+        
+        .cow-machine-card .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .cow-machine-card .title {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+            padding: 8px 15px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 16px;
+            color: white;
+            border: 1px solid var(--neon-green);
+            box-shadow: 0 0 10px var(--green-glow);
+        }
+        
+        .cow-machine-card .badge {
+            background: rgba(0, 242, 122, 0.3);
+            backdrop-filter: blur(5px);
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+        }
+        
+        .cow-machine-card .stats {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            border-radius: 30px;
+            padding: 8px 15px;
+            width: fit-content;
+            border: 1px solid var(--glass-border);
+        }
+        
+        .cow-machine-card .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .cow-machine-card .stat-value {
+            font-weight: 700;
+            font-size: 14px;
         }
         
         .cow-machine-card .open-ranch-btn {
@@ -436,624 +556,21 @@
             padding: 10px 18px;
             font-size: 14px;
             font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             cursor: pointer;
-            box-shadow: 0 0 20px var(--green-glow);
-            z-index: 5;
-            pointer-events: auto;
-            transition: transform 0.2s;
+            box-shadow: 0 4px 15px var(--green-glow);
+            z-index: 3;
+            transition: all 0.2s;
         }
         
         .cow-machine-card .open-ranch-btn:active {
             transform: scale(0.95);
         }
         
-        .cow-machine-card .machine-badge {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            border: 1px solid var(--neon-green);
-            border-radius: 20px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--neon-green);
-            z-index: 5;
-            pointer-events: none;
-        }
-        
-        .cow-machine-card .cows-left {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: rgba(255, 92, 168, 0.9);
-            border-radius: 20px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: white;
-            z-index: 5;
-            pointer-events: none;
-        }
-        
-        /* ===== RANCH STYLES - REDESIGNED ===== */
-        .ranch-section {
-            display: block;
-        }
-        
-        .ranch-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-            background: linear-gradient(145deg, rgba(0, 242, 122, 0.2), rgba(0, 212, 255, 0.2));
-            border-radius: 30px;
-            padding: 12px 16px;
-            border: 1px solid var(--neon-green);
-            animation: pulse-green 3s infinite;
-        }
-        
-        .ranch-header-icon {
-            font-size: 28px;
-            animation: float 3s infinite;
-        }
-        
-        .ranch-header-title {
-            flex: 1;
-        }
-        
-        .ranch-header-title h2 {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--neon-green);
-            text-shadow: 0 0 10px var(--green-glow);
-        }
-        
-        .ranch-header-title p {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-        
-        .back-button {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 8px 12px;
-            font-size: 12px;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-        }
-        
-        .back-button:hover {
-            background: rgba(255, 92, 168, 0.2);
-        }
-        
-        .back-button:active {
-            transform: scale(0.95);
-        }
-        
-        /* Ranch Overview Card - Redesigned */
-        .ranch-overview-card {
-            background: var(--glass-strong);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 16px;
-            margin-bottom: 16px;
-        }
-        
-        .overview-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        
-        .overview-glass-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 242, 122, 0.2);
-            border-radius: 16px;
-            padding: 10px;
-            text-align: center;
-        }
-        
-        .overview-glass-card .label {
-            font-size: 10px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-        
-        .overview-glass-card .value {
+        .cow-machine-card .open-ranch-btn i {
             font-size: 16px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-        }
-        
-        .overview-glass-card .value i {
-            font-size: 14px;
-            animation: soft-shine 2s infinite;
-        }
-        
-        .overview-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-        
-        .daily-production-card {
-            background: rgba(0, 212, 255, 0.1);
-            border: 1px solid rgba(0, 212, 255, 0.3);
-            border-radius: 16px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .daily-production-card .label {
-            font-size: 10px;
-            color: var(--text-muted);
-            margin-bottom: 2px;
-        }
-        
-        .daily-production-card .value {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--crystal-blue);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .storage-card-small {
-            background: rgba(255, 215, 0, 0.1);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            border-radius: 16px;
-            padding: 10px;
-        }
-        
-        .storage-header-small {
-            display: flex;
-            justify-content: space-between;
-            font-size: 10px;
-            margin-bottom: 6px;
-            color: var(--text-muted);
-        }
-        
-        .storage-value-small {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            text-align: center;
-        }
-        
-        .storage-progress-small {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 3px;
-            overflow: hidden;
-        }
-        
-        .storage-progress-fill-small {
-            height: 100%;
-            background: linear-gradient(90deg, var(--warning-yellow), var(--neon-green));
-            border-radius: 3px;
-            transition: width 0.3s ease;
-        }
-        
-        /* Cow Supply Progress */
-        .supply-progress-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 92, 168, 0.2);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .supply-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 11px;
-        }
-        
-        .supply-progress-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 4px;
-        }
-        
-        .supply-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--primary-pink), var(--crystal-blue));
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        
-        .supply-remaining {
-            text-align: right;
-            font-size: 10px;
-            color: var(--text-secondary);
-        }
-        
-        /* Buy Cows Button */
-        .buy-cows-btn {
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
-            border: none;
-            border-radius: 30px;
-            padding: 14px;
-            color: black;
-            font-weight: 700;
-            font-size: 15px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px var(--green-glow);
-            width: 100%;
-            margin-bottom: 16px;
-        }
-        
-        .buy-cows-btn:active {
-            transform: scale(0.97);
-        }
-        
-        /* Cow Levels Container - Single Card with 3 Glass Panels */
-        .cow-levels-single-card {
-            background: var(--glass-strong);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .cow-levels-title {
-            font-size: 15px;
-            font-weight: 700;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--neon-green);
-        }
-        
-        .cow-levels-title i {
-            font-size: 16px;
-        }
-        
-        .cow-level-panel {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(0, 242, 122, 0.15);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 10px;
-        }
-        
-        .cow-level-panel:last-child {
-            margin-bottom: 0;
-        }
-        
-        .cow-level-panel.level-1 {
-            border-left: 3px solid var(--crystal-blue);
-        }
-        
-        .cow-level-panel.level-2 {
-            border-left: 3px solid var(--primary-pink);
-        }
-        
-        .cow-level-panel.level-3 {
-            border-left: 3px solid var(--neon-green);
-        }
-        
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
-        
-        .panel-title {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .panel-emoji {
-            font-size: 18px;
-            animation: float 3s infinite;
-        }
-        
-        .panel-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .panel-badge {
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 20px;
-            background: rgba(0, 242, 122, 0.15);
-            color: var(--neon-green);
-            border: 1px solid rgba(0, 242, 122, 0.3);
-        }
-        
-        .panel-badge.locked {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-muted);
-            border-color: transparent;
-        }
-        
-        .panel-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            padding: 8px;
-            margin-bottom: 10px;
-        }
-        
-        .panel-stat {
-            text-align: center;
-        }
-        
-        .panel-stat-label {
-            font-size: 9px;
-            color: var(--text-muted);
-            margin-bottom: 2px;
-        }
-        
-        .panel-stat-value {
-            font-size: 14px;
-            font-weight: 700;
-        }
-        
-        .panel-stat-value.active {
-            color: var(--neon-green);
-        }
-        
-        .panel-production {
-            color: var(--crystal-blue);
-        }
-        
-        .panel-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .panel-action-btn {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 16px;
-            padding: 8px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-        }
-        
-        .panel-action-btn.upgrade {
-            background: linear-gradient(145deg, var(--crystal-blue), #0099cc);
-            color: white;
-            border: none;
-        }
-        
-        .panel-action-btn.activate {
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
-            color: black;
-            border: none;
-        }
-        
-        .panel-action-btn:active {
-            transform: scale(0.96);
-        }
-        
-        .panel-action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .panel-timer {
-            font-size: 10px;
-            color: var(--neon-green);
-            margin-top: 6px;
-            text-align: center;
-            background: rgba(0, 242, 122, 0.1);
-            padding: 4px;
-            border-radius: 16px;
-        }
-        
-        .inactive-badge-small {
-            background: var(--danger-red);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 12px;
-            font-size: 8px;
-            font-weight: 700;
-            margin-left: 6px;
-            animation: pulse-glow 1s infinite;
-        }
-        
-        /* Milk Storage Card */
-        .storage-card {
-            background: linear-gradient(145deg, #2a1b3d, #1a1a2e);
-            border-radius: 24px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .storage-background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-        }
-        
-        .storage-background img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.3;
-        }
-        
-        .storage-content {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .storage-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-        }
-        
-        .storage-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 15px;
-            font-weight: 700;
-        }
-        
-        .storage-title i {
-            color: var(--warning-yellow);
-            font-size: 18px;
-        }
-        
-        .storage-full-badge {
-            background: var(--danger-red);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 30px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            animation: pulse-glow 1s infinite;
-        }
-        
-        .storage-stats {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        
-        .storage-stat {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        
-        .storage-stat-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-        
-        .storage-stat-value {
-            font-size: 14px;
-            font-weight: 700;
-        }
-        
-        .storage-progress {
-            margin-bottom: 12px;
-        }
-        
-        .storage-progress-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 11px;
-            margin-bottom: 4px;
-        }
-        
-        .storage-progress-bar {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .storage-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--warning-yellow), var(--neon-green));
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        
-        .storage-actions {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .storage-action-btn {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 12px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-        }
-        
-        .storage-action-btn.claim {
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
-            color: black;
-            border: none;
-        }
-        
-        .storage-action-btn.upgrade {
-            background: linear-gradient(145deg, var(--crystal-blue), #0099cc);
-            color: white;
-            border: none;
-        }
-        
-        .storage-action-btn:active {
-            transform: scale(0.96);
-        }
-        
-        /* ===== OTHER MACHINE CARDS ===== */
-        .farm-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            margin-bottom: 16px;
         }
         
         .machine-card {
@@ -1347,523 +864,405 @@
         
         .action-buttons {
             display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        
+        /* ===== RANCH REDESIGN ===== */
+        
+        /* Dark Card Base */
+        .ranch-dark-card {
+            background: var(--ranch-card-bg);
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(0, 242, 122, 0.3);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .ranch-dark-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 242, 122, 0.1), transparent);
+            animation: slide 3s infinite;
+        }
+        
+        @keyframes slide {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Glass Panel */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 12px;
+            transition: all 0.2s;
+        }
+        
+        .glass-panel.neon {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 10px var(--green-glow);
+        }
+        
+        /* Ranch Overview - 5 Glass Cards */
+        .ranch-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .ranch-overview-grid .glass-panel {
+            text-align: center;
+            padding: 10px 5px;
+        }
+        
+        .ranch-overview-grid .stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        
+        .ranch-overview-grid .stat-number {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        .ranch-overview-grid .stat-number i {
+            font-size: 14px;
+            margin-right: 2px;
+        }
+        
+        .total-cows { color: var(--crystal-blue); }
+        .active-cows { color: var(--neon-green); }
+        .inactive-cows { color: var(--warning-yellow); }
+        
+        .ranch-overview-row {
+            display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-        }
-        
-        /* ===== ACTIVATE POPUP ===== */
-        .activate-popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .activate-popup.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .activate-popup-content {
-            background: var(--glass-strong);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 20px;
-            width: 90%;
-            max-width: 360px;
-            animation: fade-in 0.3s ease;
-        }
-        
-        .activate-popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-bottom: 16px;
         }
         
-        .activate-popup-title {
-            font-size: 18px;
+        .production-panel {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--crystal-blue);
+        }
+        
+        .production-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--crystal-blue);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .storage-panel {
+            background: rgba(255, 181, 71, 0.1);
+            border: 1px solid var(--warning-yellow);
+        }
+        
+        /* Storage Progress */
+        .storage-progress-container {
+            margin-top: 8px;
+        }
+        
+        .storage-progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+        }
+        
+        .storage-progress-bar {
+            height: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 2px;
+        }
+        
+        .storage-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--warning-yellow), var(--neon-green));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .storage-value {
+            font-size: 14px;
             font-weight: 700;
+            color: var(--warning-yellow);
+        }
+        
+        /* Cow Levels Container - Single Card with 3 Panels */
+        .cow-levels-container {
+            background: var(--ranch-card-bg);
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(0, 242, 122, 0.3);
+        }
+        
+        .cow-levels-title {
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-        
-        .activate-popup-title i {
+            font-size: 16px;
+            font-weight: 700;
             color: var(--neon-green);
+            margin-bottom: 12px;
         }
         
-        .activate-popup-close {
+        .cow-level-panels {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .cow-level-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 12px;
+            transition: all 0.2s;
+        }
+        
+        .cow-level-panel.level-1 {
+            border-left: 4px solid var(--crystal-blue);
+        }
+        
+        .cow-level-panel.level-2 {
+            border-left: 4px solid var(--primary-pink);
+        }
+        
+        .cow-level-panel.level-3 {
+            border-left: 4px solid var(--neon-green);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .panel-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .panel-title .emoji {
             font-size: 20px;
-            color: var(--text-secondary);
-            cursor: pointer;
         }
         
-        .activate-popup-info {
-            background: rgba(0, 242, 122, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        
-        .activate-popup-level {
+        .panel-title .name {
             font-size: 14px;
             font-weight: 600;
-            margin-bottom: 4px;
         }
         
-        .activate-popup-available {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .activate-presets {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        
-        .activate-preset-btn {
-            flex: 1;
-            min-width: 60px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
+        .panel-badge {
+            font-size: 10px;
+            padding: 3px 8px;
             border-radius: 20px;
-            padding: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-        }
-        
-        .activate-preset-btn:hover {
-            background: rgba(0, 242, 122, 0.2);
-            border-color: var(--neon-green);
-        }
-        
-        .activate-preset-btn.active {
-            background: var(--neon-green);
-            color: black;
-            border-color: var(--neon-green);
-        }
-        
-        .activate-custom-input {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 12px;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-        
-        .activate-total-cost {
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .activate-cost-label {
-            font-size: 12px;
+            background: rgba(255, 255, 255, 0.1);
             color: var(--text-secondary);
         }
         
-        .activate-cost-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--crystal-blue);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .activate-confirm-btn {
-            width: 100%;
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
-            border: none;
-            border-radius: 30px;
-            padding: 14px;
-            color: black;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .activate-confirm-btn:active {
-            transform: scale(0.97);
-        }
-        
-        .activate-confirm-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* ===== UPGRADE POPUP ===== */
-        .upgrade-popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .upgrade-popup.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .upgrade-popup-content {
-            background: var(--glass-strong);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 20px;
-            width: 90%;
-            max-width: 360px;
-            animation: fade-in 0.3s ease;
-        }
-        
-        .upgrade-popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        
-        .upgrade-popup-title {
-            font-size: 18px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .upgrade-popup-title i {
-            color: var(--crystal-blue);
-        }
-        
-        .upgrade-popup-close {
-            font-size: 20px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-        
-        .upgrade-popup-info {
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        
-        .upgrade-popup-level {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        
-        .upgrade-popup-available {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .upgrade-presets {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        
-        .upgrade-preset-btn {
-            flex: 1;
-            min-width: 60px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-        }
-        
-        .upgrade-preset-btn:hover {
-            background: rgba(0, 212, 255, 0.2);
-            border-color: var(--crystal-blue);
-        }
-        
-        .upgrade-preset-btn.active {
-            background: var(--crystal-blue);
-            color: white;
-            border-color: var(--crystal-blue);
-        }
-        
-        .upgrade-custom-input {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 12px;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-        
-        .upgrade-total-cost {
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .upgrade-cost-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .upgrade-cost-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--crystal-blue);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .upgrade-confirm-btn {
-            width: 100%;
-            background: linear-gradient(145deg, var(--crystal-blue), #0099cc);
-            border: none;
-            border-radius: 30px;
-            padding: 14px;
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .upgrade-confirm-btn:active {
-            transform: scale(0.97);
-        }
-        
-        .upgrade-confirm-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* ===== BUY COWS POPUP ===== */
-        .buy-cows-popup {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s;
-        }
-        
-        .buy-cows-popup.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .buy-cows-popup-content {
-            background: var(--glass-strong);
-            border: 1px solid var(--glass-border);
-            border-radius: 30px;
-            padding: 20px;
-            width: 90%;
-            max-width: 360px;
-            animation: fade-in 0.3s ease;
-        }
-        
-        .buy-cows-popup-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-        
-        .buy-cows-popup-title {
-            font-size: 18px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .buy-cows-popup-title i {
+        .panel-badge.active {
+            background: rgba(0, 242, 122, 0.15);
             color: var(--neon-green);
+            border: 1px solid var(--neon-green);
         }
         
-        .buy-cows-popup-close {
-            font-size: 20px;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
-        
-        .buy-cows-info {
-            background: rgba(0, 242, 122, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .buy-cows-available {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
-        
-        .buy-cows-price {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-        }
-        
-        .buy-cows-presets {
-            display: flex;
+        .panel-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        
-        .buy-cows-preset-btn {
-            flex: 1;
-            min-width: 60px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 10px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-primary);
-            cursor: pointer;
-            transition: all 0.2s;
-            text-align: center;
-        }
-        
-        .buy-cows-preset-btn:hover {
-            background: rgba(0, 242, 122, 0.2);
-            border-color: var(--neon-green);
-        }
-        
-        .buy-cows-preset-btn.active {
-            background: var(--neon-green);
-            color: black;
-            border-color: var(--neon-green);
-        }
-        
-        .buy-cows-custom-input {
-            width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 12px;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-        
-        .buy-cows-total-cost {
-            background: rgba(0, 212, 255, 0.1);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .buy-cows-cost-label {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-        
-        .buy-cows-cost-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--crystal-blue);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .buy-cows-confirm-btn {
-            width: 100%;
-            background: linear-gradient(145deg, var(--neon-green), #00b35e);
-            border: none;
-            border-radius: 30px;
-            padding: 14px;
-            color: black;
-            font-weight: 700;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .buy-cows-confirm-btn:active {
-            transform: scale(0.97);
-        }
-        
-        .buy-cows-confirm-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .buy-cows-balance {
-            background: rgba(0, 0, 0, 0.3);
+            margin-bottom: 10px;
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 12px;
-            padding: 10px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
+            padding: 8px;
+        }
+        
+        .panel-stat {
+            text-align: center;
+        }
+        
+        .panel-stat .label {
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+        
+        .panel-stat .value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .panel-stat .value i {
             font-size: 12px;
         }
         
-        /* ===== MARKET STYLES ===== */
+        .production-stat .value {
+            color: var(--crystal-blue);
+        }
+        
+        .panel-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .panel-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .panel-btn.upgrade {
+            background: linear-gradient(145deg, var(--crystal-blue), #0099cc);
+            color: white;
+            border: none;
+        }
+        
+        .panel-btn.activate {
+            background: linear-gradient(145deg, var(--neon-green), #00b35e);
+            color: black;
+            border: none;
+        }
+        
+        .panel-btn:active {
+            transform: scale(0.96);
+        }
+        
+        .panel-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .active-timer {
+            font-size: 10px;
+            color: var(--neon-green);
+            margin-top: 8px;
+            text-align: center;
+            background: rgba(0, 242, 122, 0.1);
+            padding: 4px;
+            border-radius: 20px;
+        }
+        
+        /* Supply Progress */
+        .supply-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(8px);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid var(--glass-border);
+        }
+        
+        .supply-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .supply-bar {
+            height: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        
+        .supply-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-pink), var(--crystal-blue));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .supply-remaining {
+            text-align: right;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        /* Buy Cows Button */
+        .buy-cows-btn {
+            background: linear-gradient(145deg, var(--neon-green), #00b35e);
+            border: none;
+            border-radius: 30px;
+            padding: 14px;
+            color: black;
+            font-weight: 700;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px var(--green-glow);
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        
+        .buy-cows-btn:active {
+            transform: scale(0.97);
+        }
+        
+        /* Back Button */
+        .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+            width: fit-content;
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 92, 168, 0.2);
+        }
+        
+        .back-button:active {
+            transform: scale(0.95);
+        }
+        
         .market-stats {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -2047,6 +1446,14 @@
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         
+        .market-card .card-title.sell {
+            color: white;
+        }
+        
+        .market-card .card-title.buy {
+            color: white;
+        }
+        
         .amount-box {
             background: rgba(0, 0, 0, 0.4);
             border-radius: 18px;
@@ -2142,20 +1549,22 @@
             transform: scale(0.98);
         }
         
-        .load-more-btn {
-            width: 100%;
-            padding: 10px;
-            background: var(--glass-strong);
-            border: 1px solid var(--glass-border);
+        .best-price-badge {
+            background: rgba(255, 92, 168, 0.2);
+            color: var(--primary-pink);
+            font-size: 10px;
+            padding: 3px 8px;
             border-radius: 30px;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            border: 1px solid rgba(255, 92, 168, 0.3);
         }
         
-        /* ===== MODALS ===== */
+        .best-price-badge i {
+            animation: pulse-glow 1.5s infinite;
+        }
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -2234,6 +1643,24 @@
             font-family: 'Inter', sans-serif;
         }
         
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px;
+        }
+        
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary-pink);
+        }
+        
+        .form-input:read-only {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+        
         .preset-buttons {
             display: flex;
             gap: 5px;
@@ -2267,6 +1694,20 @@
             font-size: 13px;
             text-align: center;
             color: var(--crystal-blue);
+        }
+        
+        .confirm-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .confirm-emoji {
+            font-size: 48px;
+            margin-bottom: 8px;
+            animation: bounce 1s infinite;
         }
         
         .confirm-details {
@@ -2673,324 +2114,237 @@
             transform: scale(0.98);
         }
         
-        /* ===== LEADERBOARD STYLES ===== */
-        .leaderboard-header {
-            background: var(--glass-strong);
-            border-radius: 24px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 1px solid #FFD700;
-        }
-        
-        .leaderboard-title {
-            font-size: 20px;
-            font-weight: 800;
-            color: #FFD700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .leaderboard-help-icon {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
+        /* Activate Popup */
+        .activate-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            cursor: pointer;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
         }
         
-        .prize-pool {
-            background: rgba(255, 215, 0, 0.15);
-            border-radius: 16px;
-            padding: 12px;
+        .activate-popup.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .activate-popup-content {
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 20px;
+            width: 90%;
+            max-width: 360px;
+            animation: fade-in 0.3s ease;
+        }
+        
+        .activate-popup-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         
-        .prize-label {
+        .activate-popup-title {
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .activate-popup-title i {
+            color: var(--neon-green);
+        }
+        
+        .activate-popup-close {
+            font-size: 20px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+        
+        .activate-popup-info {
+            background: rgba(0, 242, 122, 0.1);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .activate-popup-level {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .activate-popup-available {
             font-size: 12px;
             color: var(--text-secondary);
         }
         
-        .prize-amount {
-            font-size: 20px;
-            font-weight: 800;
-            color: #FFD700;
+        .activate-presets {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .activate-preset-btn {
+            flex: 1;
+            min-width: 60px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .activate-preset-btn:hover {
+            background: rgba(0, 242, 122, 0.2);
+            border-color: var(--neon-green);
+        }
+        
+        .activate-preset-btn.active {
+            background: var(--neon-green);
+            color: black;
+            border-color: var(--neon-green);
+        }
+        
+        .activate-custom-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 12px;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+        
+        .activate-total-cost {
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .activate-cost-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .activate-cost-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--crystal-blue);
             display: flex;
             align-items: center;
             gap: 4px;
         }
         
-        .leaderboard-note {
-            background: rgba(255, 92, 168, 0.1);
-            border-radius: 12px;
-            padding: 8px;
-            font-size: 11px;
-            margin-bottom: 12px;
-            border-left: 3px solid var(--primary-pink);
-        }
-        
-        .progress-counter {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            padding: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .counter-main {
-            font-size: 32px;
-            font-weight: 800;
-            color: var(--neon-green);
-            text-align: center;
-        }
-        
-        .counter-label {
-            font-size: 11px;
-            color: var(--text-muted);
-            text-align: center;
-            margin-bottom: 8px;
-        }
-        
-        .counter-progress {
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 8px 0;
-        }
-        
-        .counter-progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #FFD700, var(--primary-pink));
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        
-        .end-message {
-            font-size: 10px;
-            color: var(--text-muted);
-            text-align: center;
-            margin-top: 8px;
-        }
-        
-        .your-position-card {
-            background: linear-gradient(145deg, #FFD700, #DAA520);
-            border-radius: 20px;
-            padding: 12px;
-            margin-bottom: 16px;
+        .activate-confirm-btn {
+            width: 100%;
+            background: linear-gradient(145deg, var(--neon-green), #00b35e);
+            border: none;
+            border-radius: 30px;
+            padding: 14px;
             color: black;
-        }
-        
-        .position-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        
-        .position-label {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .position-value {
-            font-size: 20px;
-            font-weight: 800;
-        }
-        
-        .stats-row {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .stat-box {
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 12px;
-            padding: 4px 8px;
-            text-align: center;
-        }
-        
-        .stat-box-label {
-            font-size: 8px;
-            text-transform: uppercase;
-        }
-        
-        .stat-box-value {
-            font-size: 14px;
             font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
         
-        .prize-badge {
-            display: flex;
-            align-items: center;
-            gap: 2px;
+        .activate-confirm-btn:active {
+            transform: scale(0.97);
         }
         
-        .leaderboard-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .activate-confirm-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
-        .leaderboard-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-            padding: 10px;
-            transition: transform 0.2s;
-        }
-        
-        .leaderboard-card.top-1 {
-            background: linear-gradient(145deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.05));
-            border: 1px solid #FFD700;
-        }
-        
-        .leaderboard-card.top-2 {
-            background: linear-gradient(145deg, rgba(192, 192, 192, 0.2), rgba(192, 192, 192, 0.05));
-            border: 1px solid #C0C0C0;
-        }
-        
-        .leaderboard-card.top-3 {
-            background: linear-gradient(145deg, rgba(205, 127, 50, 0.2), rgba(205, 127, 50, 0.05));
-            border: 1px solid #CD7F32;
-        }
-        
-        .leaderboard-card .card-content {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .rank-badge {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--glass-strong);
+        /* Upgrade Popup */
+        .upgrade-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 18px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
         }
         
-        .rank-badge.gold {
-            background: #FFD700;
-            color: black;
+        .upgrade-popup.active {
+            opacity: 1;
+            visibility: visible;
         }
         
-        .rank-badge.silver {
-            background: #C0C0C0;
-            color: black;
-        }
-        
-        .rank-badge.bronze {
-            background: #CD7F32;
-            color: black;
-        }
-        
-        .user-info {
-            flex: 1;
-        }
-        
-        .user-name-row {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .user-name {
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .user-crown {
-            color: #FFD700;
-        }
-        
-        .user-username {
-            font-size: 9px;
-            color: var(--text-muted);
-        }
-        
-        .points-section {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .points-box {
-            background: rgba(0, 242, 122, 0.15);
-            border-radius: 20px;
-            padding: 4px 8px;
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--neon-green);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .prize-pill {
-            background: #FFD700;
-            border-radius: 20px;
-            padding: 4px 8px;
-            font-size: 12px;
-            font-weight: 700;
-            color: black;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .winners-section {
-            margin-top: 16px;
+        .upgrade-popup-content {
             background: var(--glass-strong);
-            border-radius: 20px;
-            padding: 12px;
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 20px;
+            width: 90%;
+            max-width: 360px;
+            animation: fade-in 0.3s ease;
         }
         
-        .winners-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #FFD700;
-            margin-bottom: 10px;
+        /* Buy Cows Popup */
+        .buy-cows-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
         }
         
-        .winners-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .buy-cows-popup.active {
+            opacity: 1;
+            visibility: visible;
         }
         
-        .winner-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-        }
-        
-        .winner-rank {
-            font-weight: 700;
-            color: #FFD700;
-        }
-        
-        .winner-name {
-            font-size: 12px;
-        }
-        
-        .winner-prize {
-            font-weight: 700;
-            color: var(--neon-green);
+        .buy-cows-popup-content {
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 20px;
+            width: 90%;
+            max-width: 360px;
+            animation: fade-in 0.3s ease;
         }
         
         @media (max-width: 400px) {
@@ -3047,6 +2401,16 @@
                 width: 36px;
                 height: 36px;
                 font-size: 16px;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr 1fr 1fr;
+                gap: 4px;
+            }
+            
+            .btn {
+                padding: 8px 4px;
+                font-size: 9px;
             }
         }
     </style>
@@ -3301,18 +2665,34 @@
             </div>
         </div>
         
+        <!-- ===== SECTION FARM - MODIFIED COW CARD ===== -->
         <div id="sectionFarm" class="section active">
-            <!-- Modified Cow Machine Card - No Buy/Hatch buttons, only Open Ranch -->
-            <div class="cow-machine-card" id="cowMachineCard" onclick="openRanch()">
-                <div class="card-overlay"></div>
-                <div class="machine-badge" id="cowCardBadge">AVAILABLE</div>
-                <div class="cows-left" id="cowsLeftBadge">1000 LEFT</div>
-                <button class="open-ranch-btn" id="openRanchFromCowBtn" onclick="event.stopPropagation(); openRanch();">
-                    <i class="fas fa-arrow-right"></i> Open Ranch
-                </button>
-            </div>
-            
             <div class="farm-grid">
+                <!-- Cow Machine Card - Redesigned with background image only -->
+                <div class="cow-machine-card" id="cowCard" onclick="openRanch()">
+                    <div class="content">
+                        <div class="header">
+                            <div class="title">🐮 COW RANCH</div>
+                            <div class="badge" id="cowBadge">Available</div>
+                        </div>
+                        
+                        <div class="stats">
+                            <div class="stat-item">
+                                <i class="fas fa-bolt" style="color: var(--neon-green);"></i>
+                                <span class="stat-value">41/h</span>
+                            </div>
+                            <div class="stat-item">
+                                <i class="fas fa-cow" style="color: var(--crystal-blue);"></i>
+                                <span class="stat-value" id="cowsOwned">0</span>
+                            </div>
+                        </div>
+                        
+                        <button class="open-ranch-btn" onclick="event.stopPropagation(); openRanch();">
+                            <i class="fas fa-arrow-right"></i> Open Ranch
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- Chicken Machine Card -->
                 <div class="machine-card chicken" id="chickenCard">
                     <div class="machine-header">
@@ -3366,7 +2746,7 @@
                     </div>
                 </div>
                 
-                <!-- Diamond Engine Card -->
+                <!-- Diamond Machine Card -->
                 <div class="machine-card diamond" id="diamondCard">
                     <div class="machine-header">
                         <div class="machine-emoji spin-slow">
@@ -3428,81 +2808,194 @@
             </div>
         </div>
         
-        <!-- New Ranch Management Page - Redesigned -->
+        <!-- ===== SECTION RANCH - REDESIGNED ===== -->
         <div id="sectionRanch" class="section ranch-section">
-            <!-- Ranch Header with Back Button -->
-            <div class="ranch-header">
-                <div class="ranch-header-icon">🐮</div>
-                <div class="ranch-header-title">
-                    <h2>Ranch Management</h2>
-                    <p>Manage your cows and milk production</p>
-                </div>
-                <button class="back-button" id="backFromRanchBtn">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-            </div>
+            <!-- Back Button -->
+            <button class="back-button" id="backFromRanchBtn">
+                <i class="fas fa-arrow-left"></i> Back to Farm
+            </button>
             
-            <!-- Ranch Overview Card - Redesigned with 5 glass cards -->
-            <div class="ranch-overview-card">
-                <div class="overview-grid">
-                    <!-- Total Cows -->
-                    <div class="overview-glass-card">
-                        <div class="label">TOTAL COWS</div>
-                        <div class="value">
+            <!-- Ranch Overview - 5 Glass Cards -->
+            <div class="ranch-dark-card">
+                <div class="ranch-overview-grid">
+                    <div class="glass-panel">
+                        <div class="stat-label">Total Cows</div>
+                        <div class="stat-number total-cows">
                             <i class="fas fa-cow"></i> <span id="totalCowsOverview">0</span>
                         </div>
                     </div>
-                    
-                    <!-- Active Cows -->
-                    <div class="overview-glass-card">
-                        <div class="label">ACTIVE</div>
-                        <div class="value" style="color: var(--neon-green);">
+                    <div class="glass-panel">
+                        <div class="stat-label">Active</div>
+                        <div class="stat-number active-cows">
                             <i class="fas fa-check-circle"></i> <span id="activeCowsOverview">0</span>
                         </div>
                     </div>
-                    
-                    <!-- Inactive Cows -->
-                    <div class="overview-glass-card">
-                        <div class="label">INACTIVE</div>
-                        <div class="value" style="color: var(--warning-yellow);">
+                    <div class="glass-panel">
+                        <div class="stat-label">Inactive</div>
+                        <div class="stat-number inactive-cows">
                             <i class="fas fa-clock"></i> <span id="inactiveCowsOverview">0</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="overview-row">
-                    <!-- Daily Production -->
-                    <div class="daily-production-card">
-                        <div class="label">DAILY PRODUCTION</div>
-                        <div class="value">
-                            <span id="dailyProductionOverview">0</span> <span style="font-size: 12px;">🥛</span>
+                <div class="ranch-overview-row">
+                    <div class="glass-panel production-panel">
+                        <div class="stat-label">Daily Production</div>
+                        <div class="production-value">
+                            <span id="dailyProductionOverview">0</span>
+                            <span class="stat-label">🥛/day</span>
                         </div>
                     </div>
                     
-                    <!-- Storage -->
-                    <div class="storage-card-small">
-                        <div class="storage-header-small">
-                            <span>STORAGE</span>
-                            <span>Lvl <span id="storageLevelSmall">1</span></span>
+                    <div class="glass-panel storage-panel">
+                        <div class="stat-label">Storage</div>
+                        <div class="storage-value">
+                            <span id="milkStored">0</span> / <span id="milkCapacity">40K</span>
                         </div>
-                        <div class="storage-value-small" id="storageValueSmall">
-                            0 / 40K
+                        <div class="storage-progress-container">
+                            <div class="storage-progress-header">
+                                <span>Used</span>
+                                <span id="storagePercent">0%</span>
+                            </div>
+                            <div class="storage-progress-bar">
+                                <div class="storage-progress-fill" id="storageProgressFill" style="width: 0%;"></div>
+                            </div>
                         </div>
-                        <div class="storage-progress-small">
-                            <div class="storage-progress-fill-small" id="storageProgressSmall" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Cow Levels - Single Card with 3 Panels -->
+            <div class="cow-levels-container">
+                <div class="cow-levels-title">
+                    <i class="fas fa-chart-simple"></i> Cow Levels
+                </div>
+                
+                <div class="cow-level-panels">
+                    <!-- Level 1 Panel -->
+                    <div class="cow-level-panel level-1" id="level1Panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <span class="emoji">🐮</span>
+                                <span class="name">Level 1 Cow</span>
+                            </div>
+                            <span class="panel-badge" id="level1Badge">Active</span>
+                        </div>
+                        
+                        <div class="panel-stats">
+                            <div class="panel-stat">
+                                <div class="label">Available</div>
+                                <div class="value" id="level1Available">0</div>
+                            </div>
+                            <div class="panel-stat">
+                                <div class="label">Active</div>
+                                <div class="value active-cows" id="level1Active">0</div>
+                            </div>
+                            <div class="panel-stat production-stat">
+                                <div class="label">Prod/day</div>
+                                <div class="value" id="level1Production">500</div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-actions">
+                            <button class="panel-btn upgrade" id="upgradeLevel1Btn" onclick="openUpgradePopup(1)">
+                                <i class="fas fa-arrow-up"></i> Upgrade
+                            </button>
+                            <button class="panel-btn activate" id="activateLevel1Btn" onclick="openActivatePopup(1, 500)">
+                                <i class="fas fa-play"></i> Activate
+                            </button>
+                        </div>
+                        
+                        <div class="active-timer" id="level1Timer" style="display: none;">
+                            <i class="fas fa-clock"></i> Active for: <span id="level1TimeRemaining">0h 0m</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Level 2 Panel -->
+                    <div class="cow-level-panel level-2" id="level2Panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <span class="emoji">🦬</span>
+                                <span class="name">Level 2 Cow</span>
+                            </div>
+                            <span class="panel-badge" id="level2Badge">Locked</span>
+                        </div>
+                        
+                        <div class="panel-stats">
+                            <div class="panel-stat">
+                                <div class="label">Available</div>
+                                <div class="value" id="level2Available">0</div>
+                            </div>
+                            <div class="panel-stat">
+                                <div class="label">Active</div>
+                                <div class="value active-cows" id="level2Active">0</div>
+                            </div>
+                            <div class="panel-stat production-stat">
+                                <div class="label">Prod/day</div>
+                                <div class="value" id="level2Production">1000</div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-actions">
+                            <button class="panel-btn upgrade" id="upgradeLevel2Btn" onclick="openUpgradePopup(2)" disabled>
+                                <i class="fas fa-arrow-up"></i> Upgrade
+                            </button>
+                            <button class="panel-btn activate" id="activateLevel2Btn" onclick="openActivatePopup(2, 1000)" disabled>
+                                <i class="fas fa-play"></i> Activate
+                            </button>
+                        </div>
+                        
+                        <div class="active-timer" id="level2Timer" style="display: none;">
+                            <i class="fas fa-clock"></i> Active for: <span id="level2TimeRemaining">0h 0m</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Level 3 Panel -->
+                    <div class="cow-level-panel level-3" id="level3Panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <span class="emoji">🐃</span>
+                                <span class="name">Level 3 Cow</span>
+                            </div>
+                            <span class="panel-badge" id="level3Badge">Locked</span>
+                        </div>
+                        
+                        <div class="panel-stats">
+                            <div class="panel-stat">
+                                <div class="label">Available</div>
+                                <div class="value" id="level3Available">0</div>
+                            </div>
+                            <div class="panel-stat">
+                                <div class="label">Active</div>
+                                <div class="value active-cows" id="level3Active">0</div>
+                            </div>
+                            <div class="panel-stat production-stat">
+                                <div class="label">Prod/day</div>
+                                <div class="value" id="level3Production">2500</div>
+                            </div>
+                        </div>
+                        
+                        <div class="panel-actions">
+                            <button class="panel-btn activate" id="activateLevel3Btn" onclick="openActivatePopup(3, 2500)" disabled>
+                                <i class="fas fa-play"></i> Activate
+                            </button>
+                        </div>
+                        
+                        <div class="active-timer" id="level3Timer" style="display: none;">
+                            <i class="fas fa-clock"></i> Active for: <span id="level3TimeRemaining">0h 0m</span>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Cow Supply Progress -->
-            <div class="supply-progress-card">
+            <div class="supply-container">
                 <div class="supply-header">
-                    <span>🐮 COW SUPPLY PROGRESS</span>
+                    <span>Cow Supply Progress</span>
                     <span id="cowProgressTextRanch">0/1000</span>
                 </div>
-                <div class="supply-progress-bar">
-                    <div class="supply-progress-fill" id="cowProgressFillRanch" style="width: 0%;"></div>
+                <div class="supply-bar">
+                    <div class="supply-fill" id="cowProgressFillRanch" style="width: 0%;"></div>
                 </div>
                 <div class="supply-remaining">
                     <span id="cowsRemainingRanch">1000</span> cows remaining
@@ -3513,177 +3006,9 @@
             <button class="buy-cows-btn" id="buyCowsBtn">
                 <i class="fas fa-shopping-cart"></i> Buy Cows (1 TON)
             </button>
-            
-            <!-- Cow Levels - Single Card with 3 Glass Panels -->
-            <div class="cow-levels-single-card">
-                <div class="cow-levels-title">
-                    <i class="fas fa-chart-simple"></i> Cow Levels
-                </div>
-                
-                <!-- Level 1 Panel -->
-                <div class="cow-level-panel level-1" id="level1Panel">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="panel-emoji">🐮</span>
-                            <span class="panel-name">Level 1 Cow</span>
-                            <span class="inactive-badge-small" id="level1InactiveBadgeSmall" style="display: none;">INACTIVE</span>
-                        </div>
-                        <span class="panel-badge" id="level1BadgePanel">Active</span>
-                    </div>
-                    
-                    <div class="panel-stats">
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Available</div>
-                            <div class="panel-stat-value" id="level1Available">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Active</div>
-                            <div class="panel-stat-value active" id="level1Active">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Prod/day</div>
-                            <div class="panel-stat-value panel-production">500</div>
-                        </div>
-                    </div>
-                    
-                    <div class="panel-actions">
-                        <button class="panel-action-btn upgrade" id="upgradeLevel1Btn" onclick="openUpgradePopup(1, 6000)">
-                            <i class="fas fa-arrow-up"></i> Upgrade
-                        </button>
-                        <button class="panel-action-btn activate" id="activateLevel1Btn" onclick="openActivatePopup(1, 200)">
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                    </div>
-                    
-                    <div class="panel-timer" id="level1Timer" style="display: none;">
-                        <i class="fas fa-clock"></i> Active for: <span id="level1TimeRemaining">0h 0m</span>
-                    </div>
-                </div>
-                
-                <!-- Level 2 Panel -->
-                <div class="cow-level-panel level-2" id="level2Panel">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="panel-emoji">🦬</span>
-                            <span class="panel-name">Level 2 Cow</span>
-                            <span class="inactive-badge-small" id="level2InactiveBadgeSmall" style="display: none;">INACTIVE</span>
-                        </div>
-                        <span class="panel-badge locked" id="level2BadgePanel">Locked</span>
-                    </div>
-                    
-                    <div class="panel-stats">
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Available</div>
-                            <div class="panel-stat-value" id="level2Available">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Active</div>
-                            <div class="panel-stat-value active" id="level2Active">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Prod/day</div>
-                            <div class="panel-stat-value panel-production">1000</div>
-                        </div>
-                    </div>
-                    
-                    <div class="panel-actions">
-                        <button class="panel-action-btn upgrade" id="upgradeLevel2Btn" onclick="openUpgradePopup(2, 20000)" disabled>
-                            <i class="fas fa-arrow-up"></i> Upgrade
-                        </button>
-                        <button class="panel-action-btn activate" id="activateLevel2Btn" onclick="openActivatePopup(2, 350)" disabled>
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                    </div>
-                    
-                    <div class="panel-timer" id="level2Timer" style="display: none;">
-                        <i class="fas fa-clock"></i> Active for: <span id="level2TimeRemaining">0h 0m</span>
-                    </div>
-                </div>
-                
-                <!-- Level 3 Panel -->
-                <div class="cow-level-panel level-3" id="level3Panel">
-                    <div class="panel-header">
-                        <div class="panel-title">
-                            <span class="panel-emoji">🐃</span>
-                            <span class="panel-name">Level 3 Cow</span>
-                            <span class="inactive-badge-small" id="level3InactiveBadgeSmall" style="display: none;">INACTIVE</span>
-                        </div>
-                        <span class="panel-badge locked" id="level3BadgePanel">Locked</span>
-                    </div>
-                    
-                    <div class="panel-stats">
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Available</div>
-                            <div class="panel-stat-value" id="level3Available">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Active</div>
-                            <div class="panel-stat-value active" id="level3Active">0</div>
-                        </div>
-                        <div class="panel-stat">
-                            <div class="panel-stat-label">Prod/day</div>
-                            <div class="panel-stat-value panel-production">2500</div>
-                        </div>
-                    </div>
-                    
-                    <div class="panel-actions">
-                        <button class="panel-action-btn activate" id="activateLevel3Btn" onclick="openActivatePopup(3, 1200)" disabled>
-                            <i class="fas fa-play"></i> Activate
-                        </button>
-                    </div>
-                    
-                    <div class="panel-timer" id="level3Timer" style="display: none;">
-                        <i class="fas fa-clock"></i> Active for: <span id="level3TimeRemaining">0h 0m</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Milk Storage Card -->
-            <div class="storage-card" id="storageCard">
-                <div class="storage-background">
-                    <img src="https://i.ibb.co/BKHhxhh3/Chat-GPT-Image-4-2026-05-41-33.png" alt="Milk Storage">
-                </div>
-                <div class="storage-content">
-                    <div class="storage-header">
-                        <div class="storage-title">
-                            <i class="fas fa-database"></i> Milk Storage
-                        </div>
-                        <div class="storage-full-badge" id="storageFullBadge" style="display: none;">FULL</div>
-                    </div>
-                    
-                    <div class="storage-stats">
-                        <div class="storage-stat">
-                            <span class="storage-stat-label">Level:</span>
-                            <span class="storage-stat-value" id="storageLevel">1</span>
-                        </div>
-                        <div class="storage-stat">
-                            <span class="storage-stat-label">Capacity:</span>
-                            <span class="storage-stat-value" id="storageCapacity">40,000</span>
-                        </div>
-                    </div>
-                    
-                    <div class="storage-progress">
-                        <div class="storage-progress-header">
-                            <span>Stored:</span>
-                            <span><span id="milkStored">0</span> / <span id="milkCapacity">40,000</span></span>
-                        </div>
-                        <div class="storage-progress-bar">
-                            <div class="storage-progress-fill" id="storageProgressFill" style="width: 0%;"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="storage-actions">
-                        <button class="storage-action-btn claim" id="claimMilkBtn" onclick="claimMilk()">
-                            <i class="fas fa-hand-holding-heart"></i> Claim
-                        </button>
-                        <button class="storage-action-btn upgrade" id="upgradeStorageBtn" onclick="upgradeStorage()">
-                            <i class="fas fa-arrow-up"></i> Upgrade
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
         
+        <!-- Market Section -->
         <div id="sectionMarket" class="section">
             <div class="card">
                 <div class="card-title">
@@ -3761,6 +3086,7 @@
             </div>
         </div>
         
+        <!-- Diamond Section -->
         <div id="sectionDiamond" class="section">
             <div class="card" style="background: transparent; border: none; backdrop-filter: none;">
                 <div class="card-title">
@@ -3807,6 +3133,7 @@
             </div>
         </div>
         
+        <!-- Friends Section -->
         <div id="sectionFriends" class="section">
             <div class="card" style="background: linear-gradient(145deg, rgba(255,92,168,0.15), var(--glass-strong));">
                 <div class="card-title">
@@ -3874,6 +3201,7 @@
             </div>
         </div>
         
+        <!-- Tasks Section -->
         <div id="sectionTasks" class="section">
             <div class="card">
                 <div class="card-title">
@@ -3903,6 +3231,7 @@
             </div>
         </div>
         
+        <!-- Profile Section -->
         <div id="sectionProfile" class="section">
             <div class="card">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
@@ -4080,35 +3409,35 @@
     <!-- Upgrade Popup Modal -->
     <div class="upgrade-popup" id="upgradePopup">
         <div class="upgrade-popup-content">
-            <div class="upgrade-popup-header">
-                <div class="upgrade-popup-title">
+            <div class="activate-popup-header">
+                <div class="activate-popup-title">
                     <i class="fas fa-arrow-up"></i> Upgrade Cows
                 </div>
-                <i class="fas fa-times upgrade-popup-close" onclick="closeUpgradePopup()"></i>
+                <i class="fas fa-times activate-popup-close" onclick="closeUpgradePopup()"></i>
             </div>
             
-            <div class="upgrade-popup-info" id="upgradePopupInfo">
-                <div class="upgrade-popup-level" id="upgradePopupLevel">Level 1 to Level 2</div>
-                <div class="upgrade-popup-available" id="upgradePopupAvailable">Available: 0 cows</div>
+            <div class="activate-popup-info" id="upgradePopupInfo">
+                <div class="activate-popup-level" id="upgradePopupLevel">Level 1 → Level 2</div>
+                <div class="activate-popup-available" id="upgradePopupAvailable">Available: 0 cows</div>
             </div>
             
-            <div class="upgrade-presets">
-                <button class="upgrade-preset-btn" onclick="setUpgradeAmount(1)">1</button>
-                <button class="upgrade-preset-btn" onclick="setUpgradeAmount(5)">5</button>
-                <button class="upgrade-preset-btn" onclick="setUpgradeAmount(10)">10</button>
-                <button class="upgrade-preset-btn" onclick="setUpgradeAmount('all')">All</button>
+            <div class="activate-presets">
+                <button class="activate-preset-btn" onclick="setUpgradeAmount(1)">1</button>
+                <button class="activate-preset-btn" onclick="setUpgradeAmount(5)">5</button>
+                <button class="activate-preset-btn" onclick="setUpgradeAmount(10)">10</button>
+                <button class="activate-preset-btn" onclick="setUpgradeAmount('all')">All</button>
             </div>
             
-            <input type="number" id="upgradeAmount" class="upgrade-custom-input" placeholder="Custom amount" min="1" value="1">
+            <input type="number" id="upgradeAmount" class="activate-custom-input" placeholder="Custom amount" min="1" value="1">
             
-            <div class="upgrade-total-cost">
-                <span class="upgrade-cost-label">Upgrade Cost:</span>
-                <span class="upgrade-cost-value" id="upgradeTotalCost">
+            <div class="activate-total-cost">
+                <span class="activate-cost-label">Upgrade Cost:</span>
+                <span class="activate-cost-value" id="upgradeTotalCost">
                     <span id="upgradeCostAmount">0</span> 🥛
                 </span>
             </div>
             
-            <button class="upgrade-confirm-btn" id="upgradeConfirmBtn" onclick="confirmUpgrade()">
+            <button class="activate-confirm-btn" id="upgradeConfirmBtn" onclick="confirmUpgrade()">
                 Confirm Upgrade
             </button>
         </div>
@@ -4117,52 +3446,48 @@
     <!-- Buy Cows Popup Modal -->
     <div class="buy-cows-popup" id="buyCowsPopup">
         <div class="buy-cows-popup-content">
-            <div class="buy-cows-popup-header">
-                <div class="buy-cows-popup-title">
+            <div class="activate-popup-header">
+                <div class="activate-popup-title">
                     <i class="fas fa-cow"></i> Buy Cows
                 </div>
-                <i class="fas fa-times buy-cows-popup-close" onclick="closeBuyCowsPopup()"></i>
+                <i class="fas fa-times activate-popup-close" onclick="closeBuyCowsPopup()"></i>
             </div>
             
-            <div class="buy-cows-info">
-                <div class="buy-cows-available">
-                    <span>Available globally:</span>
-                    <span id="globalCowsAvailable">1000</span>
-                </div>
-                <div class="buy-cows-price">
-                    <span>Price per cow:</span>
-                    <span>1 TON</span>
-                </div>
+            <div class="activate-popup-info">
+                <div class="activate-popup-level">How many cows to buy?</div>
+                <div class="activate-popup-available" id="buyCowsAvailable">Available: 1000 cows</div>
             </div>
             
-            <div class="buy-cows-presets">
-                <button class="buy-cows-preset-btn" onclick="setBuyCowsAmount(1)">1</button>
-                <button class="buy-cows-preset-btn" onclick="setBuyCowsAmount(5)">5</button>
-                <button class="buy-cows-preset-btn" onclick="setBuyCowsAmount(10)">10</button>
-                <button class="buy-cows-preset-btn" onclick="setBuyCowsAmount('max')">MAX</button>
+            <div class="activate-presets">
+                <button class="activate-preset-btn" onclick="setBuyAmount(1)">1</button>
+                <button class="activate-preset-btn" onclick="setBuyAmount(5)">5</button>
+                <button class="activate-preset-btn" onclick="setBuyAmount(10)">10</button>
+                <button class="activate-preset-btn" onclick="setBuyAmount('max')">MAX</button>
             </div>
             
-            <input type="number" id="buyCowsAmount" class="buy-cows-custom-input" placeholder="How many cows to buy" min="1" value="1">
+            <input type="number" id="buyCowsAmount" class="activate-custom-input" placeholder="Custom amount" min="1" value="1">
             
-            <div class="buy-cows-balance">
-                <span>Your balance:</span>
-                <span id="userBalanceDisplay">0 TON</span>
-            </div>
-            
-            <div class="buy-cows-total-cost">
-                <span class="buy-cows-cost-label">Total TON Cost:</span>
-                <span class="buy-cows-cost-value" id="buyCowsTotalCost">
+            <div class="activate-total-cost">
+                <span class="activate-cost-label">Total TON Cost:</span>
+                <span class="activate-cost-value" id="buyCowsTotalCost">
                     <span id="buyCowsCostAmount">1</span> TON
                 </span>
             </div>
             
-            <button class="buy-cows-confirm-btn" id="buyCowsConfirmBtn" onclick="confirmBuyCows()">
+            <div style="background: rgba(0,0,0,0.2); border-radius: 14px; padding: 12px; margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-size: 11px; color: var(--text-secondary);">Your Balance</span>
+                    <span style="font-weight: 700; color: var(--crystal-blue);" id="buyCowsUserBalance">0 TON</span>
+                </div>
+            </div>
+            
+            <button class="activate-confirm-btn" id="buyCowsConfirmBtn" onclick="confirmBuyCows()">
                 Confirm Purchase
             </button>
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Sell Order Modal -->
     <div class="modal-overlay" id="sellOrderModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -4211,6 +3536,7 @@
         </div>
     </div>
 
+    <!-- Confirm Purchase Modal -->
     <div class="modal-overlay" id="confirmPurchaseModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -4239,6 +3565,7 @@
         </div>
     </div>
 
+    <!-- Hatch Modal -->
     <div class="modal-overlay" id="hatchModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -4274,6 +3601,7 @@
         </div>
     </div>
 
+    <!-- Deposit Modal -->
     <div class="modal-overlay" id="depositModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -4324,6 +3652,7 @@
         </div>
     </div>
 
+    <!-- Add Task Modal -->
     <div class="modal-overlay" id="addTaskModal">
         <div class="modal-content" style="max-width: 400px;">
             <div class="modal-header">
@@ -4383,6 +3712,7 @@
         </div>
     </div>
 
+    <!-- Task Verify Modal -->
     <div class="modal-overlay" id="taskVerifyModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -4420,7 +3750,7 @@
     </div>
 
     <script>
-        // Configuration
+        // CONFIG
         const CONFIG = {
             API_URL: 'https://noisy-dust-b9e8.mmrr2872008.workers.dev',
             BOT_USERNAME: '@Crystal_Ranch_bot',
@@ -4437,14 +3767,14 @@
             COW_HATCH_COST: 50000,
             
             // Ranch config
-            COW_ACTIVATION_COST: { 1: 200, 2: 350, 3: 1200 },
+            COW_ACTIVATION_COST: { 1: 500, 2: 1000, 3: 2500 },
             COW_UPGRADE_COST: { 1: 6000, 2: 20000 },
             COW_PRODUCTION_DAILY: { 1: 500, 2: 1000, 3: 2500 },
             STORAGE_CAPACITY: { 1: 40000, 2: 80000, 3: 150000, 4: 300000, 5: 600000, 6: 1000000, 7: 2000000, 8: 4000000, 9: 8000000, 10: 16000000 },
             STORAGE_UPGRADE_COST: { 1: 10000, 2: 20000, 3: 40000, 4: 80000, 5: 160000, 6: 320000, 7: 640000, 8: 1280000, 9: 2560000 }
         };
 
-        // Translations
+        // TRANSLATIONS
         const TRANSLATIONS = {
             en: {
                 'nav.farm': 'Farm',
@@ -4785,7 +4115,7 @@
             document.getElementById('infoPrizeList').innerHTML = prizeHtml;
         }
 
-        // App State
+        // App object
         let App = {
             userId: null,
             user: null,
@@ -4801,7 +4131,6 @@
                 cowLevels: { 1: 0, 2: 0, 3: 0 },
                 cowActive: { 1: 0, 2: 0, 3: 0 },
                 cowActiveUntil: { 1: null, 2: null, 3: null },
-                hourlyProduction: 0,
                 dailyProduction: 0,
                 milkStored: 0,
                 storageCapacity: 40000,
@@ -4834,12 +4163,13 @@
             
             currentTaskTab: 'partner',
             
-            // Popup state
+            // Activate/Upgrade state
             activateLevel: 1,
             activateMax: 0,
-            activateCostPerCow: 200,
+            activateCostPerCow: 500,
             
             upgradeFromLevel: 1,
+            upgradeMax: 0,
             upgradeCostPerCow: 6000,
             
             initialized: false
@@ -5221,11 +4551,11 @@
                     const active2 = App.ranch.cowActive[2];
                     const active3 = App.ranch.cowActive[3];
                     
-                    App.ranch.dailyProduction = (active1 * CONFIG.COW_PRODUCTION_DAILY[1]) +
-                                               (active2 * CONFIG.COW_PRODUCTION_DAILY[2]) +
-                                               (active3 * CONFIG.COW_PRODUCTION_DAILY[3]);
+                    const dailyProd = (active1 * CONFIG.COW_PRODUCTION_DAILY[1]) +
+                                    (active2 * CONFIG.COW_PRODUCTION_DAILY[2]) +
+                                    (active3 * CONFIG.COW_PRODUCTION_DAILY[3]);
                     
-                    App.ranch.hourlyProduction = App.ranch.dailyProduction / 24;
+                    App.ranch.dailyProduction = dailyProd;
                     App.ranch.storageFull = App.ranch.milkStored >= App.ranch.storageCapacity;
                 }
                 
@@ -5263,20 +4593,25 @@
             const activeCows = (App.ranch.cowActive[1] || 0) + (App.ranch.cowActive[2] || 0) + (App.ranch.cowActive[3] || 0);
             const inactiveCows = totalCows - activeCows;
             
-            // Calculate daily production
-            App.ranch.dailyProduction = (activeCows * 500); // Simplified for demo
-            
             document.getElementById('totalCowsOverview').innerHTML = totalCows;
             document.getElementById('activeCowsOverview').innerHTML = activeCows;
             document.getElementById('inactiveCowsOverview').innerHTML = inactiveCows;
-            document.getElementById('dailyProductionOverview').innerHTML = App.ranch.dailyProduction;
+            
+            // Daily production
+            const dailyProd = (App.ranch.cowActive[1] * 500) + 
+                             (App.ranch.cowActive[2] * 1000) + 
+                             (App.ranch.cowActive[3] * 2500);
+            document.getElementById('dailyProductionOverview').innerHTML = dailyProd;
             
             // Storage
-            const storageValue = `${formatNumber(App.ranch.milkStored)} / ${formatNumber(App.ranch.storageCapacity)}`;
-            document.getElementById('storageValueSmall').innerHTML = storageValue;
-            const storagePercent = (App.ranch.milkStored / App.ranch.storageCapacity) * 100;
-            document.getElementById('storageProgressSmall').style.width = `${storagePercent}%`;
-            document.getElementById('storageLevelSmall').innerHTML = App.ranch.storageLevel;
+            const milkStored = App.ranch.milkStored || 0;
+            const capacity = App.ranch.storageCapacity || 40000;
+            const percent = (milkStored / capacity) * 100;
+            
+            document.getElementById('milkStored').innerHTML = formatNumber(milkStored);
+            document.getElementById('milkCapacity').innerHTML = formatNumber(capacity) + (capacity >= 1000 ? 'K' : '');
+            document.getElementById('storageProgressFill').style.width = `${percent}%`;
+            document.getElementById('storagePercent').innerHTML = Math.round(percent) + '%';
             
             // Cow progress
             const cowsSold = App.global?.cows_sold || 0;
@@ -5286,31 +4621,20 @@
             document.getElementById('cowProgressFillRanch').style.width = `${progressPercent}%`;
             document.getElementById('cowsRemainingRanch').innerHTML = cowsCap - cowsSold;
             
-            // Update cow machine card on farm page
-            document.getElementById('cowsLeftBadge').innerHTML = `${cowsCap - cowsSold} LEFT`;
-            if (cowsSold >= cowsCap) {
-                document.getElementById('cowCardBadge').innerHTML = 'SOLD OUT';
-                document.getElementById('cowCardBadge').style.background = 'rgba(255, 75, 92, 0.9)';
-                document.getElementById('cowsLeftBadge').style.display = 'none';
-            } else {
-                document.getElementById('cowCardBadge').innerHTML = 'AVAILABLE';
-                document.getElementById('cowCardBadge').style.background = 'rgba(0, 0, 0, 0.7)';
-                document.getElementById('cowsLeftBadge').style.display = 'block';
-            }
-            
-            // Level 1 Panel
+            // Level 1
             document.getElementById('level1Available').innerHTML = App.ranch.cowLevels[1] || 0;
             document.getElementById('level1Active').innerHTML = App.ranch.cowActive[1] || 0;
+            document.getElementById('level1Production').innerHTML = 500;
             
             if (App.ranch.cowActive[1] > 0) {
-                document.getElementById('level1BadgePanel').innerHTML = 'Active';
-                document.getElementById('level1BadgePanel').className = 'panel-badge';
+                document.getElementById('level1Badge').innerHTML = 'Active';
+                document.getElementById('level1Badge').className = 'panel-badge active';
             } else if (App.ranch.cowLevels[1] > 0) {
-                document.getElementById('level1BadgePanel').innerHTML = 'Available';
-                document.getElementById('level1BadgePanel').className = 'panel-badge';
+                document.getElementById('level1Badge').innerHTML = 'Available';
+                document.getElementById('level1Badge').className = 'panel-badge';
             } else {
-                document.getElementById('level1BadgePanel').innerHTML = 'No Cows';
-                document.getElementById('level1BadgePanel').className = 'panel-badge locked';
+                document.getElementById('level1Badge').innerHTML = 'None';
+                document.getElementById('level1Badge').className = 'panel-badge';
             }
             
             if (App.ranch.cowActiveUntil[1]) {
@@ -5327,27 +4651,25 @@
                 document.getElementById('level1Timer').style.display = 'none';
             }
             
-            document.getElementById('level1InactiveBadgeSmall').style.display = 
-                App.ranch.cowLevels[1] > 0 && App.ranch.cowActive[1] === 0 ? 'inline-block' : 'none';
-            
-            // Level 2 Panel
+            // Level 2
             document.getElementById('level2Available').innerHTML = App.ranch.cowLevels[2] || 0;
             document.getElementById('level2Active').innerHTML = App.ranch.cowActive[2] || 0;
+            document.getElementById('level2Production').innerHTML = 1000;
             
             const level2Unlocked = App.ranch.cowLevels[2] > 0;
             if (level2Unlocked) {
                 if (App.ranch.cowActive[2] > 0) {
-                    document.getElementById('level2BadgePanel').innerHTML = 'Active';
-                    document.getElementById('level2BadgePanel').className = 'panel-badge';
+                    document.getElementById('level2Badge').innerHTML = 'Active';
+                    document.getElementById('level2Badge').className = 'panel-badge active';
                 } else {
-                    document.getElementById('level2BadgePanel').innerHTML = 'Available';
-                    document.getElementById('level2BadgePanel').className = 'panel-badge';
+                    document.getElementById('level2Badge').innerHTML = 'Available';
+                    document.getElementById('level2Badge').className = 'panel-badge';
                 }
                 document.getElementById('upgradeLevel2Btn').disabled = false;
                 document.getElementById('activateLevel2Btn').disabled = false;
             } else {
-                document.getElementById('level2BadgePanel').innerHTML = 'Locked';
-                document.getElementById('level2BadgePanel').className = 'panel-badge locked';
+                document.getElementById('level2Badge').innerHTML = 'Locked';
+                document.getElementById('level2Badge').className = 'panel-badge';
                 document.getElementById('upgradeLevel2Btn').disabled = true;
                 document.getElementById('activateLevel2Btn').disabled = true;
             }
@@ -5366,26 +4688,24 @@
                 document.getElementById('level2Timer').style.display = 'none';
             }
             
-            document.getElementById('level2InactiveBadgeSmall').style.display = 
-                App.ranch.cowLevels[2] > 0 && App.ranch.cowActive[2] === 0 ? 'inline-block' : 'none';
-            
-            // Level 3 Panel
+            // Level 3
             document.getElementById('level3Available').innerHTML = App.ranch.cowLevels[3] || 0;
             document.getElementById('level3Active').innerHTML = App.ranch.cowActive[3] || 0;
+            document.getElementById('level3Production').innerHTML = 2500;
             
             const level3Unlocked = App.ranch.cowLevels[3] > 0;
             if (level3Unlocked) {
                 if (App.ranch.cowActive[3] > 0) {
-                    document.getElementById('level3BadgePanel').innerHTML = 'Active';
-                    document.getElementById('level3BadgePanel').className = 'panel-badge';
+                    document.getElementById('level3Badge').innerHTML = 'Active';
+                    document.getElementById('level3Badge').className = 'panel-badge active';
                 } else {
-                    document.getElementById('level3BadgePanel').innerHTML = 'Available';
-                    document.getElementById('level3BadgePanel').className = 'panel-badge';
+                    document.getElementById('level3Badge').innerHTML = 'Available';
+                    document.getElementById('level3Badge').className = 'panel-badge';
                 }
                 document.getElementById('activateLevel3Btn').disabled = false;
             } else {
-                document.getElementById('level3BadgePanel').innerHTML = 'Locked';
-                document.getElementById('level3BadgePanel').className = 'panel-badge locked';
+                document.getElementById('level3Badge').innerHTML = 'Locked';
+                document.getElementById('level3Badge').className = 'panel-badge';
                 document.getElementById('activateLevel3Btn').disabled = true;
             }
             
@@ -5403,22 +4723,10 @@
                 document.getElementById('level3Timer').style.display = 'none';
             }
             
-            document.getElementById('level3InactiveBadgeSmall').style.display = 
-                App.ranch.cowLevels[3] > 0 && App.ranch.cowActive[3] === 0 ? 'inline-block' : 'none';
-            
-            // Storage card
-            document.getElementById('storageLevel').innerHTML = App.ranch.storageLevel;
-            document.getElementById('storageCapacity').innerHTML = formatNumber(App.ranch.storageCapacity);
-            document.getElementById('milkStored').innerHTML = formatNumber(App.ranch.milkStored);
-            document.getElementById('milkCapacity').innerHTML = formatNumber(App.ranch.storageCapacity);
-            
-            document.getElementById('storageProgressFill').style.width = `${storagePercent}%`;
-            
-            if (App.ranch.storageFull) {
-                document.getElementById('storageFullBadge').style.display = 'block';
-            } else {
-                document.getElementById('storageFullBadge').style.display = 'none';
-            }
+            // Update buy cows available
+            const cowsRemaining = (App.global?.cows_remaining || 1000);
+            document.getElementById('buyCowsAvailable').innerHTML = `Available: ${cowsRemaining} cows`;
+            document.getElementById('buyCowsUserBalance').innerHTML = formatTON(App.user?.tonBalance || 0) + ' TON';
         }
 
         function updateLeaderboardUI() {
@@ -6215,9 +5523,6 @@
             document.getElementById('withdrawNet').innerHTML = `${formatTON(net)} TON`;
             
             document.getElementById('taskUserBalance').innerHTML = formatTON(App.user.tonBalance || 0);
-            
-            document.getElementById('userBalanceDisplay').innerHTML = formatTON(App.user.tonBalance || 0) + ' TON';
-            document.getElementById('globalCowsAvailable').innerHTML = App.global?.cows_remaining || 0;
         }
 
         window.createTask = async function() {
@@ -6458,23 +5763,23 @@
             }
         }
 
-        // Ranch Functions
-        window.openRanch = function() {
+        // ===== RANCH FUNCTIONS =====
+        
+        function openRanch() {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById('sectionRanch').classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             updateRanchUI();
-        };
-
-        window.closeRanch = function() {
+        }
+        
+        function closeRanch() {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.getElementById('sectionFarm').classList.add('active');
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.querySelector('.nav-item[data-section="sectionFarm"]').classList.add('active');
-        };
-
-        // Activate Popup Functions
-        window.openActivatePopup = function(level, costPerCow) {
+        }
+        
+        function openActivatePopup(level, costPerCow) {
             App.activateLevel = level;
             App.activateCostPerCow = costPerCow;
             
@@ -6490,13 +5795,13 @@
             updateActivateCost();
             
             document.getElementById('activatePopup').classList.add('active');
-        };
-
-        window.closeActivatePopup = function() {
+        }
+        
+        function closeActivatePopup() {
             document.getElementById('activatePopup').classList.remove('active');
-        };
-
-        window.setActivateAmount = function(value) {
+        }
+        
+        function setActivateAmount(value) {
             const available = App.ranch.cowLevels[App.activateLevel] || 0;
             
             if (value === 'all') {
@@ -6506,8 +5811,8 @@
             }
             
             updateActivateCost();
-        };
-
+        }
+        
         function updateActivateCost() {
             const amount = parseInt(document.getElementById('activateAmount').value) || 1;
             const available = App.ranch.cowLevels[App.activateLevel] || 0;
@@ -6528,8 +5833,8 @@
                 confirmBtn.style.opacity = '1';
             }
         }
-
-        window.confirmActivation = async function() {
+        
+        async function confirmActivation() {
             const amount = parseInt(document.getElementById('activateAmount').value) || 1;
             const level = App.activateLevel;
             
@@ -6551,19 +5856,23 @@
                 );
                 
                 closeActivatePopup();
+                updateRanchUI();
                 
             } catch (error) {
                 console.error('Activation error:', error);
                 showNotification(error.message, 'error');
             }
-        };
-
-        // Upgrade Popup Functions
-        window.openUpgradePopup = function(fromLevel, costPerCow) {
+        }
+        
+        function openUpgradePopup(fromLevel) {
             App.upgradeFromLevel = fromLevel;
-            App.upgradeCostPerCow = costPerCow;
+            const toLevel = fromLevel + 1;
             
-            const levelNames = { 1: 'Level 1 to Level 2', 2: 'Level 2 to Level 3' };
+            const levelNames = { 1: 'Level 1 → Level 2', 2: 'Level 2 → Level 3' };
+            const upgradeCosts = { 1: 6000, 2: 20000 };
+            
+            App.upgradeCostPerCow = upgradeCosts[fromLevel] || 6000;
+            
             const availableCows = App.ranch.cowLevels[fromLevel] || 0;
             
             document.getElementById('upgradePopupLevel').innerHTML = levelNames[fromLevel];
@@ -6575,13 +5884,13 @@
             updateUpgradeCost();
             
             document.getElementById('upgradePopup').classList.add('active');
-        };
-
-        window.closeUpgradePopup = function() {
+        }
+        
+        function closeUpgradePopup() {
             document.getElementById('upgradePopup').classList.remove('active');
-        };
-
-        window.setUpgradeAmount = function(value) {
+        }
+        
+        function setUpgradeAmount(value) {
             const available = App.ranch.cowLevels[App.upgradeFromLevel] || 0;
             
             if (value === 'all') {
@@ -6591,8 +5900,8 @@
             }
             
             updateUpgradeCost();
-        };
-
+        }
+        
         function updateUpgradeCost() {
             const amount = parseInt(document.getElementById('upgradeAmount').value) || 1;
             const available = App.ranch.cowLevels[App.upgradeFromLevel] || 0;
@@ -6613,8 +5922,8 @@
                 confirmBtn.style.opacity = '1';
             }
         }
-
-        window.confirmUpgrade = async function() {
+        
+        async function confirmUpgrade() {
             const amount = parseInt(document.getElementById('upgradeAmount').value) || 1;
             const fromLevel = App.upgradeFromLevel;
             
@@ -6631,57 +5940,65 @@
                 await loadGameState();
                 
                 showNotification(
-                    `✅ Upgraded ${amount} Level ${fromLevel} cow(s) to Level ${fromLevel + 1}`,
+                    `✅ Upgraded ${amount} Level ${fromLevel} cow(s)`,
                     'success'
                 );
                 
                 closeUpgradePopup();
+                updateRanchUI();
                 
             } catch (error) {
                 console.error('Upgrade error:', error);
                 showNotification(error.message, 'error');
             }
-        };
-
-        // Buy Cows Popup Functions
-        window.openBuyCowsPopup = function() {
+        }
+        
+        function openBuyCowsPopup() {
+            const cowsRemaining = App.global?.cows_remaining || 1000;
+            document.getElementById('buyCowsAvailable').innerHTML = `Available: ${cowsRemaining} cows`;
+            document.getElementById('buyCowsUserBalance').innerHTML = formatTON(App.user?.tonBalance || 0) + ' TON';
+            
             document.getElementById('buyCowsAmount').value = 1;
+            document.getElementById('buyCowsAmount').max = cowsRemaining;
+            
             updateBuyCowsCost();
+            
             document.getElementById('buyCowsPopup').classList.add('active');
-        };
-
-        window.closeBuyCowsPopup = function() {
+        }
+        
+        function closeBuyCowsPopup() {
             document.getElementById('buyCowsPopup').classList.remove('active');
-        };
-
-        window.setBuyCowsAmount = function(value) {
-            const maxAvailable = App.global?.cows_remaining || 0;
+        }
+        
+        function setBuyAmount(value) {
+            const available = App.global?.cows_remaining || 1000;
+            const userBalance = App.user?.tonBalance || 0;
             
             if (value === 'max') {
-                document.getElementById('buyCowsAmount').value = maxAvailable;
+                const maxByBalance = Math.floor(userBalance);
+                const maxCows = Math.min(available, maxByBalance);
+                document.getElementById('buyCowsAmount').value = maxCows > 0 ? maxCows : 1;
             } else {
-                document.getElementById('buyCowsAmount').value = Math.min(value, maxAvailable);
+                document.getElementById('buyCowsAmount').value = Math.min(value, available);
             }
             
             updateBuyCowsCost();
-        };
-
+        }
+        
         function updateBuyCowsCost() {
             const amount = parseInt(document.getElementById('buyCowsAmount').value) || 1;
-            const maxAvailable = App.global?.cows_remaining || 0;
+            const available = App.global?.cows_remaining || 1000;
+            const userBalance = App.user?.tonBalance || 0;
             
-            if (amount > maxAvailable) {
-                document.getElementById('buyCowsAmount').value = maxAvailable;
+            if (amount > available) {
+                document.getElementById('buyCowsAmount').value = available;
             }
             
-            const cost = amount * 1;
+            const cost = amount * 1; // 1 TON per cow
             document.getElementById('buyCowsCostAmount').innerHTML = cost;
             
             const confirmBtn = document.getElementById('buyCowsConfirmBtn');
-            if (cost > (App.user?.tonBalance || 0)) {
-                confirmBtn.disabled = true;
-                confirmBtn.style.opacity = '0.5';
-            } else if (amount > maxAvailable) {
+            if (cost > userBalance || amount > available) {
                 confirmBtn.disabled = true;
                 confirmBtn.style.opacity = '0.5';
             } else {
@@ -6689,14 +6006,9 @@
                 confirmBtn.style.opacity = '1';
             }
         }
-
-        window.confirmBuyCows = async function() {
+        
+        async function confirmBuyCows() {
             const amount = parseInt(document.getElementById('buyCowsAmount').value) || 1;
-            
-            if (amount <= 0) {
-                alert(App.currentLanguage === 'ru' ? 'Пожалуйста, введите корректное количество' : 'Please enter valid quantity');
-                return;
-            }
             
             const buttonId = 'buyCowsConfirmBtn';
             const button = document.getElementById('buyCowsConfirmBtn');
@@ -6709,134 +6021,23 @@
                 const result = await callAPI('buyCow', { quantity: amount });
                 
                 await loadGameState();
-                animateTonBalance();
                 
                 showNotification(
-                    App.currentLanguage === 'ru' ? 
-                    `✅ Куплено ${result.quantity_bought} коров(а) за ${result.quantity_bought} TON` : 
-                    `✅ Bought ${result.quantity_bought} Cow(s) for ${result.quantity_bought} TON`,
+                    `✅ Bought ${amount} cow(s) for ${amount} TON`,
                     'success'
                 );
                 
                 closeBuyCowsPopup();
+                updateRanchUI();
+                animateTonBalance();
                 
             } catch (error) {
                 console.error('Buy cows error:', error);
                 showNotification(error.message, 'error');
             }
-        };
+        }
 
-        // Other Ranch Functions
-        window.claimMilk = async function() {
-            const buttonId = 'claimMilkBtn';
-            const button = document.getElementById('claimMilkBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('claimMilk');
-                
-                await loadGameState();
-                
-                showNotification(
-                    `✅ Claimed ${formatNumber(result.claimed)} 🥛`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Claim error:', error);
-                showNotification(error.message, 'error');
-            }
-        };
-
-        window.upgradeStorage = async function() {
-            const buttonId = 'upgradeStorageBtn';
-            const button = document.getElementById('upgradeStorageBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                const result = await callAPI('upgradeMilkStorage');
-                
-                await loadGameState();
-                
-                showNotification(
-                    `✅ Storage upgraded to Level ${result.newLevel}`,
-                    'success'
-                );
-                
-            } catch (error) {
-                console.error('Upgrade storage error:', error);
-                showNotification(error.message, 'error');
-            }
-        };
-
-        // Other Machine Functions
-        window.buyChicken = async function() {
-            const buttonId = 'buyChickenBtn';
-            const button = document.getElementById('buyChickenBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                await callAPI('buyChicken');
-                await loadGameState();
-                animateTonBalance();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Курица куплена!' : '✅ Chicken machine purchased!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Buy chicken error:', error);
-            }
-        };
-
-        window.buyDiamondEngine = async function() {
-            const buttonId = 'buyDiamondBtn';
-            const button = document.getElementById('buyDiamondBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                await callAPI('buyDiamondEngine');
-                await loadGameState();
-                animateTonBalance();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '✅ Кристальный двигатель куплен!' : '✅ Crystal Engine purchased!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Buy crystal engine error:', error);
-            }
-        };
-
-        window.startDiamondProduction = async function() {
-            const buttonId = 'startDiamondBtn';
-            const button = document.getElementById('startDiamondBtn');
-            
-            if (!validateAndCooldown(buttonId, button)) {
-                return;
-            }
-            
-            try {
-                await callAPI('startDiamondProduction');
-                await loadGameState();
-                showNotification(
-                    App.currentLanguage === 'ru' ? '💎 Кристалл создан!' : '💎 Crystal produced!',
-                    'success'
-                );
-            } catch (error) {
-                console.error('Crystal production error:', error);
-            }
-        };
+        window.buyCow = openBuyCowsPopup;
 
         window.hatchCow = async function() {
             const buttonId = 'hatchCowConfirm';
@@ -7017,11 +6218,19 @@
             document.querySelectorAll('.modal-overlay').forEach(modal => {
                 modal.classList.remove('active');
             });
+            document.querySelectorAll('.activate-popup').forEach(popup => {
+                popup.classList.remove('active');
+            });
+            document.querySelectorAll('.upgrade-popup').forEach(popup => {
+                popup.classList.remove('active');
+            });
+            document.querySelectorAll('.buy-cows-popup').forEach(popup => {
+                popup.classList.remove('active');
+            });
             App.pendingOrder = null;
             App.pendingTask = null;
         };
 
-        // Deposit Functions
         window.initiateDeposit = async function() {
             if (!App.wallet) {
                 alert(App.currentLanguage === 'ru' ? 'Сначала подключите кошелек' : 'Connect wallet first');
@@ -7240,26 +6449,9 @@
                 loadGameState();
             });
             
-            // Ranch navigation
-            document.getElementById('cowMachineCard').addEventListener('click', openRanch);
-            document.getElementById('openRanchFromCowBtn').addEventListener('click', function(e) {
-                e.stopPropagation();
-                openRanch();
-            });
+            document.getElementById('openRanchBtn').addEventListener('click', openRanch);
             document.getElementById('backFromRanchBtn').addEventListener('click', closeRanch);
             document.getElementById('buyCowsBtn').addEventListener('click', openBuyCowsPopup);
-            
-            // Popup close buttons
-            document.querySelectorAll('.activate-popup-close, .upgrade-popup-close, .buy-cows-popup-close').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    this.closest('.activate-popup, .upgrade-popup, .buy-cows-popup').classList.remove('active');
-                });
-            });
-            
-            // Input listeners
-            document.getElementById('activateAmount').addEventListener('input', updateActivateCost);
-            document.getElementById('upgradeAmount').addEventListener('input', updateUpgradeCost);
-            document.getElementById('buyCowsAmount').addEventListener('input', updateBuyCowsCost);
             
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -7341,33 +6533,34 @@
             document.getElementById('loadMoreReferralsBtn').addEventListener('click', loadMoreReferrals);
             document.getElementById('loadMoreEarningsBtn').addEventListener('click', loadMoreEarnings);
             
-            document.getElementById('buyChickenBtn').addEventListener('click', buyChicken);
-            document.getElementById('buyDiamondBtn').addEventListener('click', buyDiamondEngine);
-            document.getElementById('startDiamondBtn').addEventListener('click', startDiamondProduction);
+            document.getElementById('buyCowBtn').addEventListener('click', openBuyCowsPopup);
+            document.getElementById('buyChickenBtn').addEventListener('click', window.buyChicken);
+            document.getElementById('buyDiamondBtn').addEventListener('click', window.buyDiamondEngine);
+            document.getElementById('startDiamondBtn').addEventListener('click', window.startDiamondProduction);
             
-            document.getElementById('hatchCowBtn').addEventListener('click', openHatchModal);
-            document.getElementById('hatchChickenBtn').addEventListener('click', openHatchModal);
-            document.getElementById('hatchCowConfirm').addEventListener('click', hatchCow);
-            document.getElementById('hatchChickenConfirm').addEventListener('click', hatchChicken);
+            document.getElementById('hatchCowBtn').addEventListener('click', window.openHatchModal);
+            document.getElementById('hatchChickenBtn').addEventListener('click', window.openHatchModal);
+            document.getElementById('hatchCowConfirm').addEventListener('click', window.hatchCow);
+            document.getElementById('hatchChickenConfirm').addEventListener('click', window.hatchChicken);
             
-            document.getElementById('convertDiamondBtn').addEventListener('click', convertDiamond);
+            document.getElementById('convertDiamondBtn').addEventListener('click', window.convertDiamond);
             document.getElementById('convertAmount').addEventListener('input', updateAllUI);
             
-            document.getElementById('copyReferralBtn').addEventListener('click', copyReferralLink);
-            document.getElementById('claimReferralBtn').addEventListener('click', claimReferral);
+            document.getElementById('copyReferralBtn').addEventListener('click', window.copyReferralLink);
+            document.getElementById('claimReferralBtn').addEventListener('click', window.claimReferral);
             
-            document.getElementById('withdrawBtn').addEventListener('click', withdraw);
+            document.getElementById('withdrawBtn').addEventListener('click', window.withdraw);
             document.getElementById('withdrawAmount').addEventListener('input', updateAllUI);
             
-            document.getElementById('createSellOrderBtnTop').addEventListener('click', openSellOrderModal);
-            document.getElementById('submitSellOrderBtn').addEventListener('click', createSellOrder);
+            document.getElementById('createSellOrderBtnTop').addEventListener('click', window.openSellOrderModal);
+            document.getElementById('submitSellOrderBtn').addEventListener('click', window.createSellOrder);
             
-            document.getElementById('depositButton').addEventListener('click', openDepositModal);
+            document.getElementById('depositButton').addEventListener('click', window.openDepositModal);
             document.getElementById('connectWalletBtn').addEventListener('click', connectWallet);
-            document.getElementById('submitDepositBtn').addEventListener('click', initiateDeposit);
+            document.getElementById('submitDepositBtn').addEventListener('click', window.initiateDeposit);
             
-            document.getElementById('addTaskBtn').addEventListener('click', openAddTaskModal);
-            document.getElementById('submitTaskBtn').addEventListener('click', createTask);
+            document.getElementById('addTaskBtn').addEventListener('click', window.openAddTaskModal);
+            document.getElementById('submitTaskBtn').addEventListener('click', window.createTask);
             document.getElementById('taskTarget').addEventListener('input', calculateTaskPrice);
             
             document.querySelectorAll('[data-sell-percent]').forEach(btn => {
@@ -7412,6 +6605,10 @@
             
             document.getElementById('sellQuantity').addEventListener('input', updateSellDetails);
             document.getElementById('sellTotalPrice').addEventListener('input', updateSellDetails);
+            
+            document.getElementById('activateAmount').addEventListener('input', updateActivateCost);
+            document.getElementById('upgradeAmount').addEventListener('input', updateUpgradeCost);
+            document.getElementById('buyCowsAmount').addEventListener('input', updateBuyCowsCost);
         }
 
         document.addEventListener('DOMContentLoaded', initApp);
