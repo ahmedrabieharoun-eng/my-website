@@ -405,10 +405,28 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 <div class="sec" id="sectionTasks">
   <div class="task-tabs">
     <div class="ttab active" data-t="referral" onclick="switchTTab(this,'referral')">👥 Referral</div>
-    <div class="ttab" data-t="social" onclick="switchTTab(this,'social')">📢 Social</div>
+    <div class="ttab" data-t="social"    onclick="switchTTab(this,'social')">📢 Social</div>
   </div>
   <div class="tcont active" id="tcReferral"><div id="refTaskList"></div></div>
-  <div class="tcont" id="tcSocial"><div id="socTaskList"></div></div>
+  <div class="tcont" id="tcSocial">
+    <!-- Sub-tabs: Partner / Community -->
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <div class="ttab active" id="stab-partner"   style="flex:1;font-size:11px" onclick="switchSocTab('partner')">⭐ Partner</div>
+      <div class="ttab"        id="stab-community" style="flex:1;font-size:11px" onclick="switchSocTab('community')">🌍 Community</div>
+    </div>
+    <div id="socPartnerList"></div>
+    <div id="socCommunityList" style="display:none"></div>
+    <!-- Add Task Button -->
+    <div style="display:flex;justify-content:center;margin-top:14px;margin-bottom:4px">
+      <button onclick="openModal('addTaskModal')" style="
+        background:linear-gradient(135deg,var(--bamboo),#4e7a20);
+        border:none;border-radius:16px;padding:12px 32px;
+        color:#fff;font-size:14px;font-weight:800;cursor:pointer;
+        box-shadow:0 0 16px var(--bamboo-glow);
+        display:flex;align-items:center;gap:8px;
+      ">➕ Add Task</button>
+    </div>
+  </div>
 </div>
 
 <!-- FINANCE -->
@@ -555,6 +573,50 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
     <div id="infoContent"></div>
   </div>
 </div>
+<div class="modal" id="addTaskModal">
+  <div class="modal-box">
+    <div class="mhdr">
+      <div class="mtitle">➕ Add Task</div>
+      <button class="mclose" onclick="closeModal('addTaskModal')"><i class="fas fa-times"></i></button>
+    </div>
+    <!-- Cost info -->
+    <div style="background:rgba(124,179,66,.08);border:1px solid rgba(124,179,66,.2);border-radius:12px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--muted);font-weight:600">
+      💡 Cost = <strong style="color:var(--bamboo)">Target Users × 0.001 TON × 2</strong><br>
+      <span style="font-size:11px">Min target: 100 users · Bot must be admin in channel</span>
+    </div>
+    <!-- Type -->
+    <div style="display:flex;gap:7px;margin-bottom:10px">
+      <button id="atTypeChannel" onclick="setTaskType('channel')"
+        style="flex:1;padding:9px;border-radius:10px;border:2px solid var(--bamboo);background:rgba(124,179,66,.2);color:var(--bamboo);font-size:13px;font-weight:800;cursor:pointer">
+        📢 Channel
+      </button>
+      <button id="atTypeBot" onclick="setTaskType('bot')"
+        style="flex:1;padding:9px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer">
+        🤖 Bot
+      </button>
+    </div>
+    <!-- Link -->
+    <label class="flabel">Telegram Link</label>
+    <input type="text" id="atLink" class="finput" placeholder="https://t.me/yourchannel">
+    <!-- Target -->
+    <label class="flabel">Target Users (min 100)</label>
+    <input type="number" id="atTarget" class="finput" placeholder="100" min="100" oninput="updAtCost()">
+    <!-- Preset -->
+    <div class="preset-row" style="margin-bottom:10px">
+      <span class="prbtn" onclick="setAtTarget(100)">100</span>
+      <span class="prbtn" onclick="setAtTarget(500)">500</span>
+      <span class="prbtn" onclick="setAtTarget(1000)">1K</span>
+      <span class="prbtn" onclick="setAtTarget(5000)">5K</span>
+    </div>
+    <!-- Cost preview -->
+    <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:10px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:var(--muted);font-weight:600">Total Cost:</span>
+      <span id="atCostPreview" style="font-size:16px;font-weight:800;color:var(--coin)">0.000 TON</span>
+    </div>
+    <button class="btn-prim" onclick="submitAddTask()">✅ Create Task</button>
+    <div id="atStatus" style="margin-top:8px;font-size:12px;text-align:center;display:none"></div>
+  </div>
+</div>
 <div id="notif"></div>
 
 <script>
@@ -608,6 +670,7 @@ const S={
   userId:null,
   user:{bamboo:0,coins:0,miningRate:0,totalEarned:0,machines:{},tankLevel:1,hasDeposited:false,freeWdUsed:false,tonBalance:0},
   refs:[],exchHist:[],wdHist:[],doneTasks:[],
+  tasks:{partner:[],community:[]},
   tankProgress:0,tankInt:null,
   tg:null,tonUI:null,wallet:null,depCheckInt:null,
   mineTimerInt:null,
@@ -651,7 +714,8 @@ async function loadState(){
     S.exchHist  = d.exchHistory || [];
     S.wdHist    = d.wdHistory   || [];
     S.doneTasks = d.completedTasks || [];
-    // ✅ FIX: sync tank progress from server (القيمة الحقيقية من قاعدة البيانات)
+    S.tasks     = d.tasks || { partner:[], community:[] };
+    // ✅ FIX: sync tank progress from server
     if(d.user && d.user.tankAccrued !== undefined){
       S.tankProgress = parseFloat(d.user.tankAccrued) || 0;
     }
@@ -818,7 +882,48 @@ async function buyItem(id){
 }
 
 /* ════ TASKS ════ */
+let _socTab='partner';
+
+function switchSocTab(tab){
+  _socTab=tab;
+  document.getElementById('stab-partner').className  ='ttab'+(tab==='partner' ?' active':'');
+  document.getElementById('stab-community').className='ttab'+(tab==='community'?' active':'');
+  document.getElementById('socPartnerList').style.display  =tab==='partner'  ?'block':'none';
+  document.getElementById('socCommunityList').style.display=tab==='community'?'block':'none';
+}
+
+function buildTaskCard(t,cat){
+  const tid =t.id;
+  const done=S.doneTasks.includes(tid);
+  const icon=t.type==='channel'?'📢':'🤖';
+  const name=esc(t.name||t.link?.split('t.me/')[1]?.split('/')[0]||'Task');
+  const bam =t.bambooReward||500;
+  const link=esc(t.link||'');
+  return`<div class="task-item">
+    <div class="ticon" style="font-size:28px">${icon}</div>
+    <div class="tinfo">
+      <div class="tname">${name}</div>
+      <div class="trew"><img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/d7e19f8c-7876-4dc6-8542-d4f615704e46.png" style="width:18px;height:18px;object-fit:contain;vertical-align:middle"> ${fmt(bam)} Bamboo</div>
+      ${t.completions!==undefined?`<div class="tstat">${t.completions||0}/${t.targetUsers||0} completed</div>`:''}
+    </div>
+    ${done
+      ?`<button class="tbtn done">✅ Done</button>`
+      :`<button class="tbtn go" onclick="doDbTask('${tid}','${link}','${t.type||'bot'}','${cat}')">Go →</button>`
+    }
+  </div>`;
+}
+
+function renderSocTasks(){
+  const partner  =S.tasks?.partner  ||[];
+  const community=S.tasks?.community||[];
+  const pEl=document.getElementById('socPartnerList');
+  const cEl=document.getElementById('socCommunityList');
+  pEl.innerHTML=partner.length  ?partner.map(t=>buildTaskCard(t,'partner')).join('')  :`<div class="hist-empty">No partner tasks yet</div>`;
+  cEl.innerHTML=community.length?community.map(t=>buildTaskCard(t,'community')).join(''):`<div class="hist-empty">No community tasks yet</div>`;
+}
+
 function renderTasks(){
+  // Referral tasks (static)
   document.getElementById('refTaskList').innerHTML=REF_TASKS.map(t=>{
     const done=S.doneTasks.includes(t.id);
     const can=S.refs.length>=t.n&&!done;
@@ -831,18 +936,10 @@ function renderTasks(){
       ${done?`<button class="tbtn done">✅ Done</button>`:can?`<button class="tbtn claim" onclick="claimRefTask('${t.id}')">Claim</button>`:`<button class="tbtn done" style="background:rgba(255,255,255,.05)">${S.refs.length}/${t.n}</button>`}
     </div>`;
   }).join('');
-  document.getElementById('socTaskList').innerHTML=SOC_TASKS.map(t=>{
-    const done=S.doneTasks.includes(t.id);
-    return`<div class="task-item">
-      <div class="ticon">${t.icon}</div>
-      <div class="tinfo">
-        <div class="tname">${esc(t.name)}</div>
-        <div class="trew"><img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/d7e19f8c-7876-4dc6-8542-d4f615704e46.png" style="width:20px;height:20px;object-fit:contain;vertical-align:middle"> ${fmt(t.bam)} Bamboo</div>
-      </div>
-      ${done?`<button class="tbtn done">✅ Done</button>`:`<button class="tbtn go" onclick="doSocTask('${t.id}')">Go →</button>`}
-    </div>`;
-  }).join('');
+  // Social tasks from DB
+  renderSocTasks();
 }
+
 function switchTTab(el,t){
   document.querySelectorAll('.ttab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tcont').forEach(x=>x.classList.remove('active'));
@@ -858,19 +955,54 @@ async function claimRefTask(id){
   updateUI(); renderTasks();
   showNotif(`🎉 +${fmt(t.bam)} 🎋 +${t.coins} Coins`,'s');
 }
-async function doSocTask(id){
-  const t=SOC_TASKS.find(x=>x.id===id);
-  if(!t) return;
-  // Open link safely (no direct href injection)
-  const allowed=['https://t.me/'];
-  if(allowed.some(p=>t.link.startsWith(p))) window.open(t.link,'_blank','noopener');
-  setTimeout(()=>{
-    api('claimTask',{taskId:id}).catch(()=>{});
-    S.doneTasks.push(id);
-    S.user.bamboo=(S.user.bamboo||0)+t.bam;
-    updateUI(); renderTasks();
-    showNotif(`🎉 +${fmt(t.bam)} 🎋`,'s');
+async function doDbTask(tid,link,type,cat){
+  if(link&&link.startsWith('https://t.me/')) window.open(link,'_blank','noopener');
+  showNotif('⏳ Verifying...','i');
+  setTimeout(async()=>{
+    try{
+      const r=await api('verifyTask',{taskId:tid,taskType:type,taskCategory:cat});
+      S.doneTasks.push(tid);
+      if(r.bambooAdded) S.user.bamboo=(S.user.bamboo||0)+r.bambooAdded;
+      updateUI(); renderTasks();
+      showNotif(`🎉 +${fmt(r.bambooAdded||0)} 🎋 Task done!`,'s');
+    }catch(e){showNotif(`❌ ${e.message||'Verification failed'}`,'e');}
   },3000);
+}
+
+/* ════ ADD TASK MODAL ════ */
+let _atType='channel';
+const TASK_REWARD_PER_USER=0.001;
+const MIN_TASK_TARGET=100;
+
+function setTaskType(t){
+  _atType=t;
+  const sel='flex:1;padding:9px;border-radius:10px;border:2px solid var(--bamboo);background:rgba(124,179,66,.2);color:var(--bamboo);font-size:13px;font-weight:800;cursor:pointer';
+  const unsel='flex:1;padding:9px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer';
+  document.getElementById('atTypeChannel').style.cssText=t==='channel'?sel:unsel;
+  document.getElementById('atTypeBot').style.cssText=t==='bot'?sel:unsel;
+  updAtCost();
+}
+function setAtTarget(v){document.getElementById('atTarget').value=v;updAtCost();}
+function updAtCost(){
+  const tgt=parseInt(document.getElementById('atTarget').value)||0;
+  document.getElementById('atCostPreview').textContent=(tgt*TASK_REWARD_PER_USER*2).toFixed(3)+' TON';
+}
+async function submitAddTask(){
+  const link  =(document.getElementById('atLink').value||'').trim();
+  const target=parseInt(document.getElementById('atTarget').value)||0;
+  const st    =document.getElementById('atStatus');
+  st.style.display='block';st.style.color='var(--muted)';st.textContent='⏳ Creating...';
+  if(!link.includes('t.me/')){st.style.color='#ff8a80';st.textContent='❌ Invalid link';return;}
+  if(target<MIN_TASK_TARGET){st.style.color='#ff8a80';st.textContent=`❌ Min ${MIN_TASK_TARGET} users`;return;}
+  const cost=target*TASK_REWARD_PER_USER*2;
+  if((S.user.tonBalance||0)<cost){st.style.color='#ff8a80';st.textContent=`❌ Need ${cost.toFixed(3)} TON`;return;}
+  try{
+    await api('createTask',{type:_atType,link,targetUsers:target});
+    S.user.tonBalance=(S.user.tonBalance||0)-cost;
+    st.style.color='var(--bamboo)';st.textContent='✅ Task created!';
+    updateUI();
+    setTimeout(()=>{closeModal('addTaskModal');loadState();},1500);
+  }catch(e){st.style.color='#ff8a80';st.textContent=`❌ ${e.message||'Failed'}`;}
 }
 
 /* ════ EXCHANGE ════ */
