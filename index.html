@@ -210,6 +210,23 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 .ni-lbl{font-size:9px;font-weight:800;color:var(--muted);transition:color .2s;line-height:1;margin-top:1px;}
 .ni.active .ni-lbl{color:var(--bamboo)}
 /* Particles */
+/* ════ LOADING SCREEN ════ */
+#loadingScreen{position:fixed;inset:0;background:linear-gradient(180deg,#061206,#0a1f0a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .6s ease;}
+#loadingScreen.hidden{opacity:0;pointer-events:none;}
+.ld-logo{width:110px;height:110px;animation:ld-bounce 1.4s ease-in-out infinite;}
+@keyframes ld-bounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-14px) scale(1.06)}}
+.ld-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:.5px;}
+.ld-sub{font-size:13px;color:var(--muted);font-weight:600;}
+.ld-bar{width:220px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
+.ld-fill{height:100%;background:linear-gradient(90deg,var(--bamboo),#b5e04a);border-radius:3px;width:0%;transition:width .35s ease;}
+/* ════ EQUIPMENT ORBIT ════ */
+.orbit-wrap{position:relative;width:280px;height:280px;margin:0 auto 6px;flex-shrink:0;}
+.orbit-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,#162b3a,#0b1720);border:2px solid rgba(255,215,120,.4);box-shadow:0 0 30px rgba(80,255,120,.2),0 0 60px rgba(124,179,66,.1);overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.orbit-item{position:absolute;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.55);border:2px solid rgba(124,179,66,.2);display:flex;align-items:center;justify-content:center;transition:border-color .4s,box-shadow .4s;}
+.orbit-item.owned{border-color:var(--bamboo);box-shadow:0 0 12px var(--bamboo-glow),0 0 22px rgba(124,179,66,.35);}
+.orbit-item.owned img{filter:drop-shadow(0 0 7px rgba(124,179,66,.9)) brightness(1.25);}
+.orbit-item:not(.owned) img{filter:grayscale(90%) brightness(0.4) opacity(0.5);}
+.orbit-item img{width:28px;height:28px;object-fit:contain;}
 .ptc{position:fixed;pointer-events:none;z-index:400;font-size:17px;animation:ptup .9s ease-out forwards}
 @keyframes ptup{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-74px) scale(.4);opacity:0}}
 ::-webkit-scrollbar{width:3px}
@@ -317,6 +334,14 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 </head>
 <body>
 
+<!-- LOADING SCREEN -->
+<div id="loadingScreen">
+  <img class="ld-logo" src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" alt="Panda">
+  <div class="ld-title">Panda Bamboo Factory</div>
+  <div class="ld-sub" id="ldStatus">Loading...</div>
+  <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+</div>
+
 <!-- TOPBAR -->
 <div class="topbar-main">
   <div class="uavatar" id="uavatar"><div class="ap">🐼</div></div>
@@ -339,10 +364,15 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 <!-- HOME -->
 <div class="sec active" id="sectionHome" style="padding:10px 10px 24px">
   <div class="champion-card">
-    <div class="champ-glow-wrap">
-      <div class="champ-avatar" id="pandaChar" onclick="pandaClick()">
-        <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" style="width:190px;height:auto;object-fit:contain;display:block" draggable="false">
+    <!-- Equipment orbit around panda -->
+    <div class="orbit-wrap" id="orbitWrap">
+      <!-- Center: panda -->
+      <div class="orbit-center">
+        <div id="pandaChar" onclick="pandaClick()" style="cursor:pointer;user-select:none">
+          <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" style="width:185px;height:auto;object-fit:contain;display:block;animation:pf 3.2s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(80,255,120,.4))" draggable="false">
+        </div>
       </div>
+      <!-- Orbit items injected by JS -->
     </div>
     <div class="champ-stats" style="margin-bottom:12px">
       <div class="champ-stat-box">
@@ -637,63 +667,62 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 const CFG = {
   API_URL      : 'https://silent-block-bedf.ahmedrabieharoun.workers.dev', // 🔧 Worker URL
   DEPOSIT_WALLET:'UQAzGsppYQfQwVnVVQDt2Jq9r4cm7fO3iVuLCxv30FixJq1-', // 🔧 TON wallet
-  RATE         : 200,        // bamboo → coin rate
+  RATE         : 200,
   MIN_WD       : 200,
   TON_PER_COIN : 0.00005,
   TON_USD      : 3.5,
   FREE_WD_LIMIT: 200,
   REF_BONUS    : 20,
+  BOT_USERNAME : 'PandaBamboBot', // Fix 6
+  BOT_APP_LINK : 'https://t.me/PandaBamboBot/app', // Fix 7
 };
 
+const BAM_URL='https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/d7e19f8c-7876-4dc6-8542-d4f615704e46.png';
+
+// Fix 4: rebalanced items — clear ROI progression, higher tier always better per coin
 const ITEMS = [
-  {id:'bamboo_stick',   name:'Bamboo Stick',       icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a995343f-ab46-4c91-9cf2-1140c0bdd6f5.png',  price:1500,    power:40   },
-  {id:'panda_paw',      name:'Panda Paw Drill',    icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/f8d2d332-fa72-447e-94e9-62f4e5cf75c9.png',  price:5000,    power:180  },
-  {id:'leaf_fan',       name:'Leaf Fan Cooler',    icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/c1657ae3-3927-41e9-a32d-70ab89ddfe3b.png',  price:25000,   power:590  },
-  {id:'bamboo_energy',  name:'Bamboo Energy Pod',  icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/73a7e781-107c-4598-9c1a-e9db2c65dbf5.png',  price:125000,  power:2000 },
-  {id:'panda_den',      name:'Panda Den Hub',      icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a4cd4f37-ce88-4115-92af-3170bb1654b7.png',  price:626000,  power:26000},
-  {id:'bamboo_forest',  name:'Bamboo Forest Rig',  icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/273f8ce0-bfa2-4618-895a-00481620d1d9.png',  price:1300000, power:56000},
+  {id:'bamboo_stick',   name:'Bamboo Stick',       icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a995343f-ab46-4c91-9cf2-1140c0bdd6f5.png',  price:1500,    power:50    },
+  {id:'panda_paw',      name:'Panda Paw Drill',    icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/f8d2d332-fa72-447e-94e9-62f4e5cf75c9.png',  price:5000,    power:200   },
+  {id:'leaf_fan',       name:'Leaf Fan Cooler',    icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/c1657ae3-3927-41e9-a32d-70ab89ddfe3b.png',  price:25000,   power:1200  },
+  {id:'bamboo_energy',  name:'Bamboo Energy Pod',  icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/73a7e781-107c-4598-9c1a-e9db2c65dbf5.png',  price:125000,  power:7500  },
+  {id:'panda_den',      name:'Panda Den Hub',      icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a4cd4f37-ce88-4115-92af-3170bb1654b7.png',  price:626000,  power:45000 },
+  {id:'bamboo_forest',  name:'Bamboo Forest Rig',  icon:'img', iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/273f8ce0-bfa2-4618-895a-00481620d1d9.png',  price:1300000, power:110000},
 ];
+// Fix 11: Tank caps ×3
 const TANK_LVS = {
-  1 :{cap:100,    upgCost:500,     speedBonus:0,   label:'Starter Tank'},
-  2 :{cap:300,    upgCost:2000,    speedBonus:10,  label:'Leaf Tank'},
-  3 :{cap:800,    upgCost:8000,    speedBonus:25,  label:'Bamboo Tank'},
-  4 :{cap:2000,   upgCost:25000,   speedBonus:50,  label:'Panda Tank'},
-  5 :{cap:6000,   upgCost:80000,   speedBonus:100, label:'Mega Tank'},
-  6 :{cap:20000,  upgCost:250000,  speedBonus:200, label:'Empire Tank'},
-  7 :{cap:40000,  upgCost:500000,  speedBonus:250, label:'Forest Tank'},
-  8 :{cap:70000,  upgCost:900000,  speedBonus:300, label:'Giant Tank'},
-  9 :{cap:110000, upgCost:1500000, speedBonus:350, label:'Legend Tank'},
-  10:{cap:160000, upgCost:2500000, speedBonus:400, label:'Titan Tank'},
-  11:{cap:220000, upgCost:4000000, speedBonus:450, label:'Storm Tank'},
-  12:{cap:290000, upgCost:6000000, speedBonus:500, label:'Thunder Tank'},
-  13:{cap:370000, upgCost:9000000, speedBonus:550, label:'Volcano Tank'},
-  14:{cap:460000, upgCost:13000000,speedBonus:600, label:'Glacier Tank'},
-  15:{cap:560000, upgCost:18000000,speedBonus:650, label:'Aurora Tank'},
-  16:{cap:670000, upgCost:25000000,speedBonus:700, label:'Nova Tank'},
-  17:{cap:750000, upgCost:35000000,speedBonus:750, label:'Cosmic Tank'},
-  18:{cap:820000, upgCost:50000000,speedBonus:800, label:'Galaxy Tank'},
-  19:{cap:880000, upgCost:70000000,speedBonus:850, label:'Nebula Tank'},
-  20:{cap:930000, upgCost:100000000,speedBonus:900,label:'Supernova Tank'},
-  21:{cap:960000, upgCost:140000000,speedBonus:950,label:'Quantum Tank'},
-  22:{cap:975000, upgCost:180000000,speedBonus:1000,label:'Infinity Tank'},
-  23:{cap:985000, upgCost:220000000,speedBonus:1050,label:'Eternal Tank'},
-  24:{cap:993000, upgCost:260000000,speedBonus:1100,label:'Celestial Tank'},
-  25:{cap:998000, upgCost:300000000,speedBonus:1150,label:'Divine Tank'},
-  26:{cap:1000000,upgCost:350000000,speedBonus:1200,label:'Absolute Tank'},
+  1 :{cap:300,    upgCost:500,      speedBonus:0,   label:'Starter Tank'},
+  2 :{cap:900,    upgCost:2000,     speedBonus:10,  label:'Leaf Tank'},
+  3 :{cap:2400,   upgCost:8000,     speedBonus:25,  label:'Bamboo Tank'},
+  4 :{cap:6000,   upgCost:25000,    speedBonus:50,  label:'Panda Tank'},
+  5 :{cap:18000,  upgCost:80000,    speedBonus:100, label:'Mega Tank'},
+  6 :{cap:60000,  upgCost:250000,   speedBonus:200, label:'Empire Tank'},
+  7 :{cap:120000, upgCost:500000,   speedBonus:250, label:'Forest Tank'},
+  8 :{cap:210000, upgCost:900000,   speedBonus:300, label:'Giant Tank'},
+  9 :{cap:330000, upgCost:1500000,  speedBonus:350, label:'Legend Tank'},
+  10:{cap:480000, upgCost:2500000,  speedBonus:400, label:'Titan Tank'},
+  11:{cap:660000, upgCost:4000000,  speedBonus:450, label:'Storm Tank'},
+  12:{cap:870000, upgCost:6000000,  speedBonus:500, label:'Thunder Tank'},
+  13:{cap:1110000,upgCost:9000000,  speedBonus:550, label:'Volcano Tank'},
+  14:{cap:1380000,upgCost:13000000, speedBonus:600, label:'Glacier Tank'},
+  15:{cap:1680000,upgCost:18000000, speedBonus:650, label:'Aurora Tank'},
+  16:{cap:2010000,upgCost:25000000, speedBonus:700, label:'Nova Tank'},
 };
+// Fix 5: Added r200 + r500
 const REF_TASKS=[
-  {id:'r1',  n:1,   bam:500,    coins:2  },
-  {id:'r5',  n:5,   bam:2500,   coins:10 },
-  {id:'r10', n:10,  bam:6000,   coins:25 },
-  {id:'r20', n:20,  bam:15000,  coins:60 },
-  {id:'r50', n:50,  bam:40000,  coins:150},
-  {id:'r70', n:70,  bam:60000,  coins:220},
-  {id:'r100',n:100, bam:100000, coins:400},
+  {id:'r1',  n:1,   bam:500,    coins:2   },
+  {id:'r5',  n:5,   bam:2500,   coins:10  },
+  {id:'r10', n:10,  bam:6000,   coins:25  },
+  {id:'r20', n:20,  bam:15000,  coins:60  },
+  {id:'r50', n:50,  bam:40000,  coins:150 },
+  {id:'r70', n:70,  bam:60000,  coins:220 },
+  {id:'r100',n:100, bam:100000, coins:400 },
+  {id:'r200',n:200, bam:200000, coins:800 },
+  {id:'r500',n:500, bam:500000, coins:2000},
 ];
 const SOC_TASKS=[
   {id:'tg_ch', name:'Join Telegram Channel', icon:'📢', link:'https://t.me/YOUR_CHANNEL', bam:1000},
   {id:'tg_grp',name:'Join Telegram Group',   icon:'👥', link:'https://t.me/YOUR_GROUP',   bam:500 },
-  {id:'tg_bot',name:'Start our Bot',          icon:'🤖', link:'https://t.me/YOUR_BOT',    bam:300 },
+  {id:'tg_bot',name:'Start our Bot',          icon:'🤖', link:`https://t.me/${CFG.BOT_USERNAME}`, bam:300}, // Fix 6
 ];
 
 /* ════ STATE ════ */
@@ -1126,6 +1155,19 @@ function updWdPrev(){
   document.getElementById('wdBannerTrial').classList.remove('show');
   document.getElementById('wdBannerDepReq').classList.remove('show');
 }
+function goToTasksPartner(){
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
+  const tn=document.querySelector('.ni[data-s="sectionTasks"]');
+  if(tn) tn.classList.add('active');
+  document.getElementById('sectionTasks').classList.add('active');
+  // Switch to social → partner
+  const stab=document.querySelector('.ttab[data-t="social"]');
+  if(stab) switchTTab(stab,'social');
+  switchSocTab('partner');
+  hideFab();
+}
+
 async function doWithdraw(){
   const addr=(document.getElementById('wdAddr').value||'').trim();
   const amt=parseFloat(document.getElementById('wdAmt').value)||0;
@@ -1135,18 +1177,51 @@ async function doWithdraw(){
   if(!addr||addr.length<10){showNotif('Enter valid TON address!','e');return;}
   if(amt<CFG.MIN_WD){showNotif(`Min ${CFG.MIN_WD} Coins!`,'e');return;}
   if(amt>(u.coins||0)){showNotif('Not enough Coins!','e');return;}
-  if(!u.hasDeposited){
-    if(u.freeWdUsed){document.getElementById('wdBannerDepReq').classList.add('show');showNotif('❌ Deposit required!','e');setTimeout(()=>goToFinanceDeposit(),1000);return;}
-    if(amt>CFG.FREE_WD_LIMIT){document.getElementById('wdBannerTrial').classList.add('show');showNotif(`❌ Trial limit: ${CFG.FREE_WD_LIMIT} Coins`,'e');return;}
+
+  // Fix 9+10: check partner tasks locally first (fast feedback)
+  const partnerTasks=S.tasks?.partner||[];
+  const missingPartner=partnerTasks.filter(t=>t.status==='active'&&!S.doneTasks.includes(t.id));
+  if(missingPartner.length>0){
+    showNotif(`❌ Complete all Partner tasks first (${missingPartner.length} remaining)`,'e');
+    // Fix 10: 5s then redirect to partner tasks
+    setTimeout(()=>goToTasksPartner(), 5000);
+    return;
   }
-  api('withdraw',{address:addr,amount:amt}).catch(()=>{});
-  u.coins-=amt;
-  if(!u.hasDeposited) u.freeWdUsed=true;
-  S.wdHist.unshift({amt,addr,d:new Date().toLocaleDateString(),status:'pending'});
-  document.getElementById('wdAddr').value='';
-  document.getElementById('wdAmt').value='';
-  updWdPrev(); updateUI(); renderWdHist();
-  showNotif(`✅ Withdrawal requested: ${fmt(amt)} Coins`,'s');
+
+  if(!u.hasDeposited){
+    if(u.freeWdUsed){
+      document.getElementById('wdBannerDepReq').classList.add('show');
+      showNotif('❌ Deposit required to withdraw!','e');
+      setTimeout(()=>goToFinanceDeposit(), 5000); // Fix 10
+      return;
+    }
+    if(amt>CFG.FREE_WD_LIMIT){
+      document.getElementById('wdBannerTrial').classList.add('show');
+      showNotif(`❌ Trial limit: ${CFG.FREE_WD_LIMIT} Coins. Deposit to unlock!`,'e');
+      setTimeout(()=>goToFinanceDeposit(), 5000); // Fix 10
+      return;
+    }
+  }
+
+  try{
+    const res=await api('withdraw',{address:addr,amount:amt});
+    u.coins-=amt;
+    if(!u.hasDeposited) u.freeWdUsed=true;
+    S.wdHist.unshift({amt,addr,d:new Date().toLocaleDateString(),status:'pending'});
+    document.getElementById('wdAddr').value='';
+    document.getElementById('wdAmt').value='';
+    updWdPrev(); updateUI(); renderWdHist();
+    showNotif(`✅ Withdrawal requested: ${fmt(amt)} Coins`,'s');
+  }catch(e){
+    // Fix 10: server-side error redirects
+    const msg=e.message||'';
+    showNotif(`❌ ${msg}`,'e');
+    if(msg.includes('partner tasks')||msg.includes('PARTNER_TASKS')){
+      setTimeout(()=>goToTasksPartner(), 5000);
+    } else if(msg.includes('Deposit')||msg.includes('DEPOSIT')){
+      setTimeout(()=>goToFinanceDeposit(), 5000);
+    }
+  }
 }
 function renderWdHist(){
   const el=document.getElementById('wdHist');
@@ -1193,7 +1268,8 @@ function goToFinanceWithdraw(){
 
 /* ════ REFERRAL ════ */
 function updateRefUI(){
-  const link=`https://t.me/PandaBambooBot?start=${encodeURIComponent(S.userId||'000')}`;
+  // Fix 7: use bot app deep link
+  const link=`${CFG.BOT_APP_LINK}?startapp=${encodeURIComponent(S.userId||'000')}`;
   document.getElementById('refLinkInp').value=link;
   document.getElementById('depositUserIdDisplay').textContent=esc(S.userId||'...');
   const cntEl=document.getElementById('totalRefsDisp');
@@ -1354,24 +1430,83 @@ function fmt(n){
 let _nt;
 function showNotif(msg,type='i'){
   const el=document.getElementById('notif');
-  el.textContent=msg; el.className=`notif show ${type}`;
+  if(!el) return;
+  el.innerHTML=msg; el.className=`notif show ${type}`;
   clearTimeout(_nt); _nt=setTimeout(()=>el.classList.remove('show'),3200);
 }
-function spawnPtc(emoji){
-  const p=document.createElement('div'); p.className='ptc';
-  p.textContent=emoji;
-  p.style.cssText=`left:${30+Math.random()*40}%;top:38%`;
-  document.body.appendChild(p); setTimeout(()=>p.remove(),960);
+
+/* ════ ORBIT EQUIPMENT RENDER (Fix 2) ════ */
+function renderOrbit(){
+  const wrap=document.getElementById('orbitWrap');
+  if(!wrap) return;
+  // Remove old orbit items
+  wrap.querySelectorAll('.orbit-item').forEach(e=>e.remove());
+  // 6 items: 3 on left arc, 3 on right arc
+  // Positions relative to center of 280×280 wrap
+  // Left side (items 0,1,2): right-arc of left, top to bottom
+  // Right side (items 3,4,5): left-arc of right, top to bottom
+  // We place them on a circle of radius ~118px, angles:
+  const cx=140, cy=140, r=118;
+  // Left 3: angles 210°, 180°, 150° (bottom-left → left → top-left)
+  // Right 3: angles 330°, 0°, 30° (bottom-right → right → top-right)
+  const angles=[210,180,150, 330,0,30];
+  const machines=S.user.machines||{};
+  ITEMS.forEach((it,i)=>{
+    const a=angles[i]*Math.PI/180;
+    const x=cx+r*Math.cos(a)-22; // -22 = half item size
+    const y=cy+r*Math.sin(a)-22;
+    const owned=(machines[it.id]||0)>0;
+    const div=document.createElement('div');
+    div.className='orbit-item'+(owned?' owned':'');
+    div.title=it.name+(owned?` (${machines[it.id]})`:'');
+    div.style.cssText=`left:${x}px;top:${y}px`;
+    div.innerHTML=`<img src="${it.iconUrl}" alt="${esc(it.name)}">`;
+    wrap.appendChild(div);
+  });
+}
+
+/* Fix 8: spawn bamboo image particle instead of emoji */
+function spawnPtc(){
+  const p=document.createElement('img');
+  p.src=BAM_URL;
+  p.className='ptc';
+  p.style.cssText=`left:${30+Math.random()*40}%;top:38%;width:24px;height:24px;object-fit:contain;font-size:0`;
+  document.body.appendChild(p);
+  setTimeout(()=>p.remove(),960);
 }
 function pandaClick(){
   const p=document.getElementById('pandaChar');
-  p.style.transition='transform .12s'; p.style.transform='scale(.86) rotate(9deg)';
-  setTimeout(()=>{p.style.transform='';},220); spawnPtc('🎋');
+  if(p){p.style.transition='transform .12s';p.style.transform='scale(.86) rotate(9deg)';setTimeout(()=>{p.style.transform='';},220);}
+  spawnPtc();
+}
+
+/* ════ LOADING SCREEN (Fix 1) ════ */
+function ldProgress(pct,msg){
+  const fill=document.getElementById('ldFill');
+  const stat=document.getElementById('ldStatus');
+  if(fill) fill.style.width=pct+'%';
+  if(stat) stat.textContent=msg;
+}
+function ldHide(){
+  const s=document.getElementById('loadingScreen');
+  if(s){s.classList.add('hidden');setTimeout(()=>s.remove(),700);}
+}
+
+// Preload all item images + panda image
+function preloadImages(){
+  const urls=[
+    'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png', // panda
+    BAM_URL,
+    ...ITEMS.map(i=>i.iconUrl),
+  ];
+  return Promise.all(urls.map(u=>new Promise(res=>{const img=new Image();img.onload=img.onerror=res;img.src=u;})));
 }
 
 /* ════ INIT ════ */
 window.addEventListener('load',init);
 async function init(){
+  // Step 1: Setup Telegram
+  ldProgress(10,'Connecting...');
   if(window.Telegram?.WebApp){
     S.tg=window.Telegram.WebApp;
     S.tg.ready(); S.tg.expand();
@@ -1384,11 +1519,30 @@ async function init(){
       }
     }
   }
+
+  // Step 2: Preload images
+  ldProgress(25,'Loading assets...');
+  await preloadImages();
+
+  // Step 3: Load user data from server
+  ldProgress(55,'Loading your data...');
   await loadState();
-  renderMarket(); renderTasks();
+
+  // Step 4: Render UI
+  ldProgress(80,'Building interface...');
+  renderMarket();
+  renderTasks();
+  renderOrbit();
+
+  // Step 5: Init TON + timers
+  ldProgress(95,'Finalizing...');
   setTimeout(()=>initTON(),600);
   startTank();
-  setInterval(loadState, 30000);
+  setInterval(()=>{loadState();renderOrbit();}, 30000);
+
+  // Step 6: Hide loading screen
+  ldProgress(100,'Ready!');
+  setTimeout(()=>ldHide(), 400);
 }
 </script>
 </body>
