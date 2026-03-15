@@ -220,14 +220,13 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 .ld-bar{width:220px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
 .ld-fill{height:100%;background:linear-gradient(90deg,var(--bamboo),#b5e04a);border-radius:3px;width:0%;transition:width .35s ease;}
 /* ════ EQUIPMENT ORBIT ════ */
-.orbit-wrap{position:relative;width:320px;height:320px;margin:0 auto 6px;flex-shrink:0;}
+.orbit-wrap{position:relative;width:340px;height:340px;margin:0 auto 6px;flex-shrink:0;}
 .orbit-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,#162b3a,#0b1720);border:2px solid rgba(255,215,120,.4);box-shadow:0 0 30px rgba(80,255,120,.2),0 0 60px rgba(124,179,66,.1);overflow:hidden;display:flex;align-items:center;justify-content:center;}
-.orbit-item{position:absolute;width:72px;height:72px;border-radius:50%;background:rgba(0,0,0,.65);border:2px solid rgba(124,179,66,.2);display:flex;align-items:center;justify-content:center;transition:border-color .4s,box-shadow .4s,transform .2s;cursor:pointer;}
-.orbit-item:active{transform:scale(.9);}
-.orbit-item.owned{border-color:var(--bamboo);box-shadow:0 0 14px var(--bamboo-glow),0 0 28px rgba(124,179,66,.4);}
-.orbit-item.owned img{filter:drop-shadow(0 0 8px rgba(124,179,66,.9)) brightness(1.25);}
-.orbit-item:not(.owned) img{filter:grayscale(90%) brightness(0.4) opacity(0.5);}
-.orbit-item img{width:46px;height:46px;object-fit:contain;}
+.orbit-item{position:absolute;width:92px;height:92px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .2s;}
+.orbit-item:active{transform:scale(.88);}
+.orbit-item.owned img{filter:drop-shadow(0 0 10px rgba(124,179,66,.95)) brightness(1.3);}
+.orbit-item:not(.owned) img{filter:grayscale(90%) brightness(0.35) opacity(0.45);}
+.orbit-item img{width:92px;height:92px;object-fit:contain;}
 .ptc{position:fixed;pointer-events:none;z-index:400;font-size:17px;animation:ptup .9s ease-out forwards}
 @keyframes ptup{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-74px) scale(.4);opacity:0}}
 ::-webkit-scrollbar{width:3px}
@@ -781,8 +780,11 @@ async function api(action, data={}){
 
 async function loadState(){
   try{
-    // Fix 3: pass start_param so server registers referral on first load
-    const d = await api('getState', { start_param: S.startParam||'' });
+    // Pass raw initData so server can extract start_param from it
+    const d = await api('getState', {
+      start_param : S.startParam || '',
+      _initData   : S.tg?.initData || '',
+    });
     S.user      = d.user    || S.user;
     S.refs      = d.referrals || [];
     S.exchHist  = d.exchHistory || [];
@@ -1452,24 +1454,21 @@ function renderOrbit(){
   const wrap=document.getElementById('orbitWrap');
   if(!wrap) return;
   wrap.querySelectorAll('.orbit-item').forEach(e=>e.remove());
-  // Fix 1: orbit-wrap 320×320, circle center at 160,160
-  // Radius 148 keeps items outside the 210px circle (105px radius + 43px item) 
-  const cx=160, cy=160, r=148;
-  // Left 3: 210°(bottom-left), 180°(left), 150°(top-left)
-  // Right 3: 330°(bottom-right), 0°(right), 30°(top-right)
+  // 340×340 wrap, circle center at 170,170
+  // Radius 155 places 92px items fully outside the 210px (105px radius) circle
+  const cx=170, cy=170, r=155;
   const angles=[210,180,150, 330,0,30];
   const machines=S.user.machines||{};
   ITEMS.forEach((it,i)=>{
     const a=angles[i]*Math.PI/180;
-    const x=cx+r*Math.cos(a)-36; // -36 = half of 72px item
-    const y=cy+r*Math.sin(a)-36;
+    const x=cx+r*Math.cos(a)-46; // -46 = half of 92px
+    const y=cy+r*Math.sin(a)-46;
     const owned=(machines[it.id]||0)>0;
     const div=document.createElement('div');
     div.className='orbit-item'+(owned?' owned':'');
     div.title=it.name+(owned?` (×${machines[it.id]})`:'');
     div.style.cssText=`left:${x}px;top:${y}px`;
     div.innerHTML=`<img src="${it.iconUrl}" alt="${esc(it.name)}">`;
-    // Fix 1: click → go to Market section
     div.addEventListener('click',()=>{
       const mktNav=document.querySelector('.ni[data-s="sectionMarket"]');
       if(mktNav) goNav(mktNav);
@@ -1531,8 +1530,12 @@ async function init(){
         if(av) av.innerHTML=`<img src="${esc(u.photo_url)}" onerror="this.parentElement.innerHTML='<div class=ap>🐼</div>'">`;
       }
     }
-    // Fix 3: get start_param (referral ID) from initDataUnsafe
-    S.startParam = S.tg.initDataUnsafe?.start_param || '';
+    // start_param is on initDataUnsafe directly (not on .user)
+    S.startParam = (
+      S.tg.initDataUnsafe?.start_param ||
+      S.tg.initDataUnsafe?.startParam  ||
+      ''
+    ).toString().replace(/\D/g,'');
   }
 
   // Step 2: Preload images
