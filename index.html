@@ -211,14 +211,50 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 .ni.active .ni-lbl{color:var(--bamboo)}
 /* Particles */
 /* ════ LOADING SCREEN ════ */
-#loadingScreen{position:fixed;inset:0;background:linear-gradient(180deg,#061206,#0a1f0a);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .6s ease;}
+#loadingScreen{
+  position:fixed;inset:0;z-index:9999;
+  background:url('https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a36c5053-e4c5-4b9c-8b7c-a927c56ae329.png') center/cover no-repeat;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  transition:opacity .7s ease;
+}
+#loadingScreen::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(2,10,4,.55);
+  backdrop-filter:blur(2px);
+}
+#loadingScreen>*{position:relative;z-index:1;}
 #loadingScreen.hidden{opacity:0;pointer-events:none;}
-.ld-logo{width:110px;height:110px;animation:ld-bounce 1.4s ease-in-out infinite;}
-@keyframes ld-bounce{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-14px) scale(1.06)}}
-.ld-title{font-size:22px;font-weight:800;color:#fff;letter-spacing:.5px;}
-.ld-sub{font-size:13px;color:var(--muted);font-weight:600;}
-.ld-bar{width:220px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;}
-.ld-fill{height:100%;background:linear-gradient(90deg,var(--bamboo),#b5e04a);border-radius:3px;width:0%;transition:width .35s ease;}
+.ld-logo{
+  width:130px;height:130px;
+  animation:ld-bounce 1.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 24px rgba(124,179,66,.7));
+}
+@keyframes ld-bounce{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-16px) scale(1.07);}
+}
+.ld-title{font-size:24px;font-weight:800;color:#fff;letter-spacing:.5px;text-shadow:0 2px 12px rgba(0,0,0,.8);}
+.ld-sub{font-size:13px;color:rgba(232,245,233,.75);font-weight:600;min-height:18px;text-shadow:0 1px 6px rgba(0,0,0,.8);}
+/* Creative bamboo-segment progress bar */
+.ld-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.ld-segments{display:flex;gap:5px;align-items:center;}
+.ld-seg{
+  width:12px;height:36px;border-radius:6px;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(124,179,66,.2);
+  transition:background .3s ease,border-color .3s,box-shadow .3s;
+  position:relative;overflow:hidden;
+}
+.ld-seg.active{
+  background:linear-gradient(180deg,#b5e04a,#7cb342);
+  border-color:rgba(124,179,66,.8);
+  box-shadow:0 0 10px rgba(124,179,66,.6);
+}
+.ld-seg.active::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:40%;
+  background:rgba(255,255,255,.25);border-radius:6px 6px 0 0;
+}
+.ld-pct{font-size:12px;font-weight:800;color:var(--bamboo);letter-spacing:1px;}
 /* ════ EQUIPMENT ORBIT ════ */
 .champion-card{
   width:92%;margin:auto;padding:20px 12px;border-radius:25px;
@@ -377,10 +413,21 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 
 <!-- LOADING SCREEN -->
 <div id="loadingScreen">
-  <img class="ld-logo" src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" alt="Panda">
+  <img class="ld-logo"
+    src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/17ae25b3-ef08-4156-a126-02972d3e8367.png"
+    alt="Panda">
   <div class="ld-title">Panda Bamboo Factory</div>
   <div class="ld-sub" id="ldStatus">Loading...</div>
-  <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+  <div class="ld-bar-wrap">
+    <div class="ld-segments" id="ldSegs">
+      <!-- 10 bamboo segments, filled by JS -->
+      <div class="ld-seg"></div><div class="ld-seg"></div><div class="ld-seg"></div>
+      <div class="ld-seg"></div><div class="ld-seg"></div><div class="ld-seg"></div>
+      <div class="ld-seg"></div><div class="ld-seg"></div><div class="ld-seg"></div>
+      <div class="ld-seg"></div>
+    </div>
+    <div class="ld-pct" id="ldPct">0%</div>
+  </div>
 </div>
 
 <!-- TOPBAR -->
@@ -405,15 +452,11 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 <!-- HOME -->
 <div class="sec active" id="sectionHome" style="padding:10px 10px 24px">
   <div class="champion-card">
-    <!-- Equipment orbit around panda -->
-    <div class="orbit-wrap" id="orbitWrap">
-      <!-- Center: panda -->
-      <div class="orbit-center">
-        <div id="pandaChar" onclick="pandaClick()" style="cursor:pointer;user-select:none">
-          <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" style="width:185px;height:auto;object-fit:contain;display:block;animation:pf 3.2s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(80,255,120,.4))" draggable="false">
-        </div>
+    <!-- Panda circle -->
+    <div class="orbit-center" style="position:relative;transform:none;top:auto;left:auto;width:210px;height:210px;margin:0 auto 12px;">
+      <div id="pandaChar" onclick="pandaClick()" style="cursor:pointer;user-select:none">
+        <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" style="width:185px;height:auto;object-fit:contain;display:block;animation:pf 3.2s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(80,255,120,.4))" draggable="false">
       </div>
-      <!-- Orbit items injected by JS -->
     </div>
     <div class="champ-stats" style="margin-bottom:12px">
       <div class="champ-stat-box">
@@ -999,7 +1042,6 @@ async function buyItem(id){
   S.user.machines[id]=(S.user.machines[id]||0)+q;
   S.user.miningRate=(S.user.miningRate||0)+(it.power*q);
   updateUI(); showNotif(`✅ ${q}x ${esc(it.name)}! +${fmt(it.power*q)} Bamboo/hr`,'s'); spawnPtc();
-  renderOrbit();
 }
 
 /* ════ TASKS ════ */
@@ -1539,21 +1581,35 @@ function pandaClick(){
 }
 
 /* ════ LOADING SCREEN ════ */
-function ldProgress(pct,msg){
-  const fill=document.getElementById('ldFill');
-  const stat=document.getElementById('ldStatus');
-  if(fill) fill.style.width=pct+'%';
-  if(stat) stat.textContent=msg;
+function ldProgress(pct, msg){
+  // Drive the 10 bamboo segments
+  const segs = document.querySelectorAll('#ldSegs .ld-seg');
+  const filled = Math.round((pct / 100) * segs.length);
+  segs.forEach((s, i) => {
+    if(i < filled) s.classList.add('active');
+    else s.classList.remove('active');
+  });
+  const pctEl = document.getElementById('ldPct');
+  if(pctEl) pctEl.textContent = Math.round(pct) + '%';
+  const stat = document.getElementById('ldStatus');
+  if(stat){ stat.textContent = msg; stat.style.color = ''; }
 }
 function ldHide(){
-  const s=document.getElementById('loadingScreen');
-  if(s){s.classList.add('hidden');setTimeout(()=>s.remove(),700);}
+  const s = document.getElementById('loadingScreen');
+  if(s){ s.classList.add('hidden'); setTimeout(()=>s.remove(), 700); }
 }
 function ldError(msg){
-  const stat=document.getElementById('ldStatus');
-  const fill=document.getElementById('ldFill');
-  if(stat){stat.textContent=msg;stat.style.color='#ff8a80';}
-  if(fill){fill.style.background='#ef5350';fill.style.width='100%';}
+  const stat = document.getElementById('ldStatus');
+  if(stat){ stat.textContent = msg; stat.style.color = '#ff8a80'; }
+  // Turn all segments red
+  document.querySelectorAll('#ldSegs .ld-seg').forEach(s=>{
+    s.classList.add('active');
+    s.style.background = 'linear-gradient(180deg,#ef5350,#b71c1c)';
+    s.style.borderColor = 'rgba(239,83,80,.8)';
+    s.style.boxShadow   = '0 0 10px rgba(239,83,80,.6)';
+  });
+  const pctEl = document.getElementById('ldPct');
+  if(pctEl){ pctEl.textContent = 'Error'; pctEl.style.color = '#ff8a80'; }
 }
 
 // Preload all item images + panda image
@@ -1630,13 +1686,12 @@ async function init(){
   ldProgress(80,'Building interface...');
   renderMarket();
   renderTasks();
-  renderOrbit();
 
   // Step 5: Init TON + timers
   ldProgress(95,'Finalizing...');
   setTimeout(()=>initTON(), 600);
   startTank();
-  setInterval(()=>{ loadState(); renderOrbit(); }, 30000);
+  setInterval(()=>{ loadState(); }, 30000);
 
   // Step 6: All good — hide loading screen
   ldProgress(100,'Ready! 🐼');
