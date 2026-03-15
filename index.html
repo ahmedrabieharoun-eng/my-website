@@ -231,8 +231,7 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 .orbit-wrap{
   position:relative;
   width:100%;
-  max-width:340px;
-  /* height = width via padding trick so it's always square */
+  max-width:360px;
   aspect-ratio:1/1;
   margin:0 auto 8px;
   flex-shrink:0;
@@ -242,7 +241,7 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
   position:absolute;
   top:50%;left:50%;
   transform:translate(-50%,-50%);
-  width:55%;/* relative to orbit-wrap */
+  width:52%;
   aspect-ratio:1/1;
   border-radius:50%;
   background:radial-gradient(circle at center,#0b3b2e,#021a13);
@@ -253,14 +252,23 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 }
 .orbit-item{
   position:absolute;
-  width:26%;/* relative to orbit-wrap */
+  width:24%;
   aspect-ratio:1/1;
+  border-radius:50%;
+  background:rgba(0,0,0,.45);
+  border:1.5px solid rgba(124,179,66,.18);
+  box-shadow:inset 0 0 8px rgba(0,0,0,.4);
   display:flex;align-items:center;justify-content:center;
-  cursor:pointer;transition:transform .2s;
+  cursor:pointer;transition:transform .2s,border-color .3s,box-shadow .3s;
+  padding:10%;
 }
 .orbit-item:active{transform:scale(.88);}
-.orbit-item.owned img{filter:drop-shadow(0 0 10px rgba(124,179,66,.95)) brightness(1.3);}
-.orbit-item:not(.owned) img{filter:grayscale(90%) brightness(0.35) opacity(0.45);}
+.orbit-item.owned{
+  border-color:rgba(124,179,66,.55);
+  box-shadow:0 0 12px rgba(124,179,66,.5),inset 0 0 6px rgba(124,179,66,.15);
+}
+.orbit-item.owned img{filter:drop-shadow(0 0 8px rgba(124,179,66,.9)) brightness(1.2);}
+.orbit-item:not(.owned) img{filter:grayscale(85%) brightness(0.38) opacity(0.5);}
 .orbit-item img{width:100%;height:100%;object-fit:contain;}
 .ptc{position:fixed;pointer-events:none;z-index:400;font-size:17px;animation:ptup .9s ease-out forwards}
 @keyframes ptup{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-74px) scale(.4);opacity:0}}
@@ -1490,8 +1498,8 @@ function renderOrbit(){
 
   // Left arc top→bottom: 150°, 180°, 210°
   // Right arc top→bottom: 30°, 0°, 330°
-  const R = 37;
-  const HALF = 13;
+  const R = 40;   // % — wider radius = more spacing between items
+  const HALF = 12; // half of 24% item width
   const angles = [150, 180, 210,   30, 0, 330];
   const machines = S.user.machines || {};
 
@@ -1530,7 +1538,7 @@ function pandaClick(){
   spawnPtc();
 }
 
-/* ════ LOADING SCREEN (Fix 1) ════ */
+/* ════ LOADING SCREEN ════ */
 function ldProgress(pct,msg){
   const fill=document.getElementById('ldFill');
   const stat=document.getElementById('ldStatus');
@@ -1541,15 +1549,23 @@ function ldHide(){
   const s=document.getElementById('loadingScreen');
   if(s){s.classList.add('hidden');setTimeout(()=>s.remove(),700);}
 }
+function ldError(msg){
+  const stat=document.getElementById('ldStatus');
+  const fill=document.getElementById('ldFill');
+  if(stat){stat.textContent=msg;stat.style.color='#ff8a80';}
+  if(fill){fill.style.background='#ef5350';fill.style.width='100%';}
+}
 
 // Preload all item images + panda image
 function preloadImages(){
   const urls=[
-    'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png', // panda
+    'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png',
     BAM_URL,
     ...ITEMS.map(i=>i.iconUrl),
   ];
-  return Promise.all(urls.map(u=>new Promise(res=>{const img=new Image();img.onload=img.onerror=res;img.src=u;})));
+  return Promise.all(urls.map(u=>new Promise(res=>{
+    const img=new Image();img.onload=img.onerror=res;img.src=u;
+  })));
 }
 
 /* ════ INIT ════ */
@@ -1568,21 +1584,47 @@ async function init(){
         if(av) av.innerHTML=`<img src="${esc(u.photo_url)}" onerror="this.parentElement.innerHTML='<div class=ap>🐼</div>'">`;
       }
     }
-    // start_param is on initDataUnsafe directly (not on .user)
-    S.startParam = (
+    S.startParam=(
       S.tg.initDataUnsafe?.start_param ||
       S.tg.initDataUnsafe?.startParam  ||
       ''
     ).toString().replace(/\D/g,'');
   }
 
-  // Step 2: Preload images
-  ldProgress(25,'Loading assets...');
-  await preloadImages();
+  // Step 2: Preload images (non-blocking failure OK)
+  ldProgress(20,'Loading assets...');
+  await preloadImages().catch(()=>{});
 
-  // Step 3: Load user data from server
-  ldProgress(55,'Loading your data...');
-  await loadState();
+  // Step 3: Load user data — MUST succeed before opening app
+  ldProgress(45,'Loading your data...');
+  let loaded = false;
+  let attempts = 0;
+  const MAX_ATTEMPTS = 5;
+
+  while(!loaded && attempts < MAX_ATTEMPTS){
+    attempts++;
+    try{
+      await loadState();
+      // Verify we actually got user data
+      if(S.user && S.userId){
+        loaded = true;
+      } else {
+        throw new Error('No user data received');
+      }
+    }catch(e){
+      console.warn(`Load attempt ${attempts} failed:`, e.message);
+      if(attempts < MAX_ATTEMPTS){
+        ldProgress(45, `Retrying... (${attempts}/${MAX_ATTEMPTS})`);
+        await new Promise(r=>setTimeout(r, 1500 * attempts)); // exponential backoff
+      }
+    }
+  }
+
+  if(!loaded){
+    // All attempts failed — show error, don't open the app
+    ldError('Connection failed. Please restart the app.');
+    return; // stop here — loading screen stays visible
+  }
 
   // Step 4: Render UI
   ldProgress(80,'Building interface...');
@@ -1592,13 +1634,13 @@ async function init(){
 
   // Step 5: Init TON + timers
   ldProgress(95,'Finalizing...');
-  setTimeout(()=>initTON(),600);
+  setTimeout(()=>initTON(), 600);
   startTank();
-  setInterval(()=>{loadState();renderOrbit();}, 30000);
+  setInterval(()=>{ loadState(); renderOrbit(); }, 30000);
 
-  // Step 6: Hide loading screen
-  ldProgress(100,'Ready!');
-  setTimeout(()=>ldHide(), 400);
+  // Step 6: All good — hide loading screen
+  ldProgress(100,'Ready! 🐼');
+  setTimeout(()=>ldHide(), 600);
 }
 </script>
 </body>
