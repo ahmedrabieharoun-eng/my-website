@@ -255,14 +255,41 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
   background:rgba(255,255,255,.25);border-radius:6px 6px 0 0;
 }
 .ld-pct{font-size:12px;font-weight:800;color:var(--bamboo);letter-spacing:1px;}
-/* ════ EQUIPMENT ORBIT ════ */
+/* ════ CHAMPION CARD ════ */
 .champion-card{
   width:92%;margin:auto;padding:20px 12px;border-radius:25px;
-  background:radial-gradient(circle at center,#0b3b2e,#021a13);
-  box-shadow:0 10px 30px rgba(0,0,0,0.5);
-  border:1px solid rgba(255,255,255,0.05);
+  background:url('https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a6af025b-e2a6-4d6a-a6f7-6530d7953af8.png') center/cover no-repeat;
+  box-shadow:0 10px 40px rgba(0,0,0,.6);
+  border:1px solid rgba(255,255,255,0.07);
   display:flex;flex-direction:column;align-items:center;
   position:relative;overflow:hidden;
+}
+.champion-card::before{
+  content:'';position:absolute;inset:0;
+  background:rgba(2,14,6,.35);
+  border-radius:25px;
+}
+.champion-card>*{position:relative;z-index:1;}
+.panda-frame-wrap{
+  position:relative;
+  width:220px;height:220px;
+  margin:0 auto 12px;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+/* frame image behind panda */
+.panda-frame-wrap::before{
+  content:'';
+  position:absolute;inset:0;
+  background:url('https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/d060d3b0-9488-4443-be4e-d6607e1a6d83.png') center/contain no-repeat;
+  z-index:0;
+}
+.panda-frame-inner{
+  position:relative;z-index:1;
+  width:175px;height:175px;
+  border-radius:50%;
+  overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
 }
 .orbit-wrap{
   position:relative;
@@ -452,10 +479,14 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
 <!-- HOME -->
 <div class="sec active" id="sectionHome" style="padding:10px 10px 24px">
   <div class="champion-card">
-    <!-- Panda circle -->
-    <div class="orbit-center" style="position:relative;transform:none;top:auto;left:auto;width:210px;height:210px;margin:0 auto 12px;">
-      <div id="pandaChar" onclick="pandaClick()" style="cursor:pointer;user-select:none">
-        <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png" style="width:185px;height:auto;object-fit:contain;display:block;animation:pf 3.2s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)) drop-shadow(0 0 20px rgba(80,255,120,.4))" draggable="false">
+    <!-- Panda with frame -->
+    <div class="panda-frame-wrap">
+      <div class="panda-frame-inner">
+        <div id="pandaChar" onclick="pandaClick()" style="cursor:pointer;user-select:none;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+          <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/a12ebc07-aa51-4ea7-b3ca-cefe4dce2a9e.png"
+            style="width:170px;height:auto;object-fit:contain;display:block;animation:pf 3.2s ease-in-out infinite;filter:drop-shadow(0 6px 14px rgba(0,0,0,.5)) drop-shadow(0 0 18px rgba(80,255,120,.35))"
+            draggable="false">
+        </div>
       </div>
     </div>
     <div class="champ-stats" style="margin-bottom:12px">
@@ -1626,9 +1657,30 @@ function preloadImages(){
 
 /* ════ INIT ════ */
 window.addEventListener('load',init);
+
+// Smoothly animate progress to a target value
+function ldAnimateTo(targetPct, msg, duration=600){
+  const start = parseInt(document.getElementById('ldPct')?.textContent||'0');
+  const steps = 30;
+  const stepTime = duration / steps;
+  let step = 0;
+  return new Promise(resolve=>{
+    const iv = setInterval(()=>{
+      step++;
+      const pct = start + (targetPct - start) * (step/steps);
+      ldProgress(pct, msg);
+      if(step >= steps){ clearInterval(iv); ldProgress(targetPct, msg); resolve(); }
+    }, stepTime);
+  });
+}
+
 async function init(){
-  // Step 1: Setup Telegram
-  ldProgress(10,'Connecting...');
+  // Record start time — minimum 6 seconds total
+  const startTime = Date.now();
+  const MIN_LOADING_MS = 6000;
+
+  // Step 1: Telegram setup
+  ldProgress(0,'Starting...');
   if(window.Telegram?.WebApp){
     S.tg=window.Telegram.WebApp;
     S.tg.ready(); S.tg.expand();
@@ -1646,56 +1698,66 @@ async function init(){
       ''
     ).toString().replace(/\D/g,'');
   }
+  await ldAnimateTo(10,'Connecting to Telegram...', 700);
+  await new Promise(r=>setTimeout(r,400));
 
-  // Step 2: Preload images (non-blocking failure OK)
-  ldProgress(20,'Loading assets...');
-  await preloadImages().catch(()=>{});
+  // Step 2: Preload images
+  await ldAnimateTo(20,'Loading assets...', 600);
+  await Promise.all([
+    preloadImages().catch(()=>{}),
+    new Promise(r=>setTimeout(r,800)), // min 0.8s on this step
+  ]);
+  await ldAnimateTo(40,'Assets loaded!', 500);
+  await new Promise(r=>setTimeout(r,300));
 
-  // Step 3: Load user data — MUST succeed before opening app
-  ldProgress(45,'Loading your data...');
+  // Step 3: Load user data — must succeed
+  await ldAnimateTo(50,'Loading your account...', 600);
   let loaded = false;
   let attempts = 0;
   const MAX_ATTEMPTS = 5;
-
   while(!loaded && attempts < MAX_ATTEMPTS){
     attempts++;
     try{
       await loadState();
-      // Verify we actually got user data
-      if(S.user && S.userId){
-        loaded = true;
-      } else {
-        throw new Error('No user data received');
-      }
+      if(S.user && S.userId) loaded=true;
+      else throw new Error('No user data');
     }catch(e){
-      console.warn(`Load attempt ${attempts} failed:`, e.message);
+      console.warn(`Attempt ${attempts} failed:`,e.message);
       if(attempts < MAX_ATTEMPTS){
-        ldProgress(45, `Retrying... (${attempts}/${MAX_ATTEMPTS})`);
-        await new Promise(r=>setTimeout(r, 1500 * attempts)); // exponential backoff
+        ldProgress(50,`Retrying... (${attempts}/${MAX_ATTEMPTS})`);
+        await new Promise(r=>setTimeout(r,1500*attempts));
       }
     }
   }
-
   if(!loaded){
-    // All attempts failed — show error, don't open the app
     ldError('Connection failed. Please restart the app.');
-    return; // stop here — loading screen stays visible
+    return;
   }
+  await ldAnimateTo(70,'Account loaded!', 500);
+  await new Promise(r=>setTimeout(r,300));
 
   // Step 4: Render UI
-  ldProgress(80,'Building interface...');
+  await ldAnimateTo(80,'Building interface...', 400);
   renderMarket();
   renderTasks();
+  await new Promise(r=>setTimeout(r,300));
 
   // Step 5: Init TON + timers
-  ldProgress(95,'Finalizing...');
+  await ldAnimateTo(90,'Setting up wallet...', 400);
   setTimeout(()=>initTON(), 600);
   startTank();
   setInterval(()=>{ loadState(); }, 30000);
+  await new Promise(r=>setTimeout(r,400));
 
-  // Step 6: All good — hide loading screen
-  ldProgress(100,'Ready! 🐼');
-  setTimeout(()=>ldHide(), 600);
+  await ldAnimateTo(100,'Ready! 🐼', 500);
+
+  // Ensure minimum loading time (5-10s feel)
+  const elapsed = Date.now() - startTime;
+  if(elapsed < MIN_LOADING_MS){
+    await new Promise(r=>setTimeout(r, MIN_LOADING_MS - elapsed));
+  }
+
+  setTimeout(()=>ldHide(), 700);
 }
 </script>
 </body>
