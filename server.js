@@ -10,7 +10,7 @@
 
 const G = {
   BAMBOO_PER_COIN:10, TON_PER_COIN:0.00005, TON_TO_BAMBOO:10000,
-  MIN_WITHDRAW:200, FREE_WD_LIMIT:200, MIN_DEPOSIT_TON:0.1,
+  MIN_WITHDRAW:200, MIN_DEPOSIT_TON:1,
   REF_BONUS_PCT:20,
   WELCOME_BAMBOO:0,
   WELCOME_COINS :200,
@@ -68,7 +68,13 @@ const G = {
     r200:{n:200, bam:200000, coins:800 },
     r500:{n:500, bam:500000, coins:2000},
   },
-  SOC_TASKS:{tg_ch:1000,tg_grp:500,tg_bot:300},
+  SOC_TASKS:{
+    tg_payouts:1000,  // قناة المدفوعات — مطلوبة
+    tg_news   :500,   // قناة الأخبار — مطلوبة
+    tg_ch     :1000,
+    tg_grp    :500,
+    tg_bot    :300,
+  },
   BOT_USERNAME:'PandaBamboBot', // Fix 6
 };
 
@@ -197,7 +203,7 @@ function makeUser(uid,tg={},ref=null){
     bamboo:G.WELCOME_BAMBOO, coins:G.WELCOME_COINS, miningRate:G.WELCOME_RATE,
     totalEarned:0,machines:{},tankLevel:1,tankAccrued:0,lastSeen:Date.now(),createdAt:Date.now(),
     welcomeBonusGiven:true,
-    hasDeposited:false,freeWdUsed:false,tonBalance:0,referralCode:String(uid),referredBy:ref||null,completedTasks:[]};
+    hasDeposited:false,tonBalance:0,referralCode:String(uid),referredBy:ref||null,completedTasks:[]};
 }
 
 // ── Extract start_param from Telegram initData string ────────────
@@ -298,7 +304,7 @@ async function hGetState(env,uid,tg,data={},_meta={}){
       partner  :tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[],
       community:tcr.data?Object.values(tcr.data).filter(t=>t.status==='active'):[],
     };
-    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,freeWdUsed:user.freeWdUsed||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,pendingDeposit,tasks}};
+    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,pendingDeposit,tasks}};
   }catch(e){console.error('getState',e);return{success:false,error:e.message,errorCode:'GET_STATE_ERROR'};}
 }
 
@@ -415,7 +421,7 @@ async function hWithdraw(env,uid,data,_meta={}){
     if(missingPartner.length>0){
       return{success:false,error:'Complete all partner tasks first',errorCode:'PARTNER_TASKS_REQUIRED',missing:missingPartner.length};
     }
-    // No deposit requirement — anyone can withdraw
+    // No deposit requirement — free and paid users have same withdrawal rules
     const wdId=`wd_${uid}_${Date.now()}`;const ton=amt*G.TON_PER_COIN;
     const upd={coins:(user.coins||0)-amt};
     await dbUpdate(env,`users/${uid}`,upd);
@@ -448,7 +454,8 @@ async function hDeposit(env,uid,data,_meta={}){
       bamboo_before:(u.bamboo||0), coins_before:(u.coins||0),
       tonBalance_before:(u.tonBalance||0),
     },_meta);
-    return{success:true,data:{depositId:depId}};
+    // Respond immediately — balance credited within 3 minutes by server wallet monitor
+    return{success:true,data:{depositId:depId,message:'Transaction registered. Your balance will be added within 3 minutes.'}};
   }catch(e){return{success:false,error:e.message};}
 }
 
