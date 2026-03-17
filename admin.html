@@ -854,11 +854,12 @@ tbody tr:last-child td{border-bottom:none}
                 <th>العملات 🪙</th>
                 <th>TON 💎</th>
                 <th>معدل التعدين</th>
+                <th>الإحالات 👥</th>
                 <th>المستوى</th>
                 <th>الإجراءات</th>
               </tr></thead>
               <tbody id="usersTableBody">
-                <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>
+                <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>
               </tbody>
             </table>
           </div>
@@ -1240,39 +1241,58 @@ async function renderDashboard(){
 
   // Pending withdrawals
   try{
-    const wdSnap = await db.ref('withdrawals').once('value');
+    const [wdSnap, qSnap] = await Promise.all([
+      db.ref('withdrawals').once('value'),
+      db.ref('withdrawQueue').once('value')
+    ]);
     const wdData = wdSnap.val()||{};
-    const pending = Object.values(wdData).filter(w=>w.status==='pending');
+    const qData = qSnap.val()||{};
+
+    // Merge both sources
+    const allWd = [
+      ...Object.entries(qData).map(([id,w])=>{
+        const parts = id.split('_');
+        return { ...w, id, status: w.status||'pending', coins: w.coins||w.amount||0, address: w.address||w.walletAddress||'—', userId: w.userId||(parts.length>=3?parts[1]:null), timestamp: w.timestamp||w.createdAt||parseInt(parts[parts.length-1])||0, _source:'queue' };
+      }),
+      ...Object.entries(wdData).map(([id,w])=>({...w,id,_source:'legacy'}))
+    ];
+
+    const pending = allWd.filter(w=>w.status==='pending');
     document.getElementById('statPending').textContent = pending.length;
     document.getElementById('statPendingBadge').textContent = pending.length+' معلق';
     document.getElementById('pendingCount').textContent = pending.length;
     document.getElementById('wdPendingTotal').textContent = pending.length;
-    document.getElementById('wdPendingAmount').textContent = fmt(pending.reduce((s,w)=>s+(w.coins||0),0));
+    document.getElementById('wdPendingAmount').textContent = fmt(pending.reduce((s,w)=>s+(Number(w.coins)||0),0));
 
     // Pending in dashboard
     const pendWdList = document.getElementById('pendingWdList');
     if(pending.length===0){
       pendWdList.innerHTML=`<div style="text-align:center;color:var(--muted);padding:40px;font-size:13px"><i class="fas fa-check-circle" style="font-size:30px;display:block;margin-bottom:8px;opacity:0.3"></i>لا يوجد طلبات معلقة</div>`;
     } else {
-      pendWdList.innerHTML = pending.slice(0,5).map(w=>`
+      pendWdList.innerHTML = pending.slice(0,5).map(w=>{
+        const u = allUsers.find(x=>String(x.userId)===String(w.userId))||{};
+        return `
         <div class="wd-item">
           <div class="wd-item-header">
             <div class="wd-item-user">
-              <div class="user-avatar" style="width:32px;height:32px;font-size:14px">👤</div>
+              <div class="user-avatar" style="width:32px;height:32px;font-size:14px">${u.photoUrl?`<img src="${u.photoUrl}">`:'👤'}</div>
               <div>
-                <div style="font-weight:700;font-size:13px">${w.userId||'—'}</div>
+                <div style="font-weight:700;font-size:13px">${u.firstName||''} ${u.lastName||w.userId||'—'}</div>
                 <div style="font-size:11px;color:var(--muted)">${fmtTime(w.timestamp)}</div>
               </div>
             </div>
-            <div class="wd-amount">${fmt(w.coins)} 🪙</div>
+            <div>
+              <div class="wd-amount">${fmt(w.coins)} 🪙</div>
+              <div style="font-size:11px;color:#4fc3f7">${(w.tonAmount||0)} TON</div>
+            </div>
           </div>
           <div class="wd-address">${w.address||'—'}</div>
           <div class="wd-actions">
-            <button class="btn-sm btn-primary" onclick="approveWithdraw('${w.id||w.uid}','${w.userId}')"><i class="fas fa-check"></i> قبول</button>
-            <button class="btn-sm btn-danger" onclick="rejectWithdraw('${w.id||w.uid}','${w.userId}')"><i class="fas fa-times"></i> رفض</button>
+            <button class="btn-sm btn-primary" onclick="approveWithdraw('${w.id}','${w.userId}')"><i class="fas fa-check"></i> قبول</button>
+            <button class="btn-sm btn-danger" onclick="rejectWithdraw('${w.id}','${w.userId}')"><i class="fas fa-times"></i> رفض</button>
           </div>
-        </div>
-      `).join('');
+        </div>`;
+      }).join('');
     }
   } catch(e){ console.error('WD',e); }
 
@@ -1330,7 +1350,10 @@ function renderUsersTable(){
   document.getElementById('usersTotalCount').textContent = `${total} مستخدم`;
   document.getElementById('usersPageInfo').textContent = `عرض ${(currentPage-1)*PAGE_SIZE+1}–${Math.min(currentPage*PAGE_SIZE,total)} من ${total}`;
 
-  document.getElementById('usersTableBody').innerHTML = page.map(u=>`
+  document.getElementById('usersTableBody').innerHTML = page.map(u=>{
+    // Count referrals: users who have referredBy === this user's userId
+    const refCount = allUsers.filter(x=>String(x.referredBy)===String(u.userId)).length;
+    return `
     <tr>
       <td><div class="user-cell">
         <div class="user-avatar">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
@@ -1343,6 +1366,7 @@ function renderUsersTable(){
       <td><span class="val-coin">${fmt(u.coins)}</span></td>
       <td><span class="val-ton">${(u.tonBalance||0).toFixed(3)}</span></td>
       <td>${fmt(u.miningRate)} <span style="font-size:10px;color:var(--muted)">/ساعة</span></td>
+      <td><span class="badge ${refCount>0?'badge-green':'badge-blue'}" style="font-family:'Fredoka',cursive;font-size:13px">👥 ${refCount}</span></td>
       <td><span class="badge badge-blue">🛢️ LVL ${u.tankLevel||1}</span></td>
       <td>
         <div class="action-btns">
@@ -1350,8 +1374,8 @@ function renderUsersTable(){
           <button class="btn-sm btn-danger" onclick="confirmDeleteUser('${u.userId}')"><i class="fas fa-trash"></i></button>
         </div>
       </td>
-    </tr>
-  `).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">لا يوجد مستخدمون</td></tr>`;
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:40px">لا يوجد مستخدمون</td></tr>`;
 
   // Pagination
   const pgEl = document.getElementById('usersPagination');
@@ -1394,10 +1418,12 @@ function openUserModal(uid){
   `;
 
   // Balances
+  const refCount = allUsers.filter(x=>String(x.referredBy)===String(uid)).length;
   document.getElementById('modalBalanceGrid').innerHTML = `
     <div class="balance-item"><div class="balance-icon">🎋</div><div class="balance-val" style="color:var(--bamboo2)">${fmt(u.bamboo)}</div><div class="balance-lbl">البامبو</div></div>
     <div class="balance-item"><div class="balance-icon">🪙</div><div class="balance-val" style="color:var(--coin)">${fmt(u.coins)}</div><div class="balance-lbl">العملات</div></div>
     <div class="balance-item"><div class="balance-icon">💎</div><div class="balance-val" style="color:#4fc3f7">${(u.tonBalance||0).toFixed(3)}</div><div class="balance-lbl">TON</div></div>
+    <div class="balance-item"><div class="balance-icon">👥</div><div class="balance-val" style="color:var(--green)">${refCount}</div><div class="balance-lbl">الإحالات</div></div>
   `;
 
   // Fill form
@@ -1460,11 +1486,46 @@ async function confirmDeleteUser(uid){
 // ══ WITHDRAWALS ══
 async function refreshWithdrawals(){
   try{
-    const snap = await db.ref('withdrawals').once('value');
-    const data = snap.val()||{};
-    allWithdrawals = Object.entries(data).map(([id,w])=>({...w,id}));
+    // Try withdrawQueue first (primary), then withdrawals (legacy)
+    const [queueSnap, legacySnap] = await Promise.all([
+      db.ref('withdrawQueue').once('value'),
+      db.ref('withdrawals').once('value')
+    ]);
+    const queueData = queueSnap.val()||{};
+    const legacyData = legacySnap.val()||{};
+
+    // Normalize withdrawQueue entries (keys like wd_USERID_TIMESTAMP)
+    const queueList = Object.entries(queueData).map(([id,w])=>{
+      // Extract userId from key: wd_USERID_TIMESTAMP
+      const parts = id.split('_');
+      const userId = w.userId || (parts.length>=3 ? parts[1] : null);
+      return {
+        ...w,
+        id,
+        userId: userId,
+        status: w.status || 'pending',
+        timestamp: w.timestamp || w.createdAt || w.requestedAt || parseInt(parts[parts.length-1]) || Date.now(),
+        coins: w.coins || w.amount || w.coinsAmount || 0,
+        tonAmount: w.tonAmount || w.ton || 0,
+        address: w.address || w.walletAddress || w.wallet || '—',
+        _source: 'queue'
+      };
+    });
+
+    const legacyList = Object.entries(legacyData).map(([id,w])=>({...w,id,_source:'legacy'}));
+
+    // Merge: queue first, then legacy (avoid duplicates by id)
+    const allIds = new Set(queueList.map(w=>w.id));
+    const merged = [...queueList, ...legacyList.filter(w=>!allIds.has(w.id))];
+
+    allWithdrawals = merged.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
     filterWithdrawals();
-  } catch(e){ toast('خطأ في تحميل السحب','error'); }
+
+    // Update stats
+    const pending = allWithdrawals.filter(w=>w.status==='pending');
+    document.getElementById('wdPendingTotal').textContent = pending.length;
+    document.getElementById('wdPendingAmount').textContent = fmt(pending.reduce((s,w)=>s+(Number(w.coins)||0),0));
+  } catch(e){ toast('خطأ في تحميل السحب','error'); console.error(e); }
 }
 
 function filterWithdrawals(){
@@ -1508,7 +1569,9 @@ function filterWithdrawals(){
 async function approveWithdraw(id, uid){
   if(!confirm('قبول طلب السحب؟')) return;
   try{
-    await db.ref(`withdrawals/${id}`).update({status:'approved',updatedAt:Date.now(),updatedBy:'admin'});
+    const w = allWithdrawals.find(x=>x.id===id);
+    const path = (w && w._source==='queue') ? `withdrawQueue/${id}` : `withdrawals/${id}`;
+    await db.ref(path).update({status:'approved',updatedAt:Date.now(),updatedBy:'admin'});
     const idx = allWithdrawals.findIndex(w=>w.id===id);
     if(idx>=0) allWithdrawals[idx].status='approved';
     toast('تم قبول طلب السحب ✅','success');
@@ -1521,14 +1584,15 @@ async function rejectWithdraw(id, uid){
   if(!confirm('رفض طلب السحب؟')) return;
   try{
     const w = allWithdrawals.find(x=>x.id===id);
+    const path = (w && w._source==='queue') ? `withdrawQueue/${id}` : `withdrawals/${id}`;
     if(w && uid){
       const uSnap = await db.ref(`users/${uid}`).once('value');
       const u = uSnap.val()||{};
-      await db.ref(`users/${uid}`).update({coins:(u.coins||0)+(w.coins||0)});
+      await db.ref(`users/${uid}`).update({coins:(u.coins||0)+(Number(w.coins)||0)});
       const uIdx = allUsers.findIndex(x=>x.userId===uid);
-      if(uIdx>=0) allUsers[uIdx].coins = (allUsers[uIdx].coins||0)+(w.coins||0);
+      if(uIdx>=0) allUsers[uIdx].coins = (allUsers[uIdx].coins||0)+(Number(w.coins)||0);
     }
-    await db.ref(`withdrawals/${id}`).update({status:'rejected',updatedAt:Date.now(),updatedBy:'admin'});
+    await db.ref(path).update({status:'rejected',updatedAt:Date.now(),updatedBy:'admin'});
     const idx = allWithdrawals.findIndex(x=>x.id===id);
     if(idx>=0) allWithdrawals[idx].status='rejected';
     toast('تم رفض طلب السحب وإعادة العملات','info');
@@ -1765,6 +1829,8 @@ async function refreshData(){
 
 // ══ REAL-TIME LISTENERS ══
 function setupRealtime(){
+  db.ref('withdrawQueue').on('child_added', ()=>{ renderDashboard(); });
+  db.ref('withdrawQueue').on('child_changed', ()=>{ refreshWithdrawals(); });
   db.ref('withdrawals').on('child_added', ()=>{ renderDashboard(); });
   db.ref('withdrawals').on('child_changed', ()=>{ refreshWithdrawals(); });
 }
