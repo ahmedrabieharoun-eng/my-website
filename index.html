@@ -622,9 +622,8 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
         </div>
       </div>
       <label class="flabel" data-i18n="amountTON">Amount (TON)</label>
-      <input type="number" id="depositAmountInput" class="finput" placeholder="0.1" step="0.1" min="0.1" oninput="updDepPreview()">
+      <input type="number" id="depositAmountInput" class="finput" placeholder="1" step="0.1" min="1" oninput="updDepPreview()">
       <div class="preset-row" style="margin-bottom:8px">
-        <span class="prbtn" onclick="setDepAmt(0.5)">0.5</span>
         <span class="prbtn" onclick="setDepAmt(1)">1</span>
         <span class="prbtn" onclick="setDepAmt(2)">2</span>
         <span class="prbtn" onclick="setDepAmt(5)">5</span>
@@ -650,14 +649,6 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
   <!-- WITHDRAW -->
   <div class="ftcont" id="ft-withdraw">
     <div class="wd-form">
-      <div class="wd-err-banner trial" id="wdBannerTrial">
-        <i class="fas fa-gift"></i>
-        <div>🎉 <strong data-i18n="freeTrial">Free Trial:</strong> <span data-i18n="freeTrialDesc">1 free withdrawal up to 200 Coins. Deposit to unlock unlimited.</span></div>
-      </div>
-      <div class="wd-err-banner depreq" id="wdBannerDepReq">
-        <i class="fas fa-lock"></i>
-        <div data-i18n="freeTrialUsed">Free trial used. Please <strong>deposit</strong> to continue withdrawing.</div>
-      </div>
       <label class="flabel" data-i18n="tonWalletAddr">TON Wallet Address</label>
       <input type="text" class="finput" id="wdAddr" placeholder="UQ...">
       <label class="flabel" data-i18n="amountCoins">Amount (Coins)</label>
@@ -969,6 +960,8 @@ const REF_TASKS=[
   {id:'r500',n:500, bam:500000, coins:2000},
 ];
 const SOC_TASKS=[
+  {id:'tg_payouts', name:'Join Payouts Channel', icon:'💰', link:'https://t.me/PandaBambooPayouts', bam:1000},
+  {id:'tg_news',    name:'Join Mining News Channel', icon:'📰', link:'https://t.me/PandaMiningNews', bam:500},
   {id:'tg_ch', name:'Join Telegram Channel', icon:'📢', link:'https://t.me/YOUR_CHANNEL', bam:1000},
   {id:'tg_grp',name:'Join Telegram Group',   icon:'👥', link:'https://t.me/YOUR_GROUP',   bam:500 },
   {id:'tg_bot',name:'Start our Bot',          icon:'🤖', link:`https://t.me/${CFG.BOT_USERNAME}`, bam:300}, // Fix 6
@@ -1405,8 +1398,6 @@ function renderExchHist(){
 function updWdPrev(){
   const a=parseFloat(document.getElementById('wdAmt').value)||0;
   document.getElementById('wdTonVal').textContent=(a*CFG.TON_PER_COIN).toFixed(4);
-  document.getElementById('wdBannerTrial').classList.remove('show');
-  document.getElementById('wdBannerDepReq').classList.remove('show');
 }
 function goToTasksPartner(){
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
@@ -1425,8 +1416,6 @@ async function doWithdraw(){
   const addr=(document.getElementById('wdAddr').value||'').trim();
   const amt=parseFloat(document.getElementById('wdAmt').value)||0;
   const u=S.user;
-  document.getElementById('wdBannerTrial').classList.remove('show');
-  document.getElementById('wdBannerDepReq').classList.remove('show');
   if(!addr||addr.length<10){showNotif('Enter valid TON address!','e');return;}
   if(amt<CFG.MIN_WD){showNotif(`Min ${CFG.MIN_WD} Coins!`,'e');return;}
   if(amt>(u.coins||0)){showNotif('Not enough Coins!','e');return;}
@@ -1441,25 +1430,11 @@ async function doWithdraw(){
     return;
   }
 
-  if(!u.hasDeposited){
-    if(u.freeWdUsed){
-      document.getElementById('wdBannerDepReq').classList.add('show');
-      showNotif('❌ Deposit required to withdraw!','e');
-      setTimeout(()=>goToFinanceDeposit(), 5000); // Fix 10
-      return;
-    }
-    if(amt>CFG.FREE_WD_LIMIT){
-      document.getElementById('wdBannerTrial').classList.add('show');
-      showNotif(`❌ Trial limit: ${CFG.FREE_WD_LIMIT} Coins. Deposit to unlock!`,'e');
-      setTimeout(()=>goToFinanceDeposit(), 5000); // Fix 10
-      return;
-    }
-  }
+  // No deposit requirement — free and paid users have same withdrawal rules
 
   try{
     const res=await api('withdraw',{address:addr,amount:amt});
     u.coins-=amt;
-    if(!u.hasDeposited) u.freeWdUsed=true;
     S.wdHist.unshift({amt,addr,d:new Date().toLocaleDateString(),status:'pending'});
     document.getElementById('wdAddr').value='';
     document.getElementById('wdAmt').value='';
@@ -1553,7 +1528,7 @@ function copyRefLink(){
 
 /* ════ DEPOSIT PREVIEW ════ */
 const TON_TO_BAMBOO=10000;
-function setDepAmt(v){document.getElementById('depositAmountInput').value=v;updDepPreview();}
+function setDepAmt(v){document.getElementById('depositAmountInput').value=Math.max(1,v);updDepPreview();}
 function updDepPreview(){
   const ton=parseFloat(document.getElementById('depositAmountInput').value)||0;
   const bam=Math.floor(ton*TON_TO_BAMBOO);
@@ -1595,7 +1570,7 @@ async function disconnectWallet(){if(S.tonUI)await S.tonUI.disconnect();}
 window.initiateDeposit=async function(){
   if(!S.wallet){alert('Connect wallet first');return;}
   const amt=parseFloat(document.getElementById('depositAmountInput').value);
-  if(!amt||amt<0.1){alert('Minimum 0.1 TON');return;}
+  if(!amt||amt<1){alert('Minimum 1 TON');return;}
   if(amt>1000){alert('Amount too large');return;}
   try{
     const comment=String(S.userId);
@@ -1608,8 +1583,15 @@ window.initiateDeposit=async function(){
     const payload=TW.utils.bytesToBase64(boc);
     const tx={validUntil:Math.floor(Date.now()/1000)+600,messages:[{address:CFG.DEPOSIT_WALLET,amount:nano,payload}]};
     const result=await S.tonUI.sendTransaction(tx);
-    showNotif('✅ Transaction sent! ~1 min for confirmation','s');
-    await handleDepOk(result,amt,comment);
+    // Show pending message — balance will be credited by server within 3 minutes
+    const sd=document.getElementById('depositStatus');
+    sd.classList.add('visible');
+    sd.querySelector('.txsi').innerHTML='⏳';
+    sd.querySelector('.txsm').innerHTML='Transaction sent!';
+    document.getElementById('depositStatusDetail').textContent='Your balance will be added to your account within 3 minutes.';
+    showNotif('✅ Transaction sent! Balance will be credited within 3 minutes','s');
+    // Register deposit in DB (fire and forget — server monitors wallet independently)
+    try{ await api('deposit',{amount:amt,txHash:result.boc,comment}); }catch(_){}
   }catch(e){
     const sd=document.getElementById('depositStatus');
     sd.classList.add('visible');
@@ -1800,7 +1782,7 @@ function ldAnimateTo(targetPct, msg, duration=600){
 async function init(){
   // Record start time — minimum 6 seconds total
   const startTime = Date.now();
-  const MIN_LOADING_MS = 6000;
+  const MIN_LOADING_MS = 3000;
 
   // Step 1: Telegram setup
   ldProgress(0,'Starting...');
