@@ -1491,9 +1491,13 @@ function renderWdHist(){
   if(!el) return;
   if(!S.wdHist.length){el.innerHTML='<div class="hist-empty">No withdrawals yet</div>';return;}
   el.innerHTML=S.wdHist.slice(0,20).map((h,idx)=>{
-    const sc={approved:'sb-approved',pending:'sb-pending',rejected:'sb-rejected'}[h.status||'pending'];
-    const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[h.status||'pending'];
-    const statusColor={approved:'var(--neon-green)',pending:'var(--coin)',rejected:'#ff8a80'}[h.status||'pending'];
+    // Normalise legacy status values from old DB records
+    const rawStatus = (h.status||'pending').toLowerCase();
+    const normStatus = rawStatus==='paid'?'approved' : rawStatus==='failed'?'rejected' : rawStatus;
+    const sc={approved:'sb-approved',pending:'sb-pending',rejected:'sb-rejected'}[normStatus]||'sb-pending';
+    const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[normStatus]||'⏳';
+    const statusColor={approved:'var(--neon-green)',pending:'var(--coin)',rejected:'#ff8a80'}[normStatus]||'var(--coin)';
+    const statusText={approved:'Approved',pending:'Pending',rejected:'Rejected'}[normStatus]||normStatus.charAt(0).toUpperCase()+normStatus.slice(1);
     const tonVal=((h.amt||0)*CFG.TON_PER_COIN).toFixed(4);
     const amt=h.amt||0;
     // Fix date: always use en-US locale to avoid RTL/Arabic date display issues
@@ -1514,7 +1518,7 @@ function renderWdHist(){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <span class="stat-badge ${sc}" style="font-size:11px;padding:4px 12px">${statusIcon} ${{approved:'Approved',pending:'Pending',rejected:'Rejected'}[h.status||'pending']||'Pending'}</span>
+          <span class="stat-badge ${sc}" style="font-size:11px;padding:4px 12px">${statusIcon} ${statusText}</span>
         </div>
       </div>
       <!-- Divider -->
