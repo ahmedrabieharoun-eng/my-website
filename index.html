@@ -1471,8 +1471,12 @@ function renderWdHist(){
     const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[h.status||'pending'];
     const statusColor={approved:'var(--neon-green)',pending:'var(--coin)',rejected:'#ff8a80'}[h.status||'pending'];
     const tonVal=((h.amt||0)*CFG.TON_PER_COIN).toFixed(4);
-    const shortAddr=(h.addr||'').substring(0,10)+'...';
-    const dateStr=h.d||new Date(h.ts||Date.now()).toLocaleDateString();
+    const amt=h.amt||0;
+    // Fix date: always use en-US locale to avoid RTL/Arabic date display issues
+    const ts=h.ts||null;
+    const dateStr=ts
+      ? new Date(ts).toLocaleDateString('en-US',{day:'2-digit',month:'short',year:'numeric'})
+      : (h.d||'—');
     return`<div style="background:linear-gradient(135deg,rgba(6,20,6,.9),rgba(0,0,0,.6));border:1px solid rgba(255,215,0,.2);border-radius:16px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.4)">
       <!-- glow line top -->
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${statusColor},transparent);opacity:.6"></div>
@@ -1481,7 +1485,7 @@ function renderWdHist(){
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:22px">💸</span>
           <div>
-            <div style="font-size:22px;font-weight:800;color:var(--coin);line-height:1">${fmt(h.amt||0)}</div>
+            <div style="font-size:22px;font-weight:800;color:var(--coin);line-height:1">${fmt(amt)}</div>
             <div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:1px">Coins</div>
           </div>
         </div>
@@ -1491,7 +1495,7 @@ function renderWdHist(){
       </div>
       <!-- Divider -->
       <div style="height:1px;background:rgba(255,255,255,.06);margin-bottom:10px"></div>
-      <!-- Row 2: details -->
+      <!-- Row 2: details — TON / Date / Coins value -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
           <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">💎 TON</div>
@@ -1499,11 +1503,11 @@ function renderWdHist(){
         </div>
         <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
           <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">📅 Date</div>
-          <div style="font-size:11px;font-weight:800;color:var(--text)">${esc(dateStr)}</div>
+          <div style="font-size:11px;font-weight:800;color:var(--text);direction:ltr">${esc(dateStr)}</div>
         </div>
         <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
-          <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">🏦 Wallet</div>
-          <div style="font-size:10px;font-weight:800;color:var(--cyan)">${esc(shortAddr)}</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">🪙 Amount</div>
+          <div style="font-size:13px;font-weight:800;color:var(--coin)">${fmt(amt)}</div>
         </div>
       </div>
     </div>`;
