@@ -601,6 +601,7 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
     <div class="ftab active" data-ft="deposit" onclick="switchFinTab(this,'deposit')">💰 Deposit</div>
     <div class="ftab" data-ft="withdraw" onclick="switchFinTab(this,'withdraw')">💸 Withdraw</div>
     <div class="ftab" data-ft="exchange" onclick="switchFinTab(this,'exchange')">⚡ Exchange</div>
+    <div class="ftab" data-ft="log" onclick="switchFinTab(this,'log')" style="font-size:11px">📋 Log</div>
   </div>
 
   <!-- DEPOSIT -->
@@ -709,6 +710,15 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
       <div class="hist-hdr" data-i18n="exchangeHist">📋 Exchange History</div>
       <div id="exchHist"><div class="hist-empty" data-i18n="noConversions">No conversions yet</div></div>
     </div>
+  </div>
+
+  <!-- BALANCE LOG -->
+  <div class="ftcont" id="ft-log">
+    <div style="background:var(--card);border:1px solid rgba(124,179,66,.2);border-radius:16px;padding:12px 14px;margin-bottom:10px;backdrop-filter:blur(6px)">
+      <div style="font-size:13px;font-weight:800;color:var(--bamboo);margin-bottom:4px;display:flex;align-items:center;gap:6px">📊 Balance Change Log</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:500">Every transaction that changed your Bamboo, Coins, or TON balance. Latest 50 entries.</div>
+    </div>
+    <div id="balLogList"><div class="hist-empty">Loading...</div></div>
   </div>
 </div>
 
@@ -972,7 +982,7 @@ const S={
   userId:null,
   startParam:'', // Fix 3: referral ID from URL
   user:{bamboo:0,coins:0,miningRate:0,totalEarned:0,machines:{},tankLevel:1,hasDeposited:false,freeWdUsed:false,tonBalance:0},
-  refs:[],exchHist:[],wdHist:[],doneTasks:[],
+  refs:[],exchHist:[],wdHist:[],balLog:[],doneTasks:[],
   tasks:{partner:[],community:[]},
   tankProgress:0,tankInt:null,
   tg:null,tonUI:null,wallet:null,depCheckInt:null,
@@ -988,6 +998,21 @@ function esc(s){
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;')
     .replace(/'/g,'&#39;');
+}
+
+/* ════ ANTI-CLICKER DEBOUNCE SYSTEM ════ */
+const _debounceMap = new Map();
+const DEBOUNCE_MS  = 3000;
+function debounce(key){
+  const now = Date.now();
+  const last = _debounceMap.get(key) || 0;
+  if(now - last < DEBOUNCE_MS){
+    const rem = Math.ceil((DEBOUNCE_MS - (now - last)) / 1000);
+    showNotif(`\u23F3 Wait ${rem}s before trying again`,'w');
+    return false;
+  }
+  _debounceMap.set(key, now);
+  return true;
 }
 
 /* ════ API ════ */
@@ -1023,6 +1048,7 @@ async function loadState(){
     S.refs      = d.referrals || [];
     S.exchHist  = d.exchHistory || [];
     S.wdHist    = d.wdHistory   || [];
+    S.balLog    = d.balanceLog  || [];
     S.doneTasks = d.completedTasks || [];
     S.tasks     = d.tasks || { partner:[], community:[] };
     if(d.user && d.user.tankAccrued !== undefined){
@@ -1064,6 +1090,7 @@ function updateUI(){
   updateRefUI();
   renderExchHist();
   renderWdHist();
+  renderBalLog();
 }
 
 /* ════ TANK ════ */
@@ -1096,6 +1123,7 @@ function updateTankUI(){
 }
 async function collectBamboo(){
   if(S._collectCooldown) return;
+  if(!debounce('collect')) return;
   const amt = Math.floor(S.tankProgress);
   if(amt<1){showNotif('Tank is empty!','e');return;}
   S._collectCooldown=true;
@@ -1131,6 +1159,7 @@ function buildUpgradeContent(){
   document.getElementById('upgradeContent').innerHTML=h;
 }
 async function upgradeTank(){
+  if(!debounce('upgradeTank')) return;
   const u=S.user, lv=u.tankLevel||1, next=TANK_LVS[lv+1];
   if(!next){showNotif('Already max!','e');return;}
   if((u.bamboo||0)<next.upgCost){showNotif(`Need ${fmt(next.upgCost)} Bamboo!`,'e');return;}
@@ -1190,6 +1219,7 @@ function updateBuyBtn(id){
   el.textContent=fmt(it.price*(parseInt(qEl.textContent)||1));
 }
 async function buyItem(id){
+  if(!debounce('buy_'+id)) return;
   const it=ITEMS.find(i=>i.id===id);
   const q=parseInt(document.getElementById(`qty_${id}`)?.textContent)||1;
   const total=it.price*q;
@@ -1267,6 +1297,7 @@ function switchTTab(el,t){
 }
 async function claimRefTask(id){
   if(_taskInFlight.has(id)) return; // Fix 1
+  if(!debounce('claimRef_'+id)) return;
   _taskInFlight.add(id);
   try{
     const t=REF_TASKS.find(x=>x.id===id);
@@ -1281,6 +1312,7 @@ async function claimRefTask(id){
 }
 async function doDbTask(tid,link,type,cat){
   if(_taskInFlight.has(tid)){showNotif('⏳ Already processing...','w');return;} // Fix 1
+  if(!debounce('task_'+tid)) return;
   _taskInFlight.add(tid);
   renderSocTasks();
   if(link&&link.startsWith('https://t.me/')) window.open(link,'_blank','noopener');
@@ -1325,6 +1357,7 @@ function updAtCost(){
 }
 async function submitAddTask(){
   if(_submitInFlight) return; // Fix 1
+  if(!debounce('submitTask')) return;
   const link=(document.getElementById('atLink').value||'').trim();
   const target=parseInt(document.getElementById('atTarget').value)||0;
   const st=document.getElementById('atStatus');
@@ -1361,6 +1394,7 @@ function updSwapBals(){
 let _exchInFlight=false;
 async function doExchange(){
   if(_exchInFlight) return;
+  if(!debounce('exchange')) return;
   const a=parseInt(document.getElementById('swapFromAmt').value)||0;
   if(a<=0){showNotif('Enter amount!','e');return;}
   if(a<CFG.RATE){showNotif(`Min ${CFG.RATE} Bamboo!`,'e');return;}
@@ -1424,6 +1458,7 @@ function goToTasksPartner(){
 }
 
 async function doWithdraw(){
+  if(!debounce('withdraw')) return;
   const addr=(document.getElementById('wdAddr').value||'').trim();
   const amt=parseFloat(document.getElementById('wdAmt').value)||0;
   const u=S.user;
@@ -1490,7 +1525,7 @@ function renderWdHist(){
           </div>
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-          <span class="stat-badge ${sc}" style="font-size:11px;padding:4px 12px">${statusIcon} ${(h.status||'Pending').charAt(0).toUpperCase()+(h.status||'pending').slice(1)}</span>
+          <span class="stat-badge ${sc}" style="font-size:11px;padding:4px 12px">${statusIcon} ${{approved:'Approved',pending:'Pending',rejected:'Rejected'}[h.status||'pending']||'Pending'}</span>
         </div>
       </div>
       <!-- Divider -->
@@ -1510,6 +1545,66 @@ function renderWdHist(){
           <div style="font-size:13px;font-weight:800;color:var(--coin)">${fmt(amt)}</div>
         </div>
       </div>
+    </div>`;
+  }).join('');
+}
+
+/* ════ BALANCE LOG ════ */
+function renderBalLog(){
+  const el=document.getElementById('balLogList');
+  if(!el) return;
+  const log=S.balLog||[];
+  if(!log.length){el.innerHTML='<div class="hist-empty">No balance changes yet</div>';return;}
+  const typeLabel={
+    collect        :'🎋 Collected Bamboo',
+    buy_item       :'🛒 Bought Item',
+    upgrade_tank   :'⬆️ Tank Upgrade',
+    exchange       :'⚡ Exchange',
+    withdraw_request:'💸 Withdrawal Request',
+    deposit_completed:'💰 Deposit Confirmed',
+    claim_task     :'✅ Task Reward',
+    verify_task    :'✅ Task Verified',
+    create_task    :'📋 Created Task',
+    admin_set_balance:'🔧 Admin Adjustment',
+    admin_confirm_deposit:'💰 Admin Deposit',
+    referral_commission:'👥 Referral Commission',
+    welcome_bonus_granted:'🎁 Welcome Bonus',
+  };
+  el.innerHTML=log.slice(0,50).map(e=>{
+    const label=typeLabel[e.type]||('📌 '+esc(e.type));
+    const ts=e.ts?new Date(e.ts).toLocaleString('en-US',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:false}):'—';
+    // Build change summary
+    const lines=[];
+    if(e.bamboo_after!==undefined&&e.bamboo_before!==undefined){
+      const d=Math.round(e.bamboo_after-e.bamboo_before);
+      const col=d>=0?'var(--bamboo)':'#ff8a80';
+      lines.push(`<span style="color:${col};font-weight:800">${d>=0?'+':''}${fmt(d)} Bamboo</span>`);
+    }
+    if(e.coins_after!==undefined&&e.coins_before!==undefined){
+      const d=Math.round(e.coins_after-e.coins_before);
+      const col=d>=0?'var(--coin)':'#ff8a80';
+      lines.push(`<span style="color:${col};font-weight:800">${d>=0?'+':''}${fmt(d)} Coins</span>`);
+    }
+    if(e.tonBalance_after!==undefined&&e.tonBalance_before!==undefined){
+      const d=(e.tonBalance_after-e.tonBalance_before).toFixed(4);
+      lines.push(`<span style="color:#00D4FF;font-weight:800">+${d} TON</span>`);
+    }
+    // Extra detail
+    const extras=[];
+    if(e.itemId) extras.push(`Item: ${esc(e.itemId)}`);
+    if(e.qty) extras.push(`Qty: ${e.qty}`);
+    if(e.taskId) extras.push(`Task: ${esc(e.taskId)}`);
+    if(e.wdId) extras.push(`ID: ${esc(e.wdId)}`);
+    if(e.address) extras.push(`To: ${esc(e.address.slice(0,10))}...`);
+    return`<div style="background:rgba(6,20,6,.85);border:1px solid rgba(124,179,66,.15);border-radius:12px;padding:11px 13px;margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:800;color:var(--text)">${label}</span>
+        <span style="font-size:10px;color:var(--muted);white-space:nowrap;margin-left:8px">${esc(ts)}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${extras.length?'5px':'0'}">
+        ${lines.length?lines.join(''):'<span style="color:var(--muted);font-size:11px">No balance change</span>'}
+      </div>
+      ${extras.length?`<div style="font-size:10px;color:var(--muted);font-weight:500">${extras.join(' · ')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2282,3 +2377,4 @@ function applyLang(lang,flag,code){
 </script>
 </body>
 </html>
+          
