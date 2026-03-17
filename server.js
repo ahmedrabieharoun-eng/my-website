@@ -78,6 +78,68 @@ const G = {
   BOT_USERNAME:'PandaBamboBot', // Fix 6
 };
 
+// ── Default partner tasks seeded automatically if not present ────
+const DEFAULT_PARTNER_TASKS = [
+  {
+    id: 'partner_payouts',
+    name: 'Join Payouts Channel',
+    type: 'channel',
+    link: 'https://t.me/PandaBambooPayouts',
+    bambooReward: 100,
+    targetUsers: null, // no limit
+    status: 'active',
+    isDefault: true,
+  },
+  {
+    id: 'partner_news',
+    name: 'Join Mining News Channel',
+    type: 'channel',
+    link: 'https://t.me/PandaMiningNews',
+    bambooReward: 100,
+    targetUsers: null, // no limit
+    status: 'active',
+    isDefault: true,
+  },
+];
+
+// ── Seed partner tasks if missing ────────────────────────────────
+async function seedPartnerTasks(env){
+  try{
+    const tpr = await dbGet(env,'tasks/partner');
+    const existing = tpr.data || {};
+    for(const task of DEFAULT_PARTNER_TASKS){
+      if(!existing[task.id]){
+        const now = Date.now();
+        const taskData = {
+          ...task,
+          completions: 0,
+          completedBy: [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        await dbSet(env, `tasks/partner/${task.id}`, taskData);
+        console.log(`Seeded partner task: ${task.id}`);
+      }
+    }
+  }catch(e){console.error('seedPartnerTasks error:',e.message);}
+}
+
+// ── Send Telegram notification ────────────────────────────────────
+async function sendTgNotification(env, userId, message){
+  try{
+    if(!env.BOT_TOKEN) return;
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        chat_id: userId,
+        text: message,
+        parse_mode: 'HTML',
+      }),
+    });
+  }catch(e){console.error('sendTgNotification error:',e.message);}
+}
+
 const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-Action','Access-Control-Max-Age':'86400'};
 const JSON_CT={'Content-Type':'application/json',...CORS};
 const jRes=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:JSON_CT});
@@ -235,10 +297,17 @@ async function hGetState(env,uid,tg,data={},_meta={}){
     const ref = rawRef && rawRef !== uid ? rawRef : null;
 
     const ur=await dbGet(env,`users/${uid}`);let user=ur.data;
+    // Seed partner tasks if not present (fire-and-forget)
+    seedPartnerTasks(env).catch(e=>console.error('seed:',e.message));
+
     if(!user){
       user=makeUser(uid,tg,ref);
       if(user.referredBy){
         await registerReferral(env,uid,user,user.referredBy);
+        // 🔔 Notify referrer that someone registered via their link
+        const refName = (tg.first_name||'Someone').slice(0,32);
+        const notifMsg = `🎉 <b>Congratulations!</b> <b>${refName}</b> just registered using your referral link!\n\n🐼 You will automatically earn <b>20% commission</b> on all their Market purchases.\n\n<i>Track your earnings in the Friends section</i>`;
+        sendTgNotification(env, user.referredBy, notifMsg).catch(()=>{});
       }
       await dbSet(env,`users/${uid}`,user);
       log(env,uid,'register',{
@@ -348,10 +417,16 @@ async function hBuyItem(env,uid,data,_meta={}){
       if(rr.data){
         await dbUpdate(env,`users/${user.referredBy}`,{bamboo:(rr.data.bamboo||0)+comm});
         await dbPush(env,`users/${user.referredBy}/referralEarnings`,{fromUserId:uid,amount:comm,timestamp:Date.now()});
+        // Update earned in referrals list
+        await dbUpdate(env,`users/${user.referredBy}/referrals/${uid}`,{earned:(rr.data.referrals?.[uid]?.earned||0)+comm});
         log(env,user.referredBy,'referral_commission',{
           fromUserId:uid, commission:comm,
           bamboo_before:(rr.data.bamboo||0), bamboo_after:(rr.data.bamboo||0)+comm,
         });
+        // 🔔 Notify referrer about commission earned
+        const buyerName = (user.firstName||'Your friend').slice(0,32);
+        const notifMsg = `💰 <b>Commission earned!</b>\n\n<b>${buyerName}</b> made a purchase from the Market\nYou earned <b>${comm} Bamboo</b> (20% commission) 🎋\n\n<i>Your balance has been updated automatically</i>`;
+        sendTgNotification(env, user.referredBy, notifMsg).catch(()=>{});
       }
     }
     return{success:true,data:{bamboo:nb,miningRate:newRate,machines}};
@@ -611,7 +686,8 @@ async function hVerifyTask(env,uid,data,_meta={}){
     const newCompletions=(task.completions||0)+1;
     const newCompletedBy=[...(task.completedBy||[]),uid];
     const taskUpdates={completions:newCompletions,completedBy:newCompletedBy,updatedAt:Date.now()};
-    if(newCompletions>=(task.targetUsers||Infinity)) taskUpdates.status='completed';
+    // Only mark completed if targetUsers is set (not null/unlimited)
+    if(task.targetUsers!=null && newCompletions>=(task.targetUsers||Infinity)) taskUpdates.status='completed';
     await dbUpdate(env,`tasks/${taskCat}/${taskId}`,taskUpdates);
     // Fix 1: mark completed in user BEFORE bamboo so duplicate calls return "already completed"
     const newCompleted=[...(u.completedTasks||[]),taskId];
@@ -678,7 +754,7 @@ export default {
     if(request.method==='OPTIONS')return new Response(null,{headers:CORS});
     const url=new URL(request.url);const path=url.pathname;
     if(path==='/health')return ok({status:'ok',ts:Date.now(),env:env.ENVIRONMENT||'production'});
-    if(path==='/tonconnect-manifest.json')return jRes({url:'https://YOUR_FRONTEND_URL',name:'PandaBambooBot',iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/d7e19f8c-7876-4dc6-8542-d4f615704e46.png',description:'Panda Bamboo Factory'});
+    if(path==='/tonconnect-manifest.json')return jRes({url:'https://pandabambo.vercel.app',name:'PandaBambooBot',iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/87e9d1bd-c053-466a-a29e-40483a009e8f.png',description:'Panda Bamboo Factory'});
     if(path!=='/api'||request.method!=='POST')return fail('Not found',404);
 
     const ip=request.headers.get('CF-Connecting-IP')||'unknown';
