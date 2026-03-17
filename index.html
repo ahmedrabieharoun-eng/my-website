@@ -960,11 +960,11 @@ const REF_TASKS=[
   {id:'r500',n:500, bam:500000, coins:2000},
 ];
 const SOC_TASKS=[
-  {id:'tg_payouts', name:'Join Payouts Channel', icon:'💰', link:'https://t.me/PandaBambooPayouts', bam:1000},
-  {id:'tg_news',    name:'Join Mining News Channel', icon:'📰', link:'https://t.me/PandaMiningNews', bam:500},
+  {id:'tg_payouts', name:'💰 Join Payouts Channel', icon:'💰', link:'https://t.me/PandaBambooPayouts', bam:1000},
+  {id:'tg_news',    name:'📰 Join Mining News Channel', icon:'📰', link:'https://t.me/PandaMiningNews', bam:500},
   {id:'tg_ch', name:'Join Telegram Channel', icon:'📢', link:'https://t.me/YOUR_CHANNEL', bam:1000},
   {id:'tg_grp',name:'Join Telegram Group',   icon:'👥', link:'https://t.me/YOUR_GROUP',   bam:500 },
-  {id:'tg_bot',name:'Start our Bot',          icon:'🤖', link:`https://t.me/${CFG.BOT_USERNAME}`, bam:300}, // Fix 6
+  {id:'tg_bot',name:'Start our Bot',          icon:'🤖', link:`https://t.me/${CFG.BOT_USERNAME}`, bam:300},
 ];
 
 /* ════ STATE ════ */
@@ -1016,6 +1016,9 @@ async function loadState(){
       start_param : S.startParam || '',
       _initData   : S.tg?.initData || '',
     });
+
+    // 🔔 Check for new referrals since last check (referral join notification)
+    const prevRefCount = S.refs ? S.refs.length : 0;
     S.user      = d.user    || S.user;
     S.refs      = d.referrals || [];
     S.exchHist  = d.exchHistory || [];
@@ -1025,9 +1028,17 @@ async function loadState(){
     if(d.user && d.user.tankAccrued !== undefined){
       S.tankProgress = parseFloat(d.user.tankAccrued) || 0;
     }
+    // 🔔 Show in-app notification if new referral joined
+    if(S._initialized && S.refs.length > prevRefCount){
+      const diff = S.refs.length - prevRefCount;
+      const newest = S.refs[0];
+      const name = newest ? esc(newest.name||'صديق') : 'شخص';
+      showNotif(`🎉 دعوت ${name}! ستحصل على 20% من مشترياتهم`,'s');
+    }
     if(d.pendingDeposit) startDepVerify(d.pendingDeposit.depId, d.pendingDeposit.txHash);
   }catch(e){ console.warn('loadState:', e.message); }
   updateUI();
+  S._initialized = true;
 }
 
 /* ════ UPDATE UI ════ */
@@ -1455,14 +1466,46 @@ function renderWdHist(){
   const el=document.getElementById('wdHist');
   if(!el) return;
   if(!S.wdHist.length){el.innerHTML='<div class="hist-empty">No withdrawals yet</div>';return;}
-  el.innerHTML=S.wdHist.slice(0,20).map(h=>{
+  el.innerHTML=S.wdHist.slice(0,20).map((h,idx)=>{
     const sc={approved:'sb-approved',pending:'sb-pending',rejected:'sb-rejected'}[h.status||'pending'];
-    return`<div class="hist-row" style="flex-direction:column;gap:4px;align-items:flex-start">
-      <div style="display:flex;justify-content:space-between;width:100%">
-        <span style="font-size:13px;font-weight:800;color:var(--coin)">${fmt(h.amt)} Coins</span>
-        <span class="stat-badge ${sc}">${esc(h.status||'Pending')}</span>
+    const statusIcon={approved:'✅',pending:'⏳',rejected:'❌'}[h.status||'pending'];
+    const statusColor={approved:'var(--neon-green)',pending:'var(--coin)',rejected:'#ff8a80'}[h.status||'pending'];
+    const tonVal=((h.amt||0)*CFG.TON_PER_COIN).toFixed(4);
+    const shortAddr=(h.addr||'').substring(0,10)+'...';
+    const dateStr=h.d||new Date(h.ts||Date.now()).toLocaleDateString();
+    return`<div style="background:linear-gradient(135deg,rgba(6,20,6,.9),rgba(0,0,0,.6));border:1px solid rgba(255,215,0,.2);border-radius:16px;padding:14px 16px;margin-bottom:10px;position:relative;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.4)">
+      <!-- glow line top -->
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${statusColor},transparent);opacity:.6"></div>
+      <!-- Row 1: amount + status -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">💸</span>
+          <div>
+            <div style="font-size:22px;font-weight:800;color:var(--coin);line-height:1">${fmt(h.amt||0)}</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:600;margin-top:1px">Coins</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+          <span class="stat-badge ${sc}" style="font-size:11px;padding:4px 12px">${statusIcon} ${(h.status||'Pending').charAt(0).toUpperCase()+(h.status||'pending').slice(1)}</span>
+        </div>
       </div>
-      <div style="font-size:10px;color:var(--muted)">${((h.amt||0)*CFG.TON_PER_COIN).toFixed(4)} TON · ${esc(h.d||'')} · ${esc((h.addr||'').substring(0,12))}...</div>
+      <!-- Divider -->
+      <div style="height:1px;background:rgba(255,255,255,.06);margin-bottom:10px"></div>
+      <!-- Row 2: details -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
+          <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">💎 TON</div>
+          <div style="font-size:13px;font-weight:800;color:#00D4FF">${tonVal}</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
+          <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">📅 Date</div>
+          <div style="font-size:11px;font-weight:800;color:var(--text)">${esc(dateStr)}</div>
+        </div>
+        <div style="background:rgba(0,0,0,.3);border-radius:10px;padding:7px 9px;text-align:center">
+          <div style="font-size:9px;color:var(--muted);font-weight:600;margin-bottom:2px">🏦 Wallet</div>
+          <div style="font-size:10px;font-weight:800;color:var(--cyan)">${esc(shortAddr)}</div>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
