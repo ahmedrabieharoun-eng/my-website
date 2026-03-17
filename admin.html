@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐼 Panda Bamboo — لوحة التحكم</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Fredoka:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#060d06;
+  --bg2:#0a140a;
+  --card:rgba(10,22,10,0.92);
+  --card2:rgba(15,30,15,0.85);
+  --glass:rgba(20,40,20,0.7);
+  --bamboo:#7cb342;
+  --bamboo2:#a5d63d;
+  --bamboo3:#c8f047;
+  --coin:#FFD700;
+  --coin2:#FFA500;
+  --ton:#0088CC;
+  --red:#ef5350;
+  --red2:#ff6b6b;
+  --green:#00e676;
+  --cyan:#00e5ff;
+  --purple:#ce93d8;
+  --border:rgba(124,179,66,0.15);
+  --border2:rgba(124,179,66,0.3);
+  --border3:rgba(124,179,66,0.5);
+  --text:#e8f5e9;
+  --muted:rgba(232,245,233,0.5);
+  --muted2:rgba(232,245,233,0.3);
+  --glow:rgba(124,179,66,0.4);
+  --glow2:rgba(124,179,66,0.15);
+  --sidebar:280px;
+  --header:70px;
+}
+
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Tajawal',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+}
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:10px}
+
+/* ══ BACKGROUND ══ */
+.bg-layer{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(124,179,66,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(0,136,204,0.06) 0%, transparent 60%),
+    url('https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/3e1a9f27-dd8e-459f-9c24-e0e51d9c255e.png') center/cover no-repeat;
+  opacity:0.12;
+}
+.bg-overlay{position:fixed;inset:0;z-index:1;background:linear-gradient(135deg,rgba(6,13,6,0.97) 0%,rgba(6,13,6,0.92) 100%)}
+
+/* ══ LAYOUT ══ */
+.layout{position:relative;z-index:2;display:flex;height:100vh;width:100vw}
+
+/* ══ SIDEBAR ══ */
+.sidebar{
+  width:var(--sidebar);
+  flex-shrink:0;
+  background:linear-gradient(180deg,rgba(8,18,8,0.98) 0%, rgba(5,12,5,0.99) 100%);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+.sidebar::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--bamboo2),transparent);
+}
+
+.sidebar-logo{
+  padding:20px 20px 16px;
+  display:flex;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border);
+}
+.logo-icon{
+  width:48px;height:48px;border-radius:14px;
+  background:linear-gradient(135deg,#2d5a0e,var(--bamboo));
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  box-shadow:0 0 20px var(--glow);
+  flex-shrink:0;
+}
+.logo-text{flex:1}
+.logo-title{font-size:16px;font-weight:900;color:var(--bamboo2);letter-spacing:0.5px}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:2px;font-weight:500}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:12px 10px}
+.nav-section-title{
+  font-size:10px;font-weight:700;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:1.5px;
+  padding:12px 10px 6px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:12px;
+  cursor:pointer;transition:all 0.2s;
+  color:var(--muted);font-size:14px;font-weight:600;
+  margin-bottom:3px;position:relative;overflow:hidden;
+}
+.nav-item::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  background:linear-gradient(135deg,rgba(124,179,66,0.15),rgba(124,179,66,0.05));
+  transition:opacity 0.2s;border-radius:12px;
+}
+.nav-item:hover::before,.nav-item.active::before{opacity:1}
+.nav-item.active{color:var(--bamboo2);border:1px solid var(--border2)}
+.nav-item:hover{color:var(--text)}
+.nav-item i{width:22px;text-align:center;font-size:16px}
+.nav-badge{
+  margin-right:auto;background:var(--red);color:#fff;
+  font-size:10px;font-weight:800;padding:2px 7px;
+  border-radius:20px;min-width:20px;text-align:center;
+}
+.nav-badge.green{background:var(--bamboo)}
+
+.sidebar-footer{
+  padding:14px;border-top:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.admin-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,var(--bamboo),#2d5a0e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;border:2px solid var(--border2);
+}
+.admin-info{flex:1}
+.admin-name{font-size:13px;font-weight:700;color:var(--text)}
+.admin-role{font-size:11px;color:var(--bamboo);font-weight:600}
+.btn-logout{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(239,83,80,0.1);color:var(--red);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  font-size:14px;transition:all 0.2s;
+}
+.btn-logout:hover{background:rgba(239,83,80,0.3);border-color:var(--red)}
+
+/* ══ MAIN ══ */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* ══ TOPBAR ══ */
+.topbar{
+  height:var(--header);
+  background:rgba(8,18,8,0.95);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 24px;gap:16px;
+  flex-shrink:0;
+  backdrop-filter:blur(20px);
+  position:relative;
+}
+.topbar::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border2) 30%,var(--border2) 70%,transparent);
+}
+.topbar-title{font-size:20px;font-weight:900;color:var(--text)}
+.topbar-title span{color:var(--bamboo2)}
+.topbar-spacer{flex:1}
+.topbar-search{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:12px;padding:8px 14px;
+  transition:border-color 0.2s;
+}
+.topbar-search:focus-within{border-color:var(--border2)}
+.topbar-search i{color:var(--muted);font-size:14px}
+.topbar-search input{
+  background:none;border:none;outline:none;
+  color:var(--text);font-family:'Tajawal',sans-serif;
+  font-size:13px;width:180px;
+}
+.topbar-search input::placeholder{color:var(--muted2)}
+
+.status-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+  animation:pulse-dot 2s ease infinite;
+}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(0.85)}}
+.status-text{font-size:12px;color:var(--muted);font-weight:600}
+
+.btn-refresh{
+  width:38px;height:38px;border-radius:10px;
+  background:rgba(124,179,66,0.1);border:1px solid var(--border);
+  color:var(--bamboo);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:15px;transition:all 0.2s;
+}
+.btn-refresh:hover{background:rgba(124,179,66,0.25);border-color:var(--border2)}
+.btn-refresh.spinning i{animation:spin 0.7s linear}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══ CONTENT ══ */
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ══ PAGES ══ */
+.page{display:none;animation:fadein 0.3s ease}
+.page.active{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ══ STAT CARDS ══ */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;padding:18px 20px;
+  position:relative;overflow:hidden;
+  cursor:default;transition:transform 0.2s,border-color 0.2s;
+}
+.stat-card:hover{transform:translateY(-2px);border-color:var(--border2)}
+.stat-card::before{
+  content:'';position:absolute;top:0;right:0;
+  width:80px;height:80px;border-radius:50%;
+  opacity:0.15;transform:translate(20px,-20px);
+}
+.stat-card.c-bamboo::before{background:var(--bamboo)}
+.stat-card.c-coin::before{background:var(--coin)}
+.stat-card.c-ton::before{background:var(--ton)}
+.stat-card.c-users::before{background:var(--cyan)}
+.stat-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.stat-icon{
+  width:42px;height:42px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+}
+.c-bamboo .stat-icon{background:rgba(124,179,66,0.15);color:var(--bamboo2)}
+.c-coin .stat-icon{background:rgba(255,215,0,0.15);color:var(--coin)}
+.c-ton .stat-icon{background:rgba(0,136,204,0.15);color:#4fc3f7}
+.c-users .stat-icon{background:rgba(0,229,255,0.15);color:var(--cyan)}
+.stat-change{
+  font-size:11px;font-weight:700;padding:3px 8px;
+  border-radius:20px;
+}
+.stat-change.up{background:rgba(0,230,118,0.15);color:var(--green)}
+.stat-change.down{background:rgba(239,83,80,0.15);color:var(--red2)}
+.stat-value{font-size:26px;font-weight:900;color:#fff;margin-bottom:4px;font-family:'Fredoka',cursive}
+.stat-label{font-size:12px;color:var(--muted);font-weight:600}
+
+/* ══ SECTIONS ══ */
+.section{margin-bottom:24px}
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.section-title{font-size:16px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:8px}
+.section-title i{color:var(--bamboo)}
+
+/* ══ TABLE ══ */
+.table-wrap{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:18px;overflow:hidden;
+}
+.table-filters{
+  padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.filter-input{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:10px;padding:7px 12px;color:var(--text);
+  font-family:'Tajawal',sans-serif;font-size:13px;outline:none;
+  transition:border-color 0.2s;
+}
+.filter-input:focus{border-color:var(--border2)}
+.filter-select{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:10px;padding:7px 12px;color:var(--text);
+  font-family:'Tajawal',sans-serif;font-size:13px;outline:none;
+  cursor:pointer;
+}
+.filter-select option{background:#0a140a}
+.btn-sm{
+  padding:7px 14px;border-radius:10px;border:none;
+  font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:6px;
+}
+.btn-primary{background:linear-gradient(135deg,var(--bamboo),#4e7a20);color:#fff;box-shadow:0 0 12px rgba(124,179,66,0.3)}
+.btn-primary:hover{box-shadow:0 0 20px rgba(124,179,66,0.5);transform:translateY(-1px)}
+.btn-danger{background:rgba(239,83,80,0.2);color:var(--red2);border:1px solid rgba(239,83,80,0.3)}
+.btn-danger:hover{background:rgba(239,83,80,0.35)}
+.btn-info{background:rgba(0,136,204,0.2);color:#4fc3f7;border:1px solid rgba(0,136,204,0.3)}
+.btn-info:hover{background:rgba(0,136,204,0.35)}
+.btn-warning{background:rgba(255,160,0,0.2);color:var(--coin);border:1px solid rgba(255,160,0,0.3)}
+.btn-warning:hover{background:rgba(255,160,0,0.35)}
+
+table{width:100%;border-collapse:collapse}
+thead tr{background:rgba(0,0,0,0.3)}
+th{
+  padding:12px 16px;text-align:right;
+  font-size:11px;font-weight:800;color:var(--muted);
+  text-transform:uppercase;letter-spacing:0.8px;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+}
+td{
+  padding:13px 16px;font-size:13px;
+  border-bottom:1px solid rgba(124,179,66,0.06);
+  vertical-align:middle;
+}
+tbody tr{transition:background 0.15s}
+tbody tr:hover{background:rgba(124,179,66,0.04)}
+tbody tr:last-child td{border-bottom:none}
+.user-cell{display:flex;align-items:center;gap:10px}
+.user-avatar{
+  width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,var(--bamboo),#2d5a0e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;flex-shrink:0;overflow:hidden;border:2px solid var(--border);
+}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-name{font-weight:700;font-size:13px;color:var(--text)}
+.user-id{font-size:10px;color:var(--muted);margin-top:1px;font-family:'Fredoka',cursive}
+
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;
+}
+.badge-green{background:rgba(0,230,118,0.15);color:var(--green)}
+.badge-red{background:rgba(239,83,80,0.15);color:var(--red2)}
+.badge-yellow{background:rgba(255,215,0,0.15);color:var(--coin)}
+.badge-blue{background:rgba(0,136,204,0.15);color:#4fc3f7}
+.badge-purple{background:rgba(206,147,216,0.15);color:var(--purple)}
+
+.val-bamboo{color:var(--bamboo2);font-weight:800;font-family:'Fredoka',cursive}
+.val-coin{color:var(--coin);font-weight:800;font-family:'Fredoka',cursive}
+.val-ton{color:#4fc3f7;font-weight:800;font-family:'Fredoka',cursive}
+
+.action-btns{display:flex;gap:5px;align-items:center}
+
+/* ══ TABLE PAGINATION ══ */
+.table-footer{
+  padding:12px 18px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.pagination{display:flex;gap:4px}
+.page-btn{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(0,0,0,0.3);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:13px;font-weight:700;transition:all 0.2s;
+}
+.page-btn:hover,.page-btn.active{background:rgba(124,179,66,0.2);border-color:var(--border2);color:var(--bamboo2)}
+.table-info{font-size:12px;color:var(--muted)}
+
+/* ══ MODAL ══ */
+.modal-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.open{display:flex;animation:fadeIn 0.2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal{
+  background:linear-gradient(135deg,rgba(10,22,10,0.98),rgba(6,14,6,0.99));
+  border:1px solid var(--border2);border-radius:22px;
+  width:90%;max-width:520px;max-height:85vh;
+  overflow-y:auto;position:relative;
+  animation:slideUp 0.25s ease;
+}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--bamboo2),transparent);
+  border-radius:22px 22px 0 0;
+}
+.modal-header{
+  padding:20px 22px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.modal-title{font-size:17px;font-weight:900;color:var(--text);display:flex;align-items:center;gap:8px}
+.modal-title i{color:var(--bamboo)}
+.modal-close{
+  width:32px;height:32px;border-radius:8px;border:1px solid var(--border);
+  background:rgba(0,0,0,0.3);color:var(--muted);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;
+  transition:all 0.2s;
+}
+.modal-close:hover{background:rgba(239,83,80,0.2);color:var(--red2);border-color:rgba(239,83,80,0.3)}
+.modal-body{padding:20px 22px}
+.modal-footer{padding:16px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+
+/* ══ FORM ══ */
+.form-group{margin-bottom:16px}
+.form-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:0.5px}
+.form-control{
+  width:100%;background:rgba(0,0,0,0.4);
+  border:1px solid var(--border);border-radius:12px;
+  padding:10px 14px;color:var(--text);
+  font-family:'Tajawal',sans-serif;font-size:14px;outline:none;
+  transition:border-color 0.2s;
+}
+.form-control:focus{border-color:var(--border2)}
+.form-control::placeholder{color:var(--muted2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-hint{font-size:11px;color:var(--muted2);margin-top:4px;font-weight:500}
+
+/* ══ USER DETAIL MODAL ══ */
+.user-profile-header{
+  display:flex;align-items:center;gap:14px;
+  padding:18px;background:rgba(0,0,0,0.3);
+  border-radius:14px;margin-bottom:16px;
+  border:1px solid var(--border);
+}
+.user-profile-avatar{
+  width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(135deg,var(--bamboo),#2d5a0e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;border:3px solid var(--border2);overflow:hidden;
+  flex-shrink:0;
+}
+.user-profile-avatar img{width:100%;height:100%;object-fit:cover}
+.user-profile-name{font-size:18px;font-weight:900;color:#fff}
+.user-profile-username{font-size:13px;color:var(--bamboo);font-weight:600}
+.user-profile-id{font-size:11px;color:var(--muted);font-family:'Fredoka',cursive;margin-top:2px}
+
+.balance-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.balance-item{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:12px;padding:12px;text-align:center;
+}
+.balance-icon{font-size:22px;margin-bottom:4px}
+.balance-val{font-size:18px;font-weight:900;font-family:'Fredoka',cursive}
+.balance-lbl{font-size:11px;color:var(--muted);font-weight:600}
+
+.edit-balance-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.edit-balance-item{
+  background:rgba(0,0,0,0.2);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+}
+.edit-balance-label{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.edit-balance-input{
+  width:100%;background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:8px;padding:8px 10px;color:var(--text);
+  font-family:'Fredoka',cursive;font-size:16px;font-weight:800;outline:none;
+  transition:border-color 0.2s;
+}
+.edit-balance-input:focus{border-color:var(--border2)}
+
+/* ══ CHART ══ */
+.chart-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:18px;padding:20px;
+}
+.chart-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;
+}
+.chart-title{font-size:14px;font-weight:800;color:var(--text)}
+.simple-chart{height:120px;display:flex;align-items:flex-end;gap:6px}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.chart-bar{
+  width:100%;border-radius:6px 6px 0 0;
+  background:linear-gradient(180deg,var(--bamboo2),var(--bamboo));
+  transition:height 0.5s ease;min-height:4px;position:relative;
+}
+.chart-bar::after{
+  content:attr(data-val);
+  position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  font-size:9px;color:var(--bamboo2);font-weight:700;white-space:nowrap;font-family:'Fredoka',cursive;
+}
+.chart-label{font-size:10px;color:var(--muted2);font-weight:600}
+
+/* ══ TRANSACTIONS ══ */
+.tx-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 0;border-bottom:1px solid rgba(124,179,66,0.06);
+}
+.tx-item:last-child{border-bottom:none}
+.tx-icon{
+  width:38px;height:38px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;
+}
+.tx-icon.deposit{background:rgba(0,230,118,0.15)}
+.tx-icon.withdraw{background:rgba(239,83,80,0.15)}
+.tx-icon.pending{background:rgba(255,160,0,0.15)}
+.tx-info{flex:1}
+.tx-user{font-weight:700;font-size:13px}
+.tx-time{font-size:11px;color:var(--muted);margin-top:2px}
+.tx-amount{text-align:left}
+.tx-val{font-size:14px;font-weight:900;font-family:'Fredoka',cursive}
+.tx-val.green{color:var(--green)}
+.tx-val.red{color:var(--red2)}
+.tx-val.yellow{color:var(--coin)}
+
+/* ══ TASKS ══ */
+.task-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:14px 16px;
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:10px;transition:border-color 0.2s;
+}
+.task-card:hover{border-color:var(--border2)}
+.task-card-icon{
+  width:44px;height:44px;border-radius:12px;
+  background:rgba(124,179,66,0.1);
+  display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+}
+.task-card-info{flex:1}
+.task-card-name{font-weight:800;font-size:14px;margin-bottom:3px}
+.task-card-meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.task-progress{height:5px;background:rgba(0,0,0,0.4);border-radius:10px;margin-top:7px;overflow:hidden}
+.task-progress-fill{height:100%;background:linear-gradient(90deg,var(--bamboo),var(--bamboo2));border-radius:10px;transition:width 0.5s}
+
+/* ══ WITHDRAW ITEMS ══ */
+.wd-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:14px 16px;margin-bottom:10px;
+}
+.wd-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.wd-item-user{display:flex;align-items:center;gap:10px}
+.wd-amount{font-size:20px;font-weight:900;font-family:'Fredoka',cursive;color:var(--coin)}
+.wd-address{
+  font-size:11px;color:var(--muted);font-family:'Fredoka',cursive;
+  background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:8px;
+  border:1px solid var(--border);margin-bottom:10px;word-break:break-all;
+}
+.wd-actions{display:flex;gap:8px}
+
+/* ══ SETTINGS ══ */
+.settings-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:18px;overflow:hidden;margin-bottom:16px;
+}
+.settings-card-header{
+  padding:16px 20px;background:rgba(0,0,0,0.2);
+  border-bottom:1px solid var(--border);
+  font-size:14px;font-weight:800;display:flex;align-items:center;gap:8px;
+}
+.settings-card-header i{color:var(--bamboo)}
+.settings-row{
+  padding:14px 20px;border-bottom:1px solid rgba(124,179,66,0.06);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.settings-row:last-child{border-bottom:none}
+.settings-row-label{font-size:13px;font-weight:700;color:var(--text)}
+.settings-row-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.settings-row-val{
+  display:flex;align-items:center;gap:10px;
+}
+.settings-input{
+  background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:10px;padding:7px 12px;color:var(--text);
+  font-family:'Fredoka',cursive;font-size:14px;font-weight:700;
+  width:130px;outline:none;text-align:center;
+  transition:border-color 0.2s;
+}
+.settings-input:focus{border-color:var(--border2)}
+
+/* ══ TOAST ══ */
+.toast-container{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center}
+.toast{
+  padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:8px;
+  animation:toastIn 0.3s ease;white-space:nowrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+.toast.success{background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.3);color:var(--green)}
+.toast.error{background:rgba(239,83,80,0.15);border:1px solid rgba(239,83,80,0.3);color:var(--red2)}
+.toast.info{background:rgba(124,179,66,0.15);border:1px solid var(--border2);color:var(--bamboo2)}
+@keyframes toastIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-12px)}}
+
+/* ══ LOADING ══ */
+.loading-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(6,13,6,0.9);backdrop-filter:blur(20px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.loading-spinner{
+  width:60px;height:60px;border-radius:50%;
+  border:3px solid var(--border);
+  border-top-color:var(--bamboo2);
+  animation:spin 0.8s linear infinite;
+}
+.loading-text{font-size:15px;color:var(--muted);font-weight:600}
+.loading-progress{
+  width:200px;height:3px;background:var(--border);
+  border-radius:10px;overflow:hidden;
+}
+.loading-progress-fill{
+  height:100%;background:linear-gradient(90deg,var(--bamboo),var(--bamboo2));
+  border-radius:10px;animation:loading-bar 2s ease infinite;
+}
+@keyframes loading-bar{0%{width:0}50%{width:70%}100%{width:100%}}
+
+/* ══ EMPTY STATE ══ */
+.empty-state{
+  text-align:center;padding:60px 20px;
+  color:var(--muted);
+}
+.empty-state i{font-size:48px;margin-bottom:12px;opacity:0.3;display:block}
+.empty-state p{font-size:14px}
+
+/* ══ MINI CHARTS (sparklines) ══ */
+.sparkline{display:flex;align-items:flex-end;gap:2px;height:30px}
+.spark-bar{flex:1;border-radius:2px 2px 0 0;background:rgba(124,179,66,0.4);min-height:2px}
+
+/* ══ GAMES CONFIG ══ */
+.config-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.config-item{
+  background:rgba(0,0,0,0.3);border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+}
+.config-item-label{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px}
+.config-item-val{font-size:17px;font-weight:900;font-family:'Fredoka',cursive;color:var(--bamboo2)}
+.config-item-sub{font-size:10px;color:var(--muted2);margin-top:2px}
+
+/* ══ RESPONSIVE ══ */
+@media(max-width:1200px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .config-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:900px){
+  :root{--sidebar:240px}
+  .topbar-search{display:none}
+}
+@media(max-width:700px){
+  .sidebar{display:none}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+/* ══ NOTIFICATION BADGE ══ */
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,83,80,0.5)}50%{box-shadow:0 0 0 6px rgba(239,83,80,0)}}
+.nav-badge{animation:badge-pulse 2s ease infinite}
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-layer"></div>
+<div class="bg-overlay"></div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="font-size:50px;margin-bottom:8px">🐼</div>
+  <div class="loading-spinner"></div>
+  <div class="loading-text">جاري تحميل لوحة التحكم...</div>
+  <div class="loading-progress"><div class="loading-progress-fill"></div></div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">🐼</div>
+      <div class="logo-text">
+        <div class="logo-title">Panda Bamboo</div>
+        <div class="logo-sub">لوحة التحكم</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">الرئيسية</div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <i class="fas fa-chart-line"></i><span>لوحة البيانات</span>
+      </div>
+      <div class="nav-item" onclick="showPage('users')">
+        <i class="fas fa-users"></i><span>المستخدمون</span>
+        <span class="nav-badge green" id="usersCount">0</span>
+      </div>
+
+      <div class="nav-section-title">العمليات</div>
+      <div class="nav-item" onclick="showPage('withdrawals')">
+        <i class="fas fa-money-bill-transfer"></i><span>طلبات السحب</span>
+        <span class="nav-badge" id="pendingCount">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('deposits')">
+        <i class="fas fa-arrow-down-to-line"></i><span>الإيداعات</span>
+      </div>
+      <div class="nav-item" onclick="showPage('tasks')">
+        <i class="fas fa-list-check"></i><span>المهام</span>
+      </div>
+
+      <div class="nav-section-title">الإدارة</div>
+      <div class="nav-item" onclick="showPage('config')">
+        <i class="fas fa-sliders"></i><span>إعدادات اللعبة</span>
+      </div>
+      <div class="nav-item" onclick="showPage('logs')">
+        <i class="fas fa-file-lines"></i><span>سجل العمليات</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="admin-avatar">👑</div>
+      <div class="admin-info">
+        <div class="admin-name">المسؤول</div>
+        <div class="admin-role">Super Admin</div>
+      </div>
+      <div class="btn-logout" title="تسجيل الخروج" onclick="toast('تم تسجيل الخروج','info')">
+        <i class="fas fa-right-from-bracket"></i>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">لوحة <span>البيانات</span></div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-search">
+        <i class="fas fa-search"></i>
+        <input type="text" placeholder="ابحث عن مستخدم..." id="globalSearch" oninput="globalSearchUser(this.value)">
+      </div>
+      <div class="status-dot"></div>
+      <div class="status-text">متصل</div>
+      <div class="btn-refresh" id="refreshBtn" onclick="refreshData()" title="تحديث">
+        <i class="fas fa-rotate-right"></i>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- ══ DASHBOARD PAGE ══ -->
+      <div class="page active" id="page-dashboard">
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card c-users">
+            <div class="stat-card-header">
+              <div class="stat-icon"><i class="fas fa-users"></i></div>
+              <div class="stat-change up" id="statUserChange">+0 اليوم</div>
+            </div>
+            <div class="stat-value" id="statUsers">0</div>
+            <div class="stat-label">إجمالي المستخدمين</div>
+          </div>
+          <div class="stat-card c-bamboo">
+            <div class="stat-card-header">
+              <div class="stat-icon">🎋</div>
+              <div class="stat-change up">مجموع</div>
+            </div>
+            <div class="stat-value" id="statBamboo">0</div>
+            <div class="stat-label">إجمالي البامبو</div>
+          </div>
+          <div class="stat-card c-coin">
+            <div class="stat-card-header">
+              <div class="stat-icon">🪙</div>
+              <div class="stat-change up">مجموع</div>
+            </div>
+            <div class="stat-value" id="statCoins">0</div>
+            <div class="stat-label">إجمالي العملات</div>
+          </div>
+          <div class="stat-card c-ton">
+            <div class="stat-card-header">
+              <div class="stat-icon">💎</div>
+              <div class="stat-change" id="statPendingBadge" style="background:rgba(255,160,0,0.15);color:var(--coin)">انتظار</div>
+            </div>
+            <div class="stat-value" id="statPending">0</div>
+            <div class="stat-label">سحب معلق</div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">🎋 توزيع البامبو (أعلى 7 مستخدمين)</div>
+            </div>
+            <div class="simple-chart" id="bambooChart">
+              <div style="width:100%;text-align:center;color:var(--muted);padding:20px;font-size:13px">يتم التحميل...</div>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <div class="chart-title">⚡ معدلات التعدين (أعلى 7)</div>
+            </div>
+            <div class="simple-chart" id="miningChart">
+              <div style="width:100%;text-align:center;color:var(--muted);padding:20px;font-size:13px">يتم التحميل...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:14px">
+          <div>
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-clock-rotate-left"></i> آخر المستخدمين المسجلين</div>
+              <button class="btn-sm btn-primary" onclick="showPage('users')"><i class="fas fa-arrow-left"></i> عرض الكل</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>المستخدم</th>
+                  <th>البامبو</th>
+                  <th>العملات</th>
+                  <th>معدل التعدين</th>
+                </tr></thead>
+                <tbody id="recentUsersTable">
+                  <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:30px">يتم التحميل...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-bell"></i> طلبات السحب المعلقة</div>
+              <button class="btn-sm btn-warning" onclick="showPage('withdrawals')">إدارة</button>
+            </div>
+            <div id="pendingWdList">
+              <div style="text-align:center;color:var(--muted);padding:40px;font-size:13px">
+                <i class="fas fa-check-circle" style="font-size:30px;display:block;margin-bottom:8px;opacity:0.3"></i>
+                لا يوجد طلبات معلقة
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ USERS PAGE ══ -->
+      <div class="page" id="page-users">
+        <div class="table-wrap">
+          <div class="table-filters">
+            <input class="filter-input" id="userSearch" placeholder="🔍 بحث باسم أو ID..." oninput="filterUsers()" style="width:220px">
+            <select class="filter-select" id="userSortBy" onchange="filterUsers()">
+              <option value="bamboo">ترتيب: البامبو</option>
+              <option value="coins">ترتيب: العملات</option>
+              <option value="miningRate">ترتيب: معدل التعدين</option>
+              <option value="createdAt">ترتيب: تاريخ التسجيل</option>
+            </select>
+            <select class="filter-select" id="userFilter" onchange="filterUsers()">
+              <option value="all">الكل</option>
+              <option value="deposited">المودعون</option>
+              <option value="active">النشطون</option>
+            </select>
+            <button class="btn-sm btn-primary" onclick="refreshData()"><i class="fas fa-rotate-right"></i> تحديث</button>
+            <div style="margin-right:auto;font-size:12px;color:var(--muted)" id="usersTotalCount"></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>المستخدم</th>
+                <th>البامبو 🎋</th>
+                <th>العملات 🪙</th>
+                <th>TON 💎</th>
+                <th>معدل التعدين</th>
+                <th>المستوى</th>
+                <th>الإجراءات</th>
+              </tr></thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <div class="table-info" id="usersPageInfo">0 مستخدم</div>
+            <div class="pagination" id="usersPagination"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ WITHDRAWALS PAGE ══ -->
+      <div class="page" id="page-withdrawals">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
+          <div class="stat-card c-coin">
+            <div class="stat-card-header">
+              <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
+              <div class="stat-change" style="background:rgba(255,160,0,0.15);color:var(--coin)">معلق</div>
+            </div>
+            <div class="stat-value" id="wdPendingTotal">0</div>
+            <div class="stat-label">طلبات معلقة</div>
+          </div>
+          <div class="stat-card c-users">
+            <div class="stat-card-header">
+              <div class="stat-icon"><i class="fas fa-coins"></i></div>
+              <div class="stat-change up">مجموع</div>
+            </div>
+            <div class="stat-value" id="wdPendingAmount">0</div>
+            <div class="stat-label">إجمالي العملات المطلوبة</div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <div class="section-title"><i class="fas fa-money-bill-transfer"></i> طلبات السحب</div>
+          <div style="display:flex;gap:8px">
+            <select class="filter-select" id="wdFilter" onchange="filterWithdrawals()">
+              <option value="pending">معلقة</option>
+              <option value="approved">موافق عليها</option>
+              <option value="rejected">مرفوضة</option>
+              <option value="all">الكل</option>
+            </select>
+            <button class="btn-sm btn-primary" onclick="refreshWithdrawals()"><i class="fas fa-rotate-right"></i></button>
+          </div>
+        </div>
+        <div id="withdrawalsList">
+          <div style="text-align:center;color:var(--muted);padding:60px;font-size:14px">
+            <i class="fas fa-money-bill-transfer" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"></i>
+            لا يوجد طلبات سحب
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ DEPOSITS PAGE ══ -->
+      <div class="page" id="page-deposits">
+        <div class="section-header">
+          <div class="section-title"><i class="fas fa-arrow-down-to-line"></i> طلبات الإيداع</div>
+          <button class="btn-sm btn-primary" onclick="refreshDeposits()"><i class="fas fa-rotate-right"></i> تحديث</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>المستخدم</th>
+              <th>المبلغ (TON)</th>
+              <th>العنوان</th>
+              <th>الحالة</th>
+              <th>التاريخ</th>
+              <th>الإجراءات</th>
+            </tr></thead>
+            <tbody id="depositsTableBody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ TASKS PAGE ══ -->
+      <div class="page" id="page-tasks">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-star"></i> مهام الشركاء</div>
+              <button class="btn-sm btn-primary" onclick="openAddTaskModal('partner')"><i class="fas fa-plus"></i> إضافة</button>
+            </div>
+            <div id="partnerTasksList"></div>
+          </div>
+          <div>
+            <div class="section-header">
+              <div class="section-title"><i class="fas fa-globe"></i> مهام المجتمع</div>
+              <button class="btn-sm btn-info" onclick="openAddTaskModal('community')"><i class="fas fa-plus"></i> إضافة</button>
+            </div>
+            <div id="communityTasksList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ CONFIG PAGE ══ -->
+      <div class="page" id="page-config">
+        <div class="section-header">
+          <div class="section-title"><i class="fas fa-sliders"></i> إعدادات اللعبة</div>
+          <button class="btn-sm btn-primary" onclick="saveConfig()"><i class="fas fa-floppy-disk"></i> حفظ التغييرات</button>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header"><i class="fas fa-coins"></i> إعدادات البامبو والعملات</div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">البامبو لكل عملة</div><div class="settings-row-desc">عدد البامبو المطلوب للحصول على عملة واحدة</div></div>
+            <div class="settings-row-val"><input class="settings-input" id="cfg_BAMBOO_PER_COIN" type="number" value="10"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">نسبة مكافأة الإحالة (%)</div><div class="settings-row-desc">نسبة العمولة من مشتريات المُحال</div></div>
+            <div class="settings-row-val"><input class="settings-input" id="cfg_REF_BONUS_PCT" type="number" value="20"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">الحد الأدنى للسحب</div><div class="settings-row-desc">أقل عدد عملات يمكن سحبه</div></div>
+            <div class="settings-row-val"><input class="settings-input" id="cfg_MIN_WITHDRAW" type="number" value="200"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">بامبو ترحيب</div><div class="settings-row-desc">بامبو للمستخدم الجديد</div></div>
+            <div class="settings-row-val"><input class="settings-input" id="cfg_WELCOME_BAMBOO" type="number" value="0"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">عملات ترحيب</div><div class="settings-row-desc">عملات للمستخدم الجديد</div></div>
+            <div class="settings-row-val"><input class="settings-input" id="cfg_WELCOME_COINS" type="number" value="200"></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header"><i class="fas fa-hammer"></i> أسعار الآلات وقوتها</div>
+          <div id="itemsConfig" style="padding:14px 20px">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px" id="itemsGrid"></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="settings-card-header"><i class="fas fa-database"></i> مستويات الخزان (الطاقة الاستيعابية)</div>
+          <div style="padding:14px 20px;max-height:300px;overflow-y:auto">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px" id="tankConfig"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ LOGS PAGE ══ -->
+      <div class="page" id="page-logs">
+        <div class="table-wrap">
+          <div class="table-filters">
+            <input class="filter-input" id="logSearch" placeholder="🔍 بحث في السجل..." style="width:200px" oninput="filterLogs()">
+            <select class="filter-select" id="logType" onchange="filterLogs()">
+              <option value="all">كل العمليات</option>
+              <option value="collect">جمع البامبو</option>
+              <option value="buy_item">شراء آلة</option>
+              <option value="exchange">تحويل</option>
+              <option value="withdraw_request">سحب</option>
+              <option value="deposit_completed">إيداع</option>
+              <option value="upgrade_tank">ترقية خزان</option>
+            </select>
+            <input class="filter-input" id="logUserId" placeholder="User ID..." style="width:140px" oninput="filterLogs()">
+            <button class="btn-sm btn-primary" onclick="loadAllLogs()"><i class="fas fa-rotate-right"></i> تحديث</button>
+            <div style="margin-right:auto;font-size:12px;color:var(--muted)" id="logsCount"></div>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>المستخدم</th>
+                <th>النوع</th>
+                <th>التفاصيل</th>
+                <th>التاريخ</th>
+              </tr></thead>
+              <tbody id="logsTableBody">
+                <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ══ USER DETAIL MODAL ══ -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-user-gear"></i> تفاصيل المستخدم</div>
+      <div class="modal-close" onclick="closeModal('userModal')"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="modal-body">
+      <div class="user-profile-header" id="modalUserHeader"></div>
+      <div class="balance-grid" id="modalBalanceGrid"></div>
+
+      <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">✏️ تعديل الرصيد</div>
+      <div class="edit-balance-row">
+        <div class="edit-balance-item">
+          <div class="edit-balance-label">🎋 البامبو</div>
+          <input class="edit-balance-input" type="number" id="editBamboo" placeholder="0">
+        </div>
+        <div class="edit-balance-item">
+          <div class="edit-balance-label">🪙 العملات</div>
+          <input class="edit-balance-input" type="number" id="editCoins" placeholder="0">
+        </div>
+        <div class="edit-balance-item">
+          <div class="edit-balance-label">💎 TON</div>
+          <input class="edit-balance-input" type="number" id="editTon" placeholder="0" step="0.001">
+        </div>
+        <div class="edit-balance-item">
+          <div class="edit-balance-label">⚡ معدل التعدين</div>
+          <input class="edit-balance-input" type="number" id="editMiningRate" placeholder="0" step="0.1">
+        </div>
+      </div>
+
+      <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;margin-top:14px">🔧 إعدادات أخرى</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">مستوى الخزان</label>
+          <input class="form-control" type="number" id="editTankLevel" min="1" max="27">
+        </div>
+        <div class="form-group">
+          <label class="form-label">هل أودع؟</label>
+          <select class="form-control" id="editHasDeposited">
+            <option value="false">لا</option>
+            <option value="true">نعم</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="font-size:13px;font-weight:800;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;margin-top:4px">📦 الآلات المملوكة</div>
+      <div id="modalMachines" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px"></div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-danger" onclick="deleteUser()"><i class="fas fa-trash"></i> حذف المستخدم</button>
+      <button class="btn-sm" style="background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border)" onclick="closeModal('userModal')">إلغاء</button>
+      <button class="btn-sm btn-primary" onclick="saveUser()"><i class="fas fa-floppy-disk"></i> حفظ التغييرات</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ADD TASK MODAL ══ -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><i class="fas fa-plus-circle"></i> إضافة مهمة جديدة</div>
+      <div class="modal-close" onclick="closeModal('taskModal')"><i class="fas fa-times"></i></div>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="taskCategory">
+      <div class="form-group">
+        <label class="form-label">اسم المهمة</label>
+        <input class="form-control" id="taskName" placeholder="مثال: انضم لقناتنا">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">النوع</label>
+          <select class="form-control" id="taskType">
+            <option value="channel">قناة تيليجرام</option>
+            <option value="bot">بوت تيليجرام</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">مكافأة البامبو</label>
+          <input class="form-control" type="number" id="taskReward" value="500">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">رابط تيليجرام</label>
+        <input class="form-control" id="taskLink" placeholder="https://t.me/channel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">الهدف (عدد المستخدمين)</label>
+        <input class="form-control" type="number" id="taskTarget" value="1000">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm" style="background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid var(--border)" onclick="closeModal('taskModal')">إلغاء</button>
+      <button class="btn-sm btn-primary" onclick="createTask()"><i class="fas fa-plus"></i> إنشاء المهمة</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══ FIREBASE CONFIG ══
+const firebaseConfig = {
+  apiKey: "AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
+  authDomain: "hhhrhdhd-2f68c.firebaseapp.com",
+  databaseURL: "https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
+  projectId: "hhhrhdhd-2f68c",
+  storageBucket: "hhhrhdhd-2f68c.firebasestorage.app",
+  messagingSenderId: "159295815105",
+  appId: "1:159295815105:web:d23916911ae39e6f95c340",
+  measurementId: "G-TLG6TP348R"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ══ GAME CONFIG ══
+const G = {
+  BAMBOO_PER_COIN:10, TON_PER_COIN:0.00005,
+  MIN_WITHDRAW:200, MIN_DEPOSIT_TON:1,
+  REF_BONUS_PCT:20, WELCOME_BAMBOO:0, WELCOME_COINS:200, WELCOME_RATE:4.167,
+  MAX_TANK_LVL:27,
+  ITEMS:{
+    bamboo_stick:{price:1500,power:50,icon:'🪵'},
+    panda_paw:{price:5000,power:200,icon:'🐾'},
+    leaf_fan:{price:25000,power:1200,icon:'🍃'},
+    bamboo_energy:{price:125000,power:7500,icon:'⚡'},
+    panda_den:{price:626000,power:45000,icon:'🏠'},
+    bamboo_forest:{price:1300000,power:110000,icon:'🌳'},
+  },
+  TANK:{1:{cap:300,upgCost:500},2:{cap:900,upgCost:2000},3:{cap:2400,upgCost:8000},4:{cap:6000,upgCost:25000},5:{cap:18000,upgCost:80000},6:{cap:60000,upgCost:250000},7:{cap:120000,upgCost:500000},8:{cap:210000,upgCost:900000},9:{cap:330000,upgCost:1500000},10:{cap:480000,upgCost:2500000},11:{cap:660000,upgCost:4000000},12:{cap:870000,upgCost:6000000},13:{cap:1110000,upgCost:9000000},14:{cap:1380000,upgCost:13000000},15:{cap:1680000,upgCost:18000000},16:{cap:2010000,upgCost:25000000},17:{cap:2400000,upgCost:33000000},18:{cap:2850000,upgCost:43000000},19:{cap:3360000,upgCost:55000000},20:{cap:3930000,upgCost:70000000},21:{cap:4560000,upgCost:88000000},22:{cap:5250000,upgCost:110000000},23:{cap:6000000,upgCost:135000000},24:{cap:6810000,upgCost:165000000},25:{cap:7680000,upgCost:200000000},26:{cap:8610000,upgCost:240000000},27:{cap:10000000,upgCost:300000000}},
+};
+
+// ══ STATE ══
+let allUsers = [];
+let filteredUsers = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let currentUserId = null;
+let allWithdrawals = [];
+let allLogs = [];
+let allDeposits = [];
+
+// ══ UTILS ══
+function fmt(n){ if(n===undefined||n===null) return '0'; n=Number(n); if(n>=1000000) return (n/1000000).toFixed(1)+'M'; if(n>=1000) return (n/1000).toFixed(1)+'K'; return Math.floor(n).toLocaleString(); }
+function fmtDate(ts){ if(!ts) return '—'; return new Date(ts).toLocaleDateString('ar-EG',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+function fmtTime(ts){ if(!ts) return '—'; const d = new Date(ts); const diff = Date.now()-d; if(diff<60000) return 'منذ لحظات'; if(diff<3600000) return `${Math.floor(diff/60000)} دقيقة`; if(diff<86400000) return `${Math.floor(diff/3600000)} ساعة`; return `${Math.floor(diff/86400000)} يوم`; }
+
+function toast(msg, type='info'){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = {success:'fa-check-circle', error:'fa-circle-xmark', info:'fa-circle-info'};
+  el.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i>${msg}`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(()=>{ el.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>el.remove(), 300); }, 3000);
+}
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById(`page-${id}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>{ if(n.getAttribute('onclick')?.includes(id)) n.classList.add('active'); });
+
+  const titles = { dashboard:'لوحة <span>البيانات</span>', users:'إدارة <span>المستخدمين</span>', withdrawals:'طلبات <span>السحب</span>', deposits:'إدارة <span>الإيداعات</span>', tasks:'إدارة <span>المهام</span>', config:'إعدادات <span>اللعبة</span>', logs:'سجل <span>العمليات</span>' };
+  document.getElementById('pageTitle').innerHTML = titles[id] || id;
+
+  if(id==='config') renderConfigPage();
+  if(id==='tasks') loadTasks();
+  if(id==='logs') loadAllLogs();
+  if(id==='withdrawals') refreshWithdrawals();
+  if(id==='deposits') refreshDeposits();
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ══ LOAD ALL DATA ══
+async function loadData(){
+  try{
+    const snap = await db.ref('users').once('value');
+    const data = snap.val() || {};
+    allUsers = Object.entries(data).map(([id,u])=>({...u, userId:id}));
+    renderDashboard();
+    renderUsersTable();
+  } catch(e){
+    console.error(e);
+    toast('خطأ في تحميل البيانات: '+e.message,'error');
+  }
+}
+
+// ══ DASHBOARD ══
+async function renderDashboard(){
+  const users = allUsers;
+  const totalBamboo = users.reduce((s,u)=>s+(u.bamboo||0),0);
+  const totalCoins = users.reduce((s,u)=>s+(u.coins||0),0);
+
+  document.getElementById('statUsers').textContent = fmt(users.length);
+  document.getElementById('statBamboo').textContent = fmt(totalBamboo);
+  document.getElementById('statCoins').textContent = fmt(totalCoins);
+  document.getElementById('usersCount').textContent = users.length;
+
+  // Pending withdrawals
+  try{
+    const wdSnap = await db.ref('withdrawals').once('value');
+    const wdData = wdSnap.val()||{};
+    const pending = Object.values(wdData).filter(w=>w.status==='pending');
+    document.getElementById('statPending').textContent = pending.length;
+    document.getElementById('statPendingBadge').textContent = pending.length+' معلق';
+    document.getElementById('pendingCount').textContent = pending.length;
+    document.getElementById('wdPendingTotal').textContent = pending.length;
+    document.getElementById('wdPendingAmount').textContent = fmt(pending.reduce((s,w)=>s+(w.coins||0),0));
+
+    // Pending in dashboard
+    const pendWdList = document.getElementById('pendingWdList');
+    if(pending.length===0){
+      pendWdList.innerHTML=`<div style="text-align:center;color:var(--muted);padding:40px;font-size:13px"><i class="fas fa-check-circle" style="font-size:30px;display:block;margin-bottom:8px;opacity:0.3"></i>لا يوجد طلبات معلقة</div>`;
+    } else {
+      pendWdList.innerHTML = pending.slice(0,5).map(w=>`
+        <div class="wd-item">
+          <div class="wd-item-header">
+            <div class="wd-item-user">
+              <div class="user-avatar" style="width:32px;height:32px;font-size:14px">👤</div>
+              <div>
+                <div style="font-weight:700;font-size:13px">${w.userId||'—'}</div>
+                <div style="font-size:11px;color:var(--muted)">${fmtTime(w.timestamp)}</div>
+              </div>
+            </div>
+            <div class="wd-amount">${fmt(w.coins)} 🪙</div>
+          </div>
+          <div class="wd-address">${w.address||'—'}</div>
+          <div class="wd-actions">
+            <button class="btn-sm btn-primary" onclick="approveWithdraw('${w.id||w.uid}','${w.userId}')"><i class="fas fa-check"></i> قبول</button>
+            <button class="btn-sm btn-danger" onclick="rejectWithdraw('${w.id||w.uid}','${w.userId}')"><i class="fas fa-times"></i> رفض</button>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch(e){ console.error('WD',e); }
+
+  // Recent users table
+  const sorted = [...users].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,8);
+  document.getElementById('recentUsersTable').innerHTML = sorted.map(u=>`
+    <tr>
+      <td><div class="user-cell">
+        <div class="user-avatar">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
+        <div><div class="user-name">${u.firstName||''} ${u.lastName||''}</div><div class="user-id">${u.userId}</div></div>
+      </div></td>
+      <td><span class="val-bamboo">${fmt(u.bamboo)}</span></td>
+      <td><span class="val-coin">${fmt(u.coins)}</span></td>
+      <td>${fmt(u.miningRate)} <span style="font-size:10px;color:var(--muted)">/ساعة</span></td>
+    </tr>
+  `).join('');
+
+  // Charts
+  renderChart('bambooChart', users.sort((a,b)=>(b.bamboo||0)-(a.bamboo||0)).slice(0,7), 'bamboo', '#7cb342');
+  renderChart('miningChart', users.sort((a,b)=>(b.miningRate||0)-(a.miningRate||0)).slice(0,7), 'miningRate', '#00e5ff');
+}
+
+function renderChart(id, data, field, color){
+  const el = document.getElementById(id);
+  if(!data.length){ el.innerHTML='<div style="width:100%;text-align:center;color:var(--muted);padding:20px">لا توجد بيانات</div>'; return; }
+  const max = Math.max(...data.map(u=>u[field]||0));
+  el.innerHTML = data.map(u=>{
+    const h = max ? Math.round(((u[field]||0)/max)*90)+5 : 5;
+    const name = (u.firstName||u.userId||'').slice(0,6);
+    return `<div class="chart-bar-wrap">
+      <div class="chart-bar" style="height:${h}px;background:linear-gradient(180deg,${color},${color}88)" data-val="${fmt(u[field]||0)}"></div>
+      <div class="chart-label">${name}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══ USERS TABLE ══
+function renderUsersTable(){
+  const search = (document.getElementById('userSearch')||{}).value||'';
+  const sortBy = (document.getElementById('userSortBy')||{}).value||'bamboo';
+  const filter = (document.getElementById('userFilter')||{}).value||'all';
+
+  let list = [...allUsers];
+  if(search) list = list.filter(u=>(u.firstName||'').toLowerCase().includes(search.toLowerCase())||(u.lastName||'').toLowerCase().includes(search.toLowerCase())||String(u.userId).includes(search)||(u.username||'').toLowerCase().includes(search.toLowerCase()));
+  if(filter==='deposited') list = list.filter(u=>u.hasDeposited);
+  if(filter==='active') list = list.filter(u=>(u.miningRate||0)>0);
+  list.sort((a,b)=>(b[sortBy]||0)-(a[sortBy]||0));
+  filteredUsers = list;
+
+  const total = list.length;
+  const totalPages = Math.ceil(total/PAGE_SIZE);
+  if(currentPage>totalPages) currentPage=1;
+  const page = list.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  document.getElementById('usersTotalCount').textContent = `${total} مستخدم`;
+  document.getElementById('usersPageInfo').textContent = `عرض ${(currentPage-1)*PAGE_SIZE+1}–${Math.min(currentPage*PAGE_SIZE,total)} من ${total}`;
+
+  document.getElementById('usersTableBody').innerHTML = page.map(u=>`
+    <tr>
+      <td><div class="user-cell">
+        <div class="user-avatar">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
+        <div>
+          <div class="user-name">${u.firstName||''} ${u.lastName||''} ${u.username?`<span style="color:var(--bamboo);font-size:11px">@${u.username}</span>`:''}</div>
+          <div class="user-id">${u.userId}</div>
+        </div>
+      </div></td>
+      <td><span class="val-bamboo">${fmt(u.bamboo)}</span></td>
+      <td><span class="val-coin">${fmt(u.coins)}</span></td>
+      <td><span class="val-ton">${(u.tonBalance||0).toFixed(3)}</span></td>
+      <td>${fmt(u.miningRate)} <span style="font-size:10px;color:var(--muted)">/ساعة</span></td>
+      <td><span class="badge badge-blue">🛢️ LVL ${u.tankLevel||1}</span></td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-sm btn-primary" onclick="openUserModal('${u.userId}')"><i class="fas fa-pen"></i></button>
+          <button class="btn-sm btn-danger" onclick="confirmDeleteUser('${u.userId}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px">لا يوجد مستخدمون</td></tr>`;
+
+  // Pagination
+  const pgEl = document.getElementById('usersPagination');
+  pgEl.innerHTML = '';
+  for(let i=1;i<=Math.min(totalPages,10);i++){
+    const btn = document.createElement('div');
+    btn.className = 'page-btn'+(i===currentPage?' active':'');
+    btn.textContent = i;
+    btn.onclick = ()=>{ currentPage=i; renderUsersTable(); };
+    pgEl.appendChild(btn);
+  }
+}
+
+function filterUsers(){ currentPage=1; renderUsersTable(); }
+
+function globalSearchUser(val){
+  if(val.length<2) return;
+  document.getElementById('userSearch').value = val;
+  showPage('users');
+  filterUsers();
+}
+
+// ══ USER MODAL ══
+function openUserModal(uid){
+  const u = allUsers.find(x=>x.userId===uid);
+  if(!u){ toast('المستخدم غير موجود','error'); return; }
+  currentUserId = uid;
+
+  // Profile header
+  document.getElementById('modalUserHeader').innerHTML = `
+    <div class="user-profile-avatar">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
+    <div>
+      <div class="user-profile-name">${u.firstName||''} ${u.lastName||''}</div>
+      <div class="user-profile-username">${u.username?`@${u.username}`:''}</div>
+      <div class="user-profile-id">ID: ${u.userId} ${u.referredBy?`• مُحال من: ${u.referredBy}`:''}</div>
+    </div>
+    <div style="margin-right:auto">
+      <div class="badge ${u.hasDeposited?'badge-green':'badge-red'}">${u.hasDeposited?'💎 مودع':'لم يودع'}</div>
+    </div>
+  `;
+
+  // Balances
+  document.getElementById('modalBalanceGrid').innerHTML = `
+    <div class="balance-item"><div class="balance-icon">🎋</div><div class="balance-val" style="color:var(--bamboo2)">${fmt(u.bamboo)}</div><div class="balance-lbl">البامبو</div></div>
+    <div class="balance-item"><div class="balance-icon">🪙</div><div class="balance-val" style="color:var(--coin)">${fmt(u.coins)}</div><div class="balance-lbl">العملات</div></div>
+    <div class="balance-item"><div class="balance-icon">💎</div><div class="balance-val" style="color:#4fc3f7">${(u.tonBalance||0).toFixed(3)}</div><div class="balance-lbl">TON</div></div>
+  `;
+
+  // Fill form
+  document.getElementById('editBamboo').value = Math.floor(u.bamboo||0);
+  document.getElementById('editCoins').value = Math.floor(u.coins||0);
+  document.getElementById('editTon').value = (u.tonBalance||0).toFixed(3);
+  document.getElementById('editMiningRate').value = (u.miningRate||0).toFixed(1);
+  document.getElementById('editTankLevel').value = u.tankLevel||1;
+  document.getElementById('editHasDeposited').value = u.hasDeposited?'true':'false';
+
+  // Machines
+  const machines = u.machines||{};
+  document.getElementById('modalMachines').innerHTML = Object.entries(G.ITEMS).map(([id,cfg])=>{
+    const count = machines[id]||0;
+    return `<div class="balance-item" style="${count?'border-color:var(--border2)':''}">
+      <div style="font-size:22px;margin-bottom:4px">${cfg.icon}</div>
+      <div style="font-size:14px;font-weight:900;font-family:'Fredoka',cursive;color:${count?'var(--bamboo2)':'var(--muted)'}">${count}</div>
+      <div style="font-size:10px;color:var(--muted);font-weight:600">${id.replace(/_/g,' ')}</div>
+    </div>`;
+  }).join('');
+
+  openModal('userModal');
+}
+
+async function saveUser(){
+  if(!currentUserId){ toast('خطأ: لا يوجد مستخدم محدد','error'); return; }
+  const bamboo = parseFloat(document.getElementById('editBamboo').value)||0;
+  const coins = parseFloat(document.getElementById('editCoins').value)||0;
+  const ton = parseFloat(document.getElementById('editTon').value)||0;
+  const miningRate = parseFloat(document.getElementById('editMiningRate').value)||0;
+  const tankLevel = parseInt(document.getElementById('editTankLevel').value)||1;
+  const hasDeposited = document.getElementById('editHasDeposited').value==='true';
+
+  try{
+    await db.ref(`users/${currentUserId}`).update({ bamboo, coins, tonBalance:ton, miningRate, tankLevel, hasDeposited });
+    // Update local state
+    const idx = allUsers.findIndex(u=>u.userId===currentUserId);
+    if(idx>=0) allUsers[idx] = {...allUsers[idx], bamboo, coins, tonBalance:ton, miningRate, tankLevel, hasDeposited};
+    toast('تم حفظ التغييرات بنجاح ✅','success');
+    closeModal('userModal');
+    renderUsersTable();
+    renderDashboard();
+  } catch(e){ toast('خطأ في الحفظ: '+e.message,'error'); }
+}
+
+function deleteUser(){ if(!currentUserId) return; confirmDeleteUser(currentUserId); }
+
+async function confirmDeleteUser(uid){
+  if(!confirm(`هل أنت متأكد من حذف المستخدم ${uid}؟ هذا الإجراء لا يمكن التراجع عنه!`)) return;
+  try{
+    await db.ref(`users/${uid}`).remove();
+    allUsers = allUsers.filter(u=>u.userId!==uid);
+    toast('تم حذف المستخدم','success');
+    closeModal('userModal');
+    renderUsersTable();
+    renderDashboard();
+  } catch(e){ toast('خطأ في الحذف: '+e.message,'error'); }
+}
+
+// ══ WITHDRAWALS ══
+async function refreshWithdrawals(){
+  try{
+    const snap = await db.ref('withdrawals').once('value');
+    const data = snap.val()||{};
+    allWithdrawals = Object.entries(data).map(([id,w])=>({...w,id}));
+    filterWithdrawals();
+  } catch(e){ toast('خطأ في تحميل السحب','error'); }
+}
+
+function filterWithdrawals(){
+  const filter = (document.getElementById('wdFilter')||{}).value||'pending';
+  let list = filter==='all' ? allWithdrawals : allWithdrawals.filter(w=>w.status===filter);
+  const el = document.getElementById('withdrawalsList');
+  if(!list.length){
+    el.innerHTML=`<div class="empty-state"><i class="fas fa-money-bill-transfer"></i><p>لا يوجد طلبات ${filter==='pending'?'معلقة':''}</p></div>`;
+    return;
+  }
+  const user = (uid) => allUsers.find(u=>u.userId===uid)||{};
+  el.innerHTML = list.map(w=>{
+    const u = user(w.userId);
+    return `
+    <div class="wd-item">
+      <div class="wd-item-header">
+        <div class="wd-item-user">
+          <div class="user-avatar" style="width:36px;height:36px;font-size:16px">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
+          <div>
+            <div style="font-weight:700;font-size:13px">${u.firstName||''} ${u.lastName||''||w.userId}</div>
+            <div style="font-size:11px;color:var(--muted)">${fmtDate(w.timestamp)}</div>
+          </div>
+        </div>
+        <div>
+          <div class="wd-amount">${fmt(w.coins)} 🪙</div>
+          <div style="font-size:11px;color:#4fc3f7;text-align:left">${(w.tonAmount||0).toFixed(4)} TON</div>
+        </div>
+      </div>
+      <div class="wd-address"><i class="fas fa-wallet" style="margin-left:4px;color:var(--bamboo)"></i>${w.address||'—'}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span class="badge ${w.status==='pending'?'badge-yellow':w.status==='approved'?'badge-green':'badge-red'}">${w.status==='pending'?'⏳ معلق':w.status==='approved'?'✅ مقبول':'❌ مرفوض'}</span>
+        ${w.status==='pending'?`<div class="wd-actions">
+          <button class="btn-sm btn-primary" onclick="approveWithdraw('${w.id}','${w.userId}')"><i class="fas fa-check"></i> قبول</button>
+          <button class="btn-sm btn-danger" onclick="rejectWithdraw('${w.id}','${w.userId}')"><i class="fas fa-times"></i> رفض</button>
+        </div>`:`<span style="font-size:11px;color:var(--muted)">${w.updatedBy||''}</span>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveWithdraw(id, uid){
+  if(!confirm('قبول طلب السحب؟')) return;
+  try{
+    await db.ref(`withdrawals/${id}`).update({status:'approved',updatedAt:Date.now(),updatedBy:'admin'});
+    const idx = allWithdrawals.findIndex(w=>w.id===id);
+    if(idx>=0) allWithdrawals[idx].status='approved';
+    toast('تم قبول طلب السحب ✅','success');
+    filterWithdrawals();
+    renderDashboard();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+async function rejectWithdraw(id, uid){
+  if(!confirm('رفض طلب السحب؟')) return;
+  try{
+    const w = allWithdrawals.find(x=>x.id===id);
+    if(w && uid){
+      const uSnap = await db.ref(`users/${uid}`).once('value');
+      const u = uSnap.val()||{};
+      await db.ref(`users/${uid}`).update({coins:(u.coins||0)+(w.coins||0)});
+      const uIdx = allUsers.findIndex(x=>x.userId===uid);
+      if(uIdx>=0) allUsers[uIdx].coins = (allUsers[uIdx].coins||0)+(w.coins||0);
+    }
+    await db.ref(`withdrawals/${id}`).update({status:'rejected',updatedAt:Date.now(),updatedBy:'admin'});
+    const idx = allWithdrawals.findIndex(x=>x.id===id);
+    if(idx>=0) allWithdrawals[idx].status='rejected';
+    toast('تم رفض طلب السحب وإعادة العملات','info');
+    filterWithdrawals();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+// ══ DEPOSITS ══
+async function refreshDeposits(){
+  const tbody = document.getElementById('depositsTableBody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>';
+  try{
+    // Load deposits from all users
+    const rows = [];
+    for(const u of allUsers){
+      const snap = await db.ref(`users/${u.userId}/deposits`).once('value');
+      const deps = snap.val()||{};
+      Object.entries(deps).forEach(([id,d])=>rows.push({...d,id,userId:u.userId,userName:`${u.firstName||''} ${u.lastName||''}`.trim()||u.userId}));
+    }
+    allDeposits = rows.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+    if(!rows.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px">لا يوجد إيداعات</td></tr>';return;}
+    tbody.innerHTML = rows.slice(0,50).map(d=>`
+      <tr>
+        <td><div class="user-cell"><div class="user-avatar" style="width:30px;height:30px;font-size:13px">🐼</div><div><div class="user-name">${d.userName}</div><div class="user-id">${d.userId}</div></div></div></td>
+        <td><span class="val-ton">${d.amount||0} TON</span></td>
+        <td style="font-size:10px;color:var(--muted);font-family:'Fredoka',cursive;max-width:120px;overflow:hidden;text-overflow:ellipsis">${(d.address||'').slice(0,20)}...</td>
+        <td><span class="badge ${d.status==='completed'?'badge-green':d.status==='pending'?'badge-yellow':'badge-red'}">${d.status==='completed'?'✅ مكتمل':d.status==='pending'?'⏳ معلق':'❌ فشل'}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${fmtDate(d.timestamp)}</td>
+        <td>${d.status==='pending'?`<button class="btn-sm btn-primary" onclick="confirmDeposit('${d.id}','${d.userId}',${d.amount||0})"><i class="fas fa-check"></i> تأكيد</button>`:'—'}</td>
+      </tr>
+    `).join('');
+  } catch(e){ toast('خطأ في تحميل الإيداعات','error'); console.error(e); }
+}
+
+async function confirmDeposit(depId, uid, amount){
+  if(!confirm(`تأكيد إيداع ${amount} TON للمستخدم ${uid}؟`)) return;
+  try{
+    await db.ref(`users/${uid}/deposits/${depId}`).update({status:'completed',confirmedAt:Date.now(),confirmedBy:'admin'});
+    const coins = Math.floor(amount/G.TON_PER_COIN);
+    const uSnap = await db.ref(`users/${uid}`).once('value');
+    const u = uSnap.val()||{};
+    await db.ref(`users/${uid}`).update({coins:(u.coins||0)+coins, tonBalance:(u.tonBalance||0)+amount, hasDeposited:true});
+    toast(`تم تأكيد الإيداع! أضيف ${fmt(coins)} عملة ✅`,'success');
+    refreshDeposits();
+    loadData();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+// ══ TASKS ══
+async function loadTasks(){
+  try{
+    const [ps, cs] = await Promise.all([db.ref('tasks/partner').once('value'), db.ref('tasks/community').once('value')]);
+    renderTasksList('partnerTasksList', ps.val()||{}, 'partner');
+    renderTasksList('communityTasksList', cs.val()||{}, 'community');
+  } catch(e){ toast('خطأ في تحميل المهام','error'); }
+}
+
+function renderTasksList(elId, data, cat){
+  const el = document.getElementById(elId);
+  const tasks = Object.values(data);
+  if(!tasks.length){ el.innerHTML=`<div class="empty-state"><i class="fas fa-list-check"></i><p>لا يوجد مهام</p></div>`; return; }
+  el.innerHTML = tasks.map(t=>{
+    const pct = t.targetUsers ? Math.min(100, Math.round((t.completions||0)/t.targetUsers*100)) : 0;
+    return `
+    <div class="task-card">
+      <div class="task-card-icon">${t.type==='channel'?'📢':'🤖'}</div>
+      <div class="task-card-info" style="flex:1">
+        <div class="task-card-name">${t.name||t.id}</div>
+        <div class="task-card-meta">
+          <span class="badge badge-green">+${fmt(t.bambooReward||500)} 🎋</span>
+          <span style="color:var(--muted)">${t.completions||0}/${t.targetUsers||'∞'}</span>
+          <span class="badge ${t.status==='active'?'badge-green':'badge-red'}">${t.status==='active'?'نشط':'منتهي'}</span>
+        </div>
+        <div class="task-progress"><div class="task-progress-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="action-btns">
+        <button class="btn-sm btn-danger" onclick="deleteTask('${t.id}','${cat}')"><i class="fas fa-trash"></i></button>
+        ${t.status==='active'?`<button class="btn-sm btn-warning" onclick="toggleTask('${t.id}','${cat}','completed')"><i class="fas fa-pause"></i></button>`:`<button class="btn-sm btn-primary" onclick="toggleTask('${t.id}','${cat}','active')"><i class="fas fa-play"></i></button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAddTaskModal(cat){
+  document.getElementById('taskCategory').value = cat;
+  document.getElementById('taskName').value='';
+  document.getElementById('taskLink').value='';
+  document.getElementById('taskReward').value='500';
+  document.getElementById('taskTarget').value='1000';
+  openModal('taskModal');
+}
+
+async function createTask(){
+  const cat = document.getElementById('taskCategory').value;
+  const name = document.getElementById('taskName').value.trim();
+  const type = document.getElementById('taskType').value;
+  const reward = parseInt(document.getElementById('taskReward').value)||500;
+  const target = parseInt(document.getElementById('taskTarget').value)||1000;
+  const link = document.getElementById('taskLink').value.trim();
+  if(!name||!link){ toast('يرجى ملء جميع الحقول','error'); return; }
+  const now = Date.now();
+  const taskId = `task_${now}_${Math.random().toString(36).substring(2,8)}`;
+  try{
+    await db.ref(`tasks/${cat}/${taskId}`).set({id:taskId,name,type,link,bambooReward:reward,targetUsers:target,completions:0,completedBy:[],status:'active',createdAt:now,updatedAt:now,creatorId:'admin'});
+    toast('تم إنشاء المهمة بنجاح ✅','success');
+    closeModal('taskModal');
+    loadTasks();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+async function deleteTask(id, cat){
+  if(!confirm('حذف هذه المهمة؟')) return;
+  try{
+    await db.ref(`tasks/${cat}/${id}`).remove();
+    toast('تم حذف المهمة','info');
+    loadTasks();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+async function toggleTask(id, cat, status){
+  try{
+    await db.ref(`tasks/${cat}/${id}`).update({status,updatedAt:Date.now()});
+    toast(status==='active'?'تم تفعيل المهمة':'تم إيقاف المهمة','info');
+    loadTasks();
+  } catch(e){ toast('خطأ: '+e.message,'error'); }
+}
+
+// ══ CONFIG PAGE ══
+function renderConfigPage(){
+  document.getElementById('cfg_BAMBOO_PER_COIN').value = G.BAMBOO_PER_COIN;
+  document.getElementById('cfg_REF_BONUS_PCT').value = G.REF_BONUS_PCT;
+  document.getElementById('cfg_MIN_WITHDRAW').value = G.MIN_WITHDRAW;
+  document.getElementById('cfg_WELCOME_BAMBOO').value = G.WELCOME_BAMBOO;
+  document.getElementById('cfg_WELCOME_COINS').value = G.WELCOME_COINS;
+
+  // Items
+  const itemNames = {bamboo_stick:'عصا بامبو',panda_paw:'كف الباندا',leaf_fan:'مروحة ورقية',bamboo_energy:'طاقة بامبو',panda_den:'بيت الباندا',bamboo_forest:'غابة بامبو'};
+  document.getElementById('itemsGrid').innerHTML = Object.entries(G.ITEMS).map(([id,cfg])=>`
+    <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:12px;padding:12px">
+      <div style="font-size:24px;margin-bottom:6px">${cfg.icon}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:8px">${itemNames[id]||id}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">السعر (بامبو)</div>
+      <input class="settings-input" style="width:100%;margin-bottom:8px" type="number" id="item_price_${id}" value="${cfg.price}">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">القوة (/ساعة)</div>
+      <input class="settings-input" style="width:100%" type="number" id="item_power_${id}" value="${cfg.power}">
+    </div>
+  `).join('');
+
+  // Tank
+  document.getElementById('tankConfig').innerHTML = Object.entries(G.TANK).map(([lvl,cfg])=>`
+    <div style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center">
+      <div style="font-size:11px;color:var(--bamboo);font-weight:800;margin-bottom:4px">المستوى ${lvl}</div>
+      <div style="font-size:12px;font-weight:700;color:#fff">${fmt(cfg.cap)} 🎋</div>
+      <div style="font-size:10px;color:var(--muted)">${fmt(cfg.upgCost)} تكلفة</div>
+    </div>
+  `).join('');
+}
+
+async function saveConfig(){
+  const updates = {
+    'gameConfig/BAMBOO_PER_COIN': parseInt(document.getElementById('cfg_BAMBOO_PER_COIN').value),
+    'gameConfig/REF_BONUS_PCT': parseInt(document.getElementById('cfg_REF_BONUS_PCT').value),
+    'gameConfig/MIN_WITHDRAW': parseInt(document.getElementById('cfg_MIN_WITHDRAW').value),
+    'gameConfig/WELCOME_BAMBOO': parseInt(document.getElementById('cfg_WELCOME_BAMBOO').value),
+    'gameConfig/WELCOME_COINS': parseInt(document.getElementById('cfg_WELCOME_COINS').value),
+  };
+  Object.keys(G.ITEMS).forEach(id=>{
+    const p = document.getElementById(`item_price_${id}`);
+    const pw = document.getElementById(`item_power_${id}`);
+    if(p) updates[`gameConfig/ITEMS/${id}/price`] = parseInt(p.value);
+    if(pw) updates[`gameConfig/ITEMS/${id}/power`] = parseInt(pw.value);
+  });
+  try{
+    await db.ref('/').update(updates);
+    toast('تم حفظ الإعدادات بنجاح ✅','success');
+  } catch(e){ toast('خطأ في الحفظ: '+e.message,'error'); }
+}
+
+// ══ LOGS ══
+async function loadAllLogs(){
+  const tbody = document.getElementById('logsTableBody');
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">يتم التحميل...</td></tr>';
+  try{
+    const usersToLoad = allUsers.slice(0,30);
+    const logs = [];
+    for(const u of usersToLoad){
+      const snap = await db.ref(`users/${u.userId}/log`).limitToLast(20).once('value');
+      const data = snap.val()||{};
+      Object.values(data).forEach(l=>logs.push({...l,userId:u.userId,userName:`${u.firstName||''} ${u.lastName||''}`.trim()||u.userId}));
+    }
+    allLogs = logs.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    document.getElementById('logsCount').textContent = `${allLogs.length} سجل`;
+    filterLogs();
+  } catch(e){ toast('خطأ في تحميل السجل','error'); console.error(e); }
+}
+
+function filterLogs(){
+  const search = (document.getElementById('logSearch')||{}).value||'';
+  const type = (document.getElementById('logType')||{}).value||'all';
+  const uid = (document.getElementById('logUserId')||{}).value||'';
+  let list = [...allLogs];
+  if(type!=='all') list = list.filter(l=>l.type===type);
+  if(uid) list = list.filter(l=>String(l.userId).includes(uid));
+  if(search) list = list.filter(l=>JSON.stringify(l).toLowerCase().includes(search.toLowerCase()));
+
+  const typeColors = {collect:'badge-green',buy_item:'badge-blue',exchange:'badge-purple',withdraw_request:'badge-red',deposit_completed:'badge-green',upgrade_tank:'badge-yellow',verify_task:'badge-green',create_task:'badge-blue'};
+  const typeIcons = {collect:'🎋',buy_item:'🛒',exchange:'🔄',withdraw_request:'💸',deposit_completed:'💎',upgrade_tank:'⬆️',verify_task:'✅',create_task:'➕',session_open:'👁️'};
+  const typeNames = {collect:'جمع بامبو',buy_item:'شراء آلة',exchange:'تحويل',withdraw_request:'طلب سحب',deposit_completed:'إيداع مكتمل',upgrade_tank:'ترقية خزان',verify_task:'إكمال مهمة',create_task:'إنشاء مهمة',session_open:'فتح التطبيق'};
+
+  document.getElementById('logsTableBody').innerHTML = list.slice(0,100).map(l=>`
+    <tr>
+      <td><div class="user-cell"><div class="user-avatar" style="width:28px;height:28px;font-size:13px">🐼</div><div><div class="user-name" style="font-size:12px">${l.userName||l.userId}</div><div class="user-id">${l.userId}</div></div></div></td>
+      <td><span class="badge ${typeColors[l.type]||'badge-blue'}">${typeIcons[l.type]||'📌'} ${typeNames[l.type]||l.type}</span></td>
+      <td style="font-size:11px;color:var(--muted)">
+        ${l.bamboo_after!==undefined?`<span style="color:var(--bamboo2)">🎋 ${fmt(l.bamboo_after)}</span> `:''} 
+        ${l.coins_balance!==undefined?`<span style="color:var(--coin)">🪙 ${fmt(l.coins_balance)}</span> `:''}
+        ${l.collected!==undefined?`جمع: ${fmt(l.collected)} `:''}
+        ${l.bamboo_spent!==undefined?`أنفق: ${fmt(l.bamboo_spent)} `:''}
+        ${l.taskId?`مهمة: ${l.taskId.slice(0,12)}... `:''}
+      </td>
+      <td style="font-size:11px;color:var(--muted)">${fmtTime(l.ts)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:40px">لا يوجد سجلات</td></tr>';
+}
+
+// ══ REFRESH ══
+async function refreshData(){
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  await loadData();
+  btn.classList.remove('spinning');
+  toast('تم تحديث البيانات ✅','success');
+}
+
+// ══ REAL-TIME LISTENERS ══
+function setupRealtime(){
+  db.ref('withdrawals').on('child_added', ()=>{ renderDashboard(); });
+  db.ref('withdrawals').on('child_changed', ()=>{ refreshWithdrawals(); });
+}
+
+// ══ INIT ══
+window.addEventListener('load', async ()=>{
+  try{
+    await loadData();
+    setupRealtime();
+    document.getElementById('loadingOverlay').style.display='none';
+    toast('مرحباً في لوحة التحكم 🐼','info');
+  } catch(e){
+    console.error(e);
+    document.getElementById('loadingOverlay').innerHTML = `
+      <div style="font-size:50px">⚠️</div>
+      <div style="font-size:16px;color:var(--red2);font-weight:700">خطأ في الاتصال</div>
+      <div style="font-size:13px;color:var(--muted);max-width:300px;text-align:center;margin-top:8px">${e.message}</div>
+      <button class="btn-sm btn-primary" style="margin-top:16px" onclick="location.reload()"><i class="fas fa-rotate-right"></i> إعادة المحاولة</button>
+    `;
+  }
+});
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+</script>
+</body>
+</html>
