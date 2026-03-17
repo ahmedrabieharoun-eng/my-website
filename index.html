@@ -6,7 +6,8 @@
 <title>Panda Bamboo Factory 🎋</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<script src="https://telegram.org/js/telegram-web-app.js">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
 // ══════════════════════════════════════════════════════════
 //  LANGUAGE SYSTEM
 // ══════════════════════════════════════════════════════════
@@ -401,235 +402,6 @@ const LANGS = {
 let _lang = localStorage.getItem('pbLang') || 'en';
 
 function T(key){ return (LANGS[_lang]||LANGS.en).t[key] || (LANGS.en.t[key]) || key; }
-
-function applyLang(){
-  const L = LANGS[_lang] || LANGS.en;
-  // RTL support
-  document.body.setAttribute('dir', L.dir);
-
-  // Update lang button
-  const btn = document.getElementById('langBtn');
-  if(btn){ btn.innerHTML = `<span id="langFlag">${L.flag}</span><span id="langCode">${L.code}</span>`; }
-
-  // --- Topbar chips ---
-  const coinsLbl = document.querySelector('#tbCoins')?.parentElement?.querySelector('span:first-child');
-  document.querySelectorAll('.tb-chip').forEach(c=>{
-    const lbl = c.querySelector('span[style*="9px"]');
-    if(lbl){
-      if(c.classList.contains('coin')) lbl.textContent = T('coins');
-      else lbl.textContent = T('bamboo');
-    }
-  });
-
-  // --- Home stats ---
-  const boxes = document.querySelectorAll('.champ-stat-box .csb-lbl');
-  if(boxes[0]) boxes[0].textContent = T('accrued');
-  if(boxes[1]) boxes[1].textContent = T('rateDay');
-  const units = document.querySelectorAll('.champ-stat-box .csb-unit');
-  if(units[0]) units[0].textContent = T('bamboo');
-  if(units[1]) units[1].textContent = T('bamDay');
-
-  // Claim btn
-  const claimTxt = document.getElementById('claimBtnTxt');
-  if(claimTxt){
-    const img = claimTxt.querySelector('img');
-    claimTxt.innerHTML = '';
-    if(img) claimTxt.appendChild(img);
-    claimTxt.appendChild(document.createTextNode(' ' + T('claimBamboo')));
-  }
-
-  // --- Nav labels ---
-  const navMap = ['navHome','navMarket','navTasks','navFriends','navFinance'];
-  document.querySelectorAll('.ni .ni-lbl').forEach((el,i)=>{ if(navMap[i]) el.textContent = T(navMap[i]); });
-
-  // --- Market page title ---
-  const mktTitle = document.querySelector('#sectionMarket .pg-title');
-  if(mktTitle){ const img=mktTitle.querySelector('img'); mktTitle.textContent=''; if(img)mktTitle.appendChild(img); mktTitle.appendChild(document.createTextNode(' '+T('pgMarket'))); }
-
-  // --- Tasks tabs ---
-  const ttabs = document.querySelectorAll('.task-tabs .ttab');
-  if(ttabs[0]) ttabs[0].textContent = T('tabReferral');
-  if(ttabs[1]) ttabs[1].textContent = T('tabSocial');
-  const stabs = document.querySelectorAll('#stab-partner, #stab-community');
-  if(stabs[0]) stabs[0].textContent = T('tabPartner');
-  if(stabs[1]) stabs[1].textContent = T('tabCommunity');
-
-  // --- Friends page ---
-  const frdTitle = document.querySelector('#sectionFriends > .pg-title');
-  if(frdTitle){ const img=frdTitle.querySelector('img'); frdTitle.textContent=''; if(img)frdTitle.appendChild(img); frdTitle.appendChild(document.createTextNode(' '+T('pgFriends'))); }
-  const refPgTitle = document.querySelector('.ref-prog-card > .pg-title');
-  if(refPgTitle){ const img=refPgTitle.querySelector('img'); refPgTitle.textContent=''; if(img)refPgTitle.appendChild(img); refPgTitle.appendChild(document.createTextNode(' '+T('pgReferral'))); }
-  const rbbTxt = document.querySelector('.rbb-txt');
-  if(rbbTxt) rbbTxt.textContent = T('commission');
-  const refInp = document.getElementById('refLinkInp');
-  if(refInp) refInp.placeholder = T('refPlaceholder');
-  document.querySelectorAll('.btn-copy').forEach(b=>{ const i=b.querySelector('i'); b.textContent=''; if(i)b.appendChild(i); b.appendChild(document.createTextNode(' '+T('copyBtn'))); });
-  const shareDiv = document.querySelector('#sectionFriends .ref-prog-card > div[style*="11px"]');
-  if(shareDiv) shareDiv.textContent = T('shareLink');
-  const refsHdr = document.querySelector('#sectionFriends .hist-hdr span:first-child');
-  if(refsHdr) refsHdr.innerHTML = '<i class="fas fa-history"></i> ' + T('recentRefs');
-  const noRefsEl = document.querySelector('#recentRefsList .hist-empty');
-  if(noRefsEl) noRefsEl.textContent = T('noRefs');
-
-  // --- Finance tabs ---
-  const ftabs = document.querySelectorAll('.fin-tabs .ftab');
-  if(ftabs[0]) ftabs[0].textContent = T('tabDeposit');
-  if(ftabs[1]) ftabs[1].textContent = T('tabWithdraw');
-  if(ftabs[2]) ftabs[2].textContent = T('tabExchange');
-
-  // --- Deposit ---
-  const walLbl = document.querySelector('.wal-row .wll');
-  if(walLbl) walLbl.textContent = T('walletLbl');
-  const connBtn = document.getElementById('connectWalletBtn');
-  if(connBtn) connBtn.innerHTML = '<i class="fas fa-plug"></i> ' + T('connectBtn');
-  const depWarnTxt = document.querySelector('.dep-warn-txt');
-  if(depWarnTxt){
-    const uid = document.getElementById('depositUserIdDisplay');
-    depWarnTxt.innerHTML = '<strong>' + T('importantNote') + '</strong> ';
-    if(uid){ depWarnTxt.appendChild(uid); }
-    depWarnTxt.appendChild(document.createTextNode(' ' + T('mustComment')));
-  }
-  const depAmtLbl = document.querySelector('#ft-deposit .flabel');
-  if(depAmtLbl) depAmtLbl.textContent = T('amountTon');
-  const rateInfo = document.querySelector('#ft-deposit .swap-balance') || document.querySelector('#ft-deposit [style*="11px"] strong');
-  // rate label inside deposit
-  const rateStrong = document.querySelector('#ft-deposit strong[style*="bamboo"]');
-  if(rateStrong) rateStrong.textContent = T('rateTxt');
-  const rateSpan = document.querySelector('#ft-deposit [style*="11px"][style*="muted"]');
-  if(rateSpan) rateSpan.innerHTML = T('rate') + ' <strong style="color:var(--bamboo)">' + T('rateTxt') + '</strong>';
-  const youRcv = document.querySelector('#ft-deposit [style*="justify-content"] span:first-child');
-  if(youRcv) youRcv.textContent = T('youReceive');
-  const depBtn = document.getElementById('submitDepositBtn');
-  if(depBtn) depBtn.innerHTML = '<i class="fas fa-arrow-down"></i> ' + T('depositBtn');
-  const procTxt = document.querySelector('#depositStatus .txsm');
-  if(procTxt) procTxt.textContent = T('processing');
-
-  // --- Withdraw ---
-  const wdInfoTxt = document.getElementById('wdInfoTxt');
-  if(wdInfoTxt) wdInfoTxt.textContent = T('wdInfo');
-  const wdLabels = document.querySelectorAll('#ft-withdraw .flabel');
-  if(wdLabels[0]) wdLabels[0].textContent = T('walletAddr');
-  if(wdLabels[1]) wdLabels[1].textContent = T('amountCoins');
-  const tonValLbl = document.querySelector('#ft-withdraw .tcl');
-  if(tonValLbl){ const img=tonValLbl.querySelector('img'); tonValLbl.textContent=''; if(img)tonValLbl.appendChild(img); tonValLbl.appendChild(document.createTextNode(' '+T('tonValue'))); }
-  const wdBtn = document.getElementById('wdBtn');
-  if(wdBtn){ const img=wdBtn.querySelector('img'); wdBtn.textContent=''; if(img)wdBtn.appendChild(img); wdBtn.appendChild(document.createTextNode(' '+T('requestWd'))); }
-  const wdHistHdr = document.querySelector('#ft-withdraw .hist-hdr');
-  if(wdHistHdr) wdHistHdr.textContent = T('wdHistory');
-  const noWdEl = document.querySelector('#wdHist .hist-empty');
-  if(noWdEl) noWdEl.textContent = T('noWd');
-
-  // --- Exchange ---
-  const fromLbl = document.querySelector('#ft-exchange .swap-section:first-child .swap-label');
-  if(fromLbl) fromLbl.textContent = T('fromLbl');
-  const toLbl2 = document.querySelector('#ft-exchange .swap-section:last-of-type .swap-label');
-  if(toLbl2) toLbl2.textContent = T('toLbl');
-  const swapFromBal = document.getElementById('swapFromBal');
-  if(swapFromBal) swapFromBal.textContent = T('balanceLbl') + ' ' + fmt(S.user?.bamboo||0) + ' ' + T('bamboo');
-  const swapToBal = document.getElementById('swapToBal');
-  if(swapToBal) swapToBal.textContent = T('balanceLbl') + ' ' + fmt(S.user?.coins||0) + ' ' + T('coins');
-  const swapRateEl = document.querySelector('.swap-rate');
-  if(swapRateEl) swapRateEl.textContent = T('rateExch');
-  const exchBtn = document.querySelector('#ft-exchange .btn-prim');
-  if(exchBtn) exchBtn.textContent = T('exchangeBtn');
-  const swapMaxBtn = document.querySelector('.swap-max-btn');
-  if(swapMaxBtn) swapMaxBtn.textContent = T('maxBtn');
-  const exchHistHdr = document.querySelector('#ft-exchange .hist-hdr');
-  if(exchHistHdr) exchHistHdr.textContent = T('exchHistory');
-  const noExchEl = document.querySelector('#exchHist .hist-empty');
-  if(noExchEl) noExchEl.textContent = T('noExch');
-
-  // --- Float add task btn ---
-  const floatBtn = document.getElementById('floatAddTask');
-  if(floatBtn) floatBtn.textContent = T('addTaskFloatBtn');
-
-  // --- Add task modal ---
-  const addTaskTitle = document.querySelector('#addTaskModal .mtitle');
-  if(addTaskTitle) addTaskTitle.textContent = T('addTask');
-  const costInfoEl = document.querySelector('#addTaskModal strong[style*="coin"]');
-  if(costInfoEl) costInfoEl.textContent = T('costInfo');
-  const minTgtEl = document.querySelector('#addTaskModal span[style*="11px"]');
-  if(minTgtEl) minTgtEl.textContent = T('minTarget');
-  const atTypeChBtn = document.getElementById('atTypeChannel');
-  if(atTypeChBtn) atTypeChBtn.textContent = T('typeChannel');
-  const atTypeBotBtn = document.getElementById('atTypeBot');
-  if(atTypeBotBtn) atTypeBotBtn.textContent = T('typeBot');
-  const atLabels = document.querySelectorAll('#addTaskModal .flabel');
-  if(atLabels[0]) atLabels[0].textContent = T('tgLink');
-  if(atLabels[1]) atLabels[1].textContent = T('targetUsers');
-  const atTotalLbl = document.querySelector('#addTaskModal [style*="muted"][style*="12px"]');
-  if(atTotalLbl) atTotalLbl.textContent = T('totalCost');
-  const createTaskBtn = document.querySelector('#addTaskModal .btn-prim');
-  if(createTaskBtn) createTaskBtn.textContent = T('createTask');
-
-  // --- Help modal ---
-  const helpTitle = document.querySelector('#helpModal .mtitle');
-  if(helpTitle) helpTitle.textContent = T('helpTitle');
-  // rebuild help modal dynamic content
-  rebuildHelpModal();
-}
-
-function rebuildHelpModal(){
-  const container = document.getElementById('helpDynContent');
-  if(!container) return;
-  container.innerHTML = `
-    <div style="background:linear-gradient(135deg,rgba(0,242,122,.08),rgba(0,0,0,.4));border:1px solid rgba(0,242,122,.25);border-radius:16px;padding:13px">
-      <div style="font-size:14px;font-weight:800;color:var(--neon-green);margin-bottom:8px">${T('helpFreeTitle')}</div>
-      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.8">${T('helpFreeTxt')}</div>
-    </div>
-    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
-      <div style="font-size:14px;font-weight:800;color:var(--bamboo);margin-bottom:8px">${T('helpIdeaTitle')}</div>
-      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.9">${T('helpIdeaTxt')}</div>
-    </div>
-    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
-      <div style="font-size:14px;font-weight:800;color:var(--bamboo);margin-bottom:10px">${T('helpPagesTitle')}</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${[
-          ['🏠',T('helpHome'),T('helpHomeTxt')],
-          ['🛒',T('helpMarket'),T('helpMarketTxt')],
-          ['✅',T('helpTasksPage'),T('helpTasksTxt')],
-          ['👥',T('helpFriendsPage'),T('helpFriendsTxt')],
-          ['💰',T('helpFinancePage'),T('helpFinanceTxt')],
-        ].map(([ic,nm,tx])=>`<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">${ic}</span><div><div style="font-size:12px;font-weight:800;color:#fff">${nm}</div><div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${tx}</div></div></div>`).join('')}
-      </div>
-    </div>
-    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
-      <div style="font-size:14px;font-weight:800;color:var(--coin);margin-bottom:10px">${T('helpPricesTitle')}</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        ${[
-          [T('helpDepRate'),T('helpDepVal')],
-          [T('helpExchRate'),T('helpExchVal')],
-          [T('helpWdRate'),T('helpWdVal')],
-          [T('helpMinWd'),T('helpMinWdVal')],
-          [T('helpRefRate'),T('helpRefVal')],
-          [T('helpTaskCost'),T('helpTaskCostVal')],
-        ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:10px"><span style="font-size:11px;color:var(--muted);font-weight:600">${l}</span><span style="font-size:12px;font-weight:800;color:#fff">${v}</span></div>`).join('')}
-      </div>
-    </div>
-    <div style="background:linear-gradient(135deg,rgba(255,215,0,.07),rgba(0,0,0,.4));border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:13px">
-      <div style="font-size:14px;font-weight:800;color:var(--coin);margin-bottom:8px">${T('helpWdTitle')}</div>
-      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.9">${T('helpWdTxt')}</div>
-    </div>
-  `;
-  // Update channel link labels
-  const lp=document.getElementById('helpLinkPayouts');
-  const ln=document.getElementById('helpLinkNews');
-  const ls=document.getElementById('helpLinkSupport');
-  if(lp) lp.innerHTML=T('helpPayouts');
-  if(ln) ln.innerHTML=T('helpNews');
-  if(ls) ls.innerHTML=T('helpSupport');
-}
-
-function openLangPicker(){
-  openModal('langModal');
-}
-
-function setLang(code){
-  _lang = code;
-  localStorage.setItem('pbLang', code);
-  applyLang();
-  closeModal('langModal');
-}
 
 </script>
 <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
@@ -2445,6 +2217,238 @@ async function init(){
     });
   }, 700);
 }
+
+// ══ LANGUAGE HELPERS ══
+
+function applyLang(){
+  const L = LANGS[_lang] || LANGS.en;
+  // RTL support
+  document.body.setAttribute('dir', L.dir);
+
+  // Update lang button
+  const btn = document.getElementById('langBtn');
+  if(btn){ btn.innerHTML = `<span id="langFlag">${L.flag}</span><span id="langCode">${L.code}</span>`; }
+
+  // --- Topbar chips ---
+  const coinsLbl = document.querySelector('#tbCoins')?.parentElement?.querySelector('span:first-child');
+  document.querySelectorAll('.tb-chip').forEach(c=>{
+    const lbl = c.querySelector('span[style*="9px"]');
+    if(lbl){
+      if(c.classList.contains('coin')) lbl.textContent = T('coins');
+      else lbl.textContent = T('bamboo');
+    }
+  });
+
+  // --- Home stats ---
+  const boxes = document.querySelectorAll('.champ-stat-box .csb-lbl');
+  if(boxes[0]) boxes[0].textContent = T('accrued');
+  if(boxes[1]) boxes[1].textContent = T('rateDay');
+  const units = document.querySelectorAll('.champ-stat-box .csb-unit');
+  if(units[0]) units[0].textContent = T('bamboo');
+  if(units[1]) units[1].textContent = T('bamDay');
+
+  // Claim btn
+  const claimTxt = document.getElementById('claimBtnTxt');
+  if(claimTxt){
+    const img = claimTxt.querySelector('img');
+    claimTxt.innerHTML = '';
+    if(img) claimTxt.appendChild(img);
+    claimTxt.appendChild(document.createTextNode(' ' + T('claimBamboo')));
+  }
+
+  // --- Nav labels ---
+  const navMap = ['navHome','navMarket','navTasks','navFriends','navFinance'];
+  document.querySelectorAll('.ni .ni-lbl').forEach((el,i)=>{ if(navMap[i]) el.textContent = T(navMap[i]); });
+
+  // --- Market page title ---
+  const mktTitle = document.querySelector('#sectionMarket .pg-title');
+  if(mktTitle){ const img=mktTitle.querySelector('img'); mktTitle.textContent=''; if(img)mktTitle.appendChild(img); mktTitle.appendChild(document.createTextNode(' '+T('pgMarket'))); }
+
+  // --- Tasks tabs ---
+  const ttabs = document.querySelectorAll('.task-tabs .ttab');
+  if(ttabs[0]) ttabs[0].textContent = T('tabReferral');
+  if(ttabs[1]) ttabs[1].textContent = T('tabSocial');
+  const stabs = document.querySelectorAll('#stab-partner, #stab-community');
+  if(stabs[0]) stabs[0].textContent = T('tabPartner');
+  if(stabs[1]) stabs[1].textContent = T('tabCommunity');
+
+  // --- Friends page ---
+  const frdTitle = document.querySelector('#sectionFriends > .pg-title');
+  if(frdTitle){ const img=frdTitle.querySelector('img'); frdTitle.textContent=''; if(img)frdTitle.appendChild(img); frdTitle.appendChild(document.createTextNode(' '+T('pgFriends'))); }
+  const refPgTitle = document.querySelector('.ref-prog-card > .pg-title');
+  if(refPgTitle){ const img=refPgTitle.querySelector('img'); refPgTitle.textContent=''; if(img)refPgTitle.appendChild(img); refPgTitle.appendChild(document.createTextNode(' '+T('pgReferral'))); }
+  const rbbTxt = document.querySelector('.rbb-txt');
+  if(rbbTxt) rbbTxt.textContent = T('commission');
+  const refInp = document.getElementById('refLinkInp');
+  if(refInp) refInp.placeholder = T('refPlaceholder');
+  document.querySelectorAll('.btn-copy').forEach(b=>{ const i=b.querySelector('i'); b.textContent=''; if(i)b.appendChild(i); b.appendChild(document.createTextNode(' '+T('copyBtn'))); });
+  const shareDiv = document.querySelector('#sectionFriends .ref-prog-card > div[style*="11px"]');
+  if(shareDiv) shareDiv.textContent = T('shareLink');
+  const refsHdr = document.querySelector('#sectionFriends .hist-hdr span:first-child');
+  if(refsHdr) refsHdr.innerHTML = '<i class="fas fa-history"></i> ' + T('recentRefs');
+  const noRefsEl = document.querySelector('#recentRefsList .hist-empty');
+  if(noRefsEl) noRefsEl.textContent = T('noRefs');
+
+  // --- Finance tabs ---
+  const ftabs = document.querySelectorAll('.fin-tabs .ftab');
+  if(ftabs[0]) ftabs[0].textContent = T('tabDeposit');
+  if(ftabs[1]) ftabs[1].textContent = T('tabWithdraw');
+  if(ftabs[2]) ftabs[2].textContent = T('tabExchange');
+
+  // --- Deposit ---
+  const walLbl = document.querySelector('.wal-row .wll');
+  if(walLbl) walLbl.textContent = T('walletLbl');
+  const connBtn = document.getElementById('connectWalletBtn');
+  if(connBtn) connBtn.innerHTML = '<i class="fas fa-plug"></i> ' + T('connectBtn');
+  const depWarnTxt = document.querySelector('.dep-warn-txt');
+  if(depWarnTxt){
+    const uid = document.getElementById('depositUserIdDisplay');
+    depWarnTxt.innerHTML = '<strong>' + T('importantNote') + '</strong> ';
+    if(uid){ depWarnTxt.appendChild(uid); }
+    depWarnTxt.appendChild(document.createTextNode(' ' + T('mustComment')));
+  }
+  const depAmtLbl = document.querySelector('#ft-deposit .flabel');
+  if(depAmtLbl) depAmtLbl.textContent = T('amountTon');
+  const rateInfo = document.querySelector('#ft-deposit .swap-balance') || document.querySelector('#ft-deposit [style*="11px"] strong');
+  // rate label inside deposit
+  const rateStrong = document.querySelector('#ft-deposit strong[style*="bamboo"]');
+  if(rateStrong) rateStrong.textContent = T('rateTxt');
+  const rateSpan = document.querySelector('#ft-deposit [style*="11px"][style*="muted"]');
+  if(rateSpan) rateSpan.innerHTML = T('rate') + ' <strong style="color:var(--bamboo)">' + T('rateTxt') + '</strong>';
+  const youRcv = document.querySelector('#ft-deposit [style*="justify-content"] span:first-child');
+  if(youRcv) youRcv.textContent = T('youReceive');
+  const depBtn = document.getElementById('submitDepositBtn');
+  if(depBtn) depBtn.innerHTML = '<i class="fas fa-arrow-down"></i> ' + T('depositBtn');
+  const procTxt = document.querySelector('#depositStatus .txsm');
+  if(procTxt) procTxt.textContent = T('processing');
+
+  // --- Withdraw ---
+  const wdInfoTxt = document.getElementById('wdInfoTxt');
+  if(wdInfoTxt) wdInfoTxt.textContent = T('wdInfo');
+  const wdLabels = document.querySelectorAll('#ft-withdraw .flabel');
+  if(wdLabels[0]) wdLabels[0].textContent = T('walletAddr');
+  if(wdLabels[1]) wdLabels[1].textContent = T('amountCoins');
+  const tonValLbl = document.querySelector('#ft-withdraw .tcl');
+  if(tonValLbl){ const img=tonValLbl.querySelector('img'); tonValLbl.textContent=''; if(img)tonValLbl.appendChild(img); tonValLbl.appendChild(document.createTextNode(' '+T('tonValue'))); }
+  const wdBtn = document.getElementById('wdBtn');
+  if(wdBtn){ const img=wdBtn.querySelector('img'); wdBtn.textContent=''; if(img)wdBtn.appendChild(img); wdBtn.appendChild(document.createTextNode(' '+T('requestWd'))); }
+  const wdHistHdr = document.querySelector('#ft-withdraw .hist-hdr');
+  if(wdHistHdr) wdHistHdr.textContent = T('wdHistory');
+  const noWdEl = document.querySelector('#wdHist .hist-empty');
+  if(noWdEl) noWdEl.textContent = T('noWd');
+
+  // --- Exchange ---
+  const fromLbl = document.querySelector('#ft-exchange .swap-section:first-child .swap-label');
+  if(fromLbl) fromLbl.textContent = T('fromLbl');
+  const toLbl2 = document.querySelector('#ft-exchange .swap-section:last-of-type .swap-label');
+  if(toLbl2) toLbl2.textContent = T('toLbl');
+  const swapFromBal = document.getElementById('swapFromBal');
+  if(swapFromBal) swapFromBal.textContent = T('balanceLbl') + ' ' + fmt(S.user?.bamboo||0) + ' ' + T('bamboo');
+  const swapToBal = document.getElementById('swapToBal');
+  if(swapToBal) swapToBal.textContent = T('balanceLbl') + ' ' + fmt(S.user?.coins||0) + ' ' + T('coins');
+  const swapRateEl = document.querySelector('.swap-rate');
+  if(swapRateEl) swapRateEl.textContent = T('rateExch');
+  const exchBtn = document.querySelector('#ft-exchange .btn-prim');
+  if(exchBtn) exchBtn.textContent = T('exchangeBtn');
+  const swapMaxBtn = document.querySelector('.swap-max-btn');
+  if(swapMaxBtn) swapMaxBtn.textContent = T('maxBtn');
+  const exchHistHdr = document.querySelector('#ft-exchange .hist-hdr');
+  if(exchHistHdr) exchHistHdr.textContent = T('exchHistory');
+  const noExchEl = document.querySelector('#exchHist .hist-empty');
+  if(noExchEl) noExchEl.textContent = T('noExch');
+
+  // --- Float add task btn ---
+  const floatBtn = document.getElementById('floatAddTask');
+  if(floatBtn) floatBtn.textContent = T('addTaskFloatBtn');
+
+  // --- Add task modal ---
+  const addTaskTitle = document.querySelector('#addTaskModal .mtitle');
+  if(addTaskTitle) addTaskTitle.textContent = T('addTask');
+  const costInfoEl = document.querySelector('#addTaskModal strong[style*="coin"]');
+  if(costInfoEl) costInfoEl.textContent = T('costInfo');
+  const minTgtEl = document.querySelector('#addTaskModal span[style*="11px"]');
+  if(minTgtEl) minTgtEl.textContent = T('minTarget');
+  const atTypeChBtn = document.getElementById('atTypeChannel');
+  if(atTypeChBtn) atTypeChBtn.textContent = T('typeChannel');
+  const atTypeBotBtn = document.getElementById('atTypeBot');
+  if(atTypeBotBtn) atTypeBotBtn.textContent = T('typeBot');
+  const atLabels = document.querySelectorAll('#addTaskModal .flabel');
+  if(atLabels[0]) atLabels[0].textContent = T('tgLink');
+  if(atLabels[1]) atLabels[1].textContent = T('targetUsers');
+  const atTotalLbl = document.querySelector('#addTaskModal [style*="muted"][style*="12px"]');
+  if(atTotalLbl) atTotalLbl.textContent = T('totalCost');
+  const createTaskBtn = document.querySelector('#addTaskModal .btn-prim');
+  if(createTaskBtn) createTaskBtn.textContent = T('createTask');
+
+  // --- Help modal ---
+  const helpTitle = document.querySelector('#helpModal .mtitle');
+  if(helpTitle) helpTitle.textContent = T('helpTitle');
+  // rebuild help modal dynamic content
+  rebuildHelpModal();
+}
+
+function rebuildHelpModal(){
+  const container = document.getElementById('helpDynContent');
+  if(!container) return;
+  container.innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(0,242,122,.08),rgba(0,0,0,.4));border:1px solid rgba(0,242,122,.25);border-radius:16px;padding:13px">
+      <div style="font-size:14px;font-weight:800;color:var(--neon-green);margin-bottom:8px">${T('helpFreeTitle')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.8">${T('helpFreeTxt')}</div>
+    </div>
+    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
+      <div style="font-size:14px;font-weight:800;color:var(--bamboo);margin-bottom:8px">${T('helpIdeaTitle')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.9">${T('helpIdeaTxt')}</div>
+    </div>
+    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
+      <div style="font-size:14px;font-weight:800;color:var(--bamboo);margin-bottom:10px">${T('helpPagesTitle')}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${[
+          ['🏠',T('helpHome'),T('helpHomeTxt')],
+          ['🛒',T('helpMarket'),T('helpMarketTxt')],
+          ['✅',T('helpTasksPage'),T('helpTasksTxt')],
+          ['👥',T('helpFriendsPage'),T('helpFriendsTxt')],
+          ['💰',T('helpFinancePage'),T('helpFinanceTxt')],
+        ].map(([ic,nm,tx])=>`<div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px;flex-shrink:0">${ic}</span><div><div style="font-size:12px;font-weight:800;color:#fff">${nm}</div><div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${tx}</div></div></div>`).join('')}
+      </div>
+    </div>
+    <div style="background:rgba(0,0,0,.35);border:1px solid var(--border);border-radius:16px;padding:13px">
+      <div style="font-size:14px;font-weight:800;color:var(--coin);margin-bottom:10px">${T('helpPricesTitle')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${[
+          [T('helpDepRate'),T('helpDepVal')],
+          [T('helpExchRate'),T('helpExchVal')],
+          [T('helpWdRate'),T('helpWdVal')],
+          [T('helpMinWd'),T('helpMinWdVal')],
+          [T('helpRefRate'),T('helpRefVal')],
+          [T('helpTaskCost'),T('helpTaskCostVal')],
+        ].map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:10px"><span style="font-size:11px;color:var(--muted);font-weight:600">${l}</span><span style="font-size:12px;font-weight:800;color:#fff">${v}</span></div>`).join('')}
+      </div>
+    </div>
+    <div style="background:linear-gradient(135deg,rgba(255,215,0,.07),rgba(0,0,0,.4));border:1px solid rgba(255,215,0,.25);border-radius:16px;padding:13px">
+      <div style="font-size:14px;font-weight:800;color:var(--coin);margin-bottom:8px">${T('helpWdTitle')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:600;line-height:1.9">${T('helpWdTxt')}</div>
+    </div>
+  `;
+  // Update channel link labels
+  const lp=document.getElementById('helpLinkPayouts');
+  const ln=document.getElementById('helpLinkNews');
+  const ls=document.getElementById('helpLinkSupport');
+  if(lp) lp.innerHTML=T('helpPayouts');
+  if(ln) ln.innerHTML=T('helpNews');
+  if(ls) ls.innerHTML=T('helpSupport');
+}
+
+function openLangPicker(){
+  openModal('langModal');
+}
+
+function setLang(code){
+  _lang = code;
+  localStorage.setItem('pbLang', code);
+  applyLang();
+  closeModal('langModal');
+}
+
 </script>
 
 <!-- LANG MODAL -->
