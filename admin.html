@@ -895,10 +895,10 @@ tbody tr:last-child td{border-bottom:none}
           <div class="section-title"><i class="fas fa-money-bill-transfer"></i> طلبات السحب</div>
           <div style="display:flex;gap:8px">
             <select class="filter-select" id="wdFilter" onchange="filterWithdrawals()">
-              <option value="pending">معلقة</option>
-              <option value="approved">موافق عليها</option>
-              <option value="rejected">مرفوضة</option>
               <option value="all">الكل</option>
+              <option value="pending">⏳ معلقة</option>
+              <option value="approved">✅ مدفوعة (paid)</option>
+              <option value="rejected">❌ مرفوضة</option>
             </select>
             <button class="btn-sm btn-primary" onclick="refreshWithdrawals()"><i class="fas fa-rotate-right"></i></button>
           </div>
@@ -1251,10 +1251,13 @@ async function renderDashboard(){
     // Merge both sources
     const allWd = [
       ...Object.entries(qData).map(([id,w])=>{
-        const parts = id.split('_');
-        return { ...w, id, status: w.status||'pending', coins: w.coins||w.amount||0, address: w.address||w.walletAddress||'—', userId: w.userId||(parts.length>=3?parts[1]:null), timestamp: w.timestamp||w.createdAt||parseInt(parts[parts.length-1])||0, _source:'queue' };
+        const parts = id.split("_");
+        let status = w.status||"pending";
+        if(status==="paid") status="approved";
+        if(status==="failed") status="rejected";
+        return { ...w, id, status, coins: w.amt||w.coins||w.amount||0, tonAmount: w.ton||w.tonAmount||0, address: w.address||w.walletAddress||"—", userId: w.userId||(parts.length>=3?parts[1]:null), timestamp: w.ts||w.timestamp||w.createdAt||parseInt(parts[parts.length-1])||0, txHash: w.txHash||null, _source:"queue" };
       }),
-      ...Object.entries(wdData).map(([id,w])=>({...w,id,_source:'legacy'}))
+      ...Object.entries(wdData).map(([id,w])=>({...w,id,_source:"legacy"}))
     ];
 
     const pending = allWd.filter(w=>w.status==='pending');
@@ -1495,20 +1498,24 @@ async function refreshWithdrawals(){
     const legacyData = legacySnap.val()||{};
 
     // Normalize withdrawQueue entries (keys like wd_USERID_TIMESTAMP)
+    // Actual fields: amt, ton, ts, address, status(paid/pending/failed), userId, txHash
     const queueList = Object.entries(queueData).map(([id,w])=>{
-      // Extract userId from key: wd_USERID_TIMESTAMP
-      const parts = id.split('_');
+      const parts = id.split("_");
       const userId = w.userId || (parts.length>=3 ? parts[1] : null);
+      let status = w.status || "pending";
+      if(status === "paid") status = "approved";
+      if(status === "failed") status = "rejected";
       return {
         ...w,
         id,
-        userId: userId,
-        status: w.status || 'pending',
-        timestamp: w.timestamp || w.createdAt || w.requestedAt || parseInt(parts[parts.length-1]) || Date.now(),
-        coins: w.coins || w.amount || w.coinsAmount || 0,
-        tonAmount: w.tonAmount || w.ton || 0,
-        address: w.address || w.walletAddress || w.wallet || '—',
-        _source: 'queue'
+        userId,
+        status,
+        timestamp: w.ts || w.timestamp || w.createdAt || parseInt(parts[parts.length-1]) || Date.now(),
+        coins: w.amt || w.coins || w.amount || 0,
+        tonAmount: w.ton || w.tonAmount || w.sentAmount || 0,
+        address: w.address || w.walletAddress || "—",
+        txHash: w.txHash || null,
+        _source: "queue"
       };
     });
 
@@ -1536,31 +1543,36 @@ function filterWithdrawals(){
     el.innerHTML=`<div class="empty-state"><i class="fas fa-money-bill-transfer"></i><p>لا يوجد طلبات ${filter==='pending'?'معلقة':''}</p></div>`;
     return;
   }
-  const user = (uid) => allUsers.find(u=>u.userId===uid)||{};
+  const findUser = (uid) => allUsers.find(u=>String(u.userId)===String(uid))||{};
   el.innerHTML = list.map(w=>{
-    const u = user(w.userId);
+    const u = findUser(w.userId);
+    const userName = [u.firstName,u.lastName].filter(Boolean).join(' ') || w.userId || '—';
+    const statusLabel = {pending:'⏳ معلق', approved:'✅ مدفوع', rejected:'❌ مرفوض'}[w.status]||w.status;
+    const statusClass = {pending:'badge-yellow', approved:'badge-green', rejected:'badge-red'}[w.status]||'badge-blue';
+    const tonDisplay = typeof w.tonAmount==='number' ? w.tonAmount.toFixed(4) : (w.tonAmount||0);
     return `
     <div class="wd-item">
       <div class="wd-item-header">
         <div class="wd-item-user">
           <div class="user-avatar" style="width:36px;height:36px;font-size:16px">${u.photoUrl?`<img src="${u.photoUrl}">`:'🐼'}</div>
           <div>
-            <div style="font-weight:700;font-size:13px">${u.firstName||''} ${u.lastName||''||w.userId}</div>
-            <div style="font-size:11px;color:var(--muted)">${fmtDate(w.timestamp)}</div>
+            <div style="font-weight:700;font-size:13px">${userName}</div>
+            <div style="font-size:11px;color:var(--muted)">ID: ${w.userId||'—'} • ${fmtDate(w.timestamp)}</div>
           </div>
         </div>
-        <div>
+        <div style="text-align:left">
           <div class="wd-amount">${fmt(w.coins)} 🪙</div>
-          <div style="font-size:11px;color:#4fc3f7;text-align:left">${(w.tonAmount||0).toFixed(4)} TON</div>
+          <div style="font-size:12px;color:#4fc3f7;font-weight:700">${tonDisplay} TON</div>
         </div>
       </div>
       <div class="wd-address"><i class="fas fa-wallet" style="margin-left:4px;color:var(--bamboo)"></i>${w.address||'—'}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <span class="badge ${w.status==='pending'?'badge-yellow':w.status==='approved'?'badge-green':'badge-red'}">${w.status==='pending'?'⏳ معلق':w.status==='approved'?'✅ مقبول':'❌ مرفوض'}</span>
+      ${w.txHash?`<div style="font-size:10px;color:var(--muted);margin-top:4px;word-break:break-all"><i class="fas fa-link" style="margin-left:4px;color:var(--bamboo)"></i>TxHash: ${w.txHash}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px">
+        <span class="badge ${statusClass}">${statusLabel}</span>
         ${w.status==='pending'?`<div class="wd-actions">
           <button class="btn-sm btn-primary" onclick="approveWithdraw('${w.id}','${w.userId}')"><i class="fas fa-check"></i> قبول</button>
           <button class="btn-sm btn-danger" onclick="rejectWithdraw('${w.id}','${w.userId}')"><i class="fas fa-times"></i> رفض</button>
-        </div>`:`<span style="font-size:11px;color:var(--muted)">${w.updatedBy||''}</span>`}
+        </div>`:`<span style="font-size:11px;color:var(--muted)">${w.updatedBy||w.completedAt?fmtDate(w.completedAt||w.updatedAt):''}</span>`}
       </div>
     </div>`;
   }).join('');
