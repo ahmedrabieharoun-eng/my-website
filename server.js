@@ -26,35 +26,35 @@ const G = {
     panda_den    :{price:626000,  power:45000 },  // 0.072 — premium
     bamboo_forest:{price:1300000, power:110000},  // 0.085 — endgame
   },
-  // 27 tank levels — capacity only, no speedBonus
+  // 27 tank levels — capacity starts at 5,000 and scales progressively
   TANK:{
-    1 :{cap:300,     upgCost:500      },
-    2 :{cap:900,     upgCost:2000     },
-    3 :{cap:2400,    upgCost:8000     },
-    4 :{cap:6000,    upgCost:25000    },
-    5 :{cap:18000,   upgCost:80000    },
-    6 :{cap:60000,   upgCost:250000   },
-    7 :{cap:120000,  upgCost:500000   },
-    8 :{cap:210000,  upgCost:900000   },
-    9 :{cap:330000,  upgCost:1500000  },
-    10:{cap:480000,  upgCost:2500000  },
-    11:{cap:660000,  upgCost:4000000  },
-    12:{cap:870000,  upgCost:6000000  },
-    13:{cap:1110000, upgCost:9000000  },
-    14:{cap:1380000, upgCost:13000000 },
-    15:{cap:1680000, upgCost:18000000 },
-    16:{cap:2010000, upgCost:25000000 },
-    17:{cap:2400000, upgCost:33000000 },
-    18:{cap:2850000, upgCost:43000000 },
-    19:{cap:3360000, upgCost:55000000 },
-    20:{cap:3930000, upgCost:70000000 },
-    21:{cap:4560000, upgCost:88000000 },
-    22:{cap:5250000, upgCost:110000000},
-    23:{cap:6000000, upgCost:135000000},
-    24:{cap:6810000, upgCost:165000000},
-    25:{cap:7680000, upgCost:200000000},
-    26:{cap:8610000, upgCost:240000000},
-    27:{cap:10000000,upgCost:300000000},
+    1 :{cap:5000,      upgCost:1000      },
+    2 :{cap:10000,     upgCost:3000      },
+    3 :{cap:20000,     upgCost:8000      },
+    4 :{cap:40000,     upgCost:20000     },
+    5 :{cap:80000,     upgCost:50000     },
+    6 :{cap:150000,    upgCost:120000    },
+    7 :{cap:250000,    upgCost:250000    },
+    8 :{cap:400000,    upgCost:450000    },
+    9 :{cap:600000,    upgCost:750000    },
+    10:{cap:900000,    upgCost:1200000   },
+    11:{cap:1300000,   upgCost:1800000   },
+    12:{cap:1800000,   upgCost:2700000   },
+    13:{cap:2500000,   upgCost:4000000   },
+    14:{cap:3300000,   upgCost:5500000   },
+    15:{cap:4300000,   upgCost:8000000   },
+    16:{cap:5500000,   upgCost:11000000  },
+    17:{cap:7000000,   upgCost:15000000  },
+    18:{cap:8800000,   upgCost:20000000  },
+    19:{cap:11000000,  upgCost:27000000  },
+    20:{cap:14000000,  upgCost:35000000  },
+    21:{cap:17500000,  upgCost:45000000  },
+    22:{cap:22000000,  upgCost:58000000  },
+    23:{cap:28000000,  upgCost:75000000  },
+    24:{cap:35000000,  upgCost:95000000  },
+    25:{cap:44000000,  upgCost:120000000 },
+    26:{cap:55000000,  upgCost:150000000 },
+    27:{cap:70000000,  upgCost:200000000 },
   },
   // Fix 5: Added r200 and r500
   REF_TASKS:{
@@ -181,10 +181,34 @@ async function dbDelete(env,path){
 const _rl=new Map();
 function rateOk(ip){const now=Date.now();const d=_rl.get(ip)||{c:0,r:now+60000};if(now>d.r){d.c=0;d.r=now+60000;}d.c++;_rl.set(ip,d);return d.c<=60;}
 
+// ── Per-user per-action cooldown (anti-autoclicker) ──────────────
+// Prevents the same user from calling the same action faster than COOLDOWN_MS
+const _userActionTs = new Map();
+const ACTION_COOLDOWNS = {
+  collect      : 2500,
+  buyItem      : 2500,
+  upgradeTank  : 2500,
+  exchange     : 2500,
+  withdraw     : 5000,
+  claimTask    : 2500,
+  verifyTask   : 2500,
+  createTask   : 5000,
+};
+function userActionOk(uid, action){
+  const cd = ACTION_COOLDOWNS[action];
+  if(!cd) return true; // no cooldown for this action
+  const key = `${uid}:${action}`;
+  const now = Date.now();
+  const last = _userActionTs.get(key) || 0;
+  if(now - last < cd) return false;
+  _userActionTs.set(key, now);
+  return true;
+}
+
 // ── Logging System ────────────────────────────────────────────────
 // Saves balance-change events inside each user's own account:
 //   users/{uid}/log/{auto-id}
-// Only records events that change bamboo, coins, or tonBalance.
+// Only records events that ACTUALLY change bamboo, coins, or tonBalance.
 // Fire-and-forget — never blocks the request.
 
 const BALANCE_CHANGE_EVENTS = new Set([
@@ -192,6 +216,8 @@ const BALANCE_CHANGE_EVENTS = new Set([
   'withdraw_request','deposit_completed','claim_task',
   'verify_task','create_task','admin_set_balance',
   'admin_confirm_deposit','referral_commission',
+  // NOTE: 'register', 'session_open', 'welcome_bonus_granted', 'deposit_initiated'
+  // are intentionally excluded — they either don't change balances or are noise.
 ]);
 
 function log(env, uid, type, details={}, meta={}){
@@ -310,16 +336,7 @@ async function hGetState(env,uid,tg,data={},_meta={}){
         sendTgNotification(env, user.referredBy, notifMsg).catch(()=>{});
       }
       await dbSet(env,`users/${uid}`,user);
-      log(env,uid,'register',{
-        referredBy:ref||null,
-        welcomeCoins:G.WELCOME_COINS,
-        welcomeRate:G.WELCOME_RATE,
-        welcomeBamboo:G.WELCOME_BAMBOO,
-        username:user.username||'',
-        firstName:user.firstName||'',
-        platform:'telegram',
-        ip_action:'new_user',
-      },_meta);
+      // NOTE: 'register' is not a balance-change event, not logged in user log
     }else{
       syncTank(user);
       // Fix welcome bonus: grant once if flag not set yet
@@ -354,12 +371,7 @@ async function hGetState(env,uid,tg,data={},_meta={}){
     }
     const rr=await dbGet(env,`users/${uid}/referrals`);
     const referrals=Object.values(rr.data||{}).map(r=>({userId:r.userId,name:`${r.firstName||''} ${r.lastName||''}`.trim()||'Friend',photo:r.photoUrl||null,date:r.joinedAt?new Date(r.joinedAt).toLocaleDateString():'',earned:r.earned||0}));
-    // Log every session open (app open)
-    log(env,uid,'session_open',{
-      bamboo:user.bamboo||0, coins:user.coins||0,
-      miningRate:user.miningRate||0, tankLevel:user.tankLevel||1,
-      tankAccrued:user.tankAccrued||0,
-    },_meta);
+    // session_open is NOT logged — it does not change any balance
     const er=await dbGet(env,`users/${uid}/exchHistory`);
     const exchHistory=er.data?Object.values(er.data).sort((a,b)=>b.ts-a.ts).slice(0,30):[];
     const wr=await dbGet(env,`users/${uid}/wdHistory`);
@@ -373,7 +385,9 @@ async function hGetState(env,uid,tg,data={},_meta={}){
       partner  :tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[],
       community:tcr.data?Object.values(tcr.data).filter(t=>t.status==='active'):[],
     };
-    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,pendingDeposit,tasks}};
+    const lr=await dbGet(env,`users/${uid}/log`);
+    const balanceLog=lr.data?Object.values(lr.data).sort((a,b)=>b.ts-a.ts).slice(0,50):[];
+    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,balanceLog,pendingDeposit,tasks}};
   }catch(e){console.error('getState',e);return{success:false,error:e.message,errorCode:'GET_STATE_ERROR'};}
 }
 
@@ -488,6 +502,8 @@ async function hWithdraw(env,uid,data,_meta={}){
     const r=await dbGet(env,`users/${uid}`);const user=r.data;
     if(!user)return{success:false,error:'User not found'};
     if((user.coins||0)<amt)return{success:false,error:'Not enough Coins'};
+    // ── Idempotency guard: block duplicate withdraw within 10s ──
+    if(Date.now()-(user._lastWdTs||0)<10000)return{success:false,error:'Please wait before submitting another withdrawal'};
     // Partner tasks must be completed before withdrawal
     const tpr=await dbGet(env,'tasks/partner');
     const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
@@ -498,7 +514,7 @@ async function hWithdraw(env,uid,data,_meta={}){
     }
     // No deposit requirement — free and paid users have same withdrawal rules
     const wdId=`wd_${uid}_${Date.now()}`;const ton=amt*G.TON_PER_COIN;
-    const upd={coins:(user.coins||0)-amt};
+    const upd={coins:(user.coins||0)-amt, _lastWdTs:Date.now()};
     await dbUpdate(env,`users/${uid}`,upd);
     const rec={wdId,userId:uid,address:addr,amt,ton,status:'pending',ts:Date.now()};
     await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rec);
@@ -788,6 +804,11 @@ export default {
     const uid=String(v.user.id);
     const _meta={ip, ua:request.headers.get('User-Agent')||''};
     console.log(`[${new Date().toISOString()}] User:${uid} Action:${action} IP:${ip}`);
+
+    // Per-user per-action cooldown — blocks auto-clicker / rapid replay attacks
+    if(!userActionOk(uid, action)){
+      return fail('Too fast. Please wait a moment before trying again.',429);
+    }
 
     switch(action){
       case 'getState'      :return jRes(await hGetState(env,uid,v.user,{...data,_startParam:v.startParam||''},_meta));
