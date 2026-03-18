@@ -1019,7 +1019,11 @@ async function api(action, data={}){
       body:JSON.stringify({action,data}),
     });
     const j = await r.json();
-    if(!j.success) throw new Error(j.error||'API error');
+    if(!j.success){
+      const err = new Error(j.error||'API error');
+      err.errorCode = j.errorCode||'';
+      throw err;
+    }
     return j.data;
   } finally { _apiInFlight--; }
 }
@@ -1478,7 +1482,13 @@ async function doWithdraw(){
   }catch(e){
     // Fix 10: server-side error redirects
     const msg=e.message||'';
-    showNotif(`❌ ${msg}`,'e');
+    const errCode=e.errorCode||'';
+    if(errCode==='MULTI_ACCOUNT_DETECTED'||msg.includes('MULTI_ACCOUNT')){
+      const t=TRANSLATIONS[localStorage.getItem('pandaLang')||'en']||TRANSLATIONS['en'];
+      showNotif(`❌ ${t.multiAccount}`,'e');
+    } else {
+      showNotif(`❌ ${msg}`,'e');
+    }
     if(msg.includes('partner tasks')||msg.includes('PARTNER_TASKS')){
       setTimeout(()=>goToTasksPartner(), 5000);
     } else if(msg.includes('Deposit')||msg.includes('DEPOSIT')){
@@ -2002,6 +2012,7 @@ const TRANSLATIONS = {
     taskLinkLabel:'رابط تيليجرام',taskLinkPh:'https://t.me/قناتك',
     taskTargetLabel:'عدد المستخدمين المستهدف (الحد الأدنى 100)',
     taskTotalCost:'التكلفة الإجمالية:',taskCreateBtn:'✅ إنشاء المهمة',
+    multiAccount:'⚠️ أنت تستخدم أكثر من حساب — العب بنزاهة 🐼',
   },
   en:{
     navHome:'Home',navMarket:'Market',navTasks:'Tasks',navFriends:'Friends',navFinance:'Finance',
@@ -2057,6 +2068,7 @@ const TRANSLATIONS = {
     taskLinkLabel:'Telegram Link',taskLinkPh:'https://t.me/yourchannel',
     taskTargetLabel:'Target Users (min 100)',
     taskTotalCost:'Total Cost:',taskCreateBtn:'✅ Create Task',
+    multiAccount:'⚠️ You are using multiple accounts — play fair 🐼',
   },
   ru:{
     navHome:'Главная',navMarket:'Рынок',navTasks:'Задания',navFriends:'Друзья',navFinance:'Финансы',
@@ -2112,6 +2124,7 @@ const TRANSLATIONS = {
     taskLinkLabel:'Ссылка Telegram',taskLinkPh:'https://t.me/вашканал',
     taskTargetLabel:'Целевых участников (мин. 100)',
     taskTotalCost:'Итого:',taskCreateBtn:'✅ Создать задание',
+    multiAccount:'⚠️ Вы используете несколько аккаунтов — играйте честно 🐼',
   },
   es:{
     navHome:'Inicio',navMarket:'Mercado',navTasks:'Tareas',navFriends:'Amigos',navFinance:'Finanzas',
@@ -2167,6 +2180,7 @@ const TRANSLATIONS = {
     taskLinkLabel:'Enlace de Telegram',taskLinkPh:'https://t.me/tucanal',
     taskTargetLabel:'Usuarios objetivo (mín. 100)',
     taskTotalCost:'Costo total:',taskCreateBtn:'✅ Crear tarea',
+    multiAccount:'⚠️ Estás usando múltiples cuentas — juega limpio 🐼',
   },
   fr:{
     navHome:'Accueil',navMarket:'Marché',navTasks:'Tâches',navFriends:'Amis',navFinance:'Finance',
@@ -2222,6 +2236,7 @@ const TRANSLATIONS = {
     taskLinkLabel:'Lien Telegram',taskLinkPh:'https://t.me/votrechaîne',
     taskTargetLabel:'Utilisateurs cibles (min. 100)',
     taskTotalCost:'Coût total:',taskCreateBtn:'✅ Créer la tâche',
+    multiAccount:'⚠️ Vous utilisez plusieurs comptes — jouez honnêtement 🐼',
   }
 };
 
