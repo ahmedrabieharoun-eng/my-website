@@ -4,937 +4,738 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة تحكم الإحالات</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<title>لوحة كشف التحايل - السحوبات</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
   :root {
-    --bg-primary: #0a0a0f;
-    --bg-secondary: #111118;
-    --bg-card: #16161f;
-    --bg-card-hover: #1c1c28;
-    --border: #2a2a3a;
-    --border-light: #3a3a52;
-    --accent-gold: #f0b429;
-    --accent-gold-dim: rgba(240,180,41,0.12);
-    --accent-blue: #4f8ef7;
-    --accent-blue-dim: rgba(79,142,247,0.12);
-    --accent-green: #34d399;
-    --accent-green-dim: rgba(52,211,153,0.12);
-    --accent-purple: #a78bfa;
-    --accent-purple-dim: rgba(167,139,250,0.12);
-    --text-primary: #f0f0f8;
-    --text-secondary: #8888aa;
-    --text-muted: #555570;
-    --rank-gold: #f0b429;
-    --rank-silver: #94a3b8;
-    --rank-bronze: #cd7c4a;
-    --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
-    --shadow-glow-gold: 0 0 20px rgba(240,180,41,0.15);
+    --bg: #0a0c10;
+    --bg2: #0f1318;
+    --bg3: #141920;
+    --surface: #1a2030;
+    --surface2: #1e2638;
+    --border: #252f40;
+    --border2: #2d3a50;
+    --red: #ff3b5c;
+    --red-dim: rgba(255,59,92,0.12);
+    --red-glow: rgba(255,59,92,0.3);
+    --orange: #ff8c42;
+    --orange-dim: rgba(255,140,66,0.1);
+    --green: #00d68f;
+    --green-dim: rgba(0,214,143,0.1);
+    --blue: #3b82f6;
+    --blue-dim: rgba(59,130,246,0.1);
+    --yellow: #fbbf24;
+    --yellow-dim: rgba(251,191,36,0.1);
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --accent: #ff3b5c;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
+    background: var(--bg);
+    color: var(--text);
     font-family: 'Cairo', sans-serif;
-    background: var(--bg-primary);
-    color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
   }
 
-  /* background grid */
   body::before {
     content: '';
     position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
-    background-size: 48px 48px;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(255,59,92,0.04) 0%, transparent 70%);
     pointer-events: none;
     z-index: 0;
   }
 
-  .page-wrap {
-    position: relative;
-    z-index: 1;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
-  }
-
-  /* ─── HEADER ─── */
+  /* ── Header ── */
   .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 2.5rem;
-    animation: fadeDown .5s ease both;
+    height: 64px;
+    position: sticky; top: 0; z-index: 100;
   }
-
-  .header-left h1 {
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #f0f0f8 0%, #8888aa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.2;
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    font-weight: 900; font-size: 18px; letter-spacing: -0.5px;
   }
-
-  .header-left p {
-    margin-top: 6px;
-    font-size: 13px;
-    color: var(--text-muted);
-    font-weight: 400;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .last-updated {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-  }
-
-  .btn-refresh {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 9px 18px;
-    border-radius: 10px;
-    border: 1px solid var(--border-light);
-    background: var(--bg-card);
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-family: 'Cairo', sans-serif;
-    cursor: pointer;
-    transition: all .2s;
-  }
-  .btn-refresh:hover {
-    border-color: var(--accent-blue);
-    color: var(--accent-blue);
-    background: var(--accent-blue-dim);
-  }
-  .btn-refresh svg { transition: transform .4s; }
-  .btn-refresh:hover svg { transform: rotate(180deg); }
-
-  /* ─── STATS ROW ─── */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-    margin-bottom: 2rem;
-    animation: fadeUp .5s .1s ease both;
-  }
-
-  .stat-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1.25rem 1.4rem;
-    position: relative;
-    overflow: hidden;
-    transition: border-color .2s, transform .2s;
-  }
-  .stat-card:hover { border-color: var(--border-light); transform: translateY(-2px); }
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-  }
-  .stat-card.card-users::before { background: linear-gradient(90deg, var(--accent-blue), transparent); }
-  .stat-card.card-refs::before  { background: linear-gradient(90deg, var(--accent-gold), transparent); }
-  .stat-card.card-deps::before  { background: linear-gradient(90deg, var(--accent-green), transparent); }
-
-  .stat-icon {
+  .logo-icon {
     width: 36px; height: 36px;
-    border-radius: 10px;
+    background: var(--red);
+    border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     font-size: 18px;
-    margin-bottom: 12px;
+    box-shadow: 0 0 20px var(--red-glow);
+    animation: pulse-red 2s ease-in-out infinite;
   }
-  .stat-card.card-users .stat-icon { background: var(--accent-blue-dim); }
-  .stat-card.card-refs  .stat-icon { background: var(--accent-gold-dim); }
-  .stat-card.card-deps  .stat-icon { background: var(--accent-green-dim); }
-
-  .stat-label {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-weight: 500;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
+  @keyframes pulse-red {
+    0%,100% { box-shadow: 0 0 20px var(--red-glow); }
+    50% { box-shadow: 0 0 35px rgba(255,59,92,0.5); }
   }
-
-  .stat-value {
-    font-size: 26px;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--text-primary);
-    letter-spacing: -0.02em;
+  .logo span { color: var(--red); }
+  .header-status {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text2);
   }
+  .dot-live {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* ─── TABS ─── */
-  .tabs-bar {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 1.5rem;
-    background: var(--bg-card);
+  /* ── Main ── */
+  .main { padding: 28px 32px; position: relative; z-index: 1; }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 5px;
-    width: fit-content;
-    animation: fadeUp .5s .2s ease both;
+    padding: 20px 24px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .stat-card:hover { border-color: var(--border2); }
+  .stat-card::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 3px; height: 100%;
+    border-radius: 0 12px 12px 0;
+  }
+  .stat-card.danger::before { background: var(--red); }
+  .stat-card.warning::before { background: var(--orange); }
+  .stat-card.info::before { background: var(--blue); }
+  .stat-card.success::before { background: var(--green); }
+
+  .stat-label { font-size: 12px; color: var(--text3); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+  .stat-value { font-size: 32px; font-weight: 900; line-height: 1; }
+  .stat-card.danger .stat-value { color: var(--red); }
+  .stat-card.warning .stat-value { color: var(--orange); }
+  .stat-card.info .stat-value { color: var(--blue); }
+  .stat-card.success .stat-value { color: var(--green); }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px; gap: 16px; flex-wrap: wrap;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; }
+  .section-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .badge-count {
+    background: var(--red); color: white;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; border: none;
+    font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .btn-primary {
+    background: var(--red); color: white;
+    box-shadow: 0 4px 15px var(--red-glow);
+  }
+  .btn-primary:hover { background: #e62e4f; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    background: var(--surface2); color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--text3);
+    font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .2s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    border-color: var(--red); color: var(--red);
+    background: var(--red-dim);
   }
 
-  .tab-btn {
-    padding: 9px 20px;
-    border-radius: 9px;
-    border: none;
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-family: 'Cairo', sans-serif;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all .2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    white-space: nowrap;
-  }
-  .tab-btn:hover { color: var(--text-primary); background: var(--bg-card-hover); }
-  .tab-btn.active {
-    background: var(--accent-blue-dim);
-    color: var(--accent-blue);
-    border: 1px solid rgba(79,142,247,0.25);
-  }
-  .tab-btn.active.tab-deposit {
-    background: var(--accent-green-dim);
-    color: var(--accent-green);
-    border-color: rgba(52,211,153,0.25);
-  }
-  .tab-btn.active.tab-topdeposit {
-    background: var(--accent-gold-dim);
-    color: var(--accent-gold);
-    border-color: rgba(240,180,41,0.25);
-  }
-
-  /* ─── PANEL ─── */
-  .panel { display: none; animation: fadeUp .3s ease both; }
-  .panel.active { display: block; }
-
-  /* ─── TABLE ─── */
+  /* ── Table ── */
   .table-wrap {
-    background: var(--bg-card);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
+    border-radius: 14px;
     overflow: hidden;
-    animation: fadeUp .5s .25s ease both;
   }
-
   .table-header {
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding: 16px 24px;
     border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; color: var(--text3);
   }
-  .table-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: .08em;
-  }
-  .table-count {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--bg-secondary);
-    padding: 3px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  thead th {
-    padding: 11px 16px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    background: var(--bg-secondary);
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: right; padding: 12px 20px;
+    font-size: 11px; font-weight: 700; color: var(--text3);
+    letter-spacing: 0.8px; text-transform: uppercase;
     border-bottom: 1px solid var(--border);
-    text-align: right;
+    background: var(--bg3);
   }
-  thead th:first-child { text-align: center; width: 54px; }
-
-  tbody tr {
+  tr.data-row { transition: background .15s; }
+  tr.data-row:hover td { background: var(--bg3); }
+  td {
+    padding: 14px 20px; font-size: 13px;
     border-bottom: 1px solid var(--border);
-    transition: background .15s;
-    cursor: default;
-  }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--bg-card-hover); }
-
-  tbody tr.top-1 { background: rgba(240,180,41,0.04); }
-  tbody tr.top-2 { background: rgba(148,163,184,0.03); }
-  tbody tr.top-3 { background: rgba(205,124,74,0.03); }
-
-  tbody td {
-    padding: 12px 16px;
-    font-size: 14px;
-    text-align: right;
     vertical-align: middle;
   }
-  tbody td:first-child { text-align: center; }
+  tr.data-row:last-child td { border-bottom: none; }
 
-  .rank-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 700;
-    font-family: 'JetBrains Mono', monospace;
+  /* fraud row */
+  tr.fraud-row td { background: rgba(255,59,92,0.04); }
+  tr.fraud-row:hover td { background: rgba(255,59,92,0.08); }
+
+  .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .addr { 
+    max-width: 160px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--text2);
   }
-  .rank-1 { background: rgba(240,180,41,0.15); color: var(--rank-gold); border: 1px solid rgba(240,180,41,0.3); }
-  .rank-2 { background: rgba(148,163,184,0.1); color: var(--rank-silver); border: 1px solid rgba(148,163,184,0.25); }
-  .rank-3 { background: rgba(205,124,74,0.12); color: var(--rank-bronze); border: 1px solid rgba(205,124,74,0.25); }
-  .rank-n { background: var(--bg-secondary); color: var(--text-muted); border: 1px solid var(--border); font-size: 11px; }
-
-  .user-cell {
-    display: flex;
-    align-items: center;
-    gap: 11px;
+  .copy-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 12px; padding: 2px 5px;
+    border-radius: 4px; transition: .2s;
+    margin-right: 4px;
   }
+  .copy-btn:hover { background: var(--border); color: var(--text); }
 
-  .avatar-wrap {
-    position: relative;
-    flex-shrink: 0;
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
   }
+  .badge-paid { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
+  .badge-pending { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
+  .badge-failed { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,59,92,0.2); }
+  .badge-fraud {
+    background: var(--red-dim); color: var(--red);
+    border: 1px solid rgba(255,59,92,0.3);
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+  @keyframes glow-pulse {
+    0%,100% { box-shadow: none; }
+    50% { box-shadow: 0 0 10px rgba(255,59,92,0.3); }
+  }
+  .badge-safe { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
 
+  .user-cell { display: flex; align-items: center; gap: 8px; }
   .avatar {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1.5px solid var(--border-light);
-    display: block;
-  }
-
-  .avatar-fallback {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent-purple-dim), var(--accent-blue-dim));
-    border: 1.5px solid var(--border-light);
+    width: 30px; height: 30px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--accent-purple);
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
   }
+  .amt-cell { font-weight: 700; color: var(--text); }
+  .ton-cell { color: var(--orange); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 
-  .user-info .name {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-primary);
-    line-height: 1.3;
-  }
-  .user-info .handle {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'JetBrains Mono', monospace;
-    margin-top: 1px;
-  }
-
-  .count-cell {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-
-  .bar-track {
-    width: 90px;
-    height: 5px;
-    background: var(--bg-secondary);
-    border-radius: 3px;
+  /* ── Fraud group section ── */
+  .fraud-section {
+    background: var(--surface);
+    border: 1px solid rgba(255,59,92,0.3);
+    border-radius: 14px;
+    margin-bottom: 28px;
     overflow: hidden;
-    flex-shrink: 0;
   }
-  .bar-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width .6s ease;
+  .fraud-section-header {
+    background: var(--red-dim);
+    border-bottom: 1px solid rgba(255,59,92,0.2);
+    padding: 16px 24px;
+    display: flex; align-items: center; gap: 12px;
   }
-  .bar-blue   { background: linear-gradient(90deg, var(--accent-blue), #7ab4ff); }
-  .bar-green  { background: linear-gradient(90deg, var(--accent-green), #6ee7b7); }
-  .bar-gold   { background: linear-gradient(90deg, var(--accent-gold), #fcd34d); }
+  .fraud-icon { font-size: 22px; }
+  .fraud-title { font-size: 15px; font-weight: 700; color: var(--red); }
+  .fraud-sub { font-size: 12px; color: var(--text3); }
+  .fraud-groups { padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
 
-  .count-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 3px 10px;
-    border-radius: 7px;
-    min-width: 48px;
-    text-align: center;
-  }
-  .badge-blue  { background: var(--accent-blue-dim); color: var(--accent-blue); border: 1px solid rgba(79,142,247,0.2); }
-  .badge-green { background: var(--accent-green-dim); color: var(--accent-green); border: 1px solid rgba(52,211,153,0.2); }
-  .badge-gold  { background: var(--accent-gold-dim); color: var(--accent-gold); border: 1px solid rgba(240,180,41,0.2); }
-
-  .active-badge {
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 6px;
-    font-family: 'JetBrains Mono', monospace;
-    background: var(--accent-purple-dim);
-    color: var(--accent-purple);
-    border: 1px solid rgba(167,139,250,0.2);
-    white-space: nowrap;
-  }
-
-  /* ─── LOADING & STATES ─── */
-  .loading-state {
-    padding: 4rem 2rem;
-    text-align: center;
-    color: var(--text-muted);
-  }
-  .loading-spinner {
-    width: 36px; height: 36px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent-blue);
-    border-radius: 50%;
-    animation: spin .8s linear infinite;
-    margin: 0 auto 1rem;
-  }
-  .loading-state p { font-size: 14px; }
-
-  .error-state {
-    margin: 1rem 1.5rem;
-    padding: 1rem 1.25rem;
+  .fraud-group-card {
+    background: var(--bg2);
+    border: 1px solid rgba(255,59,92,0.2);
     border-radius: 10px;
-    background: rgba(239,68,68,0.08);
-    border: 1px solid rgba(239,68,68,0.2);
-    color: #f87171;
-    font-size: 13px;
+    overflow: hidden;
+  }
+  .fgc-header {
+    padding: 12px 16px;
+    background: rgba(255,59,92,0.06);
+    border-bottom: 1px solid rgba(255,59,92,0.15);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fgc-addr {
     font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--red);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fgc-count {
+    background: var(--red); color: white;
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .fgc-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .fgc-user {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border-radius: 8px; border: 1px solid var(--border);
+  }
+  .fgc-user-info { display: flex; align-items: center; gap: 10px; }
+  .fgc-user-meta { font-size: 12px; color: var(--text3); }
+  .fgc-user-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text2); }
+
+  /* loading */
+  .loading-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 80px 0; gap: 20px;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--text3); font-size: 14px; }
+
+  /* empty */
+  .empty-state {
+    text-align: center; padding: 60px 0; color: var(--text3);
+  }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  /* error */
+  .error-bar {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,59,92,0.3);
+    border-radius: 10px; padding: 14px 18px;
+    color: var(--red); font-size: 13px;
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px;
   }
 
-  /* ─── ANIMATIONS ─── */
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-16px); }
-    to   { opacity: 1; transform: translateY(0); }
+  /* toast */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 10px 20px; border-radius: 8px;
+    font-size: 13px; color: var(--text);
+    opacity: 0; transition: all .3s; z-index: 9999;
+    pointer-events: none;
   }
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  @keyframes pulse {
-    0%,100% { opacity: 1; } 50% { opacity: .5; }
-  }
-  .loading-text { animation: pulse 1.5s ease infinite; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ─── RESPONSIVE ─── */
-  @media (max-width: 700px) {
-    .stats-row { grid-template-columns: 1fr 1fr; }
-    .stats-row .stat-card:last-child { grid-column: 1/-1; }
-    .bar-track { width: 50px; }
-    .header { flex-direction: column; gap: 1rem; }
-    .tabs-bar { width: 100%; overflow-x: auto; }
-  }
-  @media (max-width: 480px) {
-    .stats-row { grid-template-columns: 1fr; }
-    .stats-row .stat-card:last-child { grid-column: auto; }
-    thead th.hide-sm, tbody td.hide-sm { display: none; }
+  /* responsive */
+  @media (max-width: 768px) {
+    .stats-row { grid-template-columns: repeat(2,1fr); }
+    .main { padding: 16px; }
+    .header { padding: 0 16px; }
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(6), td:nth-child(6) { display: none; }
   }
 </style>
 </head>
 <body>
-<div class="page-wrap">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-left">
-      <h1>لوحة الإحالات</h1>
-      <p>أفضل المستخدمين من حيث الإحالات والنشاط</p>
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    كشف <span>التحايل</span>
+  </div>
+  <div class="header-status">
+    <div class="dot-live"></div>
+    متصل بـ Firebase
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card danger">
+      <div class="stat-label">حالات تحايل مكتشفة</div>
+      <div class="stat-value" id="statFraud">—</div>
+      <div class="stat-sub">محافظ مشتركة بين مستخدمين</div>
     </div>
-    <div class="header-actions">
-      <span class="last-updated" id="last-updated">—</span>
-      <button class="btn-refresh" onclick="loadAll()">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" viewBox="0 0 24 24">
-          <path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>
-        </svg>
-        تحديث
-      </button>
+    <div class="stat-card warning">
+      <div class="stat-label">إجمالي السحوبات</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub">في قائمة الانتظار</div>
+    </div>
+    <div class="stat-card info">
+      <div class="stat-label">محافظ فريدة</div>
+      <div class="stat-value" id="statWallets">—</div>
+      <div class="stat-sub">عنوان مختلف</div>
+    </div>
+    <div class="stat-card success">
+      <div class="stat-label">مستخدمون آمنون</div>
+      <div class="stat-value" id="statSafe">—</div>
+      <div class="stat-sub">محفظة منفردة</div>
     </div>
   </div>
 
-  <!-- STATS -->
-  <div class="stats-row">
-    <div class="stat-card card-users">
-      <div class="stat-icon">👥</div>
-      <div class="stat-label">إجمالي المستخدمين</div>
-      <div class="stat-value" id="s-users"><span class="loading-text">—</span></div>
+  <!-- error -->
+  <div id="errorBar" class="error-bar" style="display:none">
+    ⚠️ <span id="errorMsg"></span>
+  </div>
+
+  <!-- fraud groups -->
+  <div class="fraud-section" id="fraudSection" style="display:none">
+    <div class="fraud-section-header">
+      <span class="fraud-icon">🚨</span>
+      <div>
+        <div class="fraud-title">محافظ مشبوهة — تعدد حسابات</div>
+        <div class="fraud-sub">نفس المحفظة تُستخدم من مستخدمين مختلفين</div>
+      </div>
     </div>
-    <div class="stat-card card-refs">
-      <div class="stat-icon">🔗</div>
-      <div class="stat-label">إجمالي الإحالات</div>
-      <div class="stat-value" id="s-refs"><span class="loading-text">—</span></div>
+    <div class="fraud-groups" id="fraudGroups"></div>
+  </div>
+
+  <!-- all withdrawals table -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <div class="section-title">
+        جميع السحوبات
+        <span class="badge-count" id="totalBadge">0</span>
+      </div>
     </div>
-    <div class="stat-card card-deps">
-      <div class="stat-icon">💰</div>
-      <div class="stat-label">إجمالي الإيداعات</div>
-      <div class="stat-value" id="s-deps"><span class="loading-text">—</span></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" id="exportBtn" onclick="exportCSV()">⬇️ تصدير CSV</button>
+      <button class="btn btn-primary" id="fetchBtn" onclick="loadData()">🔄 تحديث البيانات</button>
     </div>
   </div>
 
-  <!-- TABS -->
-  <div class="tabs-bar">
-    <button class="tab-btn active" id="t-count" onclick="switchTab('count', this)">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      أكثر إحالات — عدد
-    </button>
-    <button class="tab-btn tab-deposit" id="t-deposit" onclick="switchTab('deposit', this)">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      أكثر إحالات — إيداعات
-    </button>
-    <button class="tab-btn tab-topdeposit" id="t-topdeposit" onclick="switchTab('topdeposit', this)">
-      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-      أكثر المودعين
-    </button>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('all',this)">الكل</button>
+    <button class="filter-btn" onclick="setFilter('fraud',this)">🚨 مشبوه فقط</button>
+    <button class="filter-btn" onclick="setFilter('paid',this)">✅ مدفوع</button>
+    <button class="filter-btn" onclick="setFilter('pending',this)">⏳ معلق</button>
+    <button class="filter-btn" onclick="setFilter('safe',this)">🛡️ آمن</button>
   </div>
 
-  <!-- PANEL COUNT -->
-  <div id="panel-count" class="panel active">
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">🏆 ترتيب عدد الإحالات</span>
-        <span class="table-count" id="count-label">أفضل 30</span>
-      </div>
-      <div id="count-body">
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <p class="loading-text">جاري جلب البيانات من Firebase...</p>
-        </div>
-      </div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <span>نتائج الفحص</span>
+      <span id="tableCount" style="color:var(--text3);font-size:12px"></span>
     </div>
-  </div>
-
-  <!-- PANEL DEPOSIT -->
-  <div id="panel-deposit" class="panel">
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">💎 ترتيب إيداعات المُحالين</span>
-        <span class="table-count" id="deposit-label">أفضل 30</span>
-      </div>
-      <div id="deposit-body">
-        <div class="loading-state">
-          <div class="loading-spinner"></div>
-          <p class="loading-text">جاري تحليل الإيداعات...</p>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PANEL TOP DEPOSITORS -->
-  <div id="panel-topdeposit" class="panel">
-    <div class="table-wrap">
-      <div class="table-header">
-        <span class="table-title">🚀 أكثر المستخدمين إيداعاً</span>
-        <span class="table-count" id="topdeposit-label">أفضل 30</span>
-      </div>
-      <div id="topdeposit-body">
-        <div class="loading-state" style="padding:2rem">
-          <p style="color:var(--text-muted);font-size:13px">سيُحمَّل عند التبديل للتبويب</p>
-        </div>
+    <div id="tableBody">
+      <div class="loading-wrap">
+        <div class="spinner"></div>
+        <div class="loading-text">اضغط "تحديث البيانات" للبدء</div>
       </div>
     </div>
   </div>
 
-</div>
+</main>
 
-<script>
-// ── Firebase ──────────────────────────────────────────────
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-database.js";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU",
-  authDomain: "earnmoney124553.firebaseapp.com",
-  databaseURL: "https://earnmoney124553-default-rtdb.firebaseio.com",
-  projectId: "earnmoney124553",
-  storageBucket: "earnmoney124553.firebasestorage.app",
-  messagingSenderId: "325528918523",
-  appId: "1:325528918523:web:73d84f48a24c1e0cbfd35e"
+  apiKey: "AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
+  authDomain: "hhhrhdhd-2f68c.firebaseapp.com",
+  databaseURL: "https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
+  projectId: "hhhrhdhd-2f68c",
+  storageBucket: "hhhrhdhd-2f68c.firebasestorage.app",
+  messagingSenderId: "159295815105",
+  appId: "1:159295815105:web:d23916911ae39e6f95c340",
+  measurementId: "G-TLG6TP348R"
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
 
-// ── State ────────────────────────────────────────────────
-let usersData = {};
-let depositsData = {};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-// ── Helpers ──────────────────────────────────────────────
-function getInitials(u) {
-  if (u.firstName?.trim()) return u.firstName.trim()[0].toUpperCase();
-  if (u.username)          return u.username[0].toUpperCase();
-  return '#';
+let allData = [];
+let fraudAddresses = new Set();
+let currentFilter = 'all';
+
+const COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9f1c','#2ec4b6','#e71d36'];
+function userColor(id) {
+  let h = 0; for (let c of String(id)) h = (h * 31 + c.charCodeAt(0)) % COLORS.length;
+  return COLORS[h];
 }
 
-function getDisplayName(u) {
-  const full = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
-  return full || u.username || u.uid;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function avatarHtml(u) {
-  const init = getInitials(u);
-  if (u.photoUrl) {
-    return `<div class="avatar-wrap">
-      <img class="avatar" src="${u.photoUrl}"
-           onerror="this.style.display='none';this.nextSibling.style.display='flex'">
-      <div class="avatar-fallback" style="display:none">${init}</div>
-    </div>`;
-  }
-  return `<div class="avatar-wrap"><div class="avatar-fallback">${init}</div></div>`;
-}
-
-function rankHtml(i) {
-  if (i === 0) return `<span class="rank-badge rank-1">🥇</span>`;
-  if (i === 1) return `<span class="rank-badge rank-2">🥈</span>`;
-  if (i === 2) return `<span class="rank-badge rank-3">🥉</span>`;
-  return `<span class="rank-badge rank-n">${i+1}</span>`;
-}
-
-function rowClass(i) {
-  if (i === 0) return 'top-1';
-  if (i === 1) return 'top-2';
-  if (i === 2) return 'top-3';
-  return '';
-}
-
-function nowString() {
-  const d = new Date();
-  return d.toLocaleDateString('ar-EG') + ' ' + d.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
-}
-
-// ── Tab switch ───────────────────────────────────────────
-function switchTab(which, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+window.setFilter = function(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('panel-' + which).classList.add('active');
-  if (which === 'deposit')     renderDepositTable();
-  if (which === 'topdeposit')  renderTopDepositTable();
+  renderTable();
 }
 
-// ── Main load ────────────────────────────────────────────
-async function loadAll() {
-  document.getElementById('count-body').innerHTML = `
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">جاري جلب البيانات من Firebase...</p>
-    </div>`;
-  document.getElementById('deposit-body').innerHTML = `
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">جاري تحميل الإيداعات...</p>
-    </div>`;
-  document.getElementById('topdeposit-body').innerHTML = `
-    <div class="loading-state">
-      <div class="loading-spinner"></div>
-      <p class="loading-text">جاري تحميل الإيداعات...</p>
+window.copyText = function(txt) {
+  navigator.clipboard.writeText(txt).then(() => showToast('تم النسخ ✓'));
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleString('ar-EG', { dateStyle:'short', timeStyle:'short' });
+}
+
+function formatAmt(v) {
+  if (!v && v !== 0) return '—';
+  return Number(v).toLocaleString('ar-EG');
+}
+
+function statusBadge(s) {
+  const map = { paid:'badge-paid', pending:'badge-pending', failed:'badge-failed' };
+  const lbl = { paid:'مدفوع', pending:'معلق', failed:'فاشل' };
+  const cls = map[s] || 'badge-pending';
+  return `<span class="badge ${cls}">${lbl[s] || s}</span>`;
+}
+
+window.loadData = async function() {
+  const btn = document.getElementById('fetchBtn');
+  btn.disabled = true; btn.textContent = '⏳ جاري التحميل...';
+  document.getElementById('errorBar').style.display = 'none';
+  document.getElementById('tableBody').innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <div class="loading-text">جاري جلب البيانات من Firebase...</div>
     </div>`;
 
   try {
-    const [usersSnap, depositsSnap] = await Promise.all([
-      db.ref('users').once('value'),
-      db.ref('deposits').once('value')
-    ]);
-    usersData    = usersSnap.val()    || {};
-    depositsData = depositsSnap.val() || {};
-
-    updateStats();
-    renderCountTable();
-
-    // Re-render deposit if tab is active
-    if (document.getElementById('panel-deposit').classList.contains('active')) {
-      renderDepositTable();
-    } else {
-      document.getElementById('deposit-body').innerHTML = `
-        <div class="loading-state" style="padding:2rem">
-          <p style="color:var(--text-muted);font-size:13px">سيُحمَّل عند التبديل للتبويب</p>
+    const snap = await get(ref(db, 'withdrawQueue'));
+    if (!snap.exists()) {
+      document.getElementById('tableBody').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">لا توجد بيانات</div>
+          <div class="empty-sub">قائمة السحوبات فارغة</div>
         </div>`;
+      btn.disabled = false; btn.textContent = '🔄 تحديث البيانات';
+      return;
     }
 
-    if (document.getElementById('panel-topdeposit').classList.contains('active')) {
-      renderTopDepositTable();
-    } else {
-      document.getElementById('topdeposit-body').innerHTML = `
-        <div class="loading-state" style="padding:2rem">
-          <p style="color:var(--text-muted);font-size:13px">سيُحمَّل عند التبديل للتبويب</p>
-        </div>`;
-    }
+    const raw = snap.val();
+    allData = Object.values(raw).filter(v => v && typeof v === 'object');
 
-    document.getElementById('last-updated').textContent = nowString();
+    // detect fraud: group by address → find addresses with multiple userIds
+    const addrMap = {};
+    allData.forEach(w => {
+      const addr = w.address || w.addr || w.walletAddress || '';
+      const uid = String(w.userId || w.uid || '');
+      if (!addr || !uid) return;
+      if (!addrMap[addr]) addrMap[addr] = { users: new Set(), items: [] };
+      addrMap[addr].users.add(uid);
+      addrMap[addr].items.push(w);
+    });
+
+    fraudAddresses = new Set(
+      Object.entries(addrMap)
+        .filter(([, v]) => v.users.size > 1)
+        .map(([k]) => k)
+    );
+
+    // stats
+    const fraudCount = fraudAddresses.size;
+    const safeUsers = allData.filter(w => {
+      const addr = w.address || w.addr || w.walletAddress || '';
+      return !fraudAddresses.has(addr);
+    }).length;
+    const uniqueWallets = Object.keys(addrMap).length;
+
+    document.getElementById('statFraud').textContent = fraudCount;
+    document.getElementById('statTotal').textContent = allData.length;
+    document.getElementById('statWallets').textContent = uniqueWallets;
+    document.getElementById('statSafe').textContent = safeUsers;
+    document.getElementById('totalBadge').textContent = allData.length;
+
+    // render fraud section
+    renderFraudGroups(addrMap);
+    renderTable();
+
+    showToast(`✅ تم تحميل ${allData.length} سحب`);
   } catch (e) {
-    const errHtml = `<div class="error-state">خطأ في الاتصال بـ Firebase: ${e.message}</div>`;
-    document.getElementById('count-body').innerHTML      = errHtml;
-    document.getElementById('deposit-body').innerHTML    = errHtml;
-    document.getElementById('topdeposit-body').innerHTML = errHtml;
+    document.getElementById('errorBar').style.display = 'flex';
+    document.getElementById('errorMsg').textContent = 'خطأ في الاتصال بـ Firebase: ' + e.message;
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">❌</div>
+        <div class="empty-title">فشل التحميل</div>
+        <div class="empty-sub">${e.message}</div>
+      </div>`;
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '🔄 تحديث البيانات';
   }
 }
 
-// ── Stats ────────────────────────────────────────────────
-function updateStats() {
-  const userCount = Object.keys(usersData).length;
-  let totalRefs = 0;
-  Object.values(usersData).forEach(u => {
-    if (u.referrals) totalRefs += Object.keys(u.referrals).length;
-  });
-  const depCount = Object.keys(depositsData).length;
+function renderFraudGroups(addrMap) {
+  const fraudEntries = Object.entries(addrMap).filter(([, v]) => v.users.size > 1);
+  const sec = document.getElementById('fraudSection');
+  const grps = document.getElementById('fraudGroups');
 
-  document.getElementById('s-users').textContent = userCount.toLocaleString('ar-EG');
-  document.getElementById('s-refs').textContent  = totalRefs.toLocaleString('ar-EG');
-  document.getElementById('s-deps').textContent  = depCount.toLocaleString('ar-EG');
+  if (fraudEntries.length === 0) {
+    sec.style.display = 'none'; return;
+  }
+  sec.style.display = 'block';
+
+  grps.innerHTML = fraudEntries.map(([addr, data]) => {
+    const users = [...data.users];
+    const totalAmt = data.items.reduce((s, w) => s + (Number(w.amt) || 0), 0);
+    const totalTon = data.items.reduce((s, w) => s + (Number(w.ton || w.sentAmount) || 0), 0);
+
+    const usersHtml = users.map(uid => {
+      const color = userColor(uid);
+      const wds = data.items.filter(w => String(w.userId || w.uid) === uid);
+      return `
+        <div class="fgc-user">
+          <div class="fgc-user-info">
+            <div class="avatar" style="background:${color}20;color:${color}">${uid.slice(-2)}</div>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${color}">مستخدم ${uid}</div>
+              <div class="fgc-user-meta">${wds.length} سحب — ${formatAmt(wds.reduce((s,w)=>s+(Number(w.amt)||0),0))} نقطة</div>
+            </div>
+          </div>
+          <div class="fgc-user-id">${uid}</div>
+        </div>`;
+    }).join('');
+
+    const shortAddr = addr.length > 30 ? addr.slice(0,15)+'...'+addr.slice(-10) : addr;
+    return `
+      <div class="fraud-group-card">
+        <div class="fgc-header">
+          <div class="fgc-addr">
+            🔗 ${shortAddr}
+            <button class="copy-btn" onclick="copyText('${addr}')">📋</button>
+          </div>
+          <span class="fgc-count">${users.length} مستخدمين</span>
+        </div>
+        <div class="fgc-body">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px">
+            إجمالي المحاولات: <b style="color:var(--text)">${data.items.length}</b> &nbsp;|&nbsp;
+            إجمالي النقاط: <b style="color:var(--orange)">${formatAmt(totalAmt)}</b> &nbsp;|&nbsp;
+            إجمالي TON: <b style="color:var(--orange)">${totalTon.toFixed(3)} TON</b>
+          </div>
+          ${usersHtml}
+        </div>
+      </div>`;
+  }).join('');
 }
 
-// ── Count Table ──────────────────────────────────────────
-function renderCountTable() {
-  const rows = [];
-  Object.entries(usersData).forEach(([uid, u]) => {
-    const refCount = u.referrals ? Object.keys(u.referrals).length : 0;
-    if (refCount === 0) return;
-    rows.push({ uid, ...u, refCount });
-  });
-  rows.sort((a, b) => b.refCount - a.refCount);
-  const top = rows.slice(0, 30);
-  const maxVal = top[0]?.refCount || 1;
-  document.getElementById('count-label').textContent = `${top.length} مستخدم`;
+function renderTable() {
+  let rows = allData;
+  if (currentFilter === 'fraud') rows = rows.filter(w => fraudAddresses.has(w.address || w.addr || ''));
+  else if (currentFilter === 'safe') rows = rows.filter(w => !fraudAddresses.has(w.address || w.addr || ''));
+  else if (currentFilter === 'paid') rows = rows.filter(w => w.status === 'paid');
+  else if (currentFilter === 'pending') rows = rows.filter(w => ['pending','processing','new'].includes(w.status));
 
-  if (!top.length) {
-    document.getElementById('count-body').innerHTML =
-      `<div class="loading-state"><p>لا توجد بيانات إحالات.</p></div>`;
+  document.getElementById('tableCount').textContent = `${rows.length} نتيجة`;
+
+  if (rows.length === 0) {
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔎</div>
+        <div class="empty-title">لا توجد نتائج</div>
+        <div class="empty-sub">جرب فلتراً مختلفاً</div>
+      </div>`;
     return;
   }
 
-  let html = `<table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>المستخدم</th>
-        <th class="hide-sm">المعرّف</th>
-        <th>عدد الإحالات</th>
-      </tr>
-    </thead>
-    <tbody>`;
+  const tableHtml = `
+    <table>
+      <thead>
+        <tr>
+          <th>المستخدم</th>
+          <th>المحفظة</th>
+          <th>المبلغ</th>
+          <th>TON</th>
+          <th>الحالة</th>
+          <th>حالة الأمان</th>
+          <th>التاريخ</th>
+          <th>wdId</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(w => {
+          const addr = w.address || w.addr || w.walletAddress || '';
+          const isFraud = fraudAddresses.has(addr);
+          const uid = String(w.userId || w.uid || '—');
+          const color = userColor(uid);
+          const shortAddr = addr.length > 20 ? addr.slice(0,10)+'…'+addr.slice(-8) : addr;
+          const wdId = w.wdId || '—';
+          const shortWdId = wdId.length > 20 ? wdId.slice(0,18)+'…' : wdId;
 
-  top.forEach((r, i) => {
-    const pct = Math.round((r.refCount / maxVal) * 100);
-    html += `<tr class="${rowClass(i)}">
-      <td>${rankHtml(i)}</td>
-      <td>
-        <div class="user-cell">
-          ${avatarHtml(r)}
-          <div class="user-info">
-            <div class="name">${getDisplayName(r)}</div>
-          </div>
-        </div>
-      </td>
-      <td class="hide-sm">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)">
-          @${r.username || r.uid}
-        </span>
-      </td>
-      <td>
-        <div class="count-cell">
-          <div class="bar-track"><div class="bar-fill bar-blue" style="width:${pct}%"></div></div>
-          <span class="count-badge badge-blue">${r.refCount.toLocaleString()}</span>
-        </div>
-      </td>
-    </tr>`;
-  });
+          return `
+            <tr class="${isFraud ? 'fraud-row' : 'data-row'}">
+              <td>
+                <div class="user-cell">
+                  <div class="avatar" style="background:${color}20;color:${color}">${uid.slice(-2)}</div>
+                  <span class="mono">${uid}</span>
+                </div>
+              </td>
+              <td>
+                <div class="addr" title="${addr}">${shortAddr}</div>
+                ${addr ? `<button class="copy-btn" onclick="copyText('${addr}')">📋</button>` : ''}
+              </td>
+              <td><span class="amt-cell">${formatAmt(w.amt)}</span></td>
+              <td><span class="ton-cell">${w.ton || w.sentAmount || '—'}</span></td>
+              <td>${statusBadge(w.status)}</td>
+              <td>${isFraud
+                ? '<span class="badge badge-fraud">🚨 مشبوه</span>'
+                : '<span class="badge badge-safe">🛡️ آمن</span>'}</td>
+              <td style="color:var(--text3);font-size:12px">${formatDate(w.ts || w.createdAt)}</td>
+              <td><span class="mono" title="${wdId}" style="color:var(--text3)">${shortWdId}</span></td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 
-  html += '</tbody></table>';
-  document.getElementById('count-body').innerHTML = html;
+  document.getElementById('tableBody').innerHTML = tableHtml;
 }
 
-// ── Deposit Table ─────────────────────────────────────────
-function renderDepositTable() {
-  // Build deposit sum per userId
-  const depByUser = {};
-  Object.values(depositsData).forEach(dep => {
-    if (!dep.userId) return;
-    const uid = String(dep.userId);
-    depByUser[uid] = (depByUser[uid] || 0) + (parseFloat(dep.amount) || 0);
+window.exportCSV = function() {
+  if (!allData.length) { showToast('لا توجد بيانات للتصدير'); return; }
+  const headers = ['wdId','userId','address','amt','ton','status','isFraud','ts'];
+  const rows = allData.map(w => {
+    const addr = w.address || w.addr || '';
+    return [
+      w.wdId||'', w.userId||w.uid||'', addr,
+      w.amt||'', w.ton||w.sentAmount||'', w.status||'',
+      fraudAddresses.has(addr) ? 'نعم' : 'لا',
+      w.ts ? new Date(w.ts).toISOString() : ''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
   });
-
-  const rows = [];
-  Object.entries(usersData).forEach(([uid, u]) => {
-    if (!u.referrals) return;
-    const refIds = Object.keys(u.referrals);
-    let totalDep = 0;
-    let activeCount = 0;
-    refIds.forEach(rid => {
-      const amt = depByUser[rid] || 0;
-      if (amt > 0) activeCount++;
-      totalDep += amt;
-    });
-    if (totalDep === 0) return;
-    rows.push({ uid, ...u, refCount: refIds.length, activeCount, totalDep });
-  });
-  rows.sort((a, b) => b.totalDep - a.totalDep);
-  const top = rows.slice(0, 30);
-  const maxVal = top[0]?.totalDep || 1;
-  document.getElementById('deposit-label').textContent = `${top.length} مستخدم`;
-
-  if (!top.length) {
-    document.getElementById('deposit-body').innerHTML =
-      `<div class="loading-state"><p>لا يوجد مستخدمون بإيداعات من مُحالين.</p></div>`;
-    return;
-  }
-
-  let html = `<table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>المستخدم</th>
-        <th class="hide-sm">نشاط الإحالات</th>
-        <th>إجمالي إيداعات المُحالين</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  top.forEach((r, i) => {
-    const pct = Math.round((r.totalDep / maxVal) * 100);
-    html += `<tr class="${rowClass(i)}">
-      <td>${rankHtml(i)}</td>
-      <td>
-        <div class="user-cell">
-          ${avatarHtml(r)}
-          <div class="user-info">
-            <div class="name">${getDisplayName(r)}</div>
-            <div class="handle">@${r.username || r.uid}</div>
-          </div>
-        </div>
-      </td>
-      <td class="hide-sm">
-        <span class="active-badge">${r.activeCount} / ${r.refCount} نشط</span>
-      </td>
-      <td>
-        <div class="count-cell">
-          <div class="bar-track"><div class="bar-fill bar-green" style="width:${pct}%"></div></div>
-          <span class="count-badge badge-green">${r.totalDep.toFixed(2)}</span>
-        </div>
-      </td>
-    </tr>`;
-  });
-
-  html += '</tbody></table>';
-  document.getElementById('deposit-body').innerHTML = html;
+  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `withdrawals_fraud_${Date.now()}.csv`;
+  a.click();
+  showToast('✅ تم التصدير');
 }
-
-// ── Top Depositors Table ──────────────────────────────────
-function renderTopDepositTable() {
-  // Sum all deposits per userId (pending treated as completed)
-  const depByUser = {};
-  const depCountByUser = {};
-  Object.values(depositsData).forEach(dep => {
-    if (!dep.userId) return;
-    const uid = String(dep.userId);
-    depByUser[uid]      = (depByUser[uid]      || 0) + (parseFloat(dep.amount) || 0);
-    depCountByUser[uid] = (depCountByUser[uid] || 0) + 1;
-  });
-
-  // Build rows: any user who deposited at least once
-  const rows = [];
-  Object.entries(depByUser).forEach(([uid, totalDep]) => {
-    if (totalDep <= 0) return;
-    const u = usersData[uid] || {};
-    rows.push({
-      uid,
-      firstName : u.firstName  || '',
-      lastName  : u.lastName   || '',
-      username  : u.username   || '',
-      photoUrl  : u.photoUrl   || '',
-      totalDep,
-      depCount  : depCountByUser[uid] || 0
-    });
-  });
-
-  rows.sort((a, b) => b.totalDep - a.totalDep);
-  const top = rows.slice(0, 30);
-  const maxVal = top[0]?.totalDep || 1;
-  document.getElementById('topdeposit-label').textContent = `${top.length} مستخدم`;
-
-  if (!top.length) {
-    document.getElementById('topdeposit-body').innerHTML =
-      `<div class="loading-state"><p>لا توجد إيداعات مسجّلة.</p></div>`;
-    return;
-  }
-
-  let html = `<table>
-    <thead>
-      <tr>
-        <th>#</th>
-        <th>المستخدم</th>
-        <th class="hide-sm">عدد العمليات</th>
-        <th>إجمالي الإيداعات</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  top.forEach((r, i) => {
-    const pct = Math.round((r.totalDep / maxVal) * 100);
-    html += `<tr class="${rowClass(i)}">
-      <td>${rankHtml(i)}</td>
-      <td>
-        <div class="user-cell">
-          ${avatarHtml(r)}
-          <div class="user-info">
-            <div class="name">${getDisplayName(r)}</div>
-            <div class="handle">@${r.username || r.uid}</div>
-          </div>
-        </div>
-      </td>
-      <td class="hide-sm">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;
-              background:var(--accent-gold-dim);color:var(--accent-gold);
-              border:1px solid rgba(240,180,41,0.2);padding:3px 10px;border-radius:6px;">
-          ${r.depCount} عملية
-        </span>
-      </td>
-      <td>
-        <div class="count-cell">
-          <div class="bar-track"><div class="bar-fill bar-gold" style="width:${pct}%"></div></div>
-          <span class="count-badge badge-gold">${r.totalDep.toFixed(2)}</span>
-        </div>
-      </td>
-    </tr>`;
-  });
-
-  html += '</tbody></table>';
-  document.getElementById('topdeposit-body').innerHTML = html;
-}
-
-// ── Init ─────────────────────────────────────────────────
-loadAll();
 </script>
 </body>
 </html>
