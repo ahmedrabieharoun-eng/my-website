@@ -2,740 +2,632 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لوحة كشف التحايل - السحوبات</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
-
-  :root {
-    --bg: #0a0c10;
-    --bg2: #0f1318;
-    --bg3: #141920;
-    --surface: #1a2030;
-    --surface2: #1e2638;
-    --border: #252f40;
-    --border2: #2d3a50;
-    --red: #ff3b5c;
-    --red-dim: rgba(255,59,92,0.12);
-    --red-glow: rgba(255,59,92,0.3);
-    --orange: #ff8c42;
-    --orange-dim: rgba(255,140,66,0.1);
-    --green: #00d68f;
-    --green-dim: rgba(0,214,143,0.1);
-    --blue: #3b82f6;
-    --blue-dim: rgba(59,130,246,0.1);
-    --yellow: #fbbf24;
-    --yellow-dim: rgba(251,191,36,0.1);
-    --text: #e2e8f0;
-    --text2: #94a3b8;
-    --text3: #64748b;
-    --accent: #ff3b5c;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Cairo', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    top: -200px; right: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, rgba(255,59,92,0.04) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ── Header ── */
-  .header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 0 32px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 64px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .logo {
-    display: flex; align-items: center; gap: 12px;
-    font-weight: 900; font-size: 18px; letter-spacing: -0.5px;
-  }
-  .logo-icon {
-    width: 36px; height: 36px;
-    background: var(--red);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 0 20px var(--red-glow);
-    animation: pulse-red 2s ease-in-out infinite;
-  }
-  @keyframes pulse-red {
-    0%,100% { box-shadow: 0 0 20px var(--red-glow); }
-    50% { box-shadow: 0 0 35px rgba(255,59,92,0.5); }
-  }
-  .logo span { color: var(--red); }
-  .header-status {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; color: var(--text2);
-  }
-  .dot-live {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--green);
-    box-shadow: 0 0 8px var(--green);
-    animation: blink 1.5s ease-in-out infinite;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-  /* ── Main ── */
-  .main { padding: 28px 32px; position: relative; z-index: 1; }
-
-  /* ── Stats row ── */
-  .stats-row {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 16px; margin-bottom: 28px;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px 24px;
-    position: relative; overflow: hidden;
-    transition: border-color .2s;
-  }
-  .stat-card:hover { border-color: var(--border2); }
-  .stat-card::before {
-    content: '';
-    position: absolute; top: 0; right: 0;
-    width: 3px; height: 100%;
-    border-radius: 0 12px 12px 0;
-  }
-  .stat-card.danger::before { background: var(--red); }
-  .stat-card.warning::before { background: var(--orange); }
-  .stat-card.info::before { background: var(--blue); }
-  .stat-card.success::before { background: var(--green); }
-
-  .stat-label { font-size: 12px; color: var(--text3); margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
-  .stat-value { font-size: 32px; font-weight: 900; line-height: 1; }
-  .stat-card.danger .stat-value { color: var(--red); }
-  .stat-card.warning .stat-value { color: var(--orange); }
-  .stat-card.info .stat-value { color: var(--blue); }
-  .stat-card.success .stat-value { color: var(--green); }
-  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
-
-  /* ── Toolbar ── */
-  .toolbar {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px; gap: 16px; flex-wrap: wrap;
-  }
-  .toolbar-left { display: flex; align-items: center; gap: 12px; }
-  .section-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .badge-count {
-    background: var(--red); color: white;
-    font-size: 11px; font-weight: 700;
-    padding: 2px 8px; border-radius: 20px;
-  }
-  .btn {
-    display: flex; align-items: center; gap: 6px;
-    padding: 8px 16px; border-radius: 8px; border: none;
-    font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all .2s;
-  }
-  .btn-primary {
-    background: var(--red); color: white;
-    box-shadow: 0 4px 15px var(--red-glow);
-  }
-  .btn-primary:hover { background: #e62e4f; transform: translateY(-1px); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-secondary {
-    background: var(--surface2); color: var(--text2);
-    border: 1px solid var(--border);
-  }
-  .btn-secondary:hover { border-color: var(--border2); color: var(--text); }
-
-  /* ── Filter bar ── */
-  .filter-bar {
-    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
-  }
-  .filter-btn {
-    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
-    background: transparent; color: var(--text3);
-    font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: all .2s;
-  }
-  .filter-btn:hover, .filter-btn.active {
-    border-color: var(--red); color: var(--red);
-    background: var(--red-dim);
-  }
-
-  /* ── Table ── */
-  .table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    overflow: hidden;
-  }
-  .table-header {
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    font-size: 13px; color: var(--text3);
-  }
-  table { width: 100%; border-collapse: collapse; }
-  th {
-    text-align: right; padding: 12px 20px;
-    font-size: 11px; font-weight: 700; color: var(--text3);
-    letter-spacing: 0.8px; text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg3);
-  }
-  tr.data-row { transition: background .15s; }
-  tr.data-row:hover td { background: var(--bg3); }
-  td {
-    padding: 14px 20px; font-size: 13px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-  tr.data-row:last-child td { border-bottom: none; }
-
-  /* fraud row */
-  tr.fraud-row td { background: rgba(255,59,92,0.04); }
-  tr.fraud-row:hover td { background: rgba(255,59,92,0.08); }
-
-  .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-  .addr { 
-    max-width: 160px; overflow: hidden;
-    text-overflow: ellipsis; white-space: nowrap;
-    font-family: 'JetBrains Mono', monospace; font-size: 11px;
-    color: var(--text2);
-  }
-  .copy-btn {
-    background: none; border: none; cursor: pointer;
-    color: var(--text3); font-size: 12px; padding: 2px 5px;
-    border-radius: 4px; transition: .2s;
-    margin-right: 4px;
-  }
-  .copy-btn:hover { background: var(--border); color: var(--text); }
-
-  .badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 3px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 700;
-  }
-  .badge-paid { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
-  .badge-pending { background: var(--yellow-dim); color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
-  .badge-failed { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,59,92,0.2); }
-  .badge-fraud {
-    background: var(--red-dim); color: var(--red);
-    border: 1px solid rgba(255,59,92,0.3);
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
-  @keyframes glow-pulse {
-    0%,100% { box-shadow: none; }
-    50% { box-shadow: 0 0 10px rgba(255,59,92,0.3); }
-  }
-  .badge-safe { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,214,143,0.2); }
-
-  .user-cell { display: flex; align-items: center; gap: 8px; }
-  .avatar {
-    width: 30px; height: 30px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700; flex-shrink: 0;
-  }
-  .amt-cell { font-weight: 700; color: var(--text); }
-  .ton-cell { color: var(--orange); font-weight: 600; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-
-  /* ── Fraud group section ── */
-  .fraud-section {
-    background: var(--surface);
-    border: 1px solid rgba(255,59,92,0.3);
-    border-radius: 14px;
-    margin-bottom: 28px;
-    overflow: hidden;
-  }
-  .fraud-section-header {
-    background: var(--red-dim);
-    border-bottom: 1px solid rgba(255,59,92,0.2);
-    padding: 16px 24px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .fraud-icon { font-size: 22px; }
-  .fraud-title { font-size: 15px; font-weight: 700; color: var(--red); }
-  .fraud-sub { font-size: 12px; color: var(--text3); }
-  .fraud-groups { padding: 16px 24px; display: flex; flex-direction: column; gap: 16px; }
-
-  .fraud-group-card {
-    background: var(--bg2);
-    border: 1px solid rgba(255,59,92,0.2);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .fgc-header {
-    padding: 12px 16px;
-    background: rgba(255,59,92,0.06);
-    border-bottom: 1px solid rgba(255,59,92,0.15);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .fgc-addr {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; color: var(--red);
-    display: flex; align-items: center; gap: 8px;
-  }
-  .fgc-count {
-    background: var(--red); color: white;
-    font-size: 11px; font-weight: 700;
-    padding: 2px 8px; border-radius: 20px;
-  }
-  .fgc-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
-  .fgc-user {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 12px;
-    background: var(--bg3);
-    border-radius: 8px; border: 1px solid var(--border);
-  }
-  .fgc-user-info { display: flex; align-items: center; gap: 10px; }
-  .fgc-user-meta { font-size: 12px; color: var(--text3); }
-  .fgc-user-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text2); }
-
-  /* loading */
-  .loading-wrap {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; padding: 80px 0; gap: 20px;
-  }
-  .spinner {
-    width: 48px; height: 48px;
-    border: 3px solid var(--border);
-    border-top-color: var(--red);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { color: var(--text3); font-size: 14px; }
-
-  /* empty */
-  .empty-state {
-    text-align: center; padding: 60px 0; color: var(--text3);
-  }
-  .empty-icon { font-size: 48px; margin-bottom: 12px; }
-  .empty-title { font-size: 16px; font-weight: 700; color: var(--text2); margin-bottom: 6px; }
-  .empty-sub { font-size: 13px; }
-
-  /* error */
-  .error-bar {
-    background: var(--red-dim);
-    border: 1px solid rgba(255,59,92,0.3);
-    border-radius: 10px; padding: 14px 18px;
-    color: var(--red); font-size: 13px;
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  /* toast */
-  #toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-    background: var(--surface2); border: 1px solid var(--border);
-    padding: 10px 20px; border-radius: 8px;
-    font-size: 13px; color: var(--text);
-    opacity: 0; transition: all .3s; z-index: 9999;
-    pointer-events: none;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* responsive */
-  @media (max-width: 768px) {
-    .stats-row { grid-template-columns: repeat(2,1fr); }
-    .main { padding: 16px; }
-    .header { padding: 0 16px; }
-    th:nth-child(4), td:nth-child(4),
-    th:nth-child(6), td:nth-child(6) { display: none; }
-  }
-</style>
-</head>
-<body>
-
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">🔍</div>
-    كشف <span>التحايل</span>
-  </div>
-  <div class="header-status">
-    <div class="dot-live"></div>
-    متصل بـ Firebase
-  </div>
-</header>
-
-<main class="main">
-
-  <!-- stats -->
-  <div class="stats-row" id="statsRow">
-    <div class="stat-card danger">
-      <div class="stat-label">حالات تحايل مكتشفة</div>
-      <div class="stat-value" id="statFraud">—</div>
-      <div class="stat-sub">محافظ مشتركة بين مستخدمين</div>
-    </div>
-    <div class="stat-card warning">
-      <div class="stat-label">إجمالي السحوبات</div>
-      <div class="stat-value" id="statTotal">—</div>
-      <div class="stat-sub">في قائمة الانتظار</div>
-    </div>
-    <div class="stat-card info">
-      <div class="stat-label">محافظ فريدة</div>
-      <div class="stat-value" id="statWallets">—</div>
-      <div class="stat-sub">عنوان مختلف</div>
-    </div>
-    <div class="stat-card success">
-      <div class="stat-label">مستخدمون آمنون</div>
-      <div class="stat-value" id="statSafe">—</div>
-      <div class="stat-sub">محفظة منفردة</div>
-    </div>
-  </div>
-
-  <!-- error -->
-  <div id="errorBar" class="error-bar" style="display:none">
-    ⚠️ <span id="errorMsg"></span>
-  </div>
-
-  <!-- fraud groups -->
-  <div class="fraud-section" id="fraudSection" style="display:none">
-    <div class="fraud-section-header">
-      <span class="fraud-icon">🚨</span>
-      <div>
-        <div class="fraud-title">محافظ مشبوهة — تعدد حسابات</div>
-        <div class="fraud-sub">نفس المحفظة تُستخدم من مستخدمين مختلفين</div>
-      </div>
-    </div>
-    <div class="fraud-groups" id="fraudGroups"></div>
-  </div>
-
-  <!-- all withdrawals table -->
-  <div class="toolbar">
-    <div class="toolbar-left">
-      <div class="section-title">
-        جميع السحوبات
-        <span class="badge-count" id="totalBadge">0</span>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-secondary" id="exportBtn" onclick="exportCSV()">⬇️ تصدير CSV</button>
-      <button class="btn btn-primary" id="fetchBtn" onclick="loadData()">🔄 تحديث البيانات</button>
-    </div>
-  </div>
-
-  <div class="filter-bar">
-    <button class="filter-btn active" onclick="setFilter('all',this)">الكل</button>
-    <button class="filter-btn" onclick="setFilter('fraud',this)">🚨 مشبوه فقط</button>
-    <button class="filter-btn" onclick="setFilter('paid',this)">✅ مدفوع</button>
-    <button class="filter-btn" onclick="setFilter('pending',this)">⏳ معلق</button>
-    <button class="filter-btn" onclick="setFilter('safe',this)">🛡️ آمن</button>
-  </div>
-
-  <div class="table-wrap">
-    <div class="table-header">
-      <span>نتائج الفحص</span>
-      <span id="tableCount" style="color:var(--text3);font-size:12px"></span>
-    </div>
-    <div id="tableBody">
-      <div class="loading-wrap">
-        <div class="spinner"></div>
-        <div class="loading-text">اضغط "تحديث البيانات" للبدء</div>
-      </div>
-    </div>
-  </div>
-
-</main>
-
-<div id="toast"></div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-app.js";
-import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/11.8.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
-  authDomain: "hhhrhdhd-2f68c.firebaseapp.com",
-  databaseURL: "https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
-  projectId: "hhhrhdhd-2f68c",
-  storageBucket: "hhhrhdhd-2f68c.firebasestorage.app",
-  messagingSenderId: "159295815105",
-  appId: "1:159295815105:web:d23916911ae39e6f95c340",
-  measurementId: "G-TLG6TP348R"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-let allData = [];
-let fraudAddresses = new Set();
-let currentFilter = 'all';
-
-const COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c77dff','#ff9f1c','#2ec4b6','#e71d36'];
-function userColor(id) {
-  let h = 0; for (let c of String(id)) h = (h * 31 + c.charCodeAt(0)) % COLORS.length;
-  return COLORS[h];
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-window.setFilter = function(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderTable();
-}
-
-window.copyText = function(txt) {
-  navigator.clipboard.writeText(txt).then(() => showToast('تم النسخ ✓'));
-}
-
-function formatDate(ts) {
-  if (!ts) return '—';
-  return new Date(ts).toLocaleString('ar-EG', { dateStyle:'short', timeStyle:'short' });
-}
-
-function formatAmt(v) {
-  if (!v && v !== 0) return '—';
-  return Number(v).toLocaleString('ar-EG');
-}
-
-function statusBadge(s) {
-  const map = { paid:'badge-paid', pending:'badge-pending', failed:'badge-failed' };
-  const lbl = { paid:'مدفوع', pending:'معلق', failed:'فاشل' };
-  const cls = map[s] || 'badge-pending';
-  return `<span class="badge ${cls}">${lbl[s] || s}</span>`;
-}
-
-window.loadData = async function() {
-  const btn = document.getElementById('fetchBtn');
-  btn.disabled = true; btn.textContent = '⏳ جاري التحميل...';
-  document.getElementById('errorBar').style.display = 'none';
-  document.getElementById('tableBody').innerHTML = `
-    <div class="loading-wrap">
-      <div class="spinner"></div>
-      <div class="loading-text">جاري جلب البيانات من Firebase...</div>
-    </div>`;
-
-  try {
-    const snap = await get(ref(db, 'withdrawQueue'));
-    if (!snap.exists()) {
-      document.getElementById('tableBody').innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📭</div>
-          <div class="empty-title">لا توجد بيانات</div>
-          <div class="empty-sub">قائمة السحوبات فارغة</div>
-        </div>`;
-      btn.disabled = false; btn.textContent = '🔄 تحديث البيانات';
-      return;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>لوحة تحكم الإيداعات</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0e1a;
+      --surface: #111827;
+      --card: #1a2236;
+      --border: #243048;
+      --accent: #3b82f6;
+      --accent2: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 14px;
     }
 
-    const raw = snap.val();
-    allData = Object.values(raw).filter(v => v && typeof v === 'object');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    // detect fraud: group by address → find addresses with multiple userIds
-    const addrMap = {};
-    allData.forEach(w => {
-      const addr = w.address || w.addr || w.walletAddress || '';
-      const uid = String(w.userId || w.uid || '');
-      if (!addr || !uid) return;
-      if (!addrMap[addr]) addrMap[addr] = { users: new Set(), items: [] };
-      addrMap[addr].users.add(uid);
-      addrMap[addr].items.push(w);
-    });
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
 
-    fraudAddresses = new Set(
-      Object.entries(addrMap)
-        .filter(([, v]) => v.users.size > 1)
-        .map(([k]) => k)
-    );
+    /* Subtle grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-    // stats
-    const fraudCount = fraudAddresses.size;
-    const safeUsers = allData.filter(w => {
-      const addr = w.address || w.addr || w.walletAddress || '';
-      return !fraudAddresses.has(addr);
-    }).length;
-    const uniqueWallets = Object.keys(addrMap).length;
+    .wrapper {
+      max-width: 1000px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
 
-    document.getElementById('statFraud').textContent = fraudCount;
-    document.getElementById('statTotal').textContent = allData.length;
-    document.getElementById('statWallets').textContent = uniqueWallets;
-    document.getElementById('statSafe').textContent = safeUsers;
-    document.getElementById('totalBadge').textContent = allData.length;
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 36px;
+    }
 
-    // render fraud section
-    renderFraudGroups(addrMap);
-    renderTable();
+    .header-icon {
+      width: 50px; height: 50px;
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.3);
+    }
 
-    showToast(`✅ تم تحميل ${allData.length} سحب`);
-  } catch (e) {
-    document.getElementById('errorBar').style.display = 'flex';
-    document.getElementById('errorMsg').textContent = 'خطأ في الاتصال بـ Firebase: ' + e.message;
-    document.getElementById('tableBody').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">❌</div>
-        <div class="empty-title">فشل التحميل</div>
-        <div class="empty-sub">${e.message}</div>
-      </div>`;
-    console.error(e);
-  } finally {
-    btn.disabled = false; btn.textContent = '🔄 تحديث البيانات';
-  }
-}
+    .header h1 { font-size: 26px; font-weight: 900; }
+    .header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
 
-function renderFraudGroups(addrMap) {
-  const fraudEntries = Object.entries(addrMap).filter(([, v]) => v.users.size > 1);
-  const sec = document.getElementById('fraudSection');
-  const grps = document.getElementById('fraudGroups');
+    /* Stats bar */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
 
-  if (fraudEntries.length === 0) {
-    sec.style.display = 'none'; return;
-  }
-  sec.style.display = 'block';
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
 
-  grps.innerHTML = fraudEntries.map(([addr, data]) => {
-    const users = [...data.users];
-    const totalAmt = data.items.reduce((s, w) => s + (Number(w.amt) || 0), 0);
-    const totalTon = data.items.reduce((s, w) => s + (Number(w.ton || w.sentAmount) || 0), 0);
+    .stat-card .num {
+      font-size: 30px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
 
-    const usersHtml = users.map(uid => {
-      const color = userColor(uid);
-      const wds = data.items.filter(w => String(w.userId || w.uid) === uid);
-      return `
-        <div class="fgc-user">
-          <div class="fgc-user-info">
-            <div class="avatar" style="background:${color}20;color:${color}">${uid.slice(-2)}</div>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:${color}">مستخدم ${uid}</div>
-              <div class="fgc-user-meta">${wds.length} سحب — ${formatAmt(wds.reduce((s,w)=>s+(Number(w.amt)||0),0))} نقطة</div>
-            </div>
-          </div>
-          <div class="fgc-user-id">${uid}</div>
-        </div>`;
-    }).join('');
+    .stat-card.green .num {
+      background: linear-gradient(135deg, var(--accent2), #34d399);
+      -webkit-background-clip: text;
+    }
 
-    const shortAddr = addr.length > 30 ? addr.slice(0,15)+'...'+addr.slice(-10) : addr;
-    return `
-      <div class="fraud-group-card">
-        <div class="fgc-header">
-          <div class="fgc-addr">
-            🔗 ${shortAddr}
-            <button class="copy-btn" onclick="copyText('${addr}')">📋</button>
-          </div>
-          <span class="fgc-count">${users.length} مستخدمين</span>
-        </div>
-        <div class="fgc-body">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:4px">
-            إجمالي المحاولات: <b style="color:var(--text)">${data.items.length}</b> &nbsp;|&nbsp;
-            إجمالي النقاط: <b style="color:var(--orange)">${formatAmt(totalAmt)}</b> &nbsp;|&nbsp;
-            إجمالي TON: <b style="color:var(--orange)">${totalTon.toFixed(3)} TON</b>
-          </div>
-          ${usersHtml}
-        </div>
-      </div>`;
-  }).join('');
-}
+    .stat-card.warn .num {
+      background: linear-gradient(135deg, var(--warn), #fbbf24);
+      -webkit-background-clip: text;
+    }
 
-function renderTable() {
-  let rows = allData;
-  if (currentFilter === 'fraud') rows = rows.filter(w => fraudAddresses.has(w.address || w.addr || ''));
-  else if (currentFilter === 'safe') rows = rows.filter(w => !fraudAddresses.has(w.address || w.addr || ''));
-  else if (currentFilter === 'paid') rows = rows.filter(w => w.status === 'paid');
-  else if (currentFilter === 'pending') rows = rows.filter(w => ['pending','processing','new'].includes(w.status));
+    .stat-card .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-  document.getElementById('tableCount').textContent = `${rows.length} نتيجة`;
+    /* Control bar */
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
 
-  if (rows.length === 0) {
-    document.getElementById('tableBody').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🔎</div>
-        <div class="empty-title">لا توجد نتائج</div>
-        <div class="empty-sub">جرب فلتراً مختلفاً</div>
-      </div>`;
-    return;
-  }
+    .btn {
+      padding: 11px 22px;
+      border-radius: 10px;
+      border: none;
+      font-family: 'Cairo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 8px;
+    }
 
-  const tableHtml = `
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(59,130,246,0.35);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.45); }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--accent2), #059669);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(16,185,129,0.3);
+    }
+    .btn-success:hover { transform: translateY(-2px); }
+
+    .btn-ghost {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--border); }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    /* Log */
+    .log-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      min-height: 60px;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .log-box p { color: var(--muted); }
+    .log-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+    .log-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+    .log-item.info .dot { background: var(--accent); }
+    .log-item.success .dot { background: var(--accent2); }
+    .log-item.warn .dot { background: var(--warn); }
+    .log-item.error .dot { background: var(--danger); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-head h2 { font-size: 16px; font-weight: 700; }
+
+    .search-input {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      color: var(--text);
+      font-family: 'Cairo', sans-serif;
+      font-size: 13px;
+      outline: none;
+      width: 200px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 13px 20px;
+      text-align: right;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    tbody tr { border-top: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:hover { background: rgba(59,130,246,0.04); }
+
+    tbody td { padding: 14px 20px; vertical-align: middle; }
+
+    .uid-cell {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--muted);
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .badge-active { background: rgba(16,185,129,0.15); color: #10b981; }
+    .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .badge-none { background: rgba(100,116,139,0.15); color: var(--muted); }
+
+    .deposits-count {
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .amount {
+      font-weight: 700;
+      color: var(--accent2);
+    }
+
+    .action-btn {
+      padding: 6px 14px;
+      border-radius: 7px;
+      border: none;
+      font-family: 'Cairo', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-activate {
+      background: rgba(16,185,129,0.15);
+      color: var(--accent2);
+      border: 1px solid rgba(16,185,129,0.3);
+    }
+    .action-activate:hover { background: rgba(16,185,129,0.25); }
+
+    .action-done {
+      background: rgba(100,116,139,0.1);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      cursor: default;
+    }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 50px;
+      color: var(--muted);
+    }
+    .empty .icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+
+    /* Progress bar */
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 3px;
+      transition: width 0.4s;
+      width: 0%;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🏦</div>
+    <div>
+      <h1>لوحة تحكم الإيداعات</h1>
+      <p>مراجعة وتفعيل إيداعات المستخدمين — Firebase Realtime DB</p>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="num" id="stat-total">—</div>
+      <div class="label">إجمالي المستخدمين</div>
+    </div>
+    <div class="stat-card green">
+      <div class="num" id="stat-activated">—</div>
+      <div class="label">مُفعَّل hasDeposited</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="num" id="stat-pending">—</div>
+      <div class="label">بانتظار التفعيل</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btn-scan" onclick="scanUsers()">
+      🔍 فحص المستخدمين
+    </button>
+    <button class="btn btn-success" id="btn-activate-all" onclick="activateAll()" disabled>
+      ⚡ تفعيل الكل تلقائياً
+    </button>
+    <button class="btn btn-ghost" onclick="clearLog()">
+      🗑️ مسح السجل
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar" id="progress-bar" style="display:none">
+    <div class="progress-fill" id="progress-fill"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-box" id="log-box">
+    <p>اضغط "فحص المستخدمين" للبدء...</p>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-head">
+      <h2>📋 المستخدمون</h2>
+      <input class="search-input" type="text" placeholder="🔎 بحث بـ UID..." oninput="filterTable(this.value)" />
+    </div>
     <table>
       <thead>
         <tr>
-          <th>المستخدم</th>
-          <th>المحفظة</th>
-          <th>المبلغ</th>
-          <th>TON</th>
-          <th>الحالة</th>
-          <th>حالة الأمان</th>
-          <th>التاريخ</th>
-          <th>wdId</th>
+          <th>المستخدم (UID)</th>
+          <th>عدد الإيداعات</th>
+          <th>إجمالي المبلغ (TON)</th>
+          <th>إحالات فريدة 👥</th>
+          <th>حالة hasDeposited</th>
+          <th>إجراء</th>
         </tr>
       </thead>
-      <tbody>
-        ${rows.map(w => {
-          const addr = w.address || w.addr || w.walletAddress || '';
-          const isFraud = fraudAddresses.has(addr);
-          const uid = String(w.userId || w.uid || '—');
-          const color = userColor(uid);
-          const shortAddr = addr.length > 20 ? addr.slice(0,10)+'…'+addr.slice(-8) : addr;
-          const wdId = w.wdId || '—';
-          const shortWdId = wdId.length > 20 ? wdId.slice(0,18)+'…' : wdId;
-
-          return `
-            <tr class="${isFraud ? 'fraud-row' : 'data-row'}">
-              <td>
-                <div class="user-cell">
-                  <div class="avatar" style="background:${color}20;color:${color}">${uid.slice(-2)}</div>
-                  <span class="mono">${uid}</span>
-                </div>
-              </td>
-              <td>
-                <div class="addr" title="${addr}">${shortAddr}</div>
-                ${addr ? `<button class="copy-btn" onclick="copyText('${addr}')">📋</button>` : ''}
-              </td>
-              <td><span class="amt-cell">${formatAmt(w.amt)}</span></td>
-              <td><span class="ton-cell">${w.ton || w.sentAmount || '—'}</span></td>
-              <td>${statusBadge(w.status)}</td>
-              <td>${isFraud
-                ? '<span class="badge badge-fraud">🚨 مشبوه</span>'
-                : '<span class="badge badge-safe">🛡️ آمن</span>'}</td>
-              <td style="color:var(--text3);font-size:12px">${formatDate(w.ts || w.createdAt)}</td>
-              <td><span class="mono" title="${wdId}" style="color:var(--text3)">${shortWdId}</span></td>
-            </tr>`;
-        }).join('')}
+      <tbody id="users-table">
+        <tr>
+          <td colspan="6">
+            <div class="empty">
+              <div class="icon">👆</div>
+              اضغط فحص المستخدمين لعرض البيانات
+            </div>
+          </td>
+        </tr>
       </tbody>
-    </table>`;
+    </table>
+  </div>
 
-  document.getElementById('tableBody').innerHTML = tableHtml;
-}
+</div>
 
-window.exportCSV = function() {
-  if (!allData.length) { showToast('لا توجد بيانات للتصدير'); return; }
-  const headers = ['wdId','userId','address','amt','ton','status','isFraud','ts'];
-  const rows = allData.map(w => {
-    const addr = w.address || w.addr || '';
-    return [
-      w.wdId||'', w.userId||w.uid||'', addr,
-      w.amt||'', w.ton||w.sentAmount||'', w.status||'',
-      fraudAddresses.has(addr) ? 'نعم' : 'لا',
-      w.ts ? new Date(w.ts).toISOString() : ''
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
-  });
-  const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `withdrawals_fraud_${Date.now()}.csv`;
-  a.click();
-  showToast('✅ تم التصدير');
-}
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
+    authDomain: "hhhrhdhd-2f68c.firebaseapp.com",
+    databaseURL: "https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
+    projectId: "hhhrhdhd-2f68c",
+    storageBucket: "hhhrhdhd-2f68c.firebasestorage.app",
+    messagingSenderId: "159295815105",
+    appId: "1:159295815105:web:d23916911ae39e6f95c340",
+    measurementId: "G-TLG6TP348R"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  let allUsers = [];
+
+  function log(msg, type = 'info') {
+    const box = document.getElementById('log-box');
+    // Clear placeholder
+    const placeholder = box.querySelector('p');
+    if (placeholder) placeholder.remove();
+
+    const div = document.createElement('div');
+    div.className = `log-item ${type}`;
+    div.innerHTML = `<span class="dot"></span><span>${msg}</span>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  window.clearLog = function() {
+    document.getElementById('log-box').innerHTML = '<p>السجل فارغ...</p>';
+  };
+
+  function setProgress(pct, show = true) {
+    const bar = document.getElementById('progress-bar');
+    bar.style.display = show ? 'block' : 'none';
+    document.getElementById('progress-fill').style.width = pct + '%';
+  }
+
+  function renderTable(users) {
+    const tbody = document.getElementById('users-table');
+    if (!users.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="icon">😶</div>لا توجد بيانات</div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = users.map(u => {
+      const depositCount = u.deposits ? Object.keys(u.deposits).length : 0;
+      const totalAmount = u.deposits
+        ? Object.values(u.deposits).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0).toFixed(2)
+        : '0.00';
+
+      const hasDeposit = depositCount > 0;
+      const hasReferral = u.uniqueReferrals >= 10;
+      const shouldActivate = hasDeposit || hasReferral;
+
+      // سبب التفعيل
+      let reasons = [];
+      if (hasDeposit) reasons.push('💰 إيداع');
+      if (hasReferral) reasons.push(`👥 ${u.uniqueReferrals} إحالة`);
+      const reasonText = reasons.join(' + ') || '—';
+
+      let badgeHtml, actionHtml;
+
+      if (u.hasDeposited === true) {
+        badgeHtml = `<span class="badge badge-active">✅ مُفعَّل</span>`;
+        actionHtml = `<button class="action-btn action-done" disabled>مُنجز</button>`;
+      } else if (shouldActivate) {
+        badgeHtml = `<span class="badge badge-pending">⏳ ${reasonText}</span>`;
+        actionHtml = `<button class="action-btn action-activate" onclick="activateUser('${u.uid}')">تفعيل</button>`;
+      } else {
+        badgeHtml = `<span class="badge badge-none">— لا يستوفي</span>`;
+        actionHtml = `<button class="action-btn action-done" disabled>—</button>`;
+      }
+
+      return `
+        <tr data-uid="${u.uid}">
+          <td class="uid-cell" title="${u.uid}">${u.uid}</td>
+          <td class="deposits-count">${depositCount}</td>
+          <td class="amount">${totalAmount}</td>
+          <td style="color:var(--accent2);font-weight:700">${u.uniqueReferrals} <span style="color:var(--muted);font-size:11px">/ 10</span></td>
+          <td>${badgeHtml}</td>
+          <td>${actionHtml}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function updateStats(users) {
+    const total = users.length;
+    const activated = users.filter(u => u.hasDeposited === true).length;
+    const pending = users.filter(u =>
+      u.hasDeposited !== true && (
+        (u.deposits && Object.keys(u.deposits).length > 0) ||
+        u.uniqueReferrals >= 10
+      )
+    ).length;
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-activated').textContent = activated;
+    document.getElementById('stat-pending').textContent = pending;
+  }
+
+  window.scanUsers = async function() {
+    const btn = document.getElementById('btn-scan');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spin">⏳</span> جارٍ الفحص...`;
+    setProgress(10);
+    log('بدء فحص قاعدة البيانات...', 'info');
+
+    try {
+      const snapshot = await get(ref(db, 'users'));
+      if (!snapshot.exists()) {
+        log('لا توجد بيانات في مسار /users', 'warn');
+        btn.disabled = false;
+        btn.innerHTML = '🔍 فحص المستخدمين';
+        setProgress(0, false);
+        return;
+      }
+
+      const data = snapshot.val();
+      const uids = Object.keys(data);
+      log(`✔ تم جلب ${uids.length} مستخدم`, 'success');
+      setProgress(50);
+
+      allUsers = uids.map(uid => {
+        // حساب عدد الأشخاص الفريدين في referralEarnings
+        const referralEarnings = data[uid].referralEarnings || null;
+        let uniqueReferrals = 0;
+        if (referralEarnings) {
+          const uniqueIds = new Set(
+            Object.values(referralEarnings)
+              .map(r => r.fromUserId)
+              .filter(Boolean)
+          );
+          uniqueReferrals = uniqueIds.size;
+        }
+
+        return {
+          uid,
+          deposits: data[uid].deposits || null,
+          referralEarnings,
+          uniqueReferrals,
+          hasDeposited: data[uid].hasDeposited || false,
+        };
+      });
+
+      setProgress(100);
+      updateStats(allUsers);
+      renderTable(allUsers);
+
+      const pending = allUsers.filter(u =>
+        u.hasDeposited !== true && (
+          (u.deposits && Object.keys(u.deposits).length > 0) ||
+          u.uniqueReferrals >= 10
+        )
+      );
+      log(`📊 ${pending.length} مستخدم بانتظار تفعيل الإيداع`, pending.length > 0 ? 'warn' : 'success');
+
+      document.getElementById('btn-activate-all').disabled = pending.length === 0;
+      setTimeout(() => setProgress(0, false), 600);
+
+    } catch (e) {
+      log(`❌ خطأ: ${e.message}`, 'error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '🔍 فحص المستخدمين';
+  };
+
+  window.activateUser = async function(uid) {
+    log(`⚡ تفعيل المستخدم: ${uid}`, 'info');
+    try {
+      await set(ref(db, `users/${uid}/hasDeposited`), true);
+      log(`✅ تم تفعيل ${uid} بنجاح`, 'success');
+
+      // Update local state
+      const user = allUsers.find(u => u.uid === uid);
+      if (user) user.hasDeposited = true;
+      updateStats(allUsers);
+      renderTable(allUsers);
+
+      // Disable activate-all if no more pending
+    const pending = allUsers.filter(u =>
+      u.hasDeposited !== true && (
+        (u.deposits && Object.keys(u.deposits).length > 0) ||
+        u.uniqueReferrals >= 10
+      )
+    );
+    document.getElementById('btn-activate-all').disabled = pending.length === 0;
+
+    } catch (e) {
+      log(`❌ فشل تفعيل ${uid}: ${e.message}`, 'error');
+    }
+  };
+
+  window.activateAll = async function() {
+    const pending = allUsers.filter(u =>
+      u.hasDeposited !== true &&
+      u.deposits && Object.keys(u.deposits).length > 0
+    );
+
+    if (!pending.length) {
+      log('لا يوجد مستخدمون بانتظار التفعيل', 'warn');
+      return;
+    }
+
+    const btn = document.getElementById('btn-activate-all');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spin">⚡</span> جارٍ التفعيل...`;
+
+    log(`🚀 بدء تفعيل ${pending.length} مستخدم...`, 'info');
+    setProgress(5);
+
+    for (let i = 0; i < pending.length; i++) {
+      await window.activateUser(pending[i].uid);
+      setProgress(Math.round(((i + 1) / pending.length) * 100));
+    }
+
+    log('🎉 تم تفعيل جميع المستخدمين بنجاح!', 'success');
+    setTimeout(() => setProgress(0, false), 600);
+    btn.innerHTML = '⚡ تفعيل الكل تلقائياً';
+  };
+
+  window.filterTable = function(query) {
+    const q = query.toLowerCase();
+    const filtered = allUsers.filter(u => u.uid.toLowerCase().includes(q));
+    renderTable(filtered);
+  };
 </script>
 </body>
 </html>
