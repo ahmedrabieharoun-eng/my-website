@@ -504,6 +504,21 @@ async function hWithdraw(env,uid,data,_meta={}){
     if((user.coins||0)<amt)return{success:false,error:'Not enough Coins'};
     // ── Idempotency guard: block duplicate withdraw within 10s ──
     if(Date.now()-(user._lastWdTs||0)<10000)return{success:false,error:'Please wait before submitting another withdrawal'};
+    // ── Wallet uniqueness guard: one wallet per user ──────────────
+    // Normalise address to lowercase for consistent indexing
+    const addrKey=addr.toLowerCase().replace(/[^a-z0-9_\-]/g,'_');
+    const walletRec=await dbGet(env,`walletIndex/${addrKey}`);
+    if(walletRec.data && walletRec.data.uid && walletRec.data.uid !== uid){
+      // Wallet is registered to a DIFFERENT user — mark as rejected, do NOT deduct coins
+      const wdId=`wd_${uid}_${Date.now()}`;
+      const rejRec={wdId,userId:uid,address:addr,amt,ton:amt*G.TON_PER_COIN,status:'rejected',rejectReason:'multi_account',ts:Date.now()};
+      await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rejRec);
+      return{success:false,error:'⚠️ أنت تستخدم أكثر من حساب — العب بنزاهة 🐼',errorCode:'MULTI_ACCOUNT_DETECTED'};
+    }
+    // Register / confirm wallet ownership for this user
+    if(!walletRec.data){
+      await dbSet(env,`walletIndex/${addrKey}`,{uid,address:addr,registeredAt:Date.now()});
+    }
     // Partner tasks must be completed before withdrawal
     const tpr=await dbGet(env,'tasks/partner');
     const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
