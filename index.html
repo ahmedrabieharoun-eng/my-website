@@ -447,7 +447,7 @@ button,input,select,textarea,span,div,p,h1,h2,h3,a{font-family:'Fredoka',cursive
   <img class="ld-logo"
     src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/17ae25b3-ef08-4156-a126-02972d3e8367.png"
     alt="Panda">
-  <div class="ld-title">Panda Bamboo Factory</div>
+  <div class="ld-title" id="ldTitle">Panda Bamboo Factory</div>
   <div class="ld-sub" id="ldStatus">Loading...</div>
   <div class="ld-bar-wrap">
     <div class="ld-segments" id="ldSegs">
@@ -918,6 +918,8 @@ const SERVERS = [
   'https://little-bush-fcf7.aborabie2777.workers.dev',
   'https://rough-bar-ac76.aborabie4777.workers.dev',
   'https://silent-block-bedf.ahmedrabieharoun.workers.dev',
+  'https://snowy-lab-c342.mohamedmmrr2872008.workers.dev',
+  'https://lucky-paper-a107.aborabie1777.workers.dev',
 ];
 const DEAD_WINDOW_MS = 12 * 60 * 60 * 1000; // 12 hours
 const RACE_TIMEOUT_MS = 5000;               // 5s per server in race
@@ -1157,16 +1159,25 @@ async function loadState(){
     if(d.user && d.user.tankAccrued !== undefined){
       S.tankProgress = parseFloat(d.user.tankAccrued) || 0;
     }
+    // Mark data as successfully loaded from server
+    S._dataLoaded = true;
     // 🔔 Show in-app notification if new referral joined
     if(S._initialized && S.refs.length > prevRefCount){
-      const diff = S.refs.length - prevRefCount;
       const newest = S.refs[0];
-      const name = newest ? esc(newest.name||'صديق') : 'شخص';
-      showNotif(`🎉 دعوت ${name}! ستحصل على 20% من مشترياتهم`,'s');
+      const name = newest ? esc(newest.name||'') : '';
+      const lang = localStorage.getItem('pandaLang')||'en';
+      const t = TRANSLATIONS[lang]||TRANSLATIONS['en'];
+      const msg = (t.newRefNotif||TRANSLATIONS['en'].newRefNotif).replace('{name}', name||'👤');
+      showNotif(msg,'s');
     }
     if(d.pendingDeposit) startDepVerify(d.pendingDeposit.depId, d.pendingDeposit.txHash);
-  }catch(e){ console.warn('loadState:', e.message); }
-  updateUI();
+  }catch(e){
+    console.warn('loadState:', e.message);
+    // If data was never loaded yet, don't call updateUI (keeps UI in loading state)
+    if(!S._dataLoaded) return;
+  }
+  // Only update UI if we have confirmed server data at least once
+  if(S._dataLoaded) updateUI();
   S._initialized = true;
 }
 
@@ -2066,9 +2077,14 @@ function ldHide(){
   const s = document.getElementById('loadingScreen');
   if(s){ s.classList.add('hidden'); setTimeout(()=>s.remove(), 700); }
 }
-function ldError(msg){
+function ldError(msg, retryLabel){
+  retryLabel = retryLabel || '🔄 Retry';
   const stat = document.getElementById('ldStatus');
-  if(stat){ stat.textContent = msg; stat.style.color = '#ff8a80'; }
+  if(stat){
+    stat.innerHTML = msg.replace(/\n/g,'<br>');
+    stat.style.color = '#ff8a80';
+    stat.style.lineHeight = '1.7';
+  }
   // Turn all segments red
   document.querySelectorAll('#ldSegs .ld-seg').forEach(s=>{
     s.classList.add('active');
@@ -2077,7 +2093,18 @@ function ldError(msg){
     s.style.boxShadow   = '0 0 10px rgba(239,83,80,.6)';
   });
   const pctEl = document.getElementById('ldPct');
-  if(pctEl){ pctEl.textContent = 'Error'; pctEl.style.color = '#ff8a80'; }
+  if(pctEl){ pctEl.textContent = '⚠️'; pctEl.style.color = '#ff8a80'; }
+  // Add retry button inside loading screen — DO NOT hide the screen
+  const ld = document.getElementById('loadingScreen');
+  if(ld && !document.getElementById('ldRetryBtn')){
+    const btn = document.createElement('button');
+    btn.id = 'ldRetryBtn';
+    btn.textContent = retryLabel;
+    btn.style.cssText = 'margin-top:22px;padding:12px 32px;background:linear-gradient(135deg,#ef5350,#b71c1c);border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:Fredoka,cursive;box-shadow:0 4px 16px rgba(239,83,80,.5);';
+    btn.onclick = ()=>{ sessionStorage.removeItem('srv'); location.reload(); };
+    ld.appendChild(btn);
+  }
+  // ⛔ Loading screen stays visible — app NEVER opens with zero data
 }
 
 // Preload all item images + panda image
@@ -2112,12 +2139,15 @@ function ldAnimateTo(targetPct, msg, duration=600){
 }
 
 async function init(){
+  // Helper: get current lang translation
+  function lt(key){ const lang=localStorage.getItem('pandaLang')||'en'; return (TRANSLATIONS[lang]||TRANSLATIONS['en'])[key]||TRANSLATIONS['en'][key]||key; }
+
   // Record start time — minimum 6 seconds total
   const startTime = Date.now();
   const MIN_LOADING_MS = 3000;
 
   // Step 1: Telegram setup
-  ldProgress(0,'Starting...');
+  ldProgress(0, lt('ldLoading'));
   if(window.Telegram?.WebApp){
     S.tg=window.Telegram.WebApp;
     S.tg.ready(); S.tg.expand();
@@ -2135,61 +2165,65 @@ async function init(){
       ''
     ).toString().replace(/\D/g,'');
   }
-  await ldAnimateTo(10,'Connecting to Telegram...', 700);
+  await ldAnimateTo(10, lt('ldConnecting'), 700);
   await new Promise(r=>setTimeout(r,400));
 
   // Step 2: Preload images
-  await ldAnimateTo(20,'Loading assets...', 600);
+  await ldAnimateTo(20, lt('ldAssets'), 600);
   await Promise.all([
     preloadImages().catch(()=>{}),
     new Promise(r=>setTimeout(r,800)), // min 0.8s on this step
   ]);
-  await ldAnimateTo(40,'Assets loaded!', 500);
+  await ldAnimateTo(40, lt('ldAssetsOk'), 500);
   await new Promise(r=>setTimeout(r,300));
 
   // Step 3: Load user data — RACE all servers, fastest wins
-  await ldAnimateTo(50,'🏁 Finding fastest server...', 600);
+  await ldAnimateTo(50, lt('ldFinding'), 600);
   let loaded = false;
   let attempts = 0;
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 5;
   while(!loaded && attempts < MAX_ATTEMPTS){
     attempts++;
     try{
-      ldProgress(50 + attempts*3, attempts===1 ? '⚡ Racing servers...' : `Retrying... (${attempts}/${MAX_ATTEMPTS})`);
+      ldProgress(50 + attempts*3, attempts===1 ? lt('ldRacing') : `${lt('ldRetrying')} (${attempts}/${MAX_ATTEMPTS})`);
       await loadState();
       if(S.user && S.userId) loaded=true;
       else throw new Error('No user data');
     }catch(e){
       console.warn(`Attempt ${attempts} failed:`,e.message);
       sessionStorage.removeItem('srv'); // force re-race on retry
+      // Reset dead servers on retry so we try all again
+      SERVERS.forEach(u=>delete _dead[u]);
       if(attempts < MAX_ATTEMPTS){
-        await new Promise(r=>setTimeout(r,1200*attempts));
+        ldProgress(50 + attempts*3, `${lt('ldBusy')} (${attempts}/${MAX_ATTEMPTS})`);
+        await new Promise(r=>setTimeout(r,1500*attempts));
       }
     }
   }
   if(!loaded){
-    ldError('Connection failed. Please restart the app.');
+    // ⚠️ ALL servers failed — show error screen, NEVER open the app with 0 data
+    ldError(lt('ldErrorMsg'), lt('ldRetryBtn'));
     return;
   }
   const winSrv = sessionStorage.getItem('srv')||'';
   const winLabel = winSrv ? winSrv.replace('https://','').split('.')[0] : 'server';
-  await ldAnimateTo(70,`✅ Connected to ${winLabel}`, 500);
+  await ldAnimateTo(70, `${lt('ldConnected')} ${winLabel}`, 500);
   await new Promise(r=>setTimeout(r,300));
 
   // Step 4: Render UI
-  await ldAnimateTo(80,'Building interface...', 400);
+  await ldAnimateTo(80, lt('ldBuilding'), 400);
   renderMarket();
   renderTasks();
   await new Promise(r=>setTimeout(r,300));
 
   // Step 5: Init TON + timers
-  await ldAnimateTo(90,'Setting up wallet...', 400);
+  await ldAnimateTo(90, lt('ldWallet'), 400);
   setTimeout(()=>initTON(), 600);
   startTank();
   setInterval(()=>{ loadState(); }, 30000);
   await new Promise(r=>setTimeout(r,400));
 
-  await ldAnimateTo(100,'Ready! 🐼', 500);
+  await ldAnimateTo(100, lt('ldReady'), 500);
 
   // Ensure minimum loading time (5-10s feel)
   const elapsed = Date.now() - startTime;
@@ -2266,6 +2300,21 @@ const TRANSLATIONS = {
     multiAccount:'⚠️ أنت تستخدم أكثر من حساب — العب بنزاهة 🐼',
     depositRequired:'⛔ السحب متاح فقط للمودعين\n\n💎 قم بإيداع TON واحد على الأقل لتفعيل السحب\n\n🔄 جارٍ تحويلك لصفحة الإيداع...',
     depositRequiredBtn:'💎 إيداع الآن',
+    ldLoading:'جارٍ التحميل...',
+    ldConnecting:'الاتصال بتيليجرام...',
+    ldAssets:'تحميل الملفات...',
+    ldAssetsOk:'تم تحميل الملفات!',
+    ldFinding:'🏁 البحث عن أسرع سيرفر...',
+    ldRacing:'⚡ السباق بين السيرفرات...',
+    ldRetrying:'إعادة المحاولة...',
+    ldBusy:'⏳ السيرفرات مشغولة، إعادة المحاولة...',
+    ldConnected:'✅ متصل',
+    ldBuilding:'بناء الواجهة...',
+    ldWallet:'إعداد المحفظة...',
+    ldReady:'جاهز! 🐼',
+    ldErrorMsg:'⚠️ الخدمة مؤقتاً غير متاحة\nجميع السيرفرات مشغولة\nأعد تشغيل البوت بعد لحظات',
+    ldRetryBtn:'🔄 إعادة المحاولة',
+    newRefNotif:'🎉 دعوت {name}! ستحصل على 20% من مشترياتهم',
   },
   en:{
     navHome:'Home',navMarket:'Market',navTasks:'Tasks',navFriends:'Friends',navFinance:'Finance',
@@ -2325,6 +2374,21 @@ const TRANSLATIONS = {
     multiAccount:'⚠️ You are using multiple accounts — play fair 🐼',
     depositRequired:'⛔ Withdrawal is only available for depositors\n\n💎 Make at least one TON deposit to unlock withdrawals\n\n🔄 Redirecting you to the deposit page...',
     depositRequiredBtn:'💎 Deposit Now',
+    ldLoading:'Loading...',
+    ldConnecting:'Connecting to Telegram...',
+    ldAssets:'Loading assets...',
+    ldAssetsOk:'Assets loaded!',
+    ldFinding:'🏁 Finding fastest server...',
+    ldRacing:'⚡ Racing servers...',
+    ldRetrying:'Retrying...',
+    ldBusy:'⏳ Servers busy, retrying...',
+    ldConnected:'✅ Connected',
+    ldBuilding:'Building interface...',
+    ldWallet:'Setting up wallet...',
+    ldReady:'Ready! 🐼',
+    ldErrorMsg:'⚠️ Service temporarily unavailable\nAll servers are busy\nPlease restart the app in a moment',
+    ldRetryBtn:'🔄 Retry',
+    newRefNotif:'🎉 You invited {name}! You will earn 20% of their purchases',
   },
   ru:{
     navHome:'Главная',navMarket:'Рынок',navTasks:'Задания',navFriends:'Друзья',navFinance:'Финансы',
@@ -2384,6 +2448,21 @@ const TRANSLATIONS = {
     multiAccount:'⚠️ Вы используете несколько аккаунтов — играйте честно 🐼',
     depositRequired:'⛔ Вывод доступен только для пополнивших счёт\n\n💎 Пополните счёт хотя бы на 1 TON, чтобы разблокировать вывод\n\n🔄 Перенаправление на страницу пополнения...',
     depositRequiredBtn:'💎 Пополнить сейчас',
+    ldLoading:'Загрузка...',
+    ldConnecting:'Подключение к Telegram...',
+    ldAssets:'Загрузка ресурсов...',
+    ldAssetsOk:'Ресурсы загружены!',
+    ldFinding:'🏁 Поиск быстрого сервера...',
+    ldRacing:'⚡ Соревнование серверов...',
+    ldRetrying:'Повтор попытки...',
+    ldBusy:'⏳ Серверы заняты, повтор...',
+    ldConnected:'✅ Подключено',
+    ldBuilding:'Сборка интерфейса...',
+    ldWallet:'Настройка кошелька...',
+    ldReady:'Готово! 🐼',
+    ldErrorMsg:'⚠️ Сервис временно недоступен\nВсе серверы заняты\nПожалуйста, перезапустите приложение',
+    ldRetryBtn:'🔄 Повторить',
+    newRefNotif:'🎉 Вы пригласили {name}! Вы получите 20% с их покупок',
   },
   es:{
     navHome:'Inicio',navMarket:'Mercado',navTasks:'Tareas',navFriends:'Amigos',navFinance:'Finanzas',
@@ -2443,6 +2522,21 @@ const TRANSLATIONS = {
     multiAccount:'⚠️ Estás usando múltiples cuentas — juega limpio 🐼',
     depositRequired:'⛔ El retiro solo está disponible para quienes han depositado\n\n💎 Realiza al menos un depósito de TON para desbloquear los retiros\n\n🔄 Redirigiendo a la página de depósito...',
     depositRequiredBtn:'💎 Depositar ahora',
+    ldLoading:'Cargando...',
+    ldConnecting:'Conectando a Telegram...',
+    ldAssets:'Cargando recursos...',
+    ldAssetsOk:'¡Recursos cargados!',
+    ldFinding:'🏁 Buscando servidor más rápido...',
+    ldRacing:'⚡ Compitiendo servidores...',
+    ldRetrying:'Reintentando...',
+    ldBusy:'⏳ Servidores ocupados, reintentando...',
+    ldConnected:'✅ Conectado',
+    ldBuilding:'Construyendo interfaz...',
+    ldWallet:'Configurando billetera...',
+    ldReady:'¡Listo! 🐼',
+    ldErrorMsg:'⚠️ Servicio temporalmente no disponible\nTodos los servidores están ocupados\nPor favor reinicia la app en un momento',
+    ldRetryBtn:'🔄 Reintentar',
+    newRefNotif:'🎉 Invitaste a {name}! Ganarás 20% de sus compras',
   },
   fr:{
     navHome:'Accueil',navMarket:'Marché',navTasks:'Tâches',navFriends:'Amis',navFinance:'Finance',
@@ -2502,6 +2596,21 @@ const TRANSLATIONS = {
     multiAccount:'⚠️ Vous utilisez plusieurs comptes — jouez honnêtement 🐼',
     depositRequired:'⛔ Le retrait est réservé aux utilisateurs ayant effectué un dépôt\n\n💎 Effectuez au moins un dépôt TON pour débloquer les retraits\n\n🔄 Redirection vers la page de dépôt...',
     depositRequiredBtn:'💎 Déposer maintenant',
+    ldLoading:'Chargement...',
+    ldConnecting:'Connexion à Telegram...',
+    ldAssets:'Chargement des ressources...',
+    ldAssetsOk:'Ressources chargées!',
+    ldFinding:'🏁 Recherche du serveur le plus rapide...',
+    ldRacing:'⚡ Course des serveurs...',
+    ldRetrying:'Nouvelle tentative...',
+    ldBusy:'⏳ Serveurs occupés, réessai...',
+    ldConnected:'✅ Connecté',
+    ldBuilding:"Construction de l'interface...",
+    ldWallet:'Configuration du portefeuille...',
+    ldReady:'Prêt! 🐼',
+    ldErrorMsg:'⚠️ Service temporairement indisponible\nTous les serveurs sont occupés\nVeuillez redémarrer l\'application',
+    ldRetryBtn:'🔄 Réessayer',
+    newRefNotif:'🎉 Vous avez invité {name}! Vous gagnerez 20% de ses achats',
   }
 };
 
@@ -2528,6 +2637,12 @@ function applyLang(lang,flag,code){
   document.getElementById('langCode').textContent=code;
   document.querySelectorAll('.lang-opt').forEach(el=>el.classList.toggle('active',el.dataset.lang===lang));
   document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+
+  // ── Loading screen text (if still visible) ──
+  const ldStat=document.getElementById('ldStatus');
+  if(ldStat && !ldStat.style.color) ldStat.textContent=t.ldLoading||'Loading...';
+  const ldRetryBtn=document.getElementById('ldRetryBtn');
+  if(ldRetryBtn) ldRetryBtn.textContent=t.ldRetryBtn||'🔄 Retry';
 
   // ── Universal data-i18n engine ──
   document.querySelectorAll('[data-i18n]').forEach(el=>{
