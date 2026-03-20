@@ -10,7 +10,7 @@
 
 const G = {
   BAMBOO_PER_COIN:10, TON_PER_COIN:0.00005, TON_TO_BAMBOO:10000,
-  MIN_WITHDRAW:200, MIN_DEPOSIT_TON:1,
+  MIN_WITHDRAW:2000, MIN_DEPOSIT_TON:1,
   REF_BONUS_PCT:20,
   WELCOME_BAMBOO:0,
   WELCOME_COINS :200,
@@ -504,21 +504,6 @@ async function hWithdraw(env,uid,data,_meta={}){
     if((user.coins||0)<amt)return{success:false,error:'Not enough Coins'};
     // ── Idempotency guard: block duplicate withdraw within 10s ──
     if(Date.now()-(user._lastWdTs||0)<10000)return{success:false,error:'Please wait before submitting another withdrawal'};
-    // ── Wallet uniqueness guard: one wallet per user ──────────────
-    // Normalise address to lowercase for consistent indexing
-    const addrKey=addr.toLowerCase().replace(/[^a-z0-9_\-]/g,'_');
-    const walletRec=await dbGet(env,`walletIndex/${addrKey}`);
-    if(walletRec.data && walletRec.data.uid && walletRec.data.uid !== uid){
-      // Wallet is registered to a DIFFERENT user — mark as rejected, do NOT deduct coins
-      const wdId=`wd_${uid}_${Date.now()}`;
-      const rejRec={wdId,userId:uid,address:addr,amt,ton:amt*G.TON_PER_COIN,status:'rejected',rejectReason:'multi_account',ts:Date.now()};
-      await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rejRec);
-      return{success:false,error:'⚠️ أنت تستخدم أكثر من حساب — العب بنزاهة 🐼',errorCode:'MULTI_ACCOUNT_DETECTED'};
-    }
-    // Register / confirm wallet ownership for this user
-    if(!walletRec.data){
-      await dbSet(env,`walletIndex/${addrKey}`,{uid,address:addr,registeredAt:Date.now()});
-    }
     // Partner tasks must be completed before withdrawal
     const tpr=await dbGet(env,'tasks/partner');
     const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
@@ -527,7 +512,10 @@ async function hWithdraw(env,uid,data,_meta={}){
     if(missingPartner.length>0){
       return{success:false,error:'Complete all partner tasks first',errorCode:'PARTNER_TASKS_REQUIRED',missing:missingPartner.length};
     }
-    // No deposit requirement — free and paid users have same withdrawal rules
+    // Block free users — must have made a deposit first
+    if(!user.hasDeposited){
+      return{success:false,error:'⛔ السحب متاح فقط للمستخدمين الذين قاموا بالإيداع',errorCode:'DEPOSIT_REQUIRED'};
+    }
     const wdId=`wd_${uid}_${Date.now()}`;const ton=amt*G.TON_PER_COIN;
     const upd={coins:(user.coins||0)-amt, _lastWdTs:Date.now()};
     await dbUpdate(env,`users/${uid}`,upd);
