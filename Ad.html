@@ -2,314 +2,172 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>لوحة تحكم الإيداعات</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet"/>
+  <title>كاشف الاحتيال — الإحالات الوهمية</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #0a0e1a;
-      --surface: #111827;
-      --card: #1a2236;
-      --border: #243048;
-      --accent: #3b82f6;
-      --accent2: #10b981;
-      --warn: #f59e0b;
-      --danger: #ef4444;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --radius: 14px;
+      --bg:#060910; --surface:#0d1117; --card:#111720; --card2:#161e2b;
+      --border:#1e2d42; --border2:#243450;
+      --red:#ef4444; --red2:#dc2626; --red-glow:rgba(239,68,68,0.15);
+      --orange:#f97316; --yellow:#eab308;
+      --green:#22c55e; --green2:#16a34a;
+      --blue:#3b82f6; --purple:#8b5cf6;
+      --text:#e2e8f0; --muted:#64748b; --muted2:#475569;
+      --radius:12px;
     }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px;overflow-x:hidden}
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* Scanline texture */
+    body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
 
-    body {
-      font-family: 'Cairo', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 30px 20px;
-    }
+    .wrapper{max-width:1200px;margin:0 auto;position:relative}
 
-    /* Subtle grid background */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
+    /* ── Header ── */
+    .header{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+    .header-icon{width:52px;height:52px;background:linear-gradient(135deg,var(--red),var(--orange));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 30px var(--red-glow);flex-shrink:0}
+    .header-text h1{font-size:22px;font-weight:900;letter-spacing:-.3px}
+    .header-text p{font-size:12px;color:var(--muted);margin-top:3px}
+    .header-badge{margin-right:auto;background:var(--red-glow);border:1px solid rgba(239,68,68,0.3);color:var(--red);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700}
 
-    .wrapper {
-      max-width: 1000px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 1;
-    }
+    /* ── Stats ── */
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:22px}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center;position:relative;overflow:hidden}
+    .stat::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s}
+    .stat.red::before{background:linear-gradient(135deg,rgba(239,68,68,0.06),transparent)}
+    .stat.orange::before{background:linear-gradient(135deg,rgba(249,115,22,0.06),transparent)}
+    .stat.green::before{background:linear-gradient(135deg,rgba(34,197,94,0.06),transparent)}
+    .stat.blue::before{background:linear-gradient(135deg,rgba(59,130,246,0.06),transparent)}
+    .stat.purple::before{background:linear-gradient(135deg,rgba(139,92,246,0.06),transparent)}
+    .stat:hover::before{opacity:1}
+    .stat .num{font-size:26px;font-weight:900}
+    .stat.red    .num{color:var(--red)}
+    .stat.orange .num{color:var(--orange)}
+    .stat.green  .num{color:var(--green)}
+    .stat.blue   .num{color:var(--blue)}
+    .stat.purple .num{color:var(--purple)}
+    .stat .lbl{font-size:11px;color:var(--muted);margin-top:4px}
 
-    /* Header */
-    .header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 36px;
-    }
+    /* ── Batch card ── */
+    .batch-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:18px}
+    .batch-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    .batch-title{font-size:14px;font-weight:700;flex:1}
+    .batch-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .bp-bar{height:6px;background:var(--border2);border-radius:6px;overflow:hidden;margin-bottom:5px}
+    .bp-fill{height:100%;background:linear-gradient(90deg,var(--red),var(--orange));border-radius:6px;transition:width .4s;width:0%}
+    .bp-info{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
 
-    .header-icon {
-      width: 50px; height: 50px;
-      background: linear-gradient(135deg, var(--accent), #6366f1);
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 8px 24px rgba(59,130,246,0.3);
-    }
+    /* ── Threshold rule card ── */
+    .rule-card{background:linear-gradient(135deg,rgba(239,68,68,0.06),rgba(249,115,22,0.04));border:1px solid rgba(239,68,68,0.2);border-radius:var(--radius);padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .rule-icon{font-size:22px;flex-shrink:0}
+    .rule-text{flex:1;font-size:13px;line-height:1.6;color:var(--text)}
+    .rule-text strong{color:var(--orange)}
+    .rule-inputs{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .rule-inp-group{display:flex;flex-direction:column;gap:4px}
+    .rule-inp-group label{font-size:11px;color:var(--muted)}
+    .rule-inp{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:7px 10px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:13px;font-weight:700;outline:none;width:80px;text-align:center}
+    .rule-inp:focus{border-color:var(--orange)}
 
-    .header h1 { font-size: 26px; font-weight: 900; }
-    .header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    /* ── Buttons ── */
+    .controls{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap}
+    .btn{padding:9px 16px;border-radius:9px;border:none;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+    .btn-scan{background:linear-gradient(135deg,var(--blue),#6366f1);color:#fff;box-shadow:0 4px 14px rgba(59,130,246,0.25)}
+    .btn-scan:hover:not(:disabled){transform:translateY(-2px)}
+    .btn-next{background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff}
+    .btn-next:hover:not(:disabled){transform:translateY(-2px)}
+    .btn-punish{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;box-shadow:0 4px 14px rgba(239,68,68,0.3)}
+    .btn-punish:hover:not(:disabled){transform:translateY(-2px)}
+    .btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border)}
+    .btn-ghost:hover:not(:disabled){background:var(--border)}
+    .btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+    .select-inp{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:8px 10px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;outline:none}
 
-    /* Stats bar */
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-bottom: 28px;
-    }
+    /* ── Log ── */
+    .log-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;min-height:44px;max-height:90px;overflow-y:auto;font-size:12px;line-height:1.8;font-family:monospace}
+    .log-box p{color:var(--muted)}
+    .log-item{display:flex;align-items:flex-start;gap:6px;margin-bottom:1px}
+    .log-item .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px}
+    .log-item.info    .dot{background:var(--blue)}
+    .log-item.success .dot{background:var(--green)}
+    .log-item.warn    .dot{background:var(--yellow)}
+    .log-item.error   .dot{background:var(--red)}
+    .log-item.fraud   .dot{background:var(--orange);box-shadow:0 0 4px var(--orange)}
 
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      text-align: center;
-    }
+    /* ── Filter / Search ── */
+    .filter-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+    .tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+    .tab.active{background:var(--red);border-color:var(--red);color:#fff}
+    .tab.safe.active{background:var(--green);border-color:var(--green)}
+    .tab.check.active{background:var(--orange);border-color:var(--orange)}
+    .tab:hover:not(.active){border-color:var(--blue);color:var(--blue)}
+    .search-input{flex:1;min-width:180px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:8px 14px;color:var(--text);font-family:'Tajawal',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+    .search-input:focus{border-color:var(--blue)}
 
-    .stat-card .num {
-      font-size: 30px;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--accent), #818cf8);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    /* ── Table ── */
+    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+    .table-scroll{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{background:var(--surface);padding:11px 14px;text-align:right;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.3px;white-space:nowrap;border-bottom:1px solid var(--border)}
+    tbody tr{border-top:1px solid var(--border);transition:background .12s}
+    tbody tr:hover{background:rgba(255,255,255,0.02)}
+    tbody tr.fraud-row{background:rgba(239,68,68,0.04)}
+    tbody tr.fraud-row:hover{background:rgba(239,68,68,0.08)}
+    tbody td{padding:11px 14px;vertical-align:middle}
+    .uid-cell{font-family:monospace;font-size:11px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-    .stat-card.green .num {
-      background: linear-gradient(135deg, var(--accent2), #34d399);
-      -webkit-background-clip: text;
-    }
+    /* Badges */
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .badge-fraud  {background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.2)}
+    .badge-suspect{background:rgba(249,115,22,0.12);color:var(--orange);border:1px solid rgba(249,115,22,0.2)}
+    .badge-safe   {background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
+    .badge-reset  {background:rgba(139,92,246,0.12);color:var(--purple);border:1px solid rgba(139,92,246,0.2)}
 
-    .stat-card.warn .num {
-      background: linear-gradient(135deg, var(--warn), #fbbf24);
-      -webkit-background-clip: text;
-    }
+    /* Risk bar */
+    .risk-bar{display:flex;align-items:center;gap:8px}
+    .risk-track{flex:1;height:5px;background:var(--border2);border-radius:5px;overflow:hidden;min-width:60px}
+    .risk-fill{height:100%;border-radius:5px;transition:width .3s}
+    .risk-fill.high{background:linear-gradient(90deg,var(--orange),var(--red))}
+    .risk-fill.med {background:linear-gradient(90deg,var(--yellow),var(--orange))}
+    .risk-fill.low {background:linear-gradient(90deg,var(--green),var(--green2))}
+    .risk-num{font-size:11px;font-weight:700;width:28px;text-align:left}
+    .risk-num.high{color:var(--red)}
+    .risk-num.med {color:var(--orange)}
+    .risk-num.low {color:var(--green)}
 
-    .stat-card .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    /* Action buttons */
+    .action-btn{padding:5px 11px;border-radius:6px;border:none;font-family:'Tajawal',sans-serif;font-size:11px;font-weight:700;cursor:pointer;transition:all .2s}
+    .action-reset{background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.25)}
+    .action-reset:hover{background:rgba(239,68,68,0.25)}
+    .action-done{background:rgba(100,116,139,0.1);color:var(--muted);border:1px solid var(--border);cursor:default}
 
-    /* Control bar */
-    .controls {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
+    /* Pagination */
+    .pagination{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+    .page-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;min-width:32px}
+    .page-btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+    .page-btn.active{background:var(--red);border-color:var(--red);color:#fff}
+    .page-btn:disabled{opacity:.3;cursor:not-allowed}
+    .page-info{font-size:11px;color:var(--muted);padding:0 4px}
 
-    .btn {
-      padding: 11px 22px;
-      border-radius: 10px;
-      border: none;
-      font-family: 'Cairo', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex; align-items: center; gap: 8px;
-    }
+    .empty{text-align:center;padding:40px;color:var(--muted)}
+    .empty .icon{font-size:36px;margin-bottom:10px}
+    .table-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--muted);font-size:14px}
 
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), #6366f1);
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(59,130,246,0.35);
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.45); }
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{animation:spin .7s linear infinite;display:inline-block}
 
-    .btn-success {
-      background: linear-gradient(135deg, var(--accent2), #059669);
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(16,185,129,0.3);
-    }
-    .btn-success:hover { transform: translateY(-2px); }
+    /* Confirm modal */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;display:none;align-items:center;justify-content:center}
+    .modal-overlay.open{display:flex}
+    .modal{background:var(--card);border:1px solid rgba(239,68,68,0.3);border-radius:16px;padding:28px;max-width:440px;width:90%;box-shadow:0 0 40px rgba(239,68,68,0.15)}
+    .modal h3{font-size:18px;font-weight:900;color:var(--red);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+    .modal p{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:20px}
+    .modal p strong{color:var(--text)}
+    .modal-actions{display:flex;gap:10px}
+    .modal-actions .btn{flex:1;justify-content:center}
 
-    .btn-ghost {
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .btn-ghost:hover { background: var(--border); }
-
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-    /* Log */
-    .log-box {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      min-height: 60px;
-      max-height: 140px;
-      overflow-y: auto;
-      font-size: 13px;
-      line-height: 1.7;
-    }
-
-    .log-box p { color: var(--muted); }
-    .log-item { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
-    .log-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
-    .log-item.info .dot { background: var(--accent); }
-    .log-item.success .dot { background: var(--accent2); }
-    .log-item.warn .dot { background: var(--warn); }
-    .log-item.error .dot { background: var(--danger); }
-
-    /* Table */
-    .table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-
-    .table-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 18px 22px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .table-head h2 { font-size: 16px; font-weight: 700; }
-
-    .search-input {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 8px 14px;
-      color: var(--text);
-      font-family: 'Cairo', sans-serif;
-      font-size: 13px;
-      outline: none;
-      width: 200px;
-      transition: border-color 0.2s;
-    }
-    .search-input:focus { border-color: var(--accent); }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13.5px;
-    }
-
-    thead th {
-      background: var(--surface);
-      padding: 13px 20px;
-      text-align: right;
-      color: var(--muted);
-      font-weight: 600;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    tbody tr { border-top: 1px solid var(--border); transition: background 0.15s; }
-    tbody tr:hover { background: rgba(59,130,246,0.04); }
-
-    tbody td { padding: 14px 20px; vertical-align: middle; }
-
-    .uid-cell {
-      font-family: monospace;
-      font-size: 12px;
-      color: var(--muted);
-      max-width: 130px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .badge-active { background: rgba(16,185,129,0.15); color: #10b981; }
-    .badge-pending { background: rgba(245,158,11,0.15); color: #f59e0b; }
-    .badge-none { background: rgba(100,116,139,0.15); color: var(--muted); }
-
-    .deposits-count {
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    .amount {
-      font-weight: 700;
-      color: var(--accent2);
-    }
-
-    .action-btn {
-      padding: 6px 14px;
-      border-radius: 7px;
-      border: none;
-      font-family: 'Cairo', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .action-activate {
-      background: rgba(16,185,129,0.15);
-      color: var(--accent2);
-      border: 1px solid rgba(16,185,129,0.3);
-    }
-    .action-activate:hover { background: rgba(16,185,129,0.25); }
-
-    .action-done {
-      background: rgba(100,116,139,0.1);
-      color: var(--muted);
-      border: 1px solid var(--border);
-      cursor: default;
-    }
-
-    /* Empty state */
-    .empty {
-      text-align: center;
-      padding: 50px;
-      color: var(--muted);
-    }
-    .empty .icon { font-size: 40px; margin-bottom: 12px; }
-
-    /* Spinner */
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
-
-    /* Progress bar */
-    .progress-bar {
-      height: 3px;
-      background: var(--border);
-      border-radius: 3px;
-      margin-bottom: 20px;
-      overflow: hidden;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 3px;
-      transition: width 0.4s;
-      width: 0%;
-    }
+    .done-banner{background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:var(--green);font-weight:700;display:none;align-items:center;gap:8px}
   </style>
 </head>
 <body>
@@ -317,317 +175,652 @@
 
   <!-- Header -->
   <div class="header">
-    <div class="header-icon">🏦</div>
-    <div>
-      <h1>لوحة تحكم الإيداعات</h1>
-      <p>مراجعة وتفعيل إيداعات المستخدمين — Firebase Realtime DB</p>
+    <div class="header-icon">🕵️</div>
+    <div class="header-text">
+      <h1>كاشف الاحتيال — الإحالات الوهمية</h1>
+      <p>رصد المستخدمين الذين يمتلكون إحالات وهمية بدون نشاط حقيقي</p>
     </div>
+    <div class="header-badge">⚠️ لوحة أمان</div>
   </div>
 
   <!-- Stats -->
   <div class="stats">
-    <div class="stat-card">
-      <div class="num" id="stat-total">—</div>
-      <div class="label">إجمالي المستخدمين</div>
+    <div class="stat blue">
+      <div class="num" id="s-total">—</div>
+      <div class="lbl">إجمالي المفحوصين</div>
     </div>
-    <div class="stat-card green">
-      <div class="num" id="stat-activated">—</div>
-      <div class="label">مُفعَّل hasDeposited</div>
+    <div class="stat red">
+      <div class="num" id="s-fraud">—</div>
+      <div class="lbl">🚨 محتالون مؤكدون</div>
     </div>
-    <div class="stat-card warn">
-      <div class="num" id="stat-pending">—</div>
-      <div class="label">بانتظار التفعيل</div>
+    <div class="stat orange">
+      <div class="num" id="s-suspect">—</div>
+      <div class="lbl">⚠️ مشتبه بهم</div>
+    </div>
+    <div class="stat green">
+      <div class="num" id="s-safe">—</div>
+      <div class="lbl">✅ آمنون</div>
+    </div>
+    <div class="stat purple">
+      <div class="num" id="s-reset">—</div>
+      <div class="lbl">🔄 تم إعادة تعيينهم</div>
     </div>
   </div>
+
+  <!-- Rule card -->
+  <div class="rule-card">
+    <div class="rule-icon">⚖️</div>
+    <div class="rule-text">
+      <strong>قاعدة الكشف:</strong> أي مستخدم لديه أكثر من
+      <strong id="rule-min-disp">100</strong> إحالة،
+      يجب أن يكون <strong id="rule-pct-disp">3%</strong> منها على الأقل قاموا بإيداع حقيقي.
+      إذا كانت نسبة الإيداع أقل من ذلك → <strong style="color:var(--red)">محتال مؤكد</strong>.
+    </div>
+    <div class="rule-inputs">
+      <div class="rule-inp-group">
+        <label>الحد الأدنى للإحالات</label>
+        <input class="rule-inp" id="rule-min" type="number" value="100" min="10" onchange="updateRuleDisplay()"/>
+      </div>
+      <div class="rule-inp-group">
+        <label>نسبة الإيداع المطلوبة %</label>
+        <input class="rule-inp" id="rule-pct" type="number" value="3" min="1" max="100" onchange="updateRuleDisplay()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch card -->
+  <div class="batch-card">
+    <div class="batch-row">
+      <div style="flex:1">
+        <div class="batch-title" id="bc-title">لم يبدأ الفحص بعد</div>
+        <div class="batch-sub"  id="bc-sub">اختر حجم الدُّفعة ثم ابدأ الفحص</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted)">حجم الدُّفعة:</label>
+        <select id="batch-size" class="select-inp">
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+          <option value="2000">2000</option>
+        </select>
+        <button class="btn btn-scan" id="btn-first" onclick="fetchFirst()">📥 الدُّفعة الأولى</button>
+        <button class="btn btn-next" id="btn-next"  onclick="fetchNext()" disabled>⏭ الدُّفعة التالية</button>
+      </div>
+    </div>
+    <div class="bp-bar"><div class="bp-fill" id="bp-fill" style="width:0%"></div></div>
+    <div class="bp-info">
+      <span id="bp-left">فُحص: 0</span>
+      <span id="bp-right">~100,000 مستخدم</span>
+    </div>
+  </div>
+
+  <div class="done-banner" id="done-banner">🏁 تم فحص جميع المستخدمين!</div>
 
   <!-- Controls -->
   <div class="controls">
-    <button class="btn btn-primary" id="btn-scan" onclick="scanUsers()">
-      🔍 فحص المستخدمين
+    <button class="btn btn-punish" id="btn-reset-batch" onclick="confirmResetBatch()" disabled>
+      🔄 إعادة تعيين محتالي الدُّفعة الحالية
     </button>
-    <button class="btn btn-success" id="btn-activate-all" onclick="activateAll()" disabled>
-      ⚡ تفعيل الكل تلقائياً
+    <button class="btn btn-punish" id="btn-reset-all" onclick="confirmResetAll()" disabled style="background:linear-gradient(135deg,#7c2d12,#991b1b)">
+      💥 إعادة تعيين كل المحتالين المفحوصين
     </button>
-    <button class="btn btn-ghost" onclick="clearLog()">
-      🗑️ مسح السجل
-    </button>
-  </div>
-
-  <!-- Progress -->
-  <div class="progress-bar" id="progress-bar" style="display:none">
-    <div class="progress-fill" id="progress-fill"></div>
+    <button class="btn btn-ghost" onclick="clearLog()">🗑️ مسح السجل</button>
   </div>
 
   <!-- Log -->
-  <div class="log-box" id="log-box">
-    <p>اضغط "فحص المستخدمين" للبدء...</p>
+  <div class="log-box" id="log-box"><p>// في انتظار بدء الفحص...</p></div>
+
+  <!-- Filters + Search -->
+  <div class="filter-row">
+    <button class="tab active" onclick="setFilter('all',this)">الكل</button>
+    <button class="tab" onclick="setFilter('fraud',this)">🚨 محتالون</button>
+    <button class="tab check" onclick="setFilter('suspect',this)">⚠️ مشتبه</button>
+    <button class="tab safe" onclick="setFilter('safe',this)">✅ آمنون</button>
+    <button class="tab" onclick="setFilter('reset',this)">🔄 مُعاد تعيينهم</button>
+    <input class="search-input" id="search-input" type="text" placeholder="🔎 بحث بـ UID..." oninput="onSearch()"/>
   </div>
 
   <!-- Table -->
   <div class="table-wrap">
-    <div class="table-head">
-      <h2>📋 المستخدمون</h2>
-      <input class="search-input" type="text" placeholder="🔎 بحث بـ UID..." oninput="filterTable(this.value)" />
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>المستخدم (UID)</th>
+            <th>إجمالي الإحالات</th>
+            <th>إحالات مودعة</th>
+            <th>نسبة الإيداع</th>
+            <th>مستوى الخطر</th>
+            <th>الحكم</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="users-table">
+          <tr><td colspan="7"><div class="empty"><div class="icon">🕵️</div>اضغط "الدُّفعة الأولى" لبدء الفحص</div></td></tr>
+        </tbody>
+      </table>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>المستخدم (UID)</th>
-          <th>عدد الإيداعات</th>
-          <th>إجمالي المبلغ (TON)</th>
-          <th>إحالات فريدة 👥</th>
-          <th>حالة hasDeposited</th>
-          <th>إجراء</th>
-        </tr>
-      </thead>
-      <tbody id="users-table">
-        <tr>
-          <td colspan="6">
-            <div class="empty">
-              <div class="icon">👆</div>
-              اضغط فحص المستخدمين لعرض البيانات
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="pagination" id="pagination" style="display:none"></div>
   </div>
 
 </div>
 
-<!-- Firebase SDK -->
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3>⚠️ تأكيد إعادة التعيين</h3>
+    <p id="modal-text">هل أنت متأكد؟</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-punish" id="modal-confirm" onclick="executeReset()">تأكيد التنفيذ</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, get, set, remove, query, orderByKey, startAfter, limitToFirst }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
-    authDomain: "hhhrhdhd-2f68c.firebaseapp.com",
-    databaseURL: "https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
-    projectId: "hhhrhdhd-2f68c",
-    storageBucket: "hhhrhdhd-2f68c.firebasestorage.app",
-    messagingSenderId: "159295815105",
-    appId: "1:159295815105:web:d23916911ae39e6f95c340",
-    measurementId: "G-TLG6TP348R"
+const app = initializeApp({
+  apiKey:"AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
+  authDomain:"hhhrhdhd-2f68c.firebaseapp.com",
+  databaseURL:"https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
+  projectId:"hhhrhdhd-2f68c",
+  storageBucket:"hhhrhdhd-2f68c.firebasestorage.app",
+  messagingSenderId:"159295815105",
+  appId:"1:159295815105:web:d23916911ae39e6f95c340",
+  measurementId:"G-TLG6TP348R"
+});
+const db = getDatabase(app);
+
+// ── State ───────────────────────────────────────────────────
+let currentBatch  = [];
+let allFetched    = [];
+let filteredUsers = [];
+let lastKey       = null;
+let batchNum      = 0;
+let finished      = false;
+let loading       = false;
+let currentFilter = 'all';
+let currentPage   = 1;
+const PAGE_SIZE   = 50;
+
+// pending reset queue
+let resetQueue    = [];
+
+// ── Rule ────────────────────────────────────────────────────
+function getRule() {
+  return {
+    minReferrals: parseInt(document.getElementById('rule-min').value) || 100,
+    minPct:       parseFloat(document.getElementById('rule-pct').value) || 3
   };
+}
 
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
+window.updateRuleDisplay = function() {
+  const r = getRule();
+  document.getElementById('rule-min-disp').textContent = r.minReferrals;
+  document.getElementById('rule-pct-disp').textContent = r.minPct;
+  // إعادة حساب الحكم على كل المفحوصين
+  allFetched.forEach(u => calcVerdict(u, r));
+  currentBatch.forEach(u => calcVerdict(u, r));
+  updateStats(); applyFilterAndSearch();
+};
 
-  let allUsers = [];
-
-  function log(msg, type = 'info') {
-    const box = document.getElementById('log-box');
-    // Clear placeholder
-    const placeholder = box.querySelector('p');
-    if (placeholder) placeholder.remove();
-
-    const div = document.createElement('div');
-    div.className = `log-item ${type}`;
-    div.innerHTML = `<span class="dot"></span><span>${msg}</span>`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
+function calcVerdict(u, rule) {
+  rule = rule || getRule();
+  if (u.wasReset) { u.verdict = 'reset'; u.riskPct = 0; return; }
+  if (u.totalReferrals < rule.minReferrals) {
+    u.verdict  = 'safe';
+    u.riskPct  = 0;
+    return;
   }
+  const depositedPct = u.totalReferrals > 0 ? (u.depositedReferrals / u.totalReferrals) * 100 : 0;
+  u.depositedPct = depositedPct;
 
-  window.clearLog = function() {
-    document.getElementById('log-box').innerHTML = '<p>السجل فارغ...</p>';
-  };
-
-  function setProgress(pct, show = true) {
-    const bar = document.getElementById('progress-bar');
-    bar.style.display = show ? 'block' : 'none';
-    document.getElementById('progress-fill').style.width = pct + '%';
+  if (depositedPct < rule.minPct) {
+    u.verdict = 'fraud';
+    // كلما قلت النسبة كلما زاد الخطر
+    u.riskPct = Math.min(100, Math.round(100 - (depositedPct / rule.minPct) * 60));
+  } else if (depositedPct < rule.minPct * 2) {
+    u.verdict = 'suspect';
+    u.riskPct = Math.round(40 - (depositedPct - rule.minPct) / rule.minPct * 20);
+  } else {
+    u.verdict = 'safe';
+    u.riskPct = Math.max(0, Math.round(20 - depositedPct / 5));
   }
+}
 
-  function renderTable(users) {
-    const tbody = document.getElementById('users-table');
-    if (!users.length) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="icon">😶</div>لا توجد بيانات</div></td></tr>`;
-      return;
-    }
+// ── Process user ─────────────────────────────────────────────
+async function processUser(uid, data) {
+  // إجمالي الإحالات من referralEarnings (unique fromUserId)
+  const re = data.referralEarnings || null;
+  const uniqueReferrers = re
+    ? new Set(Object.values(re).map(r => r.fromUserId).filter(Boolean))
+    : new Set();
+  const totalReferrals = uniqueReferrers.size;
 
-    tbody.innerHTML = users.map(u => {
-      const depositCount = u.deposits ? Object.keys(u.deposits).length : 0;
-      const totalAmount = u.deposits
-        ? Object.values(u.deposits).reduce((s, d) => s + (parseFloat(d.amount) || 0), 0).toFixed(2)
-        : '0.00';
-
-      const hasDeposit = depositCount > 0;
-      const hasReferral = u.uniqueReferrals >= 10;
-      const shouldActivate = hasDeposit || hasReferral;
-
-      // سبب التفعيل
-      let reasons = [];
-      if (hasDeposit) reasons.push('💰 إيداع');
-      if (hasReferral) reasons.push(`👥 ${u.uniqueReferrals} إحالة`);
-      const reasonText = reasons.join(' + ') || '—';
-
-      let badgeHtml, actionHtml;
-
-      if (u.hasDeposited === true) {
-        badgeHtml = `<span class="badge badge-active">✅ مُفعَّل</span>`;
-        actionHtml = `<button class="action-btn action-done" disabled>مُنجز</button>`;
-      } else if (shouldActivate) {
-        badgeHtml = `<span class="badge badge-pending">⏳ ${reasonText}</span>`;
-        actionHtml = `<button class="action-btn action-activate" onclick="activateUser('${u.uid}')">تفعيل</button>`;
-      } else {
-        badgeHtml = `<span class="badge badge-none">— لا يستوفي</span>`;
-        actionHtml = `<button class="action-btn action-done" disabled>—</button>`;
-      }
-
-      return `
-        <tr data-uid="${u.uid}">
-          <td class="uid-cell" title="${u.uid}">${u.uid}</td>
-          <td class="deposits-count">${depositCount}</td>
-          <td class="amount">${totalAmount}</td>
-          <td style="color:var(--accent2);font-weight:700">${u.uniqueReferrals} <span style="color:var(--muted);font-size:11px">/ 10</span></td>
-          <td>${badgeHtml}</td>
-          <td>${actionHtml}</td>
-        </tr>`;
-    }).join('');
-  }
-
-  function updateStats(users) {
-    const total = users.length;
-    const activated = users.filter(u => u.hasDeposited === true).length;
-    const pending = users.filter(u =>
-      u.hasDeposited !== true && (
-        (u.deposits && Object.keys(u.deposits).length > 0) ||
-        u.uniqueReferrals >= 10
-      )
-    ).length;
-
-    document.getElementById('stat-total').textContent = total;
-    document.getElementById('stat-activated').textContent = activated;
-    document.getElementById('stat-pending').textContent = pending;
-  }
-
-  window.scanUsers = async function() {
-    const btn = document.getElementById('btn-scan');
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spin">⏳</span> جارٍ الفحص...`;
-    setProgress(10);
-    log('بدء فحص قاعدة البيانات...', 'info');
-
-    try {
-      const snapshot = await get(ref(db, 'users'));
-      if (!snapshot.exists()) {
-        log('لا توجد بيانات في مسار /users', 'warn');
-        btn.disabled = false;
-        btn.innerHTML = '🔍 فحص المستخدمين';
-        setProgress(0, false);
-        return;
-      }
-
-      const data = snapshot.val();
-      const uids = Object.keys(data);
-      log(`✔ تم جلب ${uids.length} مستخدم`, 'success');
-      setProgress(50);
-
-      allUsers = uids.map(uid => {
-        // حساب عدد الأشخاص الفريدين في referralEarnings
-        const referralEarnings = data[uid].referralEarnings || null;
-        let uniqueReferrals = 0;
-        if (referralEarnings) {
-          const uniqueIds = new Set(
-            Object.values(referralEarnings)
-              .map(r => r.fromUserId)
-              .filter(Boolean)
-          );
-          uniqueReferrals = uniqueIds.size;
-        }
-
-        return {
-          uid,
-          deposits: data[uid].deposits || null,
-          referralEarnings,
-          uniqueReferrals,
-          hasDeposited: data[uid].hasDeposited || false,
-        };
-      });
-
-      setProgress(100);
-      updateStats(allUsers);
-      renderTable(allUsers);
-
-      const pending = allUsers.filter(u =>
-        u.hasDeposited !== true && (
-          (u.deposits && Object.keys(u.deposits).length > 0) ||
-          u.uniqueReferrals >= 10
-        )
+  // عدد من قاموا بإيداع فعلي من المُحيلين
+  // نفحص كل fromUserId هل لديه deposits في قاعدة البيانات
+  let depositedReferrals = 0;
+  if (totalReferrals > 0) {
+    const ids = [...uniqueReferrers];
+    // نفحص دفعات موازية (10 في آن)
+    for (let i = 0; i < ids.length; i += 10) {
+      const chunk = ids.slice(i, i + 10);
+      const results = await Promise.all(
+        chunk.map(rid => get(ref(db, 'users/' + rid + '/hasDeposited')))
       );
-      log(`📊 ${pending.length} مستخدم بانتظار تفعيل الإيداع`, pending.length > 0 ? 'warn' : 'success');
-
-      document.getElementById('btn-activate-all').disabled = pending.length === 0;
-      setTimeout(() => setProgress(0, false), 600);
-
-    } catch (e) {
-      log(`❌ خطأ: ${e.message}`, 'error');
+      results.forEach(snap => { if (snap.val() === true) depositedReferrals++; });
     }
+  }
 
-    btn.disabled = false;
-    btn.innerHTML = '🔍 فحص المستخدمين';
+  const u = {
+    uid,
+    totalReferrals,
+    depositedReferrals,
+    depositedPct: 0,
+    verdict: 'safe',
+    riskPct: 0,
+    wasReset: data.wasReset === true
   };
 
-  window.activateUser = async function(uid) {
-    log(`⚡ تفعيل المستخدم: ${uid}`, 'info');
-    try {
-      await set(ref(db, `users/${uid}/hasDeposited`), true);
-      log(`✅ تم تفعيل ${uid} بنجاح`, 'success');
+  calcVerdict(u);
+  return u;
+}
 
-      // Update local state
-      const user = allUsers.find(u => u.uid === uid);
-      if (user) user.hasDeposited = true;
-      updateStats(allUsers);
-      renderTable(allUsers);
+// ── Log ──────────────────────────────────────────────────────
+function log(msg, type='info') {
+  const box = document.getElementById('log-box');
+  box.querySelector('p')?.remove();
+  const d = document.createElement('div');
+  d.className = 'log-item ' + type;
+  d.innerHTML = '<span class="dot"></span><span>' + msg + '</span>';
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+window.clearLog = () => { document.getElementById('log-box').innerHTML='<p>// السجل فارغ</p>'; };
 
-      // Disable activate-all if no more pending
-    const pending = allUsers.filter(u =>
-      u.hasDeposited !== true && (
-        (u.deposits && Object.keys(u.deposits).length > 0) ||
-        u.uniqueReferrals >= 10
-      )
-    );
-    document.getElementById('btn-activate-all').disabled = pending.length === 0;
+// ── Stats ────────────────────────────────────────────────────
+function updateStats() {
+  const total   = allFetched.length;
+  const fraud   = allFetched.filter(u => u.verdict === 'fraud').length;
+  const suspect = allFetched.filter(u => u.verdict === 'suspect').length;
+  const safe    = allFetched.filter(u => u.verdict === 'safe').length;
+  const wasReset= allFetched.filter(u => u.wasReset).length;
+  document.getElementById('s-total').textContent   = total.toLocaleString();
+  document.getElementById('s-fraud').textContent   = fraud.toLocaleString();
+  document.getElementById('s-suspect').textContent = suspect.toLocaleString();
+  document.getElementById('s-safe').textContent    = safe.toLocaleString();
+  document.getElementById('s-reset').textContent   = wasReset.toLocaleString();
 
-    } catch (e) {
-      log(`❌ فشل تفعيل ${uid}: ${e.message}`, 'error');
-    }
-  };
+  const bFraud = currentBatch.filter(u => u.verdict === 'fraud' && !u.wasReset).length;
+  const aFraud = allFetched.filter(u => u.verdict === 'fraud' && !u.wasReset).length;
+  document.getElementById('btn-reset-batch').disabled = bFraud === 0;
+  document.getElementById('btn-reset-all').disabled   = aFraud === 0;
+}
 
-  window.activateAll = async function() {
-    const pending = allUsers.filter(u =>
-      u.hasDeposited !== true &&
-      u.deposits && Object.keys(u.deposits).length > 0
-    );
+// ── Set loading ──────────────────────────────────────────────
+function setLoading(yes) {
+  loading = yes;
+  document.getElementById('btn-first').disabled = yes;
+  document.getElementById('btn-next').disabled  = yes || finished;
+  if (yes) {
+    document.getElementById('users-table').innerHTML =
+      '<tr><td colspan="7"><div class="table-loading"><span class="spin">🔍</span> جارٍ تحليل البيانات...</div></td></tr>';
+    document.getElementById('pagination').style.display = 'none';
+  }
+}
 
-    if (!pending.length) {
-      log('لا يوجد مستخدمون بانتظار التفعيل', 'warn');
+// ── Fetch batch ──────────────────────────────────────────────
+async function fetchBatch() {
+  if (loading) return;
+  setLoading(true);
+  const batchSize = parseInt(document.getElementById('batch-size').value);
+
+  try {
+    const q = lastKey
+      ? query(ref(db,'users'), orderByKey(), startAfter(lastKey), limitToFirst(batchSize))
+      : query(ref(db,'users'), orderByKey(), limitToFirst(batchSize));
+
+    const snap = await get(q);
+
+    if (!snap.exists()) {
+      finished = true;
+      document.getElementById('btn-next').disabled = true;
+      document.getElementById('done-banner').style.display = 'flex';
+      log('🏁 تم فحص جميع المستخدمين!', 'success');
+      setLoading(false);
+      updateProgress();
+      applyFilterAndSearch();
       return;
     }
 
-    const btn = document.getElementById('btn-activate-all');
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spin">⚡</span> جارٍ التفعيل...`;
+    const data  = snap.val();
+    const keys  = Object.keys(data);
+    batchNum++;
+    log('⚙️ دُفعة #' + batchNum + ': معالجة ' + keys.length + ' مستخدم...', 'info');
 
-    log(`🚀 بدء تفعيل ${pending.length} مستخدم...`, 'info');
-    setProgress(5);
+    // معالجة المستخدمين (فحص إحالاتهم)
+    // نفحص فقط من عندهم إحالات ≥ الحد الأدنى لتوفير الوقت
+    const rule = getRule();
+    currentBatch = [];
 
-    for (let i = 0; i < pending.length; i++) {
-      await window.activateUser(pending[i].uid);
-      setProgress(Math.round(((i + 1) / pending.length) * 100));
+    for (let i = 0; i < keys.length; i++) {
+      const uid   = keys[i];
+      const uData = data[uid];
+
+      // 1. عدد الإحالات الكلي من referrals (كل key = مستخدم أحاله)
+      const referralsObj   = uData.referrals || null;
+      const totalReferrals = referralsObj ? Object.keys(referralsObj).length : 0;
+
+      // 2. الإحالات المودّعة = unique fromUserId في referralEarnings
+      const re = uData.referralEarnings || null;
+      const depositedReferrals = re
+        ? new Set(Object.values(re).map(r => r.fromUserId).filter(Boolean)).size
+        : 0;
+
+      if (totalReferrals >= rule.minReferrals) {
+        const pct = totalReferrals > 0 ? (depositedReferrals / totalReferrals) * 100 : 0;
+        log('🔍 ' + uid + ' → ' + totalReferrals + ' إحالة | مودع: ' + depositedReferrals + ' (' + pct.toFixed(1) + '%)', 'info');
+      }
+
+      const u = {
+        uid, totalReferrals, depositedReferrals, depositedPct: 0,
+        verdict: 'safe', riskPct: 0,
+        wasReset: uData.wasReset === true
+      };
+      calcVerdict(u);
+      currentBatch.push(u);
+
+      // دمج مع allFetched
+      const idx = allFetched.findIndex(x => x.uid === uid);
+      if (idx >= 0) allFetched[idx] = u;
+      else allFetched.push(u);
     }
 
-    log('🎉 تم تفعيل جميع المستخدمين بنجاح!', 'success');
-    setTimeout(() => setProgress(0, false), 600);
-    btn.innerHTML = '⚡ تفعيل الكل تلقائياً';
-  };
+    lastKey  = keys[keys.length - 1];
+    finished = false;
+    document.getElementById('btn-next').disabled = false;
 
-  window.filterTable = function(query) {
-    const q = query.toLowerCase();
-    const filtered = allUsers.filter(u => u.uid.toLowerCase().includes(q));
-    renderTable(filtered);
-  };
+    const bFraud   = currentBatch.filter(u => u.verdict === 'fraud').length;
+    const bSuspect = currentBatch.filter(u => u.verdict === 'suspect').length;
+
+    document.getElementById('bc-title').textContent =
+      'الدُّفعة #' + batchNum + ' — ' + keys.length.toLocaleString() + ' مستخدم | إجمالي: ' + allFetched.length.toLocaleString();
+    document.getElementById('bc-sub').textContent =
+      '🚨 محتالون: ' + bFraud + ' | ⚠️ مشتبه: ' + bSuspect;
+
+    updateProgress();
+    updateStats();
+    log('✔ دُفعة #' + batchNum + ' — محتالون: ' + bFraud + ' | مشتبه: ' + bSuspect, bFraud > 0 ? 'fraud' : 'success');
+
+  } catch(e) {
+    log('❌ خطأ: ' + e.message, 'error');
+    console.error(e);
+    document.getElementById('btn-next').disabled = false;
+  }
+
+  currentPage = 1;
+  setLoading(false);
+  applyFilterAndSearch();
+}
+
+function updateProgress() {
+  const total = allFetched.length;
+  document.getElementById('bp-fill').style.width = Math.min(100,(total/100000)*100) + '%';
+  document.getElementById('bp-left').textContent  = 'فُحص: ' + total.toLocaleString();
+  document.getElementById('bp-right').textContent = finished ? '✅ اكتمل' : '~100,000';
+}
+
+window.fetchFirst = async function() {
+  lastKey = null; batchNum = 0; finished = false;
+  currentBatch = []; allFetched = []; currentPage = 1;
+  document.getElementById('done-banner').style.display = 'none';
+  ['s-total','s-fraud','s-suspect','s-safe','s-reset'].forEach(id =>
+    document.getElementById(id).textContent = '—');
+  document.getElementById('bc-title').textContent = 'جارٍ جلب البيانات...';
+  document.getElementById('bc-sub').textContent   = '';
+  await fetchBatch();
+};
+
+window.fetchNext = async function() {
+  if (finished || loading) return;
+  await fetchBatch();
+};
+
+// ── Core reset function (full account reset to new user state) ──
+const TG_TOKEN = '8698965722:AAGYm1iofiRHfA6FNqay9xPNcVKBu0HZ_go';
+
+async function sendTelegramMessage(uid, text) {
+  try {
+    await fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: uid, text: text, parse_mode: 'HTML' })
+    });
+  } catch(e) {
+    console.warn('Telegram send failed for ' + uid + ':', e.message);
+  }
+}
+
+async function doFullReset(uid) {
+  // 1. حذف سجلات السحب من withdrawQueue
+  const wqSnap = await get(ref(db, 'withdrawQueue'));
+  if (wqSnap.exists()) {
+    const wqData = wqSnap.val();
+    const toDelete = Object.keys(wqData).filter(k =>
+      wqData[k].userId && String(wqData[k].userId) === String(uid)
+    );
+    await Promise.all(toDelete.map(k => remove(ref(db, 'withdrawQueue/' + k))));
+  }
+
+  // 2. إعادة تعيين بيانات المستخدم كأنه مستخدم جديد
+  await Promise.all([
+    // أرصدة
+    set(ref(db, 'users/' + uid + '/balance'),       0),
+    set(ref(db, 'users/' + uid + '/bambooBalance'),  0),
+    set(ref(db, 'users/' + uid + '/bamboo'),         0),
+    set(ref(db, 'users/' + uid + '/bamboo'),         0),
+    set(ref(db, 'users/' + uid + '/coins'),          0),
+    set(ref(db, 'users/' + uid + '/totalEarned'),    0),
+    set(ref(db, 'users/' + uid + '/tonBalance'),     0),
+    set(ref(db, 'users/' + uid + '/tankAccrued'),    0),
+    set(ref(db, 'users/' + uid + '/tankLevel'),      1),
+    set(ref(db, 'users/' + uid + '/miningRate'),     0),
+    // حالة الإيداع
+    set(ref(db, 'users/' + uid + '/hasDeposited'),   false),
+    // حذف السجلات
+    remove(ref(db, 'users/' + uid + '/deposits')),
+    remove(ref(db, 'users/' + uid + '/referralEarnings')),
+    remove(ref(db, 'users/' + uid + '/referrals')),
+    remove(ref(db, 'users/' + uid + '/exchHistory')),
+    remove(ref(db, 'users/' + uid + '/completedTasks')),
+    // علامة إعادة التعيين
+    set(ref(db, 'users/' + uid + '/wasReset'),       true),
+    set(ref(db, 'users/' + uid + '/resetAt'),        Date.now()),
+    // إشعار داخل التطبيق
+    set(ref(db, 'users/' + uid + '/notifications/fraudReset'), {
+      type:      'fraud_reset',
+      message:   'Your account has been fully reset due to detection of fake referrals.',
+      timestamp: Date.now(),
+      read:      false
+    })
+  ]);
+
+  // إرسال رسالة Telegram للمستخدم
+  const tgMsg =
+    '⚠️ <b>Account Reset Notice</b>\n\n' +
+    'Your account has been <b>fully reset</b> due to the detection of <b>fake referrals</b>.\n\n' +
+    'All your balance, referrals, deposits, and earnings have been cleared.\n\n' +
+    'If you believe this is a mistake, please contact support.';
+  await sendTelegramMessage(uid, tgMsg);
+}
+
+// ── Reset logic ──────────────────────────────────────────────
+let pendingResetMode = ''; // 'batch' or 'all'
+
+window.confirmResetBatch = function() {
+  const count = currentBatch.filter(u => u.verdict === 'fraud' && !u.wasReset).length;
+  document.getElementById('modal-text').innerHTML =
+    'سيتم <strong>إعادة تعيين ' + count + ' مستخدم</strong> في الدُّفعة الحالية المحكوم عليهم بالاحتيال.<br><br>' +
+    'سيتم مسح: الرصيد، الإيداعات، الإحالات، وإرسال إشعار للحساب.';
+  pendingResetMode = 'batch';
+  document.getElementById('modal').classList.add('open');
+};
+
+window.confirmResetAll = function() {
+  const count = allFetched.filter(u => u.verdict === 'fraud' && !u.wasReset).length;
+  document.getElementById('modal-text').innerHTML =
+    'سيتم <strong>إعادة تعيين ' + count + ' مستخدم</strong> من كل الدُّفعات المفحوصة.<br><br>' +
+    'هذا الإجراء <strong style="color:var(--red)">لا يمكن التراجع عنه</strong>. تأكد من مراجعة القائمة أولاً.';
+  pendingResetMode = 'all';
+  document.getElementById('modal').classList.add('open');
+};
+
+window.closeModal = function() {
+  document.getElementById('modal').classList.remove('open');
+};
+
+window.executeReset = async function() {
+  closeModal();
+  const source = pendingResetMode === 'batch' ? currentBatch : allFetched;
+  const targets = source.filter(u => u.verdict === 'fraud' && !u.wasReset);
+
+  if (!targets.length) return;
+
+  log('🔄 بدء إعادة تعيين ' + targets.length + ' حساب كاملاً...', 'warn');
+
+  let done = 0;
+  for (let i = 0; i < targets.length; i += 5) {
+    const chunk = targets.slice(i, i + 5);
+    await Promise.all(chunk.map(async u => {
+      try {
+        await doFullReset(u.uid);
+        u.wasReset = true;
+        u.verdict  = 'reset';
+        done++;
+        log('🔄 تم إعادة تعيين: ' + u.uid, 'warn');
+      } catch(e) {
+        log('❌ فشل: ' + u.uid + ' — ' + e.message, 'error');
+      }
+    }));
+    await new Promise(r => setTimeout(r, 150));
+  }
+
+  updateStats(); applyFilterAndSearch();
+  log('✅ تم إعادة تعيين ' + done + ' حساب بنجاح!', 'success');
+};
+
+// ── Single reset ─────────────────────────────────────────────
+window.resetUser = async function(uid) {
+  if (!confirm('إعادة تعيين ' + uid + '؟')) return;
+  try {
+    await doFullReset(uid);
+    [currentBatch, allFetched].forEach(arr => {
+      const u = arr.find(x => x.uid === uid);
+      if (u) { u.wasReset = true; u.verdict = 'reset'; }
+    });
+    updateStats(); applyFilterAndSearch();
+    log('✅ تم إعادة تعيين: ' + uid, 'success');
+  } catch(e) { log('❌ فشل: ' + e.message, 'error'); }
+};
+
+// ── Filter / Search / Render ─────────────────────────────────
+window.setFilter = function(f, el) {
+  currentFilter = f; currentPage = 1;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  applyFilterAndSearch();
+};
+
+window.onSearch = function() { currentPage = 1; applyFilterAndSearch(); };
+
+function applyFilterAndSearch() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  filteredUsers = currentBatch.filter(u => {
+    if (currentFilter === 'fraud'   && u.verdict !== 'fraud')   return false;
+    if (currentFilter === 'suspect' && u.verdict !== 'suspect') return false;
+    if (currentFilter === 'safe'    && u.verdict !== 'safe')    return false;
+    if (currentFilter === 'reset'   && !u.wasReset)             return false;
+    if (q && !u.uid.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderPage();
+}
+
+function verdictBadge(u) {
+  if (u.wasReset)          return '<span class="badge badge-reset">🔄 مُعاد تعيينه</span>';
+  if (u.verdict==='fraud') return '<span class="badge badge-fraud">🚨 محتال مؤكد</span>';
+  if (u.verdict==='suspect')return '<span class="badge badge-suspect">⚠️ مشتبه به</span>';
+  return '<span class="badge badge-safe">✅ آمن</span>';
+}
+
+function riskBar(u) {
+  if (u.wasReset) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  const cls = u.riskPct >= 60 ? 'high' : u.riskPct >= 30 ? 'med' : 'low';
+  return '<div class="risk-bar"><div class="risk-track"><div class="risk-fill ' + cls + '" style="width:' + u.riskPct + '%"></div></div>' +
+         '<span class="risk-num ' + cls + '">' + u.riskPct + '%</span></div>';
+}
+
+function renderPage() {
+  const tbody  = document.getElementById('users-table');
+  const pgWrap = document.getElementById('pagination');
+  const total  = filteredUsers.length;
+
+  if (!total) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty"><div class="icon">' +
+      (currentBatch.length ? '🔍' : '🕵️') + '</div>' +
+      (currentBatch.length ? 'لا توجد نتائج' : 'اضغط "الدُّفعة الأولى" للبدء') +
+      '</div></td></tr>';
+    pgWrap.style.display = 'none';
+    return;
+  }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = filteredUsers.slice(start, start + PAGE_SIZE);
+
+  tbody.innerHTML = slice.map(u => {
+    const pct = u.depositedPct !== undefined ? u.depositedPct.toFixed(1) + '%' : '—';
+    const isFraudRow = u.verdict === 'fraud' && !u.wasReset;
+    const action = (u.verdict === 'fraud' && !u.wasReset)
+      ? '<button class="action-btn action-reset" onclick="resetUser(\'' + u.uid + '\')">إعادة تعيين</button>'
+      : '<button class="action-btn action-done" disabled>' + (u.wasReset ? 'مُنجز' : '—') + '</button>';
+
+    const refColor = u.totalReferrals >= getRule().minReferrals ? 'var(--orange)' : 'var(--muted)';
+
+    return '<tr class="' + (isFraudRow ? 'fraud-row' : '') + '">' +
+      '<td class="uid-cell" title="' + u.uid + '">' + u.uid + '</td>' +
+      '<td style="font-weight:700;color:' + refColor + '">' + u.totalReferrals.toLocaleString() + '</td>' +
+      '<td style="font-weight:700;color:var(--green)">' + u.depositedReferrals + '</td>' +
+      '<td style="font-weight:700;color:' + (parseFloat(pct)<getRule().minPct&&u.totalReferrals>=getRule().minReferrals?'var(--red)':'var(--text)') + '">' + pct + '</td>' +
+      '<td>' + riskBar(u) + '</td>' +
+      '<td>' + verdictBadge(u) + '</td>' +
+      '<td>' + action + '</td>' +
+      '</tr>';
+  }).join('');
+
+  pgWrap.style.display = 'flex';
+  const W = 5;
+  const s = Math.max(1, Math.min(currentPage - 2, totalPages - W + 1));
+  const e = Math.min(totalPages, s + W - 1);
+  let pg = '';
+  pg += '<button class="page-btn" onclick="goPage(' + (currentPage-1) + ')" ' + (currentPage===1?'disabled':'') + '>◀</button>';
+  if (s>1) pg += '<button class="page-btn" onclick="goPage(1)">1</button>' + (s>2?'<span class="page-info">…</span>':'');
+  for (let p=s;p<=e;p++) pg += '<button class="page-btn ' + (p===currentPage?'active':'') + '" onclick="goPage('+p+')">' + p + '</button>';
+  if (e<totalPages) pg += (e<totalPages-1?'<span class="page-info">…</span>':'') + '<button class="page-btn" onclick="goPage(' + totalPages + ')">' + totalPages + '</button>';
+  pg += '<button class="page-btn" onclick="goPage(' + (currentPage+1) + ')" ' + (currentPage===totalPages?'disabled':'') + '>▶</button>';
+  pg += '<span class="page-info">' + (start+1) + '–' + Math.min(start+PAGE_SIZE,total) + ' من ' + total.toLocaleString() + '</span>';
+  pgWrap.innerHTML = pg;
+}
+
+window.goPage = function(p) {
+  const tp = Math.ceil(filteredUsers.length / PAGE_SIZE);
+  if (p<1||p>tp) return;
+  currentPage = p; renderPage();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
 </script>
 </body>
 </html>
