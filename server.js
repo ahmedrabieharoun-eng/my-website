@@ -9,22 +9,22 @@
 // ================================================================
 
 const G = {
-  BAMBOO_PER_COIN:10, TON_PER_COIN:0.00005, TON_TO_BAMBOO:10000,
-  MIN_WITHDRAW:2000, MIN_DEPOSIT_TON:1,
+  BAMBOO_PER_COIN:20, TON_PER_COIN:0.00005, TON_TO_BAMBOO:50000,
+  MIN_WITHDRAW:200, MIN_DEPOSIT_TON:1,
   REF_BONUS_PCT:20,
   WELCOME_BAMBOO:0,
-  WELCOME_COINS :200,
+  WELCOME_COINS :195,
   WELCOME_RATE  :4.167, // Fix: 100 bamboo/day (100/24) for new users
   MAX_TANK_LVL:27,      // Fix: 27 real levels
   MAX_RETRY:3, RETRY_DELAY_MS:100,
   // Fix 4: rebalanced items — ROI increases with tier, no overlap
   ITEMS:{
-    bamboo_stick :{price:1500,    power:50    },  // 0.033 bam/hr per coin — entry
-    panda_paw    :{price:5000,    power:200   },  // 0.040 — slightly better
-    leaf_fan     :{price:25000,   power:1200  },  // 0.048 — noticeably better
-    bamboo_energy:{price:125000,  power:7500  },  // 0.060 — clearly better
-    panda_den    :{price:626000,  power:45000 },  // 0.072 — premium
-    bamboo_forest:{price:1300000, power:110000},  // 0.085 — endgame
+    bamboo_stick :{price:7500,    power:50    },  // 0.033 bam/hr per coin — entry
+    panda_paw    :{price:25000,   power:200   },  // 0.040 — slightly better
+    leaf_fan     :{price:125000,  power:1200  },  // 0.048 — noticeably better
+    bamboo_energy:{price:625000,  power:7500  },  // 0.060 — clearly better
+    panda_den    :{price:3130000, power:45000 },  // 0.072 — premium
+    bamboo_forest:{price:6500000, power:110000},  // 0.085 — endgame
   },
   // 27 tank levels — capacity starts at 5,000 and scales progressively
   TANK:{
@@ -58,15 +58,27 @@ const G = {
   },
   // Fix 5: Added r200 and r500
   REF_TASKS:{
-    r1  :{n:1,   bam:500,    coins:2   },
-    r5  :{n:5,   bam:2500,   coins:10  },
-    r10 :{n:10,  bam:6000,   coins:25  },
-    r20 :{n:20,  bam:15000,  coins:60  },
-    r50 :{n:50,  bam:40000,  coins:150 },
-    r70 :{n:70,  bam:60000,  coins:220 },
-    r100:{n:100, bam:100000, coins:400 },
-    r200:{n:200, bam:200000, coins:800 },
-    r500:{n:500, bam:500000, coins:2000},
+    r1  :{n:1,   bam:50,     coins:2   },
+    r5  :{n:5,   bam:250,    coins:10  },
+    r10 :{n:10,  bam:600,    coins:25  },
+    r20 :{n:20,  bam:1500,   coins:60  },
+    r50 :{n:50,  bam:4000,   coins:150 },
+    r70 :{n:70,  bam:6000,   coins:220 },
+    r100:{n:100, bam:10000,  coins:400 },
+    r200:{n:200, bam:20000,  coins:800 },
+    r500:{n:500, bam:50000,  coins:2000},
+  },
+  // Active referrals tasks (users who deposited) — 2x original rewards
+  REF_ACTIVE_TASKS:{
+    ra1  :{n:1,   bam:10000,   coins:40   },
+    ra5  :{n:5,   bam:50000,   coins:200  },
+    ra10 :{n:10,  bam:120000,  coins:500  },
+    ra20 :{n:20,  bam:300000,  coins:1200 },
+    ra50 :{n:50,  bam:800000,  coins:3000 },
+    ra70 :{n:70,  bam:1200000, coins:4400 },
+    ra100:{n:100, bam:2000000, coins:8000 },
+    ra200:{n:200, bam:4000000, coins:16000},
+    ra500:{n:500, bam:10000000,coins:40000},
   },
   SOC_TASKS:{
     tg_payouts:1000,  // قناة المدفوعات — مطلوبة
@@ -281,7 +293,25 @@ async function registerReferral(env,uid,user,referrerId){
         username:user.username,photoUrl:user.photoUrl,
         joinedAt:Date.now(),earned:0,
       });
-      console.log(`Referral registered: ${uid} referred by ${referrerId}`);
+      // ── Atomic dedup: only ONE server fires the notification ──
+      // Race-safe: set with a unique value, then re-read to confirm we won
+      const notifKey=`notifSent/ref_${uid}_${referrerId}`;
+      const already=await dbGet(env,notifKey);
+      if(!already.data){
+        const myTs = Date.now();
+        await dbSet(env,notifKey,{ts:myTs, by:uid});
+        // Re-read to confirm we won the race (another server may have written first)
+        await new Promise(r=>setTimeout(r,150)); // small delay to let DB propagate
+        const confirm=await dbGet(env,notifKey);
+        if(confirm.data && confirm.data.ts===myTs){
+          // We won — send notification
+          console.log(`Referral registered: ${uid} referred by ${referrerId}`);
+          const refName=(user.firstName||'Someone').slice(0,32);
+          const notifMsg=`🎉 <b>Congratulations!</b> <b>${refName}</b> just registered using your referral link!\n\n🐼 You will automatically earn <b>20% commission</b> on all their Market purchases.\n\n<i>Track your earnings in the Friends section</i>`;
+          sendTgNotification(env,referrerId,notifMsg).catch(()=>{});
+        }
+        // else: another server won — skip
+      }
     }
   }catch(e){console.error('registerReferral error:',e.message);}
 }
@@ -325,15 +355,14 @@ async function hGetState(env,uid,tg,data={},_meta={}){
     const ur=await dbGet(env,`users/${uid}`);let user=ur.data;
     // Seed partner tasks if not present (fire-and-forget)
     seedPartnerTasks(env).catch(e=>console.error('seed:',e.message));
+    // Update leaderboard entry for this user (fire-and-forget)
+    updateLeaderboardEntry(env,uid,user).catch(()=>{});
 
     if(!user){
       user=makeUser(uid,tg,ref);
       if(user.referredBy){
         await registerReferral(env,uid,user,user.referredBy);
-        // 🔔 Notify referrer that someone registered via their link
-        const refName = (tg.first_name||'Someone').slice(0,32);
-        const notifMsg = `🎉 <b>Congratulations!</b> <b>${refName}</b> just registered using your referral link!\n\n🐼 You will automatically earn <b>20% commission</b> on all their Market purchases.\n\n<i>Track your earnings in the Friends section</i>`;
-        sendTgNotification(env, user.referredBy, notifMsg).catch(()=>{});
+        // Notification is now sent inside registerReferral with dedup guard
       }
       await dbSet(env,`users/${uid}`,user);
       // NOTE: 'register' is not a balance-change event, not logged in user log
@@ -370,7 +399,18 @@ async function hGetState(env,uid,tg,data={},_meta={}){
       });
     }
     const rr=await dbGet(env,`users/${uid}/referrals`);
-    const referrals=Object.values(rr.data||{}).map(r=>({userId:r.userId,name:`${r.firstName||''} ${r.lastName||''}`.trim()||'Friend',photo:r.photoUrl||null,date:r.joinedAt?new Date(r.joinedAt).toLocaleDateString():'',earned:r.earned||0}));
+    const refList=Object.values(rr.data||{});
+    // Fetch hasDeposited directly from each referred user's root record (most accurate)
+    const referrals=await Promise.all(refList.map(async r=>{
+      let deposited=r.hasDeposited||false;
+      if(!deposited){
+        const ud=await dbGet(env,`users/${r.userId}/hasDeposited`);
+        deposited=ud.data===true;
+        // Update the referral record so next time we don't need to re-check
+        if(deposited) await dbUpdate(env,`users/${uid}/referrals/${r.userId}`,{hasDeposited:true}).catch(()=>{});
+      }
+      return{userId:r.userId,name:`${r.firstName||''} ${r.lastName||''}`.trim()||'Friend',photo:r.photoUrl||null,date:r.joinedAt?new Date(r.joinedAt).toLocaleDateString():'',earned:r.earned||0,hasDeposited:deposited};
+    }));
     // session_open is NOT logged — it does not change any balance
     const er=await dbGet(env,`users/${uid}/exchHistory`);
     const exchHistory=er.data?Object.values(er.data).sort((a,b)=>b.ts-a.ts).slice(0,30):[];
@@ -470,26 +510,32 @@ async function hUpgradeTank(env,uid,data,_meta={}){
 
 async function hExchange(env,uid,data,_meta={}){
   try{
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    // Only Bamboo → Coins direction allowed
-    if(data.coinsAmount!==undefined)return{success:false,error:'Coins to Bamboo exchange is disabled'};
-    if(data.bambooAmount===undefined)return{success:false,error:'Specify bambooAmount'};
-    let nb=user.bamboo||0,nc=user.coins||0;
-    const bam=Math.floor(parseInt(data.bambooAmount)||0);
-    if(bam<G.BAMBOO_PER_COIN)return{success:false,error:`Min ${G.BAMBOO_PER_COIN} Bamboo`};
-    if(nb<bam)return{success:false,error:'Not enough Bamboo'};
-    const coins=Math.floor(bam/G.BAMBOO_PER_COIN);
-    nb-=bam; nc+=coins;
-    const entry={bam,coins,dir:'B→C',ts:Date.now()};
-    await dbUpdate(env,`users/${uid}`,{bamboo:nb,coins:nc});
-    await dbPush(env,`users/${uid}/exchHistory`,entry);
-    log(env,uid,'exchange',{
-      bamboo_spent:bam, coins_received:coins,
-      bamboo_before:user.bamboo||0, bamboo_after:nb,
-      coins_before:user.coins||0,   coins_after:nc,
-    },_meta);
-    return{success:true,data:{bamboo:nb,coins:nc,entry}};
+    // ── Atomic lock: prevent parallel exchange calls across servers ──
+    const lockKey = `exchangeLocks/${uid}`;
+    const lockRec = await dbGet(env, lockKey);
+    const now = Date.now();
+    if(lockRec.data && (now-(lockRec.data.ts||0)) < 15000){
+      return{success:false,error:'Exchange in progress. Please wait.'};
+    }
+    await dbSet(env, lockKey, {ts:now});
+    try{
+      const r=await dbGet(env,`users/${uid}`);const user=r.data;
+      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
+      if(data.coinsAmount!==undefined){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Coins to Bamboo exchange is disabled'}; }
+      if(data.bambooAmount===undefined){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Specify bambooAmount'}; }
+      let nb=user.bamboo||0,nc=user.coins||0;
+      const bam=Math.floor(parseInt(data.bambooAmount)||0);
+      if(bam<G.BAMBOO_PER_COIN){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Min ${G.BAMBOO_PER_COIN} Bamboo`}; }
+      if(nb<bam){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Not enough Bamboo'}; }
+      const coins=Math.floor(bam/G.BAMBOO_PER_COIN);
+      nb-=bam; nc+=coins;
+      const entry={bam,coins,dir:'B→C',ts:now};
+      await dbUpdate(env,`users/${uid}`,{bamboo:nb,coins:nc});
+      await dbPush(env,`users/${uid}/exchHistory`,entry);
+      log(env,uid,'exchange',{bamboo_spent:bam,coins_received:coins,bamboo_before:user.bamboo||0,bamboo_after:nb,coins_before:user.coins||0,coins_after:nc},_meta);
+      await dbSet(env,lockKey,{ts:0});
+      return{success:true,data:{bamboo:nb,coins:nc,entry}};
+    }catch(innerErr){ await dbSet(env,lockKey,{ts:0}).catch(()=>{}); throw innerErr; }
   }catch(e){return{success:false,error:e.message};}
 }
 
@@ -499,34 +545,72 @@ async function hWithdraw(env,uid,data,_meta={}){
     if(!addr||addr.length<10)return{success:false,error:'Invalid TON address'};
     if(amt<G.MIN_WITHDRAW)return{success:false,error:`Min ${G.MIN_WITHDRAW} Coins`};
     if(amt>1000000)return{success:false,error:'Amount too large'};
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    if((user.coins||0)<amt)return{success:false,error:'Not enough Coins'};
-    // ── Idempotency guard: block duplicate withdraw within 10s ──
-    if(Date.now()-(user._lastWdTs||0)<10000)return{success:false,error:'Please wait before submitting another withdrawal'};
-    // Partner tasks must be completed before withdrawal
-    const tpr=await dbGet(env,'tasks/partner');
-    const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
-    const completedTasks=user.completedTasks||[];
-    const missingPartner=partnerTasks.filter(t=>!completedTasks.includes(t.id));
-    if(missingPartner.length>0){
-      return{success:false,error:'Complete all partner tasks first',errorCode:'PARTNER_TASKS_REQUIRED',missing:missingPartner.length};
+
+    // ── Atomic idempotency lock (60s) — blocks multi-server parallel attacks ──
+    // Uses a dedicated lock key in DB; only one request can proceed at a time
+    const lockKey = `withdrawLocks/${uid}`;
+    const lockRec = await dbGet(env, lockKey);
+    const now = Date.now();
+    if(lockRec.data && (now - (lockRec.data.ts||0)) < 60000){
+      return{success:false,error:'A withdrawal is already being processed. Please wait 60 seconds.'};
     }
-    // Block free users — must have made a deposit first
-    if(!user.hasDeposited){
-      return{success:false,error:'⛔ السحب متاح فقط للمستخدمين الذين قاموا بالإيداع',errorCode:'DEPOSIT_REQUIRED'};
+    // Set lock immediately before any balance checks
+    await dbSet(env, lockKey, {ts: now, uid});
+
+    try{
+      const r=await dbGet(env,`users/${uid}`);const user=r.data;
+      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
+      if((user.coins||0)<amt){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Not enough Coins'}; }
+
+      // ── Hard cooldown: block duplicate within 60s (extra layer) ──
+      if((now-(user._lastWdTs||0))<60000){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Please wait 60 seconds before next withdrawal'}; }
+
+      // ── Device Fingerprint check (free users only — depositors are trusted) ──
+      if(!user.hasDeposited){
+        const fp = (data.deviceFingerprint||'').trim();
+        if(fp && fp.length > 8){
+          const safeKey = fp.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,120);
+          const fpRec = await dbGet(env,`deviceFingerprints/${safeKey}`);
+          if(fpRec.data && fpRec.data.uid && fpRec.data.uid !== uid){
+            await dbSet(env,lockKey,{ts:0});
+            await dbSet(env,`flaggedWithdrawals/fp_${uid}_${now}`,{
+              userId:uid, reason:'duplicate_device', fingerprint:fp.slice(0,40),
+              existingUser:fpRec.data.uid, amount:amt, ts:now,
+            });
+            return{success:false,error:'MULTI_ACCOUNT',errorCode:'MULTI_ACCOUNT'};
+          }
+          if(!fpRec.data) await dbSet(env,`deviceFingerprints/${safeKey}`,{uid,ts:now});
+        }
+      }
+
+      // Partner tasks must be completed before withdrawal
+      const tpr=await dbGet(env,'tasks/partner');
+      const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
+      const completedTasks=user.completedTasks||[];
+      const missingPartner=partnerTasks.filter(t=>!completedTasks.includes(t.id));
+      if(missingPartner.length>0){
+        await dbSet(env,lockKey,{ts:0});
+        return{success:false,error:'Complete all partner tasks first',errorCode:'PARTNER_TASKS_REQUIRED',missing:missingPartner.length};
+      }
+
+      const wdId=`wd_${uid}_${now}`;const ton=amt*G.TON_PER_COIN;
+      const upd={coins:(user.coins||0)-amt, _lastWdTs:now};
+      await dbUpdate(env,`users/${uid}`,upd);
+      const rec={wdId,userId:uid,address:addr,amt,ton,status:'pending',ts:now};
+      await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rec);
+      await dbSet(env,`withdrawQueue/${wdId}`,rec);
+      log(env,uid,'withdraw_request',{
+        wdId, amount_coins:amt, amount_ton:ton, address:addr,
+        coins_before:(user.coins||0), coins_after:upd.coins,
+      },_meta);
+      // Release lock after successful write
+      await dbSet(env,lockKey,{ts:0});
+      return{success:true,data:{wdId,coins:upd.coins,status:'pending'}};
+    }catch(innerErr){
+      // Always release lock on error
+      await dbSet(env,lockKey,{ts:0}).catch(()=>{});
+      throw innerErr;
     }
-    const wdId=`wd_${uid}_${Date.now()}`;const ton=amt*G.TON_PER_COIN;
-    const upd={coins:(user.coins||0)-amt, _lastWdTs:Date.now()};
-    await dbUpdate(env,`users/${uid}`,upd);
-    const rec={wdId,userId:uid,address:addr,amt,ton,status:'pending',ts:Date.now()};
-    await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rec);
-    await dbSet(env,`withdrawQueue/${wdId}`,rec);
-    log(env,uid,'withdraw_request',{
-      wdId, amount_coins:amt, amount_ton:ton, address:addr,
-      coins_before:(user.coins||0), coins_after:upd.coins,
-    },_meta);
-    return{success:true,data:{wdId,coins:upd.coins,status:'pending'}};
   }catch(e){return{success:false,error:e.message};}
 }
 
@@ -566,6 +650,10 @@ async function hVerifyDeposit(env,uid,data,_meta={}){
         await dbUpdate(env,`users/${uid}/deposits/${depositId}`,{status:'completed',completedAt:Date.now()});
         const ur=await dbGet(env,`users/${uid}`);const u=ur.data||{};
         await dbUpdate(env,`users/${uid}`,{bamboo:(u.bamboo||0)+bamboo,tonBalance:(u.tonBalance||0)+tonAmt,hasDeposited:true});
+        // Update referrer's referral record to mark this user as deposited
+        if(u.referredBy){
+          await dbUpdate(env,`users/${u.referredBy}/referrals/${uid}`,{hasDeposited:true}).catch(()=>{});
+        }
         await dbDelete(env,`pendingDeposits/${depositId}`);
         log(env,uid,'deposit_completed',{
           depositId, txHash:txHash||dep.txHash,
@@ -582,27 +670,45 @@ async function hVerifyDeposit(env,uid,data,_meta={}){
 
 async function hClaimTask(env,uid,data,_meta={}){
   try{
-    const tid=data.taskId;const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    if((user.completedTasks||[]).includes(tid))return{success:false,error:'Already claimed'};
-    let bam=0,coins=0;
-    if(G.REF_TASKS[tid]){
-      const t=G.REF_TASKS[tid];
-      const rr=await dbGet(env,`users/${uid}/referrals`);
-      const rc=rr.data?Object.keys(rr.data).length:0;
-      if(rc<t.n)return{success:false,error:`Need ${t.n} referrals (have ${rc})`};
-      bam=t.bam;coins=t.coins;
-    }else if(G.SOC_TASKS[tid]){bam=G.SOC_TASKS[tid];}
-    else return{success:false,error:'Unknown task'};
-    const nb=(user.bamboo||0)+bam;const nc=(user.coins||0)+coins;
-    await dbUpdate(env,`users/${uid}`,{completedTasks:[...(user.completedTasks||[]),tid],bamboo:nb,coins:nc});
-    log(env,uid,'claim_task',{
-      taskId:tid,
-      bamboo_reward:bam, coins_reward:coins,
-      bamboo_before:(user.bamboo||0), bamboo_after:nb,
-      coins_before:(user.coins||0),   coins_after:nc,
-    },_meta);
-    return{success:true,data:{bamboo:nb,coins:nc,bam,coins}};
+    const tid=data.taskId;
+    // ── Atomic lock per task per user — prevent parallel claims across servers ──
+    const lockKey = `taskLocks/${uid}_${tid}`;
+    const lockRec = await dbGet(env, lockKey);
+    const now = Date.now();
+    if(lockRec.data && (now-(lockRec.data.ts||0)) < 30000){
+      return{success:false,error:'Already processing. Please wait.'};
+    }
+    await dbSet(env, lockKey, {ts:now});
+    try{
+      const r=await dbGet(env,`users/${uid}`);const user=r.data;
+      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
+      if((user.completedTasks||[]).includes(tid)){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Already claimed'}; }
+      let bam=0,coins=0;
+      if(G.REF_TASKS[tid]){
+        const t=G.REF_TASKS[tid];
+        const rr=await dbGet(env,`users/${uid}/referrals`);
+        const rc=rr.data?Object.keys(rr.data).length:0;
+        if(rc<t.n){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Need ${t.n} referrals (have ${rc})`}; }
+        bam=t.bam;coins=t.coins;
+      }else if(G.REF_ACTIVE_TASKS[tid]){
+        const t=G.REF_ACTIVE_TASKS[tid];
+        const rr=await dbGet(env,`users/${uid}/referrals`);
+        const refIds=rr.data?Object.keys(rr.data):[];
+        let activeCount=0;
+        for(const refId of refIds){
+          const hdR=await dbGet(env,`users/${refId}/hasDeposited`);
+          if(hdR.data===true) activeCount++;
+        }
+        if(activeCount<t.n){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Need ${t.n} active referrals who deposited (have ${activeCount})`}; }
+        bam=t.bam;coins=t.coins;
+      }else if(G.SOC_TASKS[tid]){bam=G.SOC_TASKS[tid];}
+      else{ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Unknown task'}; }
+      const nb=(user.bamboo||0)+bam;const nc=(user.coins||0)+coins;
+      await dbUpdate(env,`users/${uid}`,{completedTasks:[...(user.completedTasks||[]),tid],bamboo:nb,coins:nc});
+      log(env,uid,'claim_task',{taskId:tid,bamboo_reward:bam,coins_reward:coins,bamboo_before:user.bamboo||0,bamboo_after:nb,coins_before:user.coins||0,coins_after:nc},_meta);
+      await dbSet(env,lockKey,{ts:0});
+      return{success:true,data:{bamboo:nb,coins:nc,bam,coins}};
+    }catch(innerErr){ await dbSet(env,lockKey,{ts:0}).catch(()=>{}); throw innerErr; }
   }catch(e){return{success:false,error:e.message};}
 }
 
@@ -630,6 +736,10 @@ async function hAdmin(env,action,data){
       await dbUpdate(env,`users/${data.userId}/deposits/${data.depositId}`,{status:'completed',completedAt:Date.now()});
       const u=await dbGet(env,`users/${data.userId}`);
       if(u.data)await dbUpdate(env,`users/${data.userId}`,{bamboo:(u.data.bamboo||0)+bamboo,tonBalance:(u.data.tonBalance||0)+ton,hasDeposited:true});
+      // Update referrer's referral record
+      if(u.data?.referredBy){
+        await dbUpdate(env,`users/${u.data.referredBy}/referrals/${data.userId}`,{hasDeposited:true}).catch(()=>{});
+      }
       await dbDelete(env,`pendingDeposits/${data.depositId}`);
       log(env,data.userId,'admin_confirm_deposit',{
         depositId:data.depositId, amount_ton:ton, bamboo_added:bamboo, by:'admin',
@@ -768,6 +878,89 @@ async function hCreateTask(env,uid,data,_meta={}){
 }
 
 // ── Main handler ──────────────────────────────────────────────────
+
+// ── Update leaderboard entry ─────────────────────────────────────
+async function updateLeaderboardEntry(env,uid,user){
+  try{
+    const COMP_DURATION_MS = 10*24*60*60*1000;
+    // Get or init competition meta
+    let meta=(await dbGet(env,'competition/meta')).data;
+    if(!meta||!meta.endDate){
+      meta={endDate:Date.now()+COMP_DURATION_MS,startDate:Date.now()};
+      await dbSet(env,'competition/meta',meta);
+    }
+    const compStarted=Date.now()>=meta.startDate;
+    if(!compStarted) return; // competition not started yet
+
+    // Count active referrals (current total)
+    const rr=await dbGet(env,`users/${uid}/referrals`);
+    const refIds=rr.data?Object.keys(rr.data):[];
+    let activeNow=0;
+    for(const refId of refIds){
+      const hd=await dbGet(env,`users/${refId}/hasDeposited`);
+      if(hd.data===true) activeNow++;
+    }
+    const miningNow=Math.round((user.miningRate||0)*24);
+
+    // Get or create snapshot for this user (values AT competition start)
+    const snapKey=`competition/snapshots/${uid}`;
+    let snap=(await dbGet(env,snapKey)).data;
+    if(!snap){
+      // First time this user is seen after comp started — snapshot current values
+      snap={activeRefs:activeNow, miningPerDay:miningNow, ts:meta.startDate};
+      await dbSet(env,snapKey,snap);
+    }
+
+    // Score = growth SINCE competition started (never negative)
+    const activeScore=Math.max(0, activeNow - snap.activeRefs);
+    const miningScore=Math.max(0, miningNow - snap.miningPerDay);
+
+    const entry={
+      userId:uid,
+      name:`${user.firstName||''} ${user.lastName||''}`.trim()||'Panda',
+      photo:user.photoUrl||null,
+      activeScore,   // points earned since comp start
+      miningScore,
+      activeNow,
+      miningNow,
+      ts:Date.now(),
+    };
+    await dbSet(env,`competition/users/${uid}`,entry);
+
+    // Rebuild leaderboard top 50
+    const allr=await dbGet(env,'competition/users');
+    const all=allr.data?Object.values(allr.data):[];
+    const byActive=[...all].sort((a,b)=>b.activeScore-a.activeScore).slice(0,50)
+      .map(u=>({userId:u.userId,name:u.name,photo:u.photo,score:u.activeScore}));
+    const byMining=[...all].sort((a,b)=>b.miningScore-a.miningScore).slice(0,50)
+      .map(u=>({userId:u.userId,name:u.name,photo:u.photo,score:u.miningScore}));
+    await dbSet(env,'competition/leaderboard',{activeRefs:byActive,miningSpeed:byMining,updatedAt:Date.now()});
+  }catch(e){console.error('updateLeaderboardEntry:',e.message);}
+}
+
+// ── Leaderboard ───────────────────────────────────────────────────
+async function hGetLeaderboard(env,uid,_meta={}){
+  try{
+    const COMP_DURATION_MS = 10*24*60*60*1000;
+    let meta=(await dbGet(env,'competition/meta')).data;
+    if(!meta||!meta.endDate){
+      meta={endDate:Date.now()+COMP_DURATION_MS,startDate:Date.now()};
+      await dbSet(env,'competition/meta',meta);
+    }
+    const lbr=await dbGet(env,'competition/leaderboard');
+    const lb=lbr.data||{activeRefs:[],miningSpeed:[]};
+    // Get this user's snapshot so frontend can show their current score
+    const snap=(await dbGet(env,`competition/snapshots/${uid}`)).data||null;
+    return{success:true,data:{
+      endDate:meta.endDate,
+      startDate:meta.startDate,
+      activeRefs:lb.activeRefs||[],
+      miningSpeed:lb.miningSpeed||[],
+      mySnapshot:snap, // {activeRefs, miningPerDay} at comp start
+    }};
+  }catch(e){return{success:false,error:e.message};}
+}
+
 export default {
   async fetch(request,env){
     if(request.method==='OPTIONS')return new Response(null,{headers:CORS});
@@ -797,6 +990,9 @@ export default {
       return jRes(await hAdmin(env,action,data));
     }
 
+    // ── Ping: no auth required — used by race system to find fastest server ──
+    if(action==='ping') return jRes({success:true,data:{pong:true,ts:Date.now()}});
+
     if(!authHeader.startsWith('Telegram '))return fail('Telegram authentication required',401);
     const v=await validateTg(authHeader.replace('Telegram ',''),env.BOT_TOKEN);
     if(!v.valid){
@@ -825,6 +1021,7 @@ export default {
       case 'claimTask'     :return jRes(await hClaimTask    (env,uid,data,_meta));
       case 'verifyTask'    :return jRes(await hVerifyTask   (env,uid,data,_meta));
       case 'createTask'    :return jRes(await hCreateTask   (env,uid,data,_meta));
+      case 'getLeaderboard':return jRes(await hGetLeaderboard(env,uid,_meta));
       default:return fail('Unknown action',400);
     }
   }
