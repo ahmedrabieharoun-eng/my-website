@@ -1,1 +1,566 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Broadcaster Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .keyword-badge {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">
+                <i class="fas fa-paper-plane ml-2"></i>
+                Telegram Bot Broadcaster Pro
+            </h1>
+            <p class="text-white text-xl opacity-90">أداة احترافية لإرسال الرسائل الجماعية عبر بوت تيليجرام</p>
+        </div>
 
+        <!-- Main Card -->
+        <div class="glass-card p-6 md:p-8">
+            <!-- Firebase Config Section -->
+            <div class="mb-8 border-b-2 border-gray-200 pb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-database ml-2 text-purple-600"></i>
+                    إعدادات Firebase
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="apiKey" placeholder="API Key" value="AIzaSyC5dwRaz3L-aK7I5CoPkbB31MzXB62lgrU" 
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="authDomain" placeholder="Auth Domain" value="earnmoney124553.firebaseapp.com"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="databaseURL" placeholder="Database URL" value="https://earnmoney124553-default-rtdb.firebaseio.com"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="projectId" placeholder="Project ID" value="earnmoney124553"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="storageBucket" placeholder="Storage Bucket" value="earnmoney124553.firebasestorage.app"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="messagingSenderId" placeholder="Messaging Sender ID" value="325528918523"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <input type="text" id="appId" placeholder="App ID" value="1:325528918523:web:73d84f48a24c1e0cbfd35e"
+                           class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none col-span-2">
+                </div>
+                <button onclick="initFirebase()" class="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition">
+                    <i class="fas fa-plug ml-2"></i>اتصال بـ Firebase
+                </button>
+                <div id="firebaseStatus" class="mt-2 text-sm hidden"></div>
+            </div>
+
+            <!-- Bot Token Section -->
+            <div class="mb-8 border-b-2 border-gray-200 pb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-robot ml-2 text-purple-600"></i>
+                    إعدادات البوت
+                </h2>
+                <div class="flex gap-4">
+                    <input type="text" id="botToken" placeholder="أدخل توكن البوت" value="8371336266:AAFSXC7UAGBA5hG4NulNV4l5tVyOmwuaAYU"
+                           class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    <button onclick="testBot()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-vial ml-2"></i>اختبار
+                    </button>
+                </div>
+                <div id="botStatus" class="mt-2 text-sm hidden"></div>
+            </div>
+
+            <!-- Message Composition -->
+            <div class="mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-edit ml-2 text-purple-600"></i>
+                    تكوين الرسالة
+                </h2>
+                
+                <!-- Image Option -->
+                <div class="mb-4">
+                    <label class="flex items-center space-x-3 space-x-reverse cursor-pointer">
+                        <input type="checkbox" id="includeImage" class="w-5 h-5 text-purple-600">
+                        <span class="text-gray-700 text-lg">إضافة صورة مع الرسالة</span>
+                    </label>
+                    <div id="imageUrlContainer" class="mt-3 hidden">
+                        <input type="url" id="imageUrl" placeholder="رابط الصورة (يجب أن يبدأ بـ https://)"
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                    </div>
+                </div>
+
+                <!-- Message Text -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-lg mb-2">نص الرسالة:</label>
+                    <textarea id="messageText" rows="6" 
+                              class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">🚜🔥 Official Announcement – Crystal Ranch is Live! 🔥🚜
+
+Welcome to the most powerful scarcity-based economy on Telegram 💎
+Simple system… but control belongs to the fastest.
+
+🎯 How to Start
+1️⃣ Deposit 1 TON
+2️⃣ Buy your first machine
+3️⃣ Start producing immediately 💰
+
+🐄 Cow Machine (Now Open)
+1 TON · 41 Milk/hour
+Limited to 1,000 users only
+Permanent closure after sell-out ⛔
+
+🔥 Only 1,000 players will control the Milk supply.
+
+🐔 Chicken Machine
+Opens after Cow sells out
+Same scarcity system.
+
+💎 Diamond Engine
+20,000 Milk + 20,000 Eggs → 1 Diamond
+💰 Fixed price: 25 TON
+⚡ Instant conversion
+
+🛒 Expand Production
+5,000 Milk = 1 Cow
+5,000 Eggs = 1 Chicken
+
+💸 Auto deposits & withdrawals
+Minimum withdrawal: 0.1 TON
+
+🚀 Early entry = Market control
+⏳ Limited spots available</textarea>
+                </div>
+
+                <!-- Buttons Configuration -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-lg mb-2">الأزرار (اختياري):</label>
+                    <div id="buttonsContainer">
+                        <!-- Buttons will be added here dynamically -->
+                    </div>
+                    <button onclick="addButtonRow()" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition">
+                        <i class="fas fa-plus ml-2"></i>إضافة زر
+                    </button>
+                </div>
+            </div>
+
+            <!-- Target Selection -->
+            <div class="mb-8 border-t-2 border-gray-200 pt-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">
+                    <i class="fas fa-bullseye ml-2 text-purple-600"></i>
+                    تحديد المستهدفين
+                </h2>
+                
+                <div class="flex gap-4 mb-4">
+                    <button onclick="setTargetMode('all')" id="modeAll" class="flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-users ml-2"></i>جميع المستخدمين
+                    </button>
+                    <button onclick="setTargetMode('single')" id="modeSingle" class="flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition">
+                        <i class="fas fa-user ml-2"></i>مستخدم محدد
+                    </button>
+                </div>
+
+                <div id="singleUserInput" class="hidden">
+                    <input type="text" id="singleUserId" placeholder="أدخل معرف المستخدم (User ID)"
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-400 outline-none">
+                </div>
+
+                <div id="usersCount" class="mt-4 p-4 bg-gray-100 rounded-lg text-center hidden">
+                    <span class="text-gray-700">عدد المستخدمين في قاعدة البيانات: </span>
+                    <span id="countValue" class="font-bold text-purple-600 text-xl">0</span>
+                </div>
+            </div>
+
+            <!-- Send Button & Progress -->
+            <div class="text-center">
+                <button onclick="startBroadcast()" class="btn-primary text-white px-12 py-4 rounded-lg text-xl font-bold">
+                    <i class="fas fa-paper-plane ml-2"></i>
+                    إرسال الآن
+                </button>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="mt-6 hidden">
+                <div class="bg-gray-200 rounded-full h-4 mb-4">
+                    <div id="progressBar" class="progress-bar bg-gradient-to-r from-green-400 to-blue-500 h-4 rounded-full" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-sm text-gray-600">
+                    <span>تم الإرسال: <span id="sentCount">0</span></span>
+                    <span>فشل: <span id="failedCount">0</span></span>
+                    <span>المتبقي: <span id="remainingCount">0</span></span>
+                </div>
+            </div>
+
+            <!-- Results Log -->
+            <div class="mt-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">سجل النتائج:</h3>
+                <div id="resultsLog" class="bg-gray-900 text-gray-100 p-4 rounded-lg h-64 overflow-y-auto font-mono text-sm">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let firebaseInitialized = false;
+        let database = null;
+        let targetMode = 'all';
+        let buttons = [];
+        let isSending = false;
+
+        // Initialize Firebase
+        function initFirebase() {
+            const config = {
+                apiKey: document.getElementById('apiKey').value,
+                authDomain: document.getElementById('authDomain').value,
+                databaseURL: document.getElementById('databaseURL').value,
+                projectId: document.getElementById('projectId').value,
+                storageBucket: document.getElementById('storageBucket').value,
+                messagingSenderId: document.getElementById('messagingSenderId').value,
+                appId: document.getElementById('appId').value
+            };
+
+            try {
+                firebase.initializeApp(config);
+                database = firebase.database();
+                firebaseInitialized = true;
+                
+                const status = document.getElementById('firebaseStatus');
+                status.className = 'mt-2 text-sm text-green-600';
+                status.innerHTML = '<i class="fas fa-check-circle ml-1"></i>تم الاتصال بـ Firebase بنجاح';
+                status.classList.remove('hidden');
+                
+                loadUsersCount();
+            } catch (error) {
+                const status = document.getElementById('firebaseStatus');
+                status.className = 'mt-2 text-sm text-red-600';
+                status.innerHTML = '<i class="fas fa-exclamation-circle ml-1"></i>خطأ في الاتصال: ' + error.message;
+                status.classList.remove('hidden');
+            }
+        }
+
+        // Load users count from Firebase
+        function loadUsersCount() {
+            if (!firebaseInitialized) {
+                Swal.fire('تحذير', 'الرجاء الاتصال بـ Firebase أولاً', 'warning');
+                return;
+            }
+
+            const usersRef = database.ref('users');
+            usersRef.once('value', (snapshot) => {
+                const count = snapshot.numChildren();
+                document.getElementById('countValue').textContent = count;
+                document.getElementById('usersCount').classList.remove('hidden');
+            });
+        }
+
+        // Test bot token
+        async function testBot() {
+            const token = document.getElementById('botToken').value;
+            if (!token) {
+                Swal.fire('خطأ', 'الرجاء إدخال توكن البوت', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+                const data = await response.json();
+                
+                const status = document.getElementById('botStatus');
+                if (data.ok) {
+                    status.className = 'mt-2 text-sm text-green-600';
+                    status.innerHTML = `<i class="fas fa-check-circle ml-1"></i>تم الاتصال بالبوت: @${data.result.username}`;
+                    status.classList.remove('hidden');
+                } else {
+                    status.className = 'mt-2 text-sm text-red-600';
+                    status.innerHTML = '<i class="fas fa-exclamation-circle ml-1"></i>توكن غير صالح';
+                    status.classList.remove('hidden');
+                }
+            } catch (error) {
+                Swal.fire('خطأ', 'فشل الاتصال بالبوت', 'error');
+            }
+        }
+
+        // Toggle image input
+        document.getElementById('includeImage').addEventListener('change', function(e) {
+            const container = document.getElementById('imageUrlContainer');
+            if (e.target.checked) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        });
+
+        // Add button row
+        function addButtonRow() {
+            const container = document.getElementById('buttonsContainer');
+            const rowId = 'btn-' + Date.now();
+            
+            const row = document.createElement('div');
+            row.id = rowId;
+            row.className = 'flex gap-2 mb-2';
+            row.innerHTML = `
+                <input type="text" placeholder="نص الزر" class="btn-text flex-1 p-2 border border-gray-300 rounded-lg">
+                <input type="url" placeholder="الرابط" class="btn-url flex-1 p-2 border border-gray-300 rounded-lg">
+                <button onclick="removeButtonRow('${rowId}')" class="bg-red-500 text-white px-4 rounded-lg hover:bg-red-600">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+            
+            container.appendChild(row);
+        }
+
+        // Remove button row
+        function removeButtonRow(rowId) {
+            document.getElementById(rowId).remove();
+        }
+
+        // Set target mode
+        function setTargetMode(mode) {
+            targetMode = mode;
+            
+            document.getElementById('modeAll').className = mode === 'all' ? 
+                'flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition' :
+                'flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition';
+            
+            document.getElementById('modeSingle').className = mode === 'single' ? 
+                'flex-1 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition' :
+                'flex-1 bg-gray-600 text-white px-4 py-3 rounded-lg hover:bg-gray-700 transition';
+            
+            document.getElementById('singleUserInput').className = mode === 'single' ? 'block' : 'hidden';
+        }
+
+        // Collect buttons data
+        function collectButtons() {
+            const buttons = [];
+            const rows = document.querySelectorAll('#buttonsContainer > div');
+            
+            rows.forEach(row => {
+                const text = row.querySelector('.btn-text').value.trim();
+                const url = row.querySelector('.btn-url').value.trim();
+                
+                if (text && url) {
+                    buttons.push({ text, url });
+                }
+            });
+            
+            return buttons;
+        }
+
+        // Build inline keyboard
+        function buildKeyboard(buttons) {
+            if (buttons.length === 0) return null;
+            
+            // Split buttons into rows (max 2 per row for better mobile display)
+            const keyboard = [];
+            for (let i = 0; i < buttons.length; i += 2) {
+                const row = [];
+                row.push({ text: buttons[i].text, url: buttons[i].url });
+                if (i + 1 < buttons.length) {
+                    row.push({ text: buttons[i + 1].text, url: buttons[i + 1].url });
+                }
+                keyboard.push(row);
+            }
+            
+            return { inline_keyboard: keyboard };
+        }
+
+        // Send message to single user
+        async function sendMessageToUser(chatId, text, photoUrl, buttons) {
+            const token = document.getElementById('botToken').value;
+            
+            const keyboard = buildKeyboard(buttons);
+            const replyMarkup = keyboard ? JSON.stringify(keyboard) : undefined;
+            
+            if (photoUrl) {
+                // Send with photo
+                const url = `https://api.telegram.org/bot${token}/sendPhoto`;
+                const payload = {
+                    chat_id: chatId,
+                    photo: photoUrl,
+                    caption: text,
+                    parse_mode: 'HTML'
+                };
+                if (replyMarkup) payload.reply_markup = replyMarkup;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return await response.json();
+            } else {
+                // Send text message
+                const url = `https://api.telegram.org/bot${token}/sendMessage`;
+                const payload = {
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: 'HTML'
+                };
+                if (replyMarkup) payload.reply_markup = replyMarkup;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return await response.json();
+            }
+        }
+
+        // Start broadcast
+        async function startBroadcast() {
+            if (isSending) {
+                Swal.fire('جاري الإرسال', 'الرجاء الانتظار حتى اكتمال الإرسال الحالي', 'warning');
+                return;
+            }
+
+            // Validate inputs
+            const token = document.getElementById('botToken').value;
+            if (!token) {
+                Swal.fire('خطأ', 'الرجاء إدخال توكن البوت', 'error');
+                return;
+            }
+
+            if (!firebaseInitialized) {
+                Swal.fire('خطأ', 'الرجاء الاتصال بـ Firebase أولاً', 'error');
+                return;
+            }
+
+            const message = document.getElementById('messageText').value.trim();
+            if (!message) {
+                Swal.fire('خطأ', 'الرجاء إدخال نص الرسالة', 'error');
+                return;
+            }
+
+            const includeImage = document.getElementById('includeImage').checked;
+            const imageUrl = document.getElementById('imageUrl').value.trim();
+            
+            if (includeImage && !imageUrl) {
+                Swal.fire('خطأ', 'الرجاء إدخال رابط الصورة', 'error');
+                return;
+            }
+
+            const buttons = collectButtons();
+            
+            // Get target users
+            let userIds = [];
+            
+            if (targetMode === 'single') {
+                const singleId = document.getElementById('singleUserId').value.trim();
+                if (!singleId) {
+                    Swal.fire('خطأ', 'الرجاء إدخال معرف المستخدم', 'error');
+                    return;
+                }
+                userIds = [singleId];
+            } else {
+                // Confirm before sending to all users
+                const confirm = await Swal.fire({
+                    title: 'تأكيد الإرسال الجماعي',
+                    text: 'هل أنت متأكد من إرسال الرسالة لجميع المستخدمين؟',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'نعم، أرسل',
+                    cancelButtonText: 'إلغاء'
+                });
+                
+                if (!confirm.isConfirmed) return;
+                
+                // Load all users from Firebase
+                const usersRef = database.ref('users');
+                const snapshot = await usersRef.once('value');
+                
+                snapshot.forEach(child => {
+                    userIds.push(child.key);
+                });
+            }
+
+            // Start sending
+            isSending = true;
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('resultsLog').innerHTML = '';
+            
+            let sent = 0;
+            let failed = 0;
+            const total = userIds.length;
+            
+            const log = document.getElementById('resultsLog');
+            
+            for (let i = 0; i < userIds.length; i++) {
+                const userId = userIds[i];
+                
+                try {
+                    const result = await sendMessageToUser(userId, message, includeImage ? imageUrl : null, buttons);
+                    
+                    if (result.ok) {
+                        sent++;
+                        log.innerHTML += `<div class="text-green-400">✓ [${i+1}/${total}] تم الإرسال إلى ${userId}</div>`;
+                    } else {
+                        failed++;
+                        log.innerHTML += `<div class="text-red-400">✗ [${i+1}/${total}] فشل الإرسال إلى ${userId}: ${result.description}</div>`;
+                    }
+                } catch (error) {
+                    failed++;
+                    log.innerHTML += `<div class="text-red-400">✗ [${i+1}/${total}] خطأ في ${userId}: ${error.message}</div>`;
+                }
+                
+                // Update progress
+                document.getElementById('sentCount').textContent = sent;
+                document.getElementById('failedCount').textContent = failed;
+                document.getElementById('remainingCount').textContent = total - (sent + failed);
+                
+                const progress = ((i + 1) / total) * 100;
+                document.getElementById('progressBar').style.width = progress + '%';
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 70));
+                
+                // Auto-scroll log
+                log.scrollTop = log.scrollHeight;
+            }
+            
+            // Finished
+            isSending = false;
+            log.innerHTML += `<div class="text-yellow-400 font-bold mt-2">✨ تم الانتهاء! نجاح: ${sent}, فشل: ${failed}</div>`;
+            
+            Swal.fire({
+                title: 'تم الإرسال',
+                html: `نجاح: ${sent}<br>فشل: ${failed}`,
+                icon: 'success'
+            });
+        }
+
+        // Initialize with default button
+        window.onload = function() {
+            addButtonRow(); // Add first button row
+        };
+    </script>
+</body>
+</html>
