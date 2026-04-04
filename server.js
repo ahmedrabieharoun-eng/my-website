@@ -205,6 +205,8 @@ const ACTION_COOLDOWNS = {
   claimTask    : 2500,
   verifyTask   : 2500,
   createTask   : 5000,
+  saveSquad    : 2000,
+  buyPlayer    : 2500,
 };
 function userActionOk(uid, action){
   const cd = ACTION_COOLDOWNS[action];
@@ -427,7 +429,7 @@ async function hGetState(env,uid,tg,data={},_meta={}){
     };
     const lr=await dbGet(env,`users/${uid}/log`);
     const balanceLog=lr.data?Object.values(lr.data).sort((a,b)=>b.ts-a.ts).slice(0,50):[];
-    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,balanceLog,pendingDeposit,tasks}};
+    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,balanceLog,pendingDeposit,tasks,ownedPlayers:user.ownedPlayers||[],squad:user.squad||new Array(11).fill(null),formation:user.formation||'4-3-3'}};
   }catch(e){console.error('getState',e);return{success:false,error:e.message,errorCode:'GET_STATE_ERROR'};}
 }
 
@@ -877,6 +879,73 @@ async function hCreateTask(env,uid,data,_meta={}){
   }catch(e){console.error('createTask:',e);return{success:false,error:e.message};}
 }
 
+// ── Save Squad ────────────────────────────────────────────────────
+async function hSaveSquad(env,uid,data,_meta={}){
+  try{
+    const{squad,formation}=data;
+    if(!Array.isArray(squad)||squad.length!==11)return{success:false,error:'Squad must have 11 slots'};
+    const validFormations=['4-3-3','4-2-3-1','4-4-2','3-5-2','4-1-1-4'];
+    const form=validFormations.includes(formation)?formation:'4-3-3';
+    // Validate all player IDs are either null or strings max 10 chars
+    const sanitizedSquad=squad.map(pid=>{
+      if(!pid)return null;
+      const s=String(pid).slice(0,10);
+      return /^p\d{3}$/.test(s)?s:null;
+    });
+    await dbUpdate(env,`users/${uid}`,{
+      squad:sanitizedSquad,
+      formation:form,
+      squadSavedAt:Date.now(),
+    });
+    return{success:true,data:{saved:true,formation:form}};
+  }catch(e){return{success:false,error:e.message};}
+}
+
+// ── Buy Player ────────────────────────────────────────────────────
+// Player prices (Coins) — mirrors frontend PLAYERS_DB
+const PLAYER_PRICES={
+  p001:800,p002:600,p003:700,p004:900,p005:1200,p006:800,p007:700,p008:1000,p009:900,p010:1100,
+  p011:3500,p012:3000,p013:5000,p014:6000,p015:4500,
+  p016:15000,p017:20000,p018:25000,p019:30000,p020:22000,
+};
+const PLAYER_PRICES_TON={p021:1.5,p022:1.2,p023:1.8,p024:2.5,p025:2.8,p026:12,p027:11,p028:8,p029:13,p030:7};
+
+async function hBuyPlayer(env,uid,data,_meta={}){
+  try{
+    const{playerId}=data;
+    if(!playerId||typeof playerId!=='string'||!/^p\d{3}$/.test(playerId))return{success:false,error:'Invalid player ID'};
+    const r=await dbGet(env,`users/${uid}`);const user=r.data;
+    if(!user)return{success:false,error:'User not found'};
+    const owned=user.ownedPlayers||[];
+    if(owned.includes(playerId))return{success:false,error:'Player already owned'};
+
+    if(PLAYER_PRICES[playerId]!==undefined){
+      // Coins purchase
+      const price=PLAYER_PRICES[playerId];
+      if((user.coins||0)<price)return{success:false,error:`Need ${price} Coins`};
+      const newCoins=(user.coins||0)-price;
+      const newOwned=[...owned,playerId];
+      await dbUpdate(env,`users/${uid}`,{coins:newCoins,ownedPlayers:newOwned});
+      log(env,uid,'buy_item',{itemId:playerId,qty:1,totalCost:price,bamboo_before:user.bamboo||0,bamboo_after:user.bamboo||0,coins_before:user.coins||0,coins_after:newCoins},_meta);
+      // Referral commission (20% of coin price in coins to referrer)
+      if(user.referredBy&&user.referredBy!==uid){
+        const comm=Math.floor(price*G.REF_BONUS_PCT/100);
+        const rr=await dbGet(env,`users/${user.referredBy}`);
+        if(rr.data){
+          await dbUpdate(env,`users/${user.referredBy}`,{coins:(rr.data.coins||0)+comm});
+          sendTgNotification(env,user.referredBy,`💰 <b>عمولة إحالة!</b>\n<b>${user.firstName||'صديق'}</b> اشترى لاعباً\nحصلت على <b>${comm} Coins</b> (20%)`).catch(()=>{});
+        }
+      }
+      return{success:true,data:{coins:newCoins,ownedPlayers:newOwned}};
+    }else if(PLAYER_PRICES_TON[playerId]!==undefined){
+      // TON purchase — just validate wallet connected, actual payment handled on chain
+      return{success:false,error:'TON player purchase requires on-chain payment'};
+    }else{
+      return{success:false,error:'Unknown player'};
+    }
+  }catch(e){return{success:false,error:e.message};}
+}
+
 // ── Main handler ──────────────────────────────────────────────────
 
 // ── Update leaderboard entry ─────────────────────────────────────
@@ -1022,6 +1091,8 @@ export default {
       case 'verifyTask'    :return jRes(await hVerifyTask   (env,uid,data,_meta));
       case 'createTask'    :return jRes(await hCreateTask   (env,uid,data,_meta));
       case 'getLeaderboard':return jRes(await hGetLeaderboard(env,uid,_meta));
+      case 'saveSquad'     :return jRes(await hSaveSquad    (env,uid,data,_meta));
+      case 'buyPlayer'     :return jRes(await hBuyPlayer    (env,uid,data,_meta));
       default:return fail('Unknown action',400);
     }
   }
