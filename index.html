@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -1057,7 +1057,7 @@ if(tg){
 // ════ USER STATE ════
 let userTonBalance = 0;
 let myBid = 0;
-let currentLang = 'ar';
+let currentLang = localStorage.getItem('auction_lang') || 'en';
 let auctionEndDate = null;
 let leaderboard = [];
 let promoLog = [];
@@ -1165,6 +1165,7 @@ function switchTab(tab){
 // ════ LANG ════
 function setLang(lang){
   currentLang=lang;
+  localStorage.setItem('auction_lang', lang);
   document.documentElement.lang=lang;
   document.documentElement.dir=lang==='ar'?'rtl':'ltr';
   const flags={ar:'🇸🇦',en:'🇬🇧',ru:'🇷🇺',fr:'🇫🇷',de:'🇩🇪'};
@@ -1590,7 +1591,23 @@ document.getElementById('playersModal').addEventListener('click',function(e){if(
 document.getElementById('welcomeOverlay').addEventListener('click',function(e){if(e.target===this)closeWelcome();});
 
 // ════ INIT ════
+// Apply saved language immediately on load
+(function(){
+  const flags={ar:'🇸🇦',en:'🇬🇧',ru:'🇷🇺',fr:'🇫🇷',de:'🇩🇪'};
+  const codes={ar:'AR',en:'EN',ru:'RU',fr:'FR',de:'DE'};
+  document.documentElement.lang=currentLang;
+  document.documentElement.dir=currentLang==='ar'?'rtl':'ltr';
+  const flagEl=document.getElementById('tbLangFlag');
+  const codeEl=document.getElementById('tbLangCode');
+  if(flagEl) flagEl.textContent=flags[currentLang];
+  if(codeEl) codeEl.textContent=codes[currentLang];
+  // Update active lang in menu
+  document.querySelectorAll('.lang-option').forEach(opt=>{
+    opt.classList.toggle('active-lang', opt.getAttribute('onclick')===`setLang('${currentLang}')`);
+  });
+})();
 initUserUI();
+applyTranslations();
 loadAuctionData();
 loadPromoLog();
 checkWelcome();
