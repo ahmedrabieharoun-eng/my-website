@@ -1,1099 +1,751 @@
 // ================================================================
-//  PANDA BAMBOO FACTORY — Cloudflare Worker v3.0
+//  مزاد باكج الأساطير — Cloudflare Worker (النسخة المصلحة)
 //  Firebase Realtime Database
-//  Environment Variables:
-//    FIREBASE_DATABASE_URL  e.g. https://YOUR-DB.firebaseio.com
-//    FIREBASE_API_KEY       Firebase API key
-//    BOT_TOKEN              Telegram Bot Token
-//    ADMIN_IDS              comma-separated admin Telegram IDs
+//
+//  Environment Variables (Cloudflare Worker Secrets):
+//    FIREBASE_DATABASE_URL   e.g. https://YOUR-DB-default-rtdb.firebaseio.com
+//    FIREBASE_API_KEY        Firebase Web API Key
+//    BOT_TOKEN               Telegram Bot Token
+//    ADMIN_IDS               comma-separated Telegram admin IDs
+//
+//  Routes:
+//    GET  /health                    → server health check
+//    GET  /tonconnect-manifest.json  → TON Connect manifest
+//    POST /api                       → all app actions
 // ================================================================
 
-const G = {
-  BAMBOO_PER_COIN:20, TON_PER_COIN:0.00005, TON_TO_BAMBOO:50000,
-  MIN_WITHDRAW:200, MIN_DEPOSIT_TON:1,
-  REF_BONUS_PCT:20,
-  WELCOME_BAMBOO:0,
-  WELCOME_COINS :195,
-  WELCOME_RATE  :4.167, // Fix: 100 bamboo/day (100/24) for new users
-  MAX_TANK_LVL:27,      // Fix: 27 real levels
-  MAX_RETRY:3, RETRY_DELAY_MS:100,
-  // Fix 4: rebalanced items — ROI increases with tier, no overlap
-  ITEMS:{
-    bamboo_stick :{price:7500,    power:50    },  // 0.033 bam/hr per coin — entry
-    panda_paw    :{price:25000,   power:200   },  // 0.040 — slightly better
-    leaf_fan     :{price:125000,  power:1200  },  // 0.048 — noticeably better
-    bamboo_energy:{price:625000,  power:7500  },  // 0.060 — clearly better
-    panda_den    :{price:3130000, power:45000 },  // 0.072 — premium
-    bamboo_forest:{price:6500000, power:110000},  // 0.085 — endgame
-  },
-  // 27 tank levels — capacity starts at 5,000 and scales progressively
-  TANK:{
-    1 :{cap:5000,      upgCost:1000      },
-    2 :{cap:10000,     upgCost:3000      },
-    3 :{cap:20000,     upgCost:8000      },
-    4 :{cap:40000,     upgCost:20000     },
-    5 :{cap:80000,     upgCost:50000     },
-    6 :{cap:150000,    upgCost:120000    },
-    7 :{cap:250000,    upgCost:250000    },
-    8 :{cap:400000,    upgCost:450000    },
-    9 :{cap:600000,    upgCost:750000    },
-    10:{cap:900000,    upgCost:1200000   },
-    11:{cap:1300000,   upgCost:1800000   },
-    12:{cap:1800000,   upgCost:2700000   },
-    13:{cap:2500000,   upgCost:4000000   },
-    14:{cap:3300000,   upgCost:5500000   },
-    15:{cap:4300000,   upgCost:8000000   },
-    16:{cap:5500000,   upgCost:11000000  },
-    17:{cap:7000000,   upgCost:15000000  },
-    18:{cap:8800000,   upgCost:20000000  },
-    19:{cap:11000000,  upgCost:27000000  },
-    20:{cap:14000000,  upgCost:35000000  },
-    21:{cap:17500000,  upgCost:45000000  },
-    22:{cap:22000000,  upgCost:58000000  },
-    23:{cap:28000000,  upgCost:75000000  },
-    24:{cap:35000000,  upgCost:95000000  },
-    25:{cap:44000000,  upgCost:120000000 },
-    26:{cap:55000000,  upgCost:150000000 },
-    27:{cap:70000000,  upgCost:200000000 },
-  },
-  // Fix 5: Added r200 and r500
-  REF_TASKS:{
-    r1  :{n:1,   bam:50,     coins:2   },
-    r5  :{n:5,   bam:250,    coins:10  },
-    r10 :{n:10,  bam:600,    coins:25  },
-    r20 :{n:20,  bam:1500,   coins:60  },
-    r50 :{n:50,  bam:4000,   coins:150 },
-    r70 :{n:70,  bam:6000,   coins:220 },
-    r100:{n:100, bam:10000,  coins:400 },
-    r200:{n:200, bam:20000,  coins:800 },
-    r500:{n:500, bam:50000,  coins:2000},
-  },
-  // Active referrals tasks (users who deposited) — 2x original rewards
-  REF_ACTIVE_TASKS:{
-    ra1  :{n:1,   bam:10000,   coins:40   },
-    ra5  :{n:5,   bam:50000,   coins:200  },
-    ra10 :{n:10,  bam:120000,  coins:500  },
-    ra20 :{n:20,  bam:300000,  coins:1200 },
-    ra50 :{n:50,  bam:800000,  coins:3000 },
-    ra70 :{n:70,  bam:1200000, coins:4400 },
-    ra100:{n:100, bam:2000000, coins:8000 },
-    ra200:{n:200, bam:4000000, coins:16000},
-    ra500:{n:500, bam:10000000,coins:40000},
-  },
-  SOC_TASKS:{
-    tg_payouts:1000,  // قناة المدفوعات — مطلوبة
-    tg_news   :500,   // قناة الأخبار — مطلوبة
-    tg_ch     :1000,
-    tg_grp    :500,
-    tg_bot    :300,
-  },
-  BOT_USERNAME:'PandaBamboBot', // Fix 6
+// ── Config ────────────────────────────────────────────────────────
+const CFG = {
+  MIN_DEPOSIT_TON : 1,     // ✅ الحد الأدنى 1 TON (مطابق للـ HTML)
+  MIN_BID         : 0.1,   // Minimum bid increment in TON
+  AUCTION_DURATION: 3 * 24 * 60 * 60 * 1000,
+  APP_NAME        : 'PandaBambooBot',
+  APP_URL         : 'https://pandabambo.vercel.app',
+  APP_ICON        : 'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/87e9d1bd-c053-466a-a29e-40483a009e8f.png',
+  APP_DESCRIPTION : 'Panda Bamboo Factory',
 };
 
-// ── Default partner tasks seeded automatically if not present ────
-const DEFAULT_PARTNER_TASKS = [
-  {
-    id: 'partner_payouts',
-    name: 'Join Payouts Channel',
-    type: 'channel',
-    link: 'https://t.me/PandaBambooPayouts',
-    bambooReward: 100,
-    targetUsers: null, // no limit
-    status: 'active',
-    isDefault: true,
-  },
-  {
-    id: 'partner_news',
-    name: 'Join Mining News Channel',
-    type: 'channel',
-    link: 'https://t.me/PandaMiningNews',
-    bambooReward: 100,
-    targetUsers: null, // no limit
-    status: 'active',
-    isDefault: true,
-  },
-];
+// ── HTTP helpers ──────────────────────────────────────────────────
+const CORS = {
+  'Access-Control-Allow-Origin' : '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Telegram-Init-Data, X-Action',
+  'Access-Control-Max-Age'      : '86400',
+};
+const JSON_CT = { 'Content-Type': 'application/json', ...CORS };
+const jRes  = (b, s = 200) => new Response(JSON.stringify(b), { status: s, headers: JSON_CT });
+const ok    = d => jRes({ success: true, data: d });
+const fail  = (m, s = 400) => jRes({ success: false, error: m }, s);
 
-// ── Seed partner tasks if missing ────────────────────────────────
-async function seedPartnerTasks(env){
-  try{
-    const tpr = await dbGet(env,'tasks/partner');
-    const existing = tpr.data || {};
-    for(const task of DEFAULT_PARTNER_TASKS){
-      if(!existing[task.id]){
-        const now = Date.now();
-        const taskData = {
-          ...task,
-          completions: 0,
-          completedBy: [],
-          createdAt: now,
-          updatedAt: now,
-        };
-        await dbSet(env, `tasks/partner/${task.id}`, taskData);
-        console.log(`Seeded partner task: ${task.id}`);
-      }
-    }
-  }catch(e){console.error('seedPartnerTasks error:',e.message);}
+function sanitise(str) {
+  if (!str) return str;
+  return str
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/[<>]/g, m => m === '<' ? '&lt;' : '&gt;');
 }
-
-// ── Send Telegram notification ────────────────────────────────────
-async function sendTgNotification(env, userId, message){
-  try{
-    if(!env.BOT_TOKEN) return;
-    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        chat_id: userId,
-        text: message,
-        parse_mode: 'HTML',
-      }),
-    });
-  }catch(e){console.error('sendTgNotification error:',e.message);}
-}
-
-const CORS={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-Action','Access-Control-Max-Age':'86400'};
-const JSON_CT={'Content-Type':'application/json',...CORS};
-const jRes=(b,s=200)=>new Response(JSON.stringify(b),{status:s,headers:JSON_CT});
-const ok=d=>jRes({success:true,data:d});
-const fail=(m,s=400)=>jRes({success:false,error:m},s);
-
-function sanitise(i){if(!i)return i;return i.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,'').replace(/[<>]/g,m=>m==='<'?'&lt;':'&gt;');}
 
 // ── Firebase helpers ──────────────────────────────────────────────
-function fbUrl(env,path){
-  const b=env.FIREBASE_DATABASE_URL?.replace(/\/$/,'');
-  if(!b)throw new Error('FIREBASE_DATABASE_URL not set');
-  const k=env.FIREBASE_API_KEY;
-  if(!k)throw new Error('FIREBASE_API_KEY not set');
-  return `${b}/${path.replace(/^\//,'')}.json?key=${k}`;
-}
-async function dbGet(env,path){
-  try{const r=await fetch(fbUrl(env,path));if(!r.ok)throw new Error(`GET ${r.status}`);return{success:true,data:await r.json()};}
-  catch(e){console.error('DB GET',path,e.message);return{success:false,error:e.message};}
-}
-async function dbSet(env,path,data){
-  try{const r=await fetch(fbUrl(env,path),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error(`SET ${r.status}`);return{success:true};}
-  catch(e){console.error('DB SET',path,e.message);return{success:false,error:e.message};}
-}
-async function dbUpdate(env,path,updates){
-  try{const r=await fetch(fbUrl(env,path),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(updates)});if(!r.ok)throw new Error(`UPDATE ${r.status}`);return{success:true};}
-  catch(e){console.error('DB UPDATE',path,e.message);return{success:false,error:e.message};}
-}
-async function dbPush(env,path,data){
-  try{const r=await fetch(fbUrl(env,path),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error(`PUSH ${r.status}`);const j=await r.json();return{success:true,data:{id:j.name}};}
-  catch(e){console.error('DB PUSH',path,e.message);return{success:false,error:e.message};}
-}
-async function dbDelete(env,path){
-  try{const r=await fetch(fbUrl(env,path),{method:'DELETE'});if(!r.ok)throw new Error(`DELETE ${r.status}`);return{success:true};}
-  catch(e){console.error('DB DELETE',path,e.message);return{success:false,error:e.message};}
+function fbUrl(env, path) {
+  const base = env.FIREBASE_DATABASE_URL?.replace(/\/$/, '');
+  if (!base) throw new Error('FIREBASE_DATABASE_URL not set');
+  const key = env.FIREBASE_API_KEY;
+  if (!key) throw new Error('FIREBASE_API_KEY not set');
+  return `${base}/${path.replace(/^\//, '')}.json?key=${key}`;
 }
 
-// ── Rate limiter ──────────────────────────────────────────────────
-const _rl=new Map();
-function rateOk(ip){const now=Date.now();const d=_rl.get(ip)||{c:0,r:now+60000};if(now>d.r){d.c=0;d.r=now+60000;}d.c++;_rl.set(ip,d);return d.c<=60;}
+async function dbGet(env, path) {
+  try {
+    const r = await fetch(fbUrl(env, path));
+    if (!r.ok) throw new Error(`GET ${r.status}`);
+    return { success: true, data: await r.json() };
+  } catch (e) {
+    console.error('DB GET', path, e.message);
+    return { success: false, error: e.message };
+  }
+}
 
-// ── Per-user per-action cooldown (anti-autoclicker) ──────────────
-// Prevents the same user from calling the same action faster than COOLDOWN_MS
-const _userActionTs = new Map();
-const ACTION_COOLDOWNS = {
-  collect      : 2500,
-  buyItem      : 2500,
-  upgradeTank  : 2500,
-  exchange     : 2500,
-  withdraw     : 5000,
-  claimTask    : 2500,
-  verifyTask   : 2500,
-  createTask   : 5000,
-  saveSquad    : 2000,
-  buyPlayer    : 2500,
-};
-function userActionOk(uid, action){
-  const cd = ACTION_COOLDOWNS[action];
-  if(!cd) return true; // no cooldown for this action
-  const key = `${uid}:${action}`;
+async function dbSet(env, path, data) {
+  try {
+    const r = await fetch(fbUrl(env, path), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`SET ${r.status}`);
+    return { success: true };
+  } catch (e) {
+    console.error('DB SET', path, e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+async function dbUpdate(env, path, updates) {
+  try {
+    const r = await fetch(fbUrl(env, path), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    if (!r.ok) throw new Error(`UPDATE ${r.status}`);
+    return { success: true };
+  } catch (e) {
+    console.error('DB UPDATE', path, e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+async function dbPush(env, path, data) {
+  try {
+    const r = await fetch(fbUrl(env, path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`PUSH ${r.status}`);
+    const j = await r.json();
+    return { success: true, data: { id: j.name } };
+  } catch (e) {
+    console.error('DB PUSH', path, e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+async function dbDelete(env, path) {
+  try {
+    const r = await fetch(fbUrl(env, path), { method: 'DELETE' });
+    if (!r.ok) throw new Error(`DELETE ${r.status}`);
+    return { success: true };
+  } catch (e) {
+    console.error('DB DELETE', path, e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ── Rate limiter (per IP, 60 req/min) ────────────────────────────
+const _rl = new Map();
+function rateOk(ip) {
   const now = Date.now();
-  const last = _userActionTs.get(key) || 0;
-  if(now - last < cd) return false;
-  _userActionTs.set(key, now);
-  return true;
+  const d = _rl.get(ip) || { c: 0, r: now + 60000 };
+  if (now > d.r) { d.c = 0; d.r = now + 60000; }
+  d.c++;
+  _rl.set(ip, d);
+  return d.c <= 60;
 }
 
-// ── Logging System ────────────────────────────────────────────────
-// Saves balance-change events inside each user's own account:
-//   users/{uid}/log/{auto-id}
-// Only records events that ACTUALLY change bamboo, coins, or tonBalance.
-// Fire-and-forget — never blocks the request.
-
-const BALANCE_CHANGE_EVENTS = new Set([
-  'collect','buy_item','upgrade_tank','exchange',
-  'withdraw_request','deposit_completed','claim_task',
-  'verify_task','create_task','admin_set_balance',
-  'admin_confirm_deposit','referral_commission',
-  // NOTE: 'register', 'session_open', 'welcome_bonus_granted', 'deposit_initiated'
-  // are intentionally excluded — they either don't change balances or are noise.
-]);
-
-function log(env, uid, type, details={}, meta={}){
-  if(!BALANCE_CHANGE_EVENTS.has(type)) return;
-  const ts   = Date.now();
-  const date = new Date(ts).toISOString();
-  const entry = { ts, date, type, ...details };
-  dbPush(env, `users/${uid}/log`, entry)
-    .catch(e=>console.error('LOG ERROR:',e.message));
-}
-
-// ── Telegram validation ───────────────────────────────────────────
-async function validateTg(initData,botToken){
-  try{
-    if(!initData)return{valid:false,error:'No init data'};
-    const p=new URLSearchParams(initData);
-    // Extract start_param here — it lives as a top-level initData param
-    const startParam=(p.get('start_param')||'').replace(/\D/g,'');
-    if(!botToken){
-      const u=p.get('user');
-      if(!u)return{valid:false,error:'No user'};
-      return{valid:true,user:JSON.parse(decodeURIComponent(u)),startParam};
+// ── Telegram init data validation ─────────────────────────────────
+async function validateTg(initData, botToken) {
+  try {
+    if (!initData) return { valid: false, error: 'No init data' };
+    const p = new URLSearchParams(initData);
+    if (!botToken) {
+      // Dev mode — trust without verification
+      const u = p.get('user');
+      if (!u) return { valid: false, error: 'No user in initData' };
+      return { valid: true, user: JSON.parse(decodeURIComponent(u)) };
     }
-    const hash=p.get('hash');
-    if(!hash)return{valid:false,error:'No hash'};
+    const hash = p.get('hash');
+    if (!hash) return { valid: false, error: 'No hash in initData' };
     p.delete('hash');
-    const authDate=parseInt(p.get('auth_date')||'0');
-    if(Date.now()/1000-authDate>900)return{valid:false,error:'Expired'};
-    const dc=[...p.entries()].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>`${k}=${v}`).join('\n');
-    const enc=new TextEncoder();
-    const sec=await crypto.subtle.importKey('raw',enc.encode('WebAppData'),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-    const kb=await crypto.subtle.sign('HMAC',sec,enc.encode(botToken));
-    const key=await crypto.subtle.importKey('raw',kb,{name:'HMAC',hash:'SHA-256'},false,['sign']);
-    const sig=await crypto.subtle.sign('HMAC',key,enc.encode(dc));
-    const hex=[...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('');
-    if(hex!==hash)return{valid:false,error:'Bad hash'};
-    const u=p.get('user');if(!u)return{valid:false,error:'No user'};
-    return{valid:true,user:JSON.parse(decodeURIComponent(u)),startParam};
-  }catch(e){return{valid:false,error:e.message};}
+    const authDate = parseInt(p.get('auth_date') || '0');
+    if (Date.now() / 1000 - authDate > 900) return { valid: false, error: 'initData expired' };
+    const dc = [...p.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+    const enc = new TextEncoder();
+    const sec = await crypto.subtle.importKey('raw', enc.encode('WebAppData'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const kb = await crypto.subtle.sign('HMAC', sec, enc.encode(botToken));
+    const key = await crypto.subtle.importKey('raw', kb, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, enc.encode(dc));
+    const hex = [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+    if (hex !== hash) return { valid: false, error: 'Hash mismatch' };
+    const u = p.get('user');
+    if (!u) return { valid: false, error: 'No user' };
+    return { valid: true, user: JSON.parse(decodeURIComponent(u)) };
+  } catch (e) {
+    return { valid: false, error: e.message };
+  }
 }
 
-// ── Tank sync ─────────────────────────────────────────────────────
-function syncTank(user){
-  const now=Date.now();const sec=(now-(user.lastSeen||now))/1000;
-  if(sec<=0||!user.miningRate){user.lastSeen=now;return;}
-  const cfg=G.TANK[user.tankLevel||1]||G.TANK[1];
-  const rate=user.miningRate/3600; // no speedBonus
-  user.tankAccrued=Math.min(cfg.cap,(user.tankAccrued||0)+rate*sec);
-  user.lastSeen=now;
-}
-function recalcRate(m){return Object.entries(m||{}).reduce((s,[id,c])=>s+(G.ITEMS[id]?.power||0)*c,0);}
-
-async function registerReferral(env,uid,user,referrerId){
-  try{
-    const rr=await dbGet(env,`users/${referrerId}/referrals`);
-    const refs=rr.data||{};
-    if(!refs[uid]){
-      await dbSet(env,`users/${referrerId}/referrals/${uid}`,{
-        userId:uid,
-        firstName:user.firstName,lastName:user.lastName,
-        username:user.username,photoUrl:user.photoUrl,
-        joinedAt:Date.now(),earned:0,
-      });
-      // ── Atomic dedup: only ONE server fires the notification ──
-      // Race-safe: set with a unique value, then re-read to confirm we won
-      const notifKey=`notifSent/ref_${uid}_${referrerId}`;
-      const already=await dbGet(env,notifKey);
-      if(!already.data){
-        const myTs = Date.now();
-        await dbSet(env,notifKey,{ts:myTs, by:uid});
-        // Re-read to confirm we won the race (another server may have written first)
-        await new Promise(r=>setTimeout(r,150)); // small delay to let DB propagate
-        const confirm=await dbGet(env,notifKey);
-        if(confirm.data && confirm.data.ts===myTs){
-          // We won — send notification
-          console.log(`Referral registered: ${uid} referred by ${referrerId}`);
-          const refName=(user.firstName||'Someone').slice(0,32);
-          const notifMsg=`🎉 <b>Congratulations!</b> <b>${refName}</b> just registered using your referral link!\n\n🐼 You will automatically earn <b>20% commission</b> on all their Market purchases.\n\n<i>Track your earnings in the Friends section</i>`;
-          sendTgNotification(env,referrerId,notifMsg).catch(()=>{});
-        }
-        // else: another server won — skip
-      }
-    }
-  }catch(e){console.error('registerReferral error:',e.message);}
+// ── Telegram Bot notification ──────────────────────────────────────
+async function sendTgMsg(env, chatId, text) {
+  try {
+    if (!env.BOT_TOKEN) return;
+    await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    });
+  } catch (e) { console.error('sendTgMsg:', e.message); }
 }
 
-function makeUser(uid,tg={},ref=null){
-  return{userId:uid,firstName:(tg.first_name||'').slice(0,64),lastName:(tg.last_name||'').slice(0,64),username:(tg.username||'').slice(0,64),photoUrl:(tg.photo_url||'').slice(0,512),
-    bamboo:G.WELCOME_BAMBOO, coins:G.WELCOME_COINS, miningRate:G.WELCOME_RATE,
-    totalEarned:0,machines:{},tankLevel:1,tankAccrued:0,lastSeen:Date.now(),createdAt:Date.now(),
-    welcomeBonusGiven:true,
-    hasDeposited:false,tonBalance:0,referralCode:String(uid),referredBy:ref||null,completedTasks:[]};
+// ── Get or init auction ────────────────────────────────────────────
+async function getOrInitAuction(env) {
+  const r = await dbGet(env, 'auction');
+  if (r.data && r.data.endDate) return r.data;
+  const auction = {
+    endDate  : Date.now() + CFG.AUCTION_DURATION,
+    startDate: Date.now(),
+    status   : 'active',
+    createdAt: Date.now(),
+  };
+  await dbSet(env, 'auction', auction);
+  return auction;
 }
 
-// ── Extract start_param from Telegram initData string ────────────
-function extractStartParam(initDataStr){
-  try{
-    const p=new URLSearchParams(initDataStr||'');
-    // Direct start_param field
-    const sp=p.get('start_param');
-    if(sp) return sp.replace(/\D/g,'');
-    // Sometimes inside user JSON
-    const userRaw=p.get('user');
-    if(userRaw){
-      const u=JSON.parse(decodeURIComponent(userRaw));
-      if(u.start_param) return String(u.start_param).replace(/\D/g,'');
-    }
-  }catch(_){}
-  return '';
+// ── Get or init user ───────────────────────────────────────────────
+async function getOrInitUser(env, uid, tg = {}) {
+  const r = await dbGet(env, `users/${uid}`);
+  if (r.data) {
+    const updates = {};
+    if (tg.first_name) updates.firstName = tg.first_name.slice(0, 64);
+    if (tg.last_name)  updates.lastName  = tg.last_name.slice(0, 64);
+    if (tg.username)   updates.username  = tg.username.slice(0, 64);
+    if (tg.photo_url)  updates.photoUrl  = tg.photo_url.slice(0, 512);
+    if (Object.keys(updates).length) await dbUpdate(env, `users/${uid}`, updates);
+    return { ...r.data, ...updates };
+  }
+  const user = {
+    userId      : uid,
+    firstName   : (tg.first_name || '').slice(0, 64),
+    lastName    : (tg.last_name  || '').slice(0, 64),
+    username    : (tg.username   || '').slice(0, 64),
+    photoUrl    : (tg.photo_url  || '').slice(0, 512),
+    tonBalance  : 0,
+    totalBid    : 0,
+    hasDeposited: false,
+    createdAt   : Date.now(),
+  };
+  await dbSet(env, `users/${uid}`, user);
+  return user;
 }
 
-// ── Handlers ──────────────────────────────────────────────────────
-async function hGetState(env,uid,tg,data={},_meta={}){
-  try{
-    // _startParam comes directly from initData (most reliable source)
-    const rawRef = (
-      data?._startParam ||
-      extractStartParam(data?._initData||'') ||
-      (data?.start_param||'').toString().replace(/\D/g,'')
-    ).replace(/\D/g,'');
-    const ref = rawRef && rawRef !== uid ? rawRef : null;
-
-    const ur=await dbGet(env,`users/${uid}`);let user=ur.data;
-    // Seed partner tasks if not present (fire-and-forget)
-    seedPartnerTasks(env).catch(e=>console.error('seed:',e.message));
-    // Update leaderboard entry for this user (fire-and-forget)
-    updateLeaderboardEntry(env,uid,user).catch(()=>{});
-
-    if(!user){
-      user=makeUser(uid,tg,ref);
-      if(user.referredBy){
-        await registerReferral(env,uid,user,user.referredBy);
-        // Notification is now sent inside registerReferral with dedup guard
-      }
-      await dbSet(env,`users/${uid}`,user);
-      // NOTE: 'register' is not a balance-change event, not logged in user log
-    }else{
-      syncTank(user);
-      // Fix welcome bonus: grant once if flag not set yet
-      let needsSave=false;
-      if(!user.welcomeBonusGiven){
-        user.coins      = (user.coins||0)      + G.WELCOME_COINS;
-        user.bamboo     = (user.bamboo||0)      + G.WELCOME_BAMBOO;
-        user.miningRate = Math.max(user.miningRate||0, G.WELCOME_RATE);
-        user.welcomeBonusGiven = true;
-        needsSave=true;
-        console.log(`Welcome bonus granted to existing user ${uid}`);
-        log(env,uid,'welcome_bonus_granted',{
-          coins_added:G.WELCOME_COINS, bamboo_added:G.WELCOME_BAMBOO,
-          miningRate_set:G.WELCOME_RATE,
-        },_meta);
-      }
-      if(tg){
-        if(tg.first_name) user.firstName=tg.first_name.slice(0,64);
-        if(tg.last_name)  user.lastName =tg.last_name.slice(0,64);
-        if(tg.username)   user.username =tg.username.slice(0,64);
-        if(tg.photo_url)  user.photoUrl =tg.photo_url.slice(0,512);
-      }
-      await dbUpdate(env,`users/${uid}`,{
-        firstName:user.firstName,lastName:user.lastName,
-        username:user.username,photoUrl:user.photoUrl,
-        tankAccrued:user.tankAccrued,lastSeen:user.lastSeen,
-        ...(needsSave?{
-          coins:user.coins,bamboo:user.bamboo,
-          miningRate:user.miningRate,welcomeBonusGiven:true,
-        }:{}),
-      });
-    }
-    const rr=await dbGet(env,`users/${uid}/referrals`);
-    const refList=Object.values(rr.data||{});
-    // Fetch hasDeposited directly from each referred user's root record (most accurate)
-    const referrals=await Promise.all(refList.map(async r=>{
-      let deposited=r.hasDeposited||false;
-      if(!deposited){
-        const ud=await dbGet(env,`users/${r.userId}/hasDeposited`);
-        deposited=ud.data===true;
-        // Update the referral record so next time we don't need to re-check
-        if(deposited) await dbUpdate(env,`users/${uid}/referrals/${r.userId}`,{hasDeposited:true}).catch(()=>{});
-      }
-      return{userId:r.userId,name:`${r.firstName||''} ${r.lastName||''}`.trim()||'Friend',photo:r.photoUrl||null,date:r.joinedAt?new Date(r.joinedAt).toLocaleDateString():'',earned:r.earned||0,hasDeposited:deposited};
+// ── Build leaderboard from bids ────────────────────────────────────
+async function getLeaderboard(env) {
+  try {
+    const r = await dbGet(env, 'bids');
+    if (!r.data) return [];
+    const bids = Object.values(r.data);
+    bids.sort((a, b) => b.totalBid - a.totalBid);
+    return bids.slice(0, 20).map(b => ({
+      userId: b.userId,
+      name  : b.name || 'مشارك',
+      photo : b.photo || null,
+      amount: b.totalBid || 0,
     }));
-    // session_open is NOT logged — it does not change any balance
-    const er=await dbGet(env,`users/${uid}/exchHistory`);
-    const exchHistory=er.data?Object.values(er.data).sort((a,b)=>b.ts-a.ts).slice(0,30):[];
-    const wr=await dbGet(env,`users/${uid}/wdHistory`);
-    const wdHistory=wr.data?Object.values(wr.data).sort((a,b)=>b.ts-a.ts).slice(0,30):[];
-    const dr=await dbGet(env,`users/${uid}/deposits`);
-    const pendingDeposit=(dr.data?Object.values(dr.data):[]).find(d=>d.status==='pending')||null;
-    // Load tasks from DB
-    const tpr=await dbGet(env,'tasks/partner');
-    const tcr=await dbGet(env,'tasks/community');
-    const tasks={
-      partner  :tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[],
-      community:tcr.data?Object.values(tcr.data).filter(t=>t.status==='active'):[],
+  } catch (e) {
+    return [];
+  }
+}
+
+// ================================================================
+//  HANDLERS
+// ================================================================
+
+// ── GET AUCTION ────────────────────────────────────────────────────
+async function hGetAuction(env, uid, tg, data) {
+  try {
+    const [auction, user, leaderboard] = await Promise.all([
+      getOrInitAuction(env),
+      getOrInitUser(env, uid, tg),
+      getLeaderboard(env),
+    ]);
+    return {
+      success: true,
+      data: {
+        endDate    : auction.endDate,
+        status     : auction.status || 'active',
+        myBid      : user.totalBid  || 0,
+        leaderboard,
+      },
     };
-    const lr=await dbGet(env,`users/${uid}/log`);
-    const balanceLog=lr.data?Object.values(lr.data).sort((a,b)=>b.ts-a.ts).slice(0,50):[];
-    return{success:true,data:{user:{bamboo:user.bamboo||0,coins:user.coins||0,miningRate:user.miningRate||0,totalEarned:user.totalEarned||0,machines:user.machines||{},tankLevel:user.tankLevel||1,tankAccrued:user.tankAccrued||0,hasDeposited:user.hasDeposited||false,tonBalance:user.tonBalance||0},referrals,completedTasks:user.completedTasks||[],exchHistory,wdHistory,balanceLog,pendingDeposit,tasks,ownedPlayers:user.ownedPlayers||[],squad:user.squad||new Array(11).fill(null),formation:user.formation||'4-3-3'}};
-  }catch(e){console.error('getState',e);return{success:false,error:e.message,errorCode:'GET_STATE_ERROR'};}
+  } catch (e) {
+    console.error('hGetAuction:', e);
+    return { success: false, error: e.message };
+  }
 }
 
-async function hCollect(env,uid,data,_meta={}){
-  try{
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    syncTank(user);const actual=Math.floor(user.tankAccrued);
-    if(actual<1)return{success:false,error:'Tank is empty'};
-    const nb=(user.bamboo||0)+actual;
-    await dbUpdate(env,`users/${uid}`,{bamboo:nb,totalEarned:(user.totalEarned||0)+actual,tankAccrued:user.tankAccrued-actual,lastSeen:user.lastSeen});
-    log(env,uid,'collect',{
-      collected:actual,
-      bamboo_before:(user.bamboo||0),
-      bamboo_after:nb,
-      tankLevel:user.tankLevel||1,
-    },_meta);
-    return{success:true,data:{collected:actual,bamboo:nb}};
-  }catch(e){return{success:false,error:e.message};}
+// ── GET USER ───────────────────────────────────────────────────────
+async function hGetUser(env, uid, tg) {
+  try {
+    const user = await getOrInitUser(env, uid, tg);
+    return {
+      success: true,
+      data: {
+        tonBalance  : user.tonBalance   || 0,
+        totalBid    : user.totalBid     || 0,
+        hasDeposited: user.hasDeposited || false,
+      },
+    };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
-async function hBuyItem(env,uid,data,_meta={}){
-  try{
-    const{itemId,qty=1}=data;const item=G.ITEMS[itemId];
-    if(!item)return{success:false,error:'Unknown item'};
-    const q=Math.max(1,Math.min(99,parseInt(qty)||1));const total=item.price*q;
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    if((user.bamboo||0)<total)return{success:false,error:'Not enough Bamboo'};
-    const machines=user.machines||{};machines[itemId]=(machines[itemId]||0)+q;
-    const newRate=recalcRate(machines);const nb=(user.bamboo||0)-total;
-    await dbUpdate(env,`users/${uid}`,{bamboo:nb,machines,miningRate:newRate});
-    log(env,uid,'buy_item',{
-      itemId, qty:q, totalCost:total,
-      bamboo_before:(user.bamboo||0), bamboo_after:nb,
-      miningRate_before:user.miningRate||0, miningRate_after:newRate,
-    },_meta);
-    if(user.referredBy&&user.referredBy!==uid){
-      const comm=Math.floor(total*G.REF_BONUS_PCT/100);
-      const rr=await dbGet(env,`users/${user.referredBy}`);
-      if(rr.data){
-        await dbUpdate(env,`users/${user.referredBy}`,{bamboo:(rr.data.bamboo||0)+comm});
-        await dbPush(env,`users/${user.referredBy}/referralEarnings`,{fromUserId:uid,amount:comm,timestamp:Date.now()});
-        // Update earned in referrals list
-        await dbUpdate(env,`users/${user.referredBy}/referrals/${uid}`,{earned:(rr.data.referrals?.[uid]?.earned||0)+comm});
-        log(env,user.referredBy,'referral_commission',{
-          fromUserId:uid, commission:comm,
-          bamboo_before:(rr.data.bamboo||0), bamboo_after:(rr.data.bamboo||0)+comm,
-        });
-        // 🔔 Notify referrer about commission earned
-        const buyerName = (user.firstName||'Your friend').slice(0,32);
-        const notifMsg = `💰 <b>Commission earned!</b>\n\n<b>${buyerName}</b> made a purchase from the Market\nYou earned <b>${comm} Bamboo</b> (20% commission) 🎋\n\n<i>Your balance has been updated automatically</i>`;
-        sendTgNotification(env, user.referredBy, notifMsg).catch(()=>{});
+// ── AUCTION BID ────────────────────────────────────────────────────
+async function hAuctionBid(env, uid, tg, data) {
+  try {
+    const amount = parseFloat(data.amount) || 0;
+    if (amount < CFG.MIN_BID) return { success: false, error: `الحد الأدنى للمزايدة ${CFG.MIN_BID} TON` };
+
+    const lockKey = `bidLocks/${uid}`;
+    const lockRec = await dbGet(env, lockKey);
+    const now = Date.now();
+    if (lockRec.data && (now - (lockRec.data.ts || 0)) < 8000) {
+      return { success: false, error: 'انتظر لحظة قبل المزايدة مرة أخرى' };
+    }
+    await dbSet(env, lockKey, { ts: now });
+
+    try {
+      const user = await getOrInitUser(env, uid, tg);
+      if ((user.tonBalance || 0) < amount) {
+        await dbSet(env, lockKey, { ts: 0 });
+        return { success: false, error: 'رصيدك غير كافٍ. قم بالإيداع أولاً.' };
       }
-    }
-    return{success:true,data:{bamboo:nb,miningRate:newRate,machines}};
-  }catch(e){return{success:false,error:e.message};}
-}
 
-async function hUpgradeTank(env,uid,data,_meta={}){
-  try{
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    const cur=user.tankLevel||1;const next=cur+1;
-    if(next>G.MAX_TANK_LVL)return{success:false,error:'Max level'};
-    if(parseInt(data.newLevel)!==next)return{success:false,error:'Level mismatch'};
-    const cost=G.TANK[next].upgCost;
-    if((user.bamboo||0)<cost)return{success:false,error:'Not enough Bamboo'};
-    const nb=(user.bamboo||0)-cost;
-    await dbUpdate(env,`users/${uid}`,{bamboo:nb,tankLevel:next});
-    log(env,uid,'upgrade_tank',{
-      tankLevel_before:cur, tankLevel_after:next,
-      cost, bamboo_before:(user.bamboo||0), bamboo_after:nb,
-      newCap:G.TANK[next].cap,
-      coins_balance:user.coins||0, miningRate:user.miningRate||0,
-    },_meta);
-    return{success:true,data:{tankLevel:next,bamboo:nb}};
-  }catch(e){return{success:false,error:e.message};}
-}
+      const auction = await getOrInitAuction(env);
+      if (auction.status !== 'active' || Date.now() > auction.endDate) {
+        await dbSet(env, lockKey, { ts: 0 });
+        return { success: false, error: 'انتهى المزاد' };
+      }
 
-async function hExchange(env,uid,data,_meta={}){
-  try{
-    // ── Atomic lock: prevent parallel exchange calls across servers ──
-    const lockKey = `exchangeLocks/${uid}`;
-    const lockRec = await dbGet(env, lockKey);
-    const now = Date.now();
-    if(lockRec.data && (now-(lockRec.data.ts||0)) < 15000){
-      return{success:false,error:'Exchange in progress. Please wait.'};
-    }
-    await dbSet(env, lockKey, {ts:now});
-    try{
-      const r=await dbGet(env,`users/${uid}`);const user=r.data;
-      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
-      if(data.coinsAmount!==undefined){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Coins to Bamboo exchange is disabled'}; }
-      if(data.bambooAmount===undefined){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Specify bambooAmount'}; }
-      let nb=user.bamboo||0,nc=user.coins||0;
-      const bam=Math.floor(parseInt(data.bambooAmount)||0);
-      if(bam<G.BAMBOO_PER_COIN){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Min ${G.BAMBOO_PER_COIN} Bamboo`}; }
-      if(nb<bam){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Not enough Bamboo'}; }
-      const coins=Math.floor(bam/G.BAMBOO_PER_COIN);
-      nb-=bam; nc+=coins;
-      const entry={bam,coins,dir:'B→C',ts:now};
-      await dbUpdate(env,`users/${uid}`,{bamboo:nb,coins:nc});
-      await dbPush(env,`users/${uid}/exchHistory`,entry);
-      log(env,uid,'exchange',{bamboo_spent:bam,coins_received:coins,bamboo_before:user.bamboo||0,bamboo_after:nb,coins_before:user.coins||0,coins_after:nc},_meta);
-      await dbSet(env,lockKey,{ts:0});
-      return{success:true,data:{bamboo:nb,coins:nc,entry}};
-    }catch(innerErr){ await dbSet(env,lockKey,{ts:0}).catch(()=>{}); throw innerErr; }
-  }catch(e){return{success:false,error:e.message};}
-}
+      const newBalance  = parseFloat(((user.tonBalance || 0) - amount).toFixed(6));
+      const newTotalBid = parseFloat(((user.totalBid   || 0) + amount).toFixed(6));
+      const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'مشارك';
 
-async function hWithdraw(env,uid,data,_meta={}){
-  try{
-    const addr=(data.address||'').trim();const amt=parseFloat(data.amount)||0;
-    if(!addr||addr.length<10)return{success:false,error:'Invalid TON address'};
-    if(amt<G.MIN_WITHDRAW)return{success:false,error:`Min ${G.MIN_WITHDRAW} Coins`};
-    if(amt>1000000)return{success:false,error:'Amount too large'};
+      await dbUpdate(env, `users/${uid}`, { tonBalance: newBalance, totalBid: newTotalBid });
+      await dbSet(env, `bids/${uid}`, {
+        userId   : uid,
+        name     : displayName,
+        photo    : user.photoUrl || null,
+        totalBid : newTotalBid,
+        lastBidAt: now,
+      });
+      await dbPush(env, `users/${uid}/bidHistory`, { amount, newTotalBid, newBalance, ts: now });
+      await dbSet(env, lockKey, { ts: 0 });
 
-    // ── Atomic idempotency lock (60s) — blocks multi-server parallel attacks ──
-    // Uses a dedicated lock key in DB; only one request can proceed at a time
-    const lockKey = `withdrawLocks/${uid}`;
-    const lockRec = await dbGet(env, lockKey);
-    const now = Date.now();
-    if(lockRec.data && (now - (lockRec.data.ts||0)) < 60000){
-      return{success:false,error:'A withdrawal is already being processed. Please wait 60 seconds.'};
-    }
-    // Set lock immediately before any balance checks
-    await dbSet(env, lockKey, {ts: now, uid});
-
-    try{
-      const r=await dbGet(env,`users/${uid}`);const user=r.data;
-      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
-      if((user.coins||0)<amt){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Not enough Coins'}; }
-
-      // ── Hard cooldown: block duplicate within 60s (extra layer) ──
-      if((now-(user._lastWdTs||0))<60000){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Please wait 60 seconds before next withdrawal'}; }
-
-      // ── Device Fingerprint check (free users only — depositors are trusted) ──
-      if(!user.hasDeposited){
-        const fp = (data.deviceFingerprint||'').trim();
-        if(fp && fp.length > 8){
-          const safeKey = fp.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,120);
-          const fpRec = await dbGet(env,`deviceFingerprints/${safeKey}`);
-          if(fpRec.data && fpRec.data.uid && fpRec.data.uid !== uid){
-            await dbSet(env,lockKey,{ts:0});
-            await dbSet(env,`flaggedWithdrawals/fp_${uid}_${now}`,{
-              userId:uid, reason:'duplicate_device', fingerprint:fp.slice(0,40),
-              existingUser:fpRec.data.uid, amount:amt, ts:now,
-            });
-            return{success:false,error:'MULTI_ACCOUNT',errorCode:'MULTI_ACCOUNT'};
-          }
-          if(!fpRec.data) await dbSet(env,`deviceFingerprints/${safeKey}`,{uid,ts:now});
+      if (amount >= 5 && env.ADMIN_IDS) {
+        const adminIds = env.ADMIN_IDS.split(',').map(s => s.trim());
+        for (const adminId of adminIds) {
+          sendTgMsg(env, adminId,
+            `🏆 <b>مزايدة جديدة!</b>\n👤 ${displayName}\n💰 ${amount} TON\n📊 إجمالي: ${newTotalBid} TON`
+          ).catch(() => {});
         }
       }
 
-      // Partner tasks must be completed before withdrawal
-      const tpr=await dbGet(env,'tasks/partner');
-      const partnerTasks=tpr.data?Object.values(tpr.data).filter(t=>t.status==='active'):[];
-      const completedTasks=user.completedTasks||[];
-      const missingPartner=partnerTasks.filter(t=>!completedTasks.includes(t.id));
-      if(missingPartner.length>0){
-        await dbSet(env,lockKey,{ts:0});
-        return{success:false,error:'Complete all partner tasks first',errorCode:'PARTNER_TASKS_REQUIRED',missing:missingPartner.length};
-      }
-
-      const wdId=`wd_${uid}_${now}`;const ton=amt*G.TON_PER_COIN;
-      const upd={coins:(user.coins||0)-amt, _lastWdTs:now};
-      await dbUpdate(env,`users/${uid}`,upd);
-      const rec={wdId,userId:uid,address:addr,amt,ton,status:'pending',ts:now};
-      await dbSet(env,`users/${uid}/wdHistory/${wdId}`,rec);
-      await dbSet(env,`withdrawQueue/${wdId}`,rec);
-      log(env,uid,'withdraw_request',{
-        wdId, amount_coins:amt, amount_ton:ton, address:addr,
-        coins_before:(user.coins||0), coins_after:upd.coins,
-      },_meta);
-      // Release lock after successful write
-      await dbSet(env,lockKey,{ts:0});
-      return{success:true,data:{wdId,coins:upd.coins,status:'pending'}};
-    }catch(innerErr){
-      // Always release lock on error
-      await dbSet(env,lockKey,{ts:0}).catch(()=>{});
+      const leaderboard = await getLeaderboard(env);
+      return { success: true, data: { tonBalance: newBalance, totalBid: newTotalBid, leaderboard } };
+    } catch (innerErr) {
+      await dbSet(env, lockKey, { ts: 0 }).catch(() => {});
       throw innerErr;
     }
-  }catch(e){return{success:false,error:e.message};}
-}
-
-async function hDeposit(env,uid,data,_meta={}){
-  try{
-    const amt=parseFloat(data.amount)||0;const txHash=(data.txHash||'').slice(0,256);
-    if(!txHash||amt<G.MIN_DEPOSIT_TON)return{success:false,error:'Invalid deposit data'};
-    const safeHash=txHash.replace(/[^a-zA-Z0-9]/g,'_');
-    const dup=await dbGet(env,`txHashes/${safeHash}`);
-    if(dup.data)return{success:false,error:'Duplicate transaction'};
-    const depId=`dep_${uid}_${Date.now()}`;
-    const rec={depId,userId:uid,txHash,amount:amt,status:'pending',ts:Date.now()};
-    const ur=await dbGet(env,`users/${uid}`);const u=ur.data||{};
-    await dbSet(env,`users/${uid}/deposits/${depId}`,rec);
-    await dbSet(env,`pendingDeposits/${depId}`,rec);
-    await dbSet(env,`txHashes/${safeHash}`,{depId,userId:uid,ts:Date.now()});
-    log(env,uid,'deposit_initiated',{
-      depId, txHash, amount_ton:amt,
-      bamboo_before:(u.bamboo||0), coins_before:(u.coins||0),
-      tonBalance_before:(u.tonBalance||0),
-    },_meta);
-    // Respond immediately — balance credited within 3 minutes by server wallet monitor
-    return{success:true,data:{depositId:depId,message:'Transaction registered. Your balance will be added within 3 minutes.'}};
-  }catch(e){return{success:false,error:e.message};}
-}
-
-async function hVerifyDeposit(env,uid,data,_meta={}){
-  try{
-    const{depositId,txHash}=data;
-    const dr=await dbGet(env,`users/${uid}/deposits/${depositId}`);const dep=dr.data;
-    if(!dep)return{success:false,error:'Deposit not found'};
-    if(dep.status==='completed')return{success:true,data:{status:'completed',amount:dep.amount}};
-    try{
-      const res=await fetch(`https://toncenter.com/api/v2/getTransaction?hash=${encodeURIComponent(txHash||dep.txHash)}`);
-      if(res.ok){const j=await res.json();if(j.ok&&j.result){
-        const tonAmt=parseFloat(dep.amount);const bamboo=Math.floor(tonAmt*G.TON_TO_BAMBOO);
-        await dbUpdate(env,`users/${uid}/deposits/${depositId}`,{status:'completed',completedAt:Date.now()});
-        const ur=await dbGet(env,`users/${uid}`);const u=ur.data||{};
-        await dbUpdate(env,`users/${uid}`,{bamboo:(u.bamboo||0)+bamboo,tonBalance:(u.tonBalance||0)+tonAmt,hasDeposited:true});
-        // Update referrer's referral record to mark this user as deposited
-        if(u.referredBy){
-          await dbUpdate(env,`users/${u.referredBy}/referrals/${uid}`,{hasDeposited:true}).catch(()=>{});
-        }
-        await dbDelete(env,`pendingDeposits/${depositId}`);
-        log(env,uid,'deposit_completed',{
-          depositId, txHash:txHash||dep.txHash,
-          amount_ton:tonAmt, bamboo_added:bamboo,
-          bamboo_before:(u.bamboo||0), bamboo_after:(u.bamboo||0)+bamboo,
-          tonBalance_before:(u.tonBalance||0), tonBalance_after:(u.tonBalance||0)+tonAmt,
-        },_meta);
-        return{success:true,data:{status:'completed',amount:tonAmt,bambooAdded:bamboo}};
-      }}
-    }catch(_){}
-    return{success:true,data:{status:'pending'}};
-  }catch(e){return{success:false,error:e.message};}
-}
-
-async function hClaimTask(env,uid,data,_meta={}){
-  try{
-    const tid=data.taskId;
-    // ── Atomic lock per task per user — prevent parallel claims across servers ──
-    const lockKey = `taskLocks/${uid}_${tid}`;
-    const lockRec = await dbGet(env, lockKey);
-    const now = Date.now();
-    if(lockRec.data && (now-(lockRec.data.ts||0)) < 30000){
-      return{success:false,error:'Already processing. Please wait.'};
-    }
-    await dbSet(env, lockKey, {ts:now});
-    try{
-      const r=await dbGet(env,`users/${uid}`);const user=r.data;
-      if(!user){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'User not found'}; }
-      if((user.completedTasks||[]).includes(tid)){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Already claimed'}; }
-      let bam=0,coins=0;
-      if(G.REF_TASKS[tid]){
-        const t=G.REF_TASKS[tid];
-        const rr=await dbGet(env,`users/${uid}/referrals`);
-        const rc=rr.data?Object.keys(rr.data).length:0;
-        if(rc<t.n){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Need ${t.n} referrals (have ${rc})`}; }
-        bam=t.bam;coins=t.coins;
-      }else if(G.REF_ACTIVE_TASKS[tid]){
-        const t=G.REF_ACTIVE_TASKS[tid];
-        const rr=await dbGet(env,`users/${uid}/referrals`);
-        const refIds=rr.data?Object.keys(rr.data):[];
-        let activeCount=0;
-        for(const refId of refIds){
-          const hdR=await dbGet(env,`users/${refId}/hasDeposited`);
-          if(hdR.data===true) activeCount++;
-        }
-        if(activeCount<t.n){ await dbSet(env,lockKey,{ts:0}); return{success:false,error:`Need ${t.n} active referrals who deposited (have ${activeCount})`}; }
-        bam=t.bam;coins=t.coins;
-      }else if(G.SOC_TASKS[tid]){bam=G.SOC_TASKS[tid];}
-      else{ await dbSet(env,lockKey,{ts:0}); return{success:false,error:'Unknown task'}; }
-      const nb=(user.bamboo||0)+bam;const nc=(user.coins||0)+coins;
-      await dbUpdate(env,`users/${uid}`,{completedTasks:[...(user.completedTasks||[]),tid],bamboo:nb,coins:nc});
-      log(env,uid,'claim_task',{taskId:tid,bamboo_reward:bam,coins_reward:coins,bamboo_before:user.bamboo||0,bamboo_after:nb,coins_before:user.coins||0,coins_after:nc},_meta);
-      await dbSet(env,lockKey,{ts:0});
-      return{success:true,data:{bamboo:nb,coins:nc,bam,coins}};
-    }catch(innerErr){ await dbSet(env,lockKey,{ts:0}).catch(()=>{}); throw innerErr; }
-  }catch(e){return{success:false,error:e.message};}
-}
-
-async function hAdmin(env,action,data){
-  switch(action){
-    case 'adminGetUser':{const r=await dbGet(env,`users/${data.userId}`);return{success:true,data:r.data||null};}
-    case 'adminSetBalance':{
-      const r=await dbGet(env,`users/${data.userId}`);if(!r.data)return{success:false,error:'Not found'};
-      const u={};
-      if(data.bamboo!==undefined)u.bamboo=Math.max(0,parseFloat(data.bamboo));
-      if(data.coins!==undefined)u.coins=Math.max(0,parseFloat(data.coins));
-      if(data.tonBalance!==undefined)u.tonBalance=Math.max(0,parseFloat(data.tonBalance));
-      await dbUpdate(env,`users/${data.userId}`,u);
-      log(env,data.userId,'admin_set_balance',{
-        bamboo_set:data.bamboo, coins_set:data.coins, ton_set:data.tonBalance,
-        bamboo_before:r.data.bamboo||0, coins_before:r.data.coins||0,
-        by:'admin',
-      });
-      return{success:true};
-    }
-    case 'adminConfirmDeposit':{
-      const dep=await dbGet(env,`users/${data.userId}/deposits/${data.depositId}`);
-      if(!dep.data)return{success:false,error:'Not found'};
-      const ton=parseFloat(data.amount||dep.data.amount);const bamboo=Math.floor(ton*G.TON_TO_BAMBOO);
-      await dbUpdate(env,`users/${data.userId}/deposits/${data.depositId}`,{status:'completed',completedAt:Date.now()});
-      const u=await dbGet(env,`users/${data.userId}`);
-      if(u.data)await dbUpdate(env,`users/${data.userId}`,{bamboo:(u.data.bamboo||0)+bamboo,tonBalance:(u.data.tonBalance||0)+ton,hasDeposited:true});
-      // Update referrer's referral record
-      if(u.data?.referredBy){
-        await dbUpdate(env,`users/${u.data.referredBy}/referrals/${data.userId}`,{hasDeposited:true}).catch(()=>{});
-      }
-      await dbDelete(env,`pendingDeposits/${data.depositId}`);
-      log(env,data.userId,'admin_confirm_deposit',{
-        depositId:data.depositId, amount_ton:ton, bamboo_added:bamboo, by:'admin',
-      });
-      return{success:true,data:{bambooAdded:bamboo}};
-    }
-    case 'adminApproveWithdraw':{
-      await dbUpdate(env,`users/${data.userId}/wdHistory/${data.wdId}`,{status:'approved',approvedAt:Date.now()});
-      await dbDelete(env,`withdrawQueue/${data.wdId}`);
-      log(env,data.userId,'admin_approve_withdraw',{wdId:data.wdId,by:'admin'});
-      return{success:true};
-    }
-    case 'adminRejectWithdraw':{
-      const wd=await dbGet(env,`users/${data.userId}/wdHistory/${data.wdId}`);
-      if(!wd.data)return{success:false,error:'Not found'};
-      await dbUpdate(env,`users/${data.userId}/wdHistory/${data.wdId}`,{status:'rejected',rejectedAt:Date.now()});
-      if(data.refund){const u=await dbGet(env,`users/${data.userId}`);if(u.data)await dbUpdate(env,`users/${data.userId}`,{coins:(u.data.coins||0)+(wd.data.amt||0)});}
-      await dbDelete(env,`withdrawQueue/${data.wdId}`);
-      log(env,data.userId,'admin_reject_withdraw',{wdId:data.wdId,refund:!!data.refund,amount:wd.data?.amt||0,by:'admin'});
-      return{success:true};
-    }
-    case 'adminGetQueue':{
-      const w=await dbGet(env,'withdrawQueue');const d=await dbGet(env,'pendingDeposits');
-      return{success:true,data:{withdrawals:w.data?Object.values(w.data):[],deposits:d.data?Object.values(d.data):[]}};
-    }
-    default:return{success:false,error:'Unknown admin action'};
+  } catch (e) {
+    console.error('hAuctionBid:', e);
+    return { success: false, error: e.message };
   }
 }
 
-// ── Check Telegram channel membership ────────────────────────────
-async function checkMembership(env,userId,channelLink){
-  try{
-    if(!env.BOT_TOKEN){console.log('No BOT_TOKEN, skipping check');return true;}
-    let username=channelLink;
-    if(channelLink.includes('t.me/')) username=channelLink.split('t.me/')[1].split('?')[0].split('/')[0];
-    if(username.startsWith('@')) username=username.substring(1);
-    const res=await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/getChatMember`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:`@${username}`,user_id:parseInt(userId)}),
-    });
-    const j=await res.json();
-    if(!j.ok){console.error('TG API:',j);return false;}
-    return['member','administrator','creator'].includes(j.result?.status);
-  }catch(e){console.error('checkMembership:',e.message);return false;}
-}
+// ================================================================
+//  ✅ DEPOSIT — يسجل طلب الإيداع للمراجعة فقط ولا يضيف الرصيد تلقائياً
+// ================================================================
+async function hDeposit(env, uid, data) {
+  try {
+    const amt     = parseFloat(data.amount) || 0;
+    const txHash  = (data.txHash  || '').slice(0, 512);
+    const comment = (data.comment || '').slice(0, 64);
 
-// ── Verify Task ───────────────────────────────────────────────────
-async function hVerifyTask(env,uid,data,_meta={}){
-  try{
-    const{taskId,taskType,taskCategory}=data;
-    if(!taskId||typeof taskId!=='string'||taskId.length>100) return{success:false,error:'Invalid taskId'};
-    const cat=taskCategory||'community';
-    // Find task
-    let tr=await dbGet(env,`tasks/${cat}/${taskId}`);
-    let task=tr.data, taskCat=cat;
-    if(!task){
-      const other=cat==='community'?'partner':'community';
-      tr=await dbGet(env,`tasks/${other}/${taskId}`);
-      task=tr.data; taskCat=other;
-    }
-    if(!task)return{success:false,error:'Task not found'};
-    if(task.status!=='active')return{success:false,error:'Task is no longer active'};
-    // Fix 1: server-side double-claim guard — check user's completedTasks first
-    const ur=await dbGet(env,`users/${uid}`);const u=ur.data||{};
-    if((u.completedTasks||[]).includes(taskId))return{success:false,error:'Task already completed'};
-    if((task.completedBy||[]).includes(uid))return{success:false,error:'Task already completed'};
-    // Channel: verify membership
-    if(task.type==='channel'){
-      const isMember=await checkMembership(env,uid,task.link);
-      if(!isMember)return{success:false,error:'Not a member of the channel. Join first then try again!'};
-    }
-    const bam=task.bambooReward||500;
-    const newCompletions=(task.completions||0)+1;
-    const newCompletedBy=[...(task.completedBy||[]),uid];
-    const taskUpdates={completions:newCompletions,completedBy:newCompletedBy,updatedAt:Date.now()};
-    // Only mark completed if targetUsers is set (not null/unlimited)
-    if(task.targetUsers!=null && newCompletions>=(task.targetUsers||Infinity)) taskUpdates.status='completed';
-    await dbUpdate(env,`tasks/${taskCat}/${taskId}`,taskUpdates);
-    // Fix 1: mark completed in user BEFORE bamboo so duplicate calls return "already completed"
-    const newCompleted=[...(u.completedTasks||[]),taskId];
-    await dbUpdate(env,`users/${uid}`,{
-      completedTasks:newCompleted,
-      bamboo:(u.bamboo||0)+bam,
-    });
-    log(env,uid,'verify_task',{
-      taskId, taskType:task.type, taskCategory:taskCat,
-      bamboo_reward:bam,
-      bamboo_before:(u.bamboo||0), bamboo_after:(u.bamboo||0)+bam,
-    },_meta);
-    return{success:true,data:{bambooAdded:bam,completions:newCompletions}};
-  }catch(e){console.error('verifyTask:',e);return{success:false,error:e.message};}
-}
+    // التحقق من الحد الأدنى
+    if (!txHash)
+      return { success: false, error: 'لم يتم استقبال بيانات المعاملة' };
+    if (amt < CFG.MIN_DEPOSIT_TON)
+      return { success: false, error: `الحد الأدنى للإيداع ${CFG.MIN_DEPOSIT_TON} TON` };
+    if (amt > 10000)
+      return { success: false, error: 'المبلغ كبير جداً' };
 
-// ── Create Task ───────────────────────────────────────────────────
-async function hCreateTask(env,uid,data,_meta={}){
-  try{
-    const{type,link,targetUsers}=data;
-    if(!['channel','bot'].includes(type)) return{success:false,error:'Invalid type. Must be channel or bot'};
-    const target=parseInt(targetUsers)||0;
-    if(target<100)  return{success:false,error:'Minimum target is 100 users'};
-    if(target>100000) return{success:false,error:'Maximum target is 100,000 users'};
-    if(!link||!link.includes('t.me/')) return{success:false,error:'Valid Telegram link required'};
-    // 60 Coins per target user → 100 users = 6,000 | 500 users = 30,000
-    const COINS_PER_USER=60;
-    const cost=target*COINS_PER_USER;
-    const ur=await dbGet(env,`users/${uid}`);const u=ur.data;
-    if(!u) return{success:false,error:'User not found'};
-    if((u.coins||0)<cost) return{success:false,error:`Insufficient Coins. Need ${cost} Coins`};
-    // Deduct Coins
-    await dbUpdate(env,`users/${uid}`,{coins:(u.coins||0)-cost});
-    // Extract display name from link
-    const username=link.split('t.me/')[1]?.split('?')[0]?.split('/')[0]||link;
-    const now=Date.now();
-    const taskId=`task_${now}_${Math.random().toString(36).substring(2,10)}`;
-    const taskData={
-      id:taskId, creatorId:uid, type, link,
-      name:`@${username}`,
-      targetUsers:target,
-      bambooReward:500,
-      completions:0, completedBy:[],
-      status:'active',
-      createdAt:now,
-      expiresAt:now+(30*24*60*60*1000),
-      updatedAt:now,
+    // ── حماية من التكرار (نفس txHash مرتين) ──────────────────────
+    // نستخدم أول 128 حرف من BOC لتجنب مشكلة الأحرف الخاصة
+    const safeHash = txHash.replace(/[^a-zA-Z0-9+/=]/g, '_').slice(0, 128);
+    const dup = await dbGet(env, `txHashes/${safeHash}`);
+    if (dup.data) return { success: false, error: 'هذه المعاملة مسجلة مسبقاً' };
+
+    // ── جلب بيانات المستخدم الحالية ──────────────────────────────
+    const ur = await dbGet(env, `users/${uid}`);
+    const u  = ur.data || {};
+
+    const depId = `dep_${uid}_${Date.now()}`;
+    const now   = Date.now();
+    const rec   = {
+      depId,
+      userId     : uid,
+      txHash     : txHash.slice(0, 128),
+      comment,
+      amount     : amt,
+      status     : 'pending',
+      ts         : now,
+      createdAt  : now,
+      currentBalance: u.tonBalance || 0,
     };
-    await dbSet(env,`tasks/community/${taskId}`,taskData);
-    await dbPush(env,`users/${uid}/transactions`,{type:'create_task',taskId,taskType:type,targetUsers:target,cost,coinsCost:cost,timestamp:now});
-    log(env,uid,'create_task',{
-      taskId, taskType:type, targetUsers:target,
-      coins_spent:cost,
-      coins_before:(u.coins||0)+cost, coins_after:(u.coins||0),
-      taskLink:link,
-    },_meta);
-    return{success:true,data:{taskId,type,targetUsers:target,totalCost:cost,bambooReward:500}};
-  }catch(e){console.error('createTask:',e);return{success:false,error:e.message};}
+
+    // ── حفظ السجل فقط بدون إضافة رصيد حتى يراجعه الأدمن ──────────
+    await Promise.all([
+      dbSet(env, `users/${uid}/deposits/${depId}`, rec),
+      dbSet(env, `pendingDeposits/${depId}`, rec),
+      dbSet(env, `txHashes/${safeHash}`, { depId, userId: uid, ts: now, amount: amt }),
+    ]);
+
+    console.log(`[DEPOSIT PENDING] uid:${uid} amount:${amt} TON deposit:${depId}`);
+
+    // ── إشعار المستخدم عبر تيليجرام ──────────────────────────────
+    sendTgMsg(env, uid,
+      `⏳ <b>تم استقبال طلب الإيداع</b>\n` +
+      `💰 المبلغ: <b>${amt} TON</b>\n` +
+      `🧾 الحالة: قيد المراجعة\n\n` +
+      `سيتم إضافة الرصيد بعد مراجعة الإدارة.`
+    ).catch(() => {});
+
+    // ── إشعار الأدمن ──────────────────────────────────────────────
+    if (env.ADMIN_IDS) {
+      const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || 'مستخدم';
+      env.ADMIN_IDS.split(',').map(s => s.trim()).forEach(adminId => {
+        sendTgMsg(env, adminId,
+          `⏳ <b>طلب إيداع جديد بانتظار المراجعة</b>\n👤 ${name} (${uid})\n💵 ${amt} TON\n🧾 ID: ${depId}`
+        ).catch(() => {});
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        depositId : depId,
+        status    : 'pending',
+        currentBalance: u.tonBalance || 0,
+        amount    : amt,
+        message   : `تم تسجيل طلب إيداع ${amt} TON وهو بانتظار مراجعة الإدارة.`,
+      },
+    };
+  } catch (e) {
+    console.error('hDeposit:', e);
+    return { success: false, error: e.message };
+  }
 }
 
-// ── Save Squad ────────────────────────────────────────────────────
-async function hSaveSquad(env,uid,data,_meta={}){
-  try{
-    const{squad,formation}=data;
-    if(!Array.isArray(squad)||squad.length!==11)return{success:false,error:'Squad must have 11 slots'};
-    const validFormations=['4-3-3','4-2-3-1','4-4-2','3-5-2','4-1-1-4'];
-    const form=validFormations.includes(formation)?formation:'4-3-3';
-    // Validate all player IDs are either null or strings max 10 chars
-    const sanitizedSquad=squad.map(pid=>{
-      if(!pid)return null;
-      const s=String(pid).slice(0,10);
-      return /^p\d{3}$/.test(s)?s:null;
-    });
-    await dbUpdate(env,`users/${uid}`,{
-      squad:sanitizedSquad,
-      formation:form,
-      squadSavedAt:Date.now(),
-    });
-    return{success:true,data:{saved:true,formation:form}};
-  }catch(e){return{success:false,error:e.message};}
+// ── VERIFY DEPOSIT (احتياطي — للتوافق مع الإصدارات القديمة) ────────
+async function hVerifyDeposit(env, uid, data) {
+  try {
+    const { depositId } = data;
+    if (!depositId) return { success: false, error: 'depositId مطلوب' };
+
+    const dr  = await dbGet(env, `users/${uid}/deposits/${depositId}`);
+    const dep = dr.data;
+    if (!dep) return { success: false, error: 'الإيداع غير موجود' };
+
+    // إذا اكتمل مسبقاً أعد النتيجة مباشرة
+    if (dep.status === 'completed')
+      return { success: true, data: { status: 'completed', amount: dep.amount } };
+
+    return { success: true, data: { status: 'pending' } };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
 }
 
-// ── Buy Player ────────────────────────────────────────────────────
-// Player prices (Coins) — mirrors frontend PLAYERS_DB
-const PLAYER_PRICES={
-  p001:800,p002:600,p003:700,p004:900,p005:1200,p006:800,p007:700,p008:1000,p009:900,p010:1100,
-  p011:3500,p012:3000,p013:5000,p014:6000,p015:4500,
-  p016:15000,p017:20000,p018:25000,p019:30000,p020:22000,
-};
-const PLAYER_PRICES_TON={p021:1.5,p022:1.2,p023:1.8,p024:2.5,p025:2.8,p026:12,p027:11,p028:8,p029:13,p030:7};
+// ── SUBMIT PROMO ───────────────────────────────────────────────────
+async function hSubmitPromo(env, uid, tg, data) {
+  try {
+    const url = (data.url || '').trim().slice(0, 256);
+    if (!url || !url.startsWith('http')) return { success: false, error: 'رابط غير صالح' };
+    if (!url.includes('t.me')) return { success: false, error: 'يجب أن يكون رابط تيليجرام' };
 
-async function hBuyPlayer(env,uid,data,_meta={}){
-  try{
-    const{playerId}=data;
-    if(!playerId||typeof playerId!=='string'||!/^p\d{3}$/.test(playerId))return{success:false,error:'Invalid player ID'};
-    const r=await dbGet(env,`users/${uid}`);const user=r.data;
-    if(!user)return{success:false,error:'User not found'};
-    const owned=user.ownedPlayers||[];
-    if(owned.includes(playerId))return{success:false,error:'Player already owned'};
+    const user = await getOrInitUser(env, uid, tg);
+    const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'مشارك';
 
-    if(PLAYER_PRICES[playerId]!==undefined){
-      // Coins purchase
-      const price=PLAYER_PRICES[playerId];
-      if((user.coins||0)<price)return{success:false,error:`Need ${price} Coins`};
-      const newCoins=(user.coins||0)-price;
-      const newOwned=[...owned,playerId];
-      await dbUpdate(env,`users/${uid}`,{coins:newCoins,ownedPlayers:newOwned});
-      log(env,uid,'buy_item',{itemId:playerId,qty:1,totalCost:price,bamboo_before:user.bamboo||0,bamboo_after:user.bamboo||0,coins_before:user.coins||0,coins_after:newCoins},_meta);
-      // Referral commission (20% of coin price in coins to referrer)
-      if(user.referredBy&&user.referredBy!==uid){
-        const comm=Math.floor(price*G.REF_BONUS_PCT/100);
-        const rr=await dbGet(env,`users/${user.referredBy}`);
-        if(rr.data){
-          await dbUpdate(env,`users/${user.referredBy}`,{coins:(rr.data.coins||0)+comm});
-          sendTgNotification(env,user.referredBy,`💰 <b>عمولة إحالة!</b>\n<b>${user.firstName||'صديق'}</b> اشترى لاعباً\nحصلت على <b>${comm} Coins</b> (20%)`).catch(()=>{});
-        }
+    const promoId = `promo_${uid}_${Date.now()}`;
+    const record  = {
+      promoId,
+      userId  : uid,
+      name    : displayName,
+      photoUrl: user.photoUrl || null,
+      url,
+      status  : 'pending',
+      earned  : null,
+      ts      : Date.now(),
+    };
+
+    await Promise.all([
+      dbSet(env, `users/${uid}/promos/${promoId}`, record),
+      dbSet(env, `pendingPromos/${promoId}`, record),
+    ]);
+
+    if (env.ADMIN_IDS) {
+      const adminIds = env.ADMIN_IDS.split(',').map(s => s.trim());
+      for (const adminId of adminIds) {
+        sendTgMsg(env, adminId,
+          `📢 <b>منشور جديد للمراجعة</b>\n👤 ${displayName} (${uid})\n🔗 ${url}`
+        ).catch(() => {});
       }
-      return{success:true,data:{coins:newCoins,ownedPlayers:newOwned}};
-    }else if(PLAYER_PRICES_TON[playerId]!==undefined){
-      // TON purchase — just validate wallet connected, actual payment handled on chain
-      return{success:false,error:'TON player purchase requires on-chain payment'};
-    }else{
-      return{success:false,error:'Unknown player'};
     }
-  }catch(e){return{success:false,error:e.message};}
+
+    return { success: true, data: { id: promoId, status: 'pending' } };
+  } catch (e) {
+    console.error('hSubmitPromo:', e);
+    return { success: false, error: e.message };
+  }
 }
 
-// ── Main handler ──────────────────────────────────────────────────
+// ── ADMIN ──────────────────────────────────────────────────────────
+async function hAdmin(env, action, data) {
+  try {
+    switch (action) {
 
-// ── Update leaderboard entry ─────────────────────────────────────
-async function updateLeaderboardEntry(env,uid,user){
-  try{
-    const COMP_DURATION_MS = 10*24*60*60*1000;
-    // Get or init competition meta
-    let meta=(await dbGet(env,'competition/meta')).data;
-    if(!meta||!meta.endDate){
-      meta={endDate:Date.now()+COMP_DURATION_MS,startDate:Date.now()};
-      await dbSet(env,'competition/meta',meta);
+      case 'adminGetUser': {
+        const uid = String(data.userId || '');
+        if (!uid) return { success: false, error: 'userId required' };
+        const [userR, bidsR, depositsR] = await Promise.all([
+          dbGet(env, `users/${uid}`),
+          dbGet(env, `bids/${uid}`),
+          dbGet(env, `users/${uid}/deposits`),
+        ]);
+        return {
+          success: true,
+          data: {
+            user    : userR.data,
+            bidEntry: bidsR.data,
+            deposits: depositsR.data ? Object.values(depositsR.data) : [],
+          },
+        };
+      }
+
+      case 'adminConfirmDeposit': {
+        const { userId, depositId, amountTon } = data;
+        if (!userId || !depositId) return { success: false, error: 'userId and depositId required' };
+        const dr  = await dbGet(env, `users/${userId}/deposits/${depositId}`);
+        const dep = dr.data;
+        if (!dep) return { success: false, error: 'Deposit not found' };
+        if (dep.status === 'completed') return { success: false, error: 'Already completed' };
+
+        const tonAmt = parseFloat(amountTon || dep.amount || 0);
+        const ur   = await dbGet(env, `users/${userId}`);
+        const user = ur.data || {};
+        const newBalance = parseFloat(((user.tonBalance || 0) + tonAmt).toFixed(6));
+
+        await Promise.all([
+          dbUpdate(env, `users/${userId}`, { tonBalance: newBalance, hasDeposited: true }),
+          dbUpdate(env, `users/${userId}/deposits/${depositId}`, {
+            status: 'completed', completedAt: Date.now(),
+            creditedTon: tonAmt, confirmedByAdmin: true,
+          }),
+          dbDelete(env, `pendingDeposits/${depositId}`),
+        ]);
+
+        sendTgMsg(env, userId,
+          `✅ <b>تم تأكيد إيداعك يدوياً!</b>\n💰 <b>${tonAmt} TON</b> أُضيفت إلى رصيدك\n📊 الرصيد الجديد: <b>${newBalance} TON</b>`
+        ).catch(() => {});
+
+        return { success: true, data: { newBalance, credited: tonAmt } };
+      }
+
+      case 'adminGetQueue': {
+        const [pendingDep, pendingPromo, leaderboard] = await Promise.all([
+          dbGet(env, 'pendingDeposits'),
+          dbGet(env, 'pendingPromos'),
+          getLeaderboard(env),
+        ]);
+        return {
+          success: true,
+          data: {
+            pendingDeposits: pendingDep.data  ? Object.values(pendingDep.data)  : [],
+            pendingPromos  : pendingPromo.data ? Object.values(pendingPromo.data): [],
+            leaderboard,
+          },
+        };
+      }
+
+      case 'adminApprovePromo': {
+        const { userId, promoId, rewardTon } = data;
+        if (!userId || !promoId) return { success: false, error: 'userId and promoId required' };
+        const reward = parseFloat(rewardTon || 0);
+
+        const ur   = await dbGet(env, `users/${userId}`);
+        const user = ur.data || {};
+        const newBalance = parseFloat(((user.tonBalance || 0) + reward).toFixed(6));
+
+        await Promise.all([
+          dbUpdate(env, `users/${userId}`, { tonBalance: newBalance }),
+          dbUpdate(env, `users/${userId}/promos/${promoId}`, { status: 'approved', earned: reward, reviewedAt: Date.now() }),
+          dbDelete(env, `pendingPromos/${promoId}`),
+        ]);
+
+        if (reward > 0) {
+          sendTgMsg(env, userId,
+            `🏆 <b>منشورك تم قبوله!</b>\n💰 حصلت على <b>${reward} TON</b> مكافأة\n📊 رصيدك الجديد: <b>${newBalance} TON</b>`
+          ).catch(() => {});
+        }
+
+        return { success: true, data: { approved: true, newBalance, reward } };
+      }
+
+      case 'adminRejectPromo': {
+        const { userId, promoId } = data;
+        if (!userId || !promoId) return { success: false, error: 'userId and promoId required' };
+        await Promise.all([
+          dbUpdate(env, `users/${userId}/promos/${promoId}`, { status: 'rejected', reviewedAt: Date.now() }),
+          dbDelete(env, `pendingPromos/${promoId}`),
+        ]);
+        sendTgMsg(env, userId,
+          `❌ <b>منشورك تم رفضه</b>\nللأسف لم يستوفِ المنشور المتطلبات. يمكنك إرسال منشور آخر.`
+        ).catch(() => {});
+        return { success: true, data: { rejected: true } };
+      }
+
+      case 'adminSetBalance': {
+        const { userId, tonBalance } = data;
+        if (!userId) return { success: false, error: 'userId required' };
+        const bal = parseFloat(tonBalance || 0);
+        await dbUpdate(env, `users/${userId}`, { tonBalance: bal });
+        sendTgMsg(env, userId,
+          `💰 تم تعديل رصيدك من قِبل الإدارة\n📊 رصيدك الجديد: <b>${bal} TON</b>`
+        ).catch(() => {});
+        return { success: true, data: { userId, tonBalance: bal } };
+      }
+
+      case 'adminGetAuction': {
+        const [auction, leaderboard, pendingDep] = await Promise.all([
+          dbGet(env, 'auction'),
+          getLeaderboard(env),
+          dbGet(env, 'pendingDeposits'),
+        ]);
+        return {
+          success: true,
+          data: {
+            auction        : auction.data,
+            leaderboard,
+            pendingDeposits: pendingDep.data ? Object.values(pendingDep.data) : [],
+          },
+        };
+      }
+
+      case 'adminExtendAuction':
+        return { success: false, error: 'Auction time is locked and cannot be changed from the app' };
+
+      default:
+        return { success: false, error: `Unknown admin action: ${action}` };
     }
-    const compStarted=Date.now()>=meta.startDate;
-    if(!compStarted) return; // competition not started yet
-
-    // Count active referrals (current total)
-    const rr=await dbGet(env,`users/${uid}/referrals`);
-    const refIds=rr.data?Object.keys(rr.data):[];
-    let activeNow=0;
-    for(const refId of refIds){
-      const hd=await dbGet(env,`users/${refId}/hasDeposited`);
-      if(hd.data===true) activeNow++;
-    }
-    const miningNow=Math.round((user.miningRate||0)*24);
-
-    // Get or create snapshot for this user (values AT competition start)
-    const snapKey=`competition/snapshots/${uid}`;
-    let snap=(await dbGet(env,snapKey)).data;
-    if(!snap){
-      // First time this user is seen after comp started — snapshot current values
-      snap={activeRefs:activeNow, miningPerDay:miningNow, ts:meta.startDate};
-      await dbSet(env,snapKey,snap);
-    }
-
-    // Score = growth SINCE competition started (never negative)
-    const activeScore=Math.max(0, activeNow - snap.activeRefs);
-    const miningScore=Math.max(0, miningNow - snap.miningPerDay);
-
-    const entry={
-      userId:uid,
-      name:`${user.firstName||''} ${user.lastName||''}`.trim()||'Panda',
-      photo:user.photoUrl||null,
-      activeScore,   // points earned since comp start
-      miningScore,
-      activeNow,
-      miningNow,
-      ts:Date.now(),
-    };
-    await dbSet(env,`competition/users/${uid}`,entry);
-
-    // Rebuild leaderboard top 50
-    const allr=await dbGet(env,'competition/users');
-    const all=allr.data?Object.values(allr.data):[];
-    const byActive=[...all].sort((a,b)=>b.activeScore-a.activeScore).slice(0,50)
-      .map(u=>({userId:u.userId,name:u.name,photo:u.photo,score:u.activeScore}));
-    const byMining=[...all].sort((a,b)=>b.miningScore-a.miningScore).slice(0,50)
-      .map(u=>({userId:u.userId,name:u.name,photo:u.photo,score:u.miningScore}));
-    await dbSet(env,'competition/leaderboard',{activeRefs:byActive,miningSpeed:byMining,updatedAt:Date.now()});
-  }catch(e){console.error('updateLeaderboardEntry:',e.message);}
+  } catch (e) {
+    console.error('hAdmin:', e);
+    return { success: false, error: e.message };
+  }
 }
 
-// ── Leaderboard ───────────────────────────────────────────────────
-async function hGetLeaderboard(env,uid,_meta={}){
-  try{
-    const COMP_DURATION_MS = 10*24*60*60*1000;
-    let meta=(await dbGet(env,'competition/meta')).data;
-    if(!meta||!meta.endDate){
-      meta={endDate:Date.now()+COMP_DURATION_MS,startDate:Date.now()};
-      await dbSet(env,'competition/meta',meta);
-    }
-    const lbr=await dbGet(env,'competition/leaderboard');
-    const lb=lbr.data||{activeRefs:[],miningSpeed:[]};
-    // Get this user's snapshot so frontend can show their current score
-    const snap=(await dbGet(env,`competition/snapshots/${uid}`)).data||null;
-    return{success:true,data:{
-      endDate:meta.endDate,
-      startDate:meta.startDate,
-      activeRefs:lb.activeRefs||[],
-      miningSpeed:lb.miningSpeed||[],
-      mySnapshot:snap, // {activeRefs, miningPerDay} at comp start
-    }};
-  }catch(e){return{success:false,error:e.message};}
-}
-
+// ================================================================
+//  MAIN FETCH HANDLER
+// ================================================================
 export default {
-  async fetch(request,env){
-    if(request.method==='OPTIONS')return new Response(null,{headers:CORS});
-    const url=new URL(request.url);const path=url.pathname;
-    if(path==='/health')return ok({status:'ok',ts:Date.now(),env:env.ENVIRONMENT||'production'});
-    if(path==='/tonconnect-manifest.json')return jRes({url:'https://pandabambo.vercel.app',name:'PandaBambooBot',iconUrl:'https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/87e9d1bd-c053-466a-a29e-40483a009e8f.png',description:'Panda Bamboo Factory'});
-    if(path!=='/api'||request.method!=='POST')return fail('Not found',404);
+  async fetch(request, env) {
+    // ── CORS preflight ──
+    if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
 
-    const ip=request.headers.get('CF-Connecting-IP')||'unknown';
-    if(!rateOk(ip))return fail('Rate limit exceeded',429);
+    const url  = new URL(request.url);
+    const path = url.pathname;
 
+    // ── Health check ──
+    if (path === '/health') {
+      return ok({ status: 'ok', ts: Date.now(), app: CFG.APP_NAME, minDeposit: CFG.MIN_DEPOSIT_TON });
+    }
+
+    // ── TON Connect manifest ──
+    if (path === '/tonconnect-manifest.json') {
+      return jRes({
+        url        : CFG.APP_URL,
+        name       : CFG.APP_NAME,
+        iconUrl    : CFG.APP_ICON,
+        description: CFG.APP_DESCRIPTION,
+      });
+    }
+
+    // ── Static HTML (optional: serve index.html) ──
+    if (path === '/' || path === '/index.html') {
+      return fail('Please deploy the HTML separately', 404);
+    }
+
+    // ── All other routes must be POST /api ──
+    if (path !== '/api' || request.method !== 'POST') {
+      return fail('Not found', 404);
+    }
+
+    // ── Rate limit ──
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    if (!rateOk(ip)) return fail('Rate limit exceeded', 429);
+
+    // ── Parse body ──
     let body;
-    try{const raw=await request.text();if(raw.length>10240)return fail('Payload too large',413);body=JSON.parse(sanitise(raw));}
-    catch(_){return fail('Invalid JSON',400);}
-
-    const authHeader=request.headers.get('Authorization')||'';
-    const action=request.headers.get('X-Action')||body.action;
-    const data=body.data||{};
-    if(!action)return fail('Missing action',400);
-
-    const ADMIN_ACTIONS=new Set(['adminGetUser','adminSetBalance','adminConfirmDeposit','adminApproveWithdraw','adminRejectWithdraw','adminGetQueue']);
-    if(ADMIN_ACTIONS.has(action)){
-      const v=await validateTg(authHeader.replace('Telegram ',''),env.BOT_TOKEN);
-      if(!v.valid)return fail('Unauthorized',401);
-      const adminIds=(env.ADMIN_IDS||'').split(',').map(s=>s.trim());
-      if(!adminIds.includes(String(v.user?.id)))return fail('Forbidden',403);
-      return jRes(await hAdmin(env,action,data));
+    try {
+      const raw = await request.text();
+      if (raw.length > 32768) return fail('Payload too large', 413);
+      body = JSON.parse(sanitise(raw));
+    } catch (_) {
+      return fail('Invalid JSON', 400);
     }
 
-    // ── Ping: no auth required — used by race system to find fastest server ──
-    if(action==='ping') return jRes({success:true,data:{pong:true,ts:Date.now()}});
+    const action = body.action || request.headers.get('X-Action');
+    const data   = body.data || {};
+    if (!action) return fail('Missing action', 400);
 
-    if(!authHeader.startsWith('Telegram '))return fail('Telegram authentication required',401);
-    const v=await validateTg(authHeader.replace('Telegram ',''),env.BOT_TOKEN);
-    if(!v.valid){
-      console.error('TG validation failed:',v.error);
-      return jRes({success:false,error:'Invalid Telegram authentication',errorCode:'INVALID_TELEGRAM_AUTH',debug:{hasInitData:!!authHeader,botTokenConfigured:!!env.BOT_TOKEN,environment:env.ENVIRONMENT||'production',validationError:v.error}},401);
+    // ── Admin actions ──
+    const ADMIN_ACTIONS = new Set([
+      'adminGetUser', 'adminConfirmDeposit', 'adminGetQueue',
+      'adminApprovePromo', 'adminRejectPromo', 'adminSetBalance',
+      'adminGetAuction', 'adminExtendAuction',
+    ]);
+
+    if (ADMIN_ACTIONS.has(action)) {
+      const initData = (
+        request.headers.get('X-Telegram-Init-Data') ||
+        request.headers.get('Authorization')?.replace('Telegram ', '') ||
+        body.initData || ''
+      ).slice(0, 4096);
+      const v = await validateTg(initData, env.BOT_TOKEN);
+      if (!v.valid) return fail('Unauthorized', 401);
+      const adminIds = (env.ADMIN_IDS || '').split(',').map(s => s.trim());
+      if (!adminIds.includes(String(v.user?.id))) return fail('Forbidden', 403);
+      return jRes(await hAdmin(env, action, data));
     }
 
-    const uid=String(v.user.id);
-    const _meta={ip, ua:request.headers.get('User-Agent')||''};
-    console.log(`[${new Date().toISOString()}] User:${uid} Action:${action} IP:${ip}`);
+    // ── User actions — استخراج initData من Header أو body ──────────
+    const initData = (
+      request.headers.get('X-Telegram-Init-Data') ||
+      request.headers.get('Authorization')?.replace('Telegram ', '') ||
+      body.initData || ''
+    ).slice(0, 4096);
 
-    // Per-user per-action cooldown — blocks auto-clicker / rapid replay attacks
-    if(!userActionOk(uid, action)){
-      return fail('Too fast. Please wait a moment before trying again.',429);
+    const v = await validateTg(initData, env.BOT_TOKEN);
+
+    if (!v.valid) {
+      console.error('TG validation failed:', v.error, 'Action:', action);
+      return jRes({
+        success  : false,
+        error    : 'Telegram authentication required',
+        errorCode: 'INVALID_TELEGRAM_AUTH',
+        debug    : {
+          validationError   : v.error,
+          botTokenConfigured: !!env.BOT_TOKEN,
+          hasInitData       : !!initData,
+        },
+      }, 401);
     }
 
-    switch(action){
-      case 'getState'      :return jRes(await hGetState(env,uid,v.user,{...data,_startParam:v.startParam||''},_meta));
-      case 'collect'       :return jRes(await hCollect      (env,uid,data,_meta));
-      case 'buyItem'       :return jRes(await hBuyItem      (env,uid,data,_meta));
-      case 'upgradeTank'   :return jRes(await hUpgradeTank  (env,uid,data,_meta));
-      case 'exchange'      :return jRes(await hExchange     (env,uid,data,_meta));
-      case 'withdraw'      :return jRes(await hWithdraw     (env,uid,data,_meta));
-      case 'deposit'       :return jRes(await hDeposit      (env,uid,data,_meta));
-      case 'verifyDeposit' :return jRes(await hVerifyDeposit(env,uid,data,_meta));
-      case 'claimTask'     :return jRes(await hClaimTask    (env,uid,data,_meta));
-      case 'verifyTask'    :return jRes(await hVerifyTask   (env,uid,data,_meta));
-      case 'createTask'    :return jRes(await hCreateTask   (env,uid,data,_meta));
-      case 'getLeaderboard':return jRes(await hGetLeaderboard(env,uid,_meta));
-      case 'saveSquad'     :return jRes(await hSaveSquad    (env,uid,data,_meta));
-      case 'buyPlayer'     :return jRes(await hBuyPlayer    (env,uid,data,_meta));
-      default:return fail('Unknown action',400);
+    const uid    = String(v.user.id);
+    const tgUser = v.user;
+    console.log(`[${new Date().toISOString()}] uid:${uid} action:${action} ip:${ip}`);
+
+    // ── Dispatch ──
+    switch (action) {
+      case 'getAuction'    : return jRes(await hGetAuction   (env, uid, tgUser, data));
+      case 'getUser'       : return jRes(await hGetUser       (env, uid, tgUser));
+      case 'auctionBid'    : return jRes(await hAuctionBid   (env, uid, tgUser, data));
+      case 'deposit'       : return jRes(await hDeposit       (env, uid, data));
+      case 'verifyDeposit' : return jRes(await hVerifyDeposit (env, uid, data));
+      case 'submitPromo'   : return jRes(await hSubmitPromo   (env, uid, tgUser, data));
+      default              : return fail(`Unknown action: ${action}`, 400);
     }
-  }
+  },
 };
