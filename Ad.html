@@ -6,15 +6,21 @@
 <title>Race</title>
 
 <style>
-body {
+* {
   margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
   overflow: hidden;
   background: black;
   font-family: Arial;
 }
 
+/* الشاشة كاملة */
 .game {
-  position: relative;
+  position: fixed;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -32,45 +38,50 @@ body {
 /* العربيات */
 .car {
   position: absolute;
-  width: 130px;
-  bottom: 80px;
-  transition: transform 0.2s;
+  width: 180px; /* كبرنا الحجم */
+  bottom: 60px;
 }
 
-.car1 { left: 30%; }
-.car2 { left: 60%; }
+/* كل عربية في حارة ثابتة */
+.car1 {
+  left: 30%;
+}
+
+.car2 {
+  left: 55%;
+}
 
 /* خط النهاية */
 .finish {
   position: absolute;
-  width: 80%;
-  left: 10%;
+  width: 70%;
+  left: 15%;
   top: -1200px;
-  transform: scale(0.5);
+  transform: scale(0.6);
 }
 
 /* UI */
 .timer {
   position: absolute;
-  top: 20px;
+  top: 15px;
   left: 50%;
   transform: translateX(-50%);
   color: white;
-  font-size: 26px;
+  font-size: 24px;
   background: rgba(0,0,0,0.5);
-  padding: 8px 18px;
+  padding: 6px 15px;
   border-radius: 20px;
 }
 
 .speed {
   position: absolute;
-  top: 20px;
+  top: 15px;
   color: white;
-  font-size: 16px;
+  font-size: 14px;
 }
 
-.leftSpeed { left: 15px; }
-.rightSpeed { right: 15px; }
+.leftSpeed { left: 10px; }
+.rightSpeed { right: 10px; }
 
 </style>
 </head>
@@ -87,6 +98,7 @@ body {
 
   <!-- العربيات -->
   <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/26fa6d91-973f-456a-b7e6-da1ddca47322.png" class="car car1">
+  
   <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/f4695289-cd28-4737-b5b6-ec968e9b816d.png" class="car car2">
 
   <!-- UI -->
@@ -100,53 +112,45 @@ body {
 
 let road = document.querySelector('.road');
 let finish = document.querySelector('.finish');
-let car1 = document.querySelector('.car1');
-let car2 = document.querySelector('.car2');
 
 let roadY = 0;
 
-// سرعات عشوائية
+// سرعات مختلفة
 let speed1 = Math.random() * 30 + 70;
 let speed2 = Math.random() * 30 + 70;
 
-// عرض السرعة
 document.getElementById("speed1").innerText = Math.floor(speed1) + " km/h";
 document.getElementById("speed2").innerText = Math.floor(speed2) + " km/h";
 
-// مسافات
+// المسافات
 let dist1 = 0;
 let dist2 = 0;
 
 let finishTop = -1200;
 let raceEnd = false;
 
-// اللعبة
 function gameLoop() {
 
   if (raceEnd) return;
 
-  // حركة الطريق
+  // تحريك الطريق (الإحساس بالحركة)
   roadY += 12;
   road.style.backgroundPositionY = roadY + "px";
 
-  // حركة النهاية (تقرب)
+  // تحريك النهاية
   finishTop += 5;
   finish.style.top = finishTop + "px";
 
   // تكبير النهاية تدريجي
-  let scale = 0.5 + (finishTop + 1200) / 2000;
+  let scale = 0.6 + (finishTop + 1200) / 2000;
   finish.style.transform = "scale(" + scale + ")";
 
-  // تحديث المسافات
+  // تحديث المسافات (بدون تحريك يمين/شمال)
   dist1 += speed1 * 0.02;
   dist2 += speed2 * 0.02;
 
-  // فرق بسيط في المكان (إحساس السباق)
-  car1.style.transform = "translateX(" + dist1 * 0.2 + "px)";
-  car2.style.transform = "translateX(" + dist2 * 0.2 + "px)";
-
-  // لما النهاية توصل
-  if (finishTop > window.innerHeight - 250) {
+  // نهاية السباق
+  if (finishTop > window.innerHeight - 200) {
     raceEnd = true;
 
     setTimeout(() => {
