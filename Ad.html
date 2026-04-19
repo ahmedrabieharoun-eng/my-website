@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auto Race</title>
+<title>Racing Game</title>
 
 <style>
 body {
   margin: 0;
   overflow: hidden;
-  background: black;
+  background: #000;
   font-family: Arial;
 }
 
+/* الحاوية */
 .game {
   position: relative;
   width: 100vw;
@@ -32,20 +33,20 @@ body {
 /* العربيات */
 .car {
   position: absolute;
-  width: 110px;
+  width: 120px;
   bottom: 80px;
   transition: left 0.2s linear;
 }
 
-.car1 { left: 35%; }
-.car2 { left: 55%; }
+.car1 { left: 30%; }
+.car2 { left: 60%; }
 
 /* خط النهاية */
 .finish {
   position: absolute;
-  width: 70%;
-  left: 15%;
-  top: -800px;
+  width: 60%;
+  left: 20%;
+  top: -200px;
 }
 
 /* UI */
@@ -58,17 +59,14 @@ body {
 }
 
 .timer {
-  font-size: 28px;
-  background: rgba(0,0,0,0.5);
-  display: inline-block;
-  padding: 10px 20px;
-  border-radius: 20px;
+  font-size: 30px;
+  margin-top: 10px;
 }
 
 .speed {
   position: absolute;
   top: 20px;
-  font-size: 18px;
+  color: white;
 }
 
 .speed.left { left: 20px; }
@@ -81,13 +79,18 @@ body {
 
 <div class="game">
 
+  <!-- الطريق -->
   <div class="road"></div>
 
+  <!-- خط النهاية -->
   <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/83d56c13-1651-4819-8aeb-708111194c39.png" class="finish">
 
+  <!-- العربيات -->
   <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/26fa6d91-973f-456a-b7e6-da1ddca47322.png" class="car car1">
+  
   <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/f4695289-cd28-4737-b5b6-ec968e9b816d.png" class="car car2">
 
+  <!-- UI -->
   <div class="ui">
     <div class="timer" id="timer">15</div>
   </div>
@@ -106,9 +109,9 @@ let car2 = document.querySelector('.car2');
 
 let roadY = 0;
 
-// السرعات (ممكن تتغير كل سباق)
-let speed1 = Math.random() * 40 + 60;
-let speed2 = Math.random() * 40 + 60;
+// السرعات
+let speed1 = 80;
+let speed2 = 95;
 
 // المسافة
 let dist1 = 0;
@@ -117,41 +120,23 @@ let dist2 = 0;
 // الوقت
 let time = 15;
 
-// حالة السباق
-let raceFinished = false;
-
-// اللعبة
+// حركة اللعبة
 function gameLoop() {
-
-  if (raceFinished) return;
 
   // تحريك الطريق
   roadY += 10;
   road.style.backgroundPositionY = roadY + "px";
 
-  // تحريك خط النهاية
-  let finishTop = parseInt(finish.style.top || -800);
-  finishTop += 6;
-  finish.style.top = finishTop + "px";
+  // تحريك النهاية
+  finish.style.top = (parseInt(finish.style.top || -200) + 5) + "px";
 
-  // تحديث المسافات
-  dist1 += speed1 * 0.02;
-  dist2 += speed2 * 0.02;
+  // حساب المسافة
+  dist1 += speed1 * 0.01;
+  dist2 += speed2 * 0.01;
 
-  // تحريك العربيات (فرق السرعة)
-  car1.style.left = (35 + dist1 * 0.03) + "%";
-  car2.style.left = (55 + dist2 * 0.03) + "%";
-
-  // لما النهاية توصل
-  if (finishTop > window.innerHeight - 200) {
-    raceFinished = true;
-
-    if (dist1 > dist2) {
-      alert("🏆 العربية الأولى فازت!");
-    } else {
-      alert("🏆 العربية الثانية فازت!");
-    }
-  }
+  // تحديث مكان العربيات
+  car1.style.left = (30 + dist1 * 0.05) + "%";
+  car2.style.left = (60 + dist2 * 0.05) + "%";
 
   requestAnimationFrame(gameLoop);
 }
@@ -165,6 +150,12 @@ let timer = setInterval(() => {
 
   if (time <= 0) {
     clearInterval(timer);
+
+    if (dist1 > dist2) {
+      alert("🚗 العربية 1 كسبت!");
+    } else {
+      alert("🚙 العربية 2 كسبت!");
+    }
   }
 }, 1000);
 
