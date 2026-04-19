@@ -1,919 +1,174 @@
-
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>لوحة مراجعة السحوبات المعلقة</title>
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet"/>
-  <style>
-    :root{
-      --bg:#060a12;--surface:#0d1420;--card:#111c2e;--card2:#16243a;
-      --border:#1e3048;--border2:#243a58;
-      --blue:#3b82f6;--blue2:#1d4ed8;
-      --green:#22c55e;--red:#ef4444;--red2:#dc2626;
-      --orange:#f97316;--yellow:#eab308;--purple:#8b5cf6;
-      --text:#e2e8f0;--muted:#64748b;
-      --radius:12px;
-    }
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px}
-    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(59,130,246,0.04) 0,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(139,92,246,0.03) 0,transparent 60%);pointer-events:none;z-index:0}
-    .wrapper{max-width:1300px;margin:0 auto;position:relative;z-index:1}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Race</title>
 
-    /* Header */
-    .header{display:flex;align-items:center;gap:14px;margin-bottom:26px;padding-bottom:18px;border-bottom:1px solid var(--border)}
-    .hicon{width:50px;height:50px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 24px rgba(59,130,246,0.2);flex-shrink:0}
-    .header h1{font-size:21px;font-weight:900}
-    .header p{font-size:12px;color:var(--muted);margin-top:2px}
-    .header-badge{margin-right:auto;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.25);color:var(--yellow);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700}
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
+  font-family: Arial;
+}
 
-    /* Stats */
-    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:20px}
-    .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:15px;text-align:center}
-    .stat .num{font-size:22px;font-weight:900}
-    .stat.blue   .num{color:var(--blue)}
-    .stat.yellow .num{color:var(--yellow)}
-    .stat.green  .num{color:var(--green)}
-    .stat.red    .num{color:var(--red)}
-    .stat.purple .num{color:var(--purple)}
-    .stat .lbl{font-size:11px;color:var(--muted);margin-top:3px}
+.game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
 
-    /* Filter card */
-    .filter-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
-    .fg{display:flex;flex-direction:column;gap:5px}
-    .fg label{font-size:11px;color:var(--muted);font-weight:700}
-    .finp{background:var(--card2);border:1px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:13px;outline:none;transition:border-color .2s}
-    .finp:focus{border-color:var(--blue)}
-    select.finp option{background:var(--card2)}
+/* الطريق */
+.road {
+  position: absolute;
+  width: 100%;
+  height: 200%;
+  background: url('https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/115d1968-3532-431f-a925-211081b52ebf.png') repeat-y;
+  background-size: cover;
+}
 
-    /* Buttons */
-    .btn{padding:9px 16px;border-radius:9px;border:none;font-family:'Tajawal',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-    .btn-blue{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;box-shadow:0 4px 12px rgba(59,130,246,0.25)}
-    .btn-blue:hover:not(:disabled){transform:translateY(-2px)}
-    .btn-red{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff}
-    .btn-red:hover:not(:disabled){transform:translateY(-2px)}
-    .btn-green{background:linear-gradient(135deg,var(--green),#16a34a);color:#fff}
-    .btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
-    .btn-ghost:hover:not(:disabled){background:var(--border)}
-    .btn-sm{padding:5px 11px;font-size:11px;border-radius:6px}
-    .btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+/* العربيات */
+.car {
+  position: absolute;
+  width: 110px;
+  bottom: 80px;
+  transition: left 0.2s linear;
+}
 
-    .controls{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.car1 { left: 35%; }
+.car2 { left: 55%; }
 
-    /* Log */
-    .log-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;min-height:40px;max-height:80px;overflow-y:auto;font-size:12px;line-height:1.8;font-family:monospace}
-    .log-box p{color:var(--muted)}
-    .log-item{display:flex;align-items:flex-start;gap:6px;margin-bottom:1px}
-    .log-item .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:6px}
-    .log-item.info    .dot{background:var(--blue)}
-    .log-item.success .dot{background:var(--green)}
-    .log-item.warn    .dot{background:var(--yellow)}
-    .log-item.error   .dot{background:var(--red)}
+/* خط النهاية */
+.finish {
+  position: absolute;
+  width: 70%;
+  left: 15%;
+  top: -800px;
+}
 
-    /* Table */
-    .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-    .table-scroll{overflow-x:auto}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    thead th{background:var(--surface);padding:10px 14px;text-align:right;color:var(--muted);font-weight:700;font-size:11px;letter-spacing:.3px;white-space:nowrap;border-bottom:1px solid var(--border)}
-    tbody tr{border-top:1px solid var(--border);transition:background .12s}
-    tbody tr:hover{background:rgba(59,130,246,0.03)}
-    tbody td{padding:10px 14px;vertical-align:middle}
-    .mono{font-family:monospace;font-size:11px}
-    .addr{max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:11px;color:var(--muted);cursor:pointer}
-    .addr:hover{color:var(--blue)}
+/* UI */
+.ui {
+  position: absolute;
+  top: 20px;
+  width: 100%;
+  text-align: center;
+  color: white;
+}
 
-    .badge{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
-    .badge-pend{background:rgba(234,179,8,0.12);color:var(--yellow);border:1px solid rgba(234,179,8,0.2)}
-    .badge-paid{background:rgba(34,197,94,0.12);color:var(--green);border:1px solid rgba(34,197,94,0.2)}
-    .badge-rej {background:rgba(239,68,68,0.12);color:var(--red);border:1px solid rgba(239,68,68,0.2)}
-    .badge-dep {background:rgba(34,197,94,0.12);color:var(--green)}
-    .badge-nodep{background:rgba(239,68,68,0.12);color:var(--red)}
-    .badge-susp{background:rgba(249,115,22,0.13);color:var(--orange);border:1px solid rgba(249,115,22,0.25)}
-    .susp-row td{background:rgba(249,115,22,0.04)!important}
-    .susp-row:hover td{background:rgba(249,115,22,0.08)!important}
+.timer {
+  font-size: 28px;
+  background: rgba(0,0,0,0.5);
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 20px;
+}
 
-    /* Pagination */
-    .pagination{display:flex;align-items:center;justify-content:center;gap:5px;padding:12px;border-top:1px solid var(--border);flex-wrap:wrap}
-    .page-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:'Tajawal',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s;min-width:32px}
-    .page-btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
-    .page-btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
-    .page-btn:disabled{opacity:.3;cursor:not-allowed}
-    .page-info{font-size:11px;color:var(--muted);padding:0 4px}
+.speed {
+  position: absolute;
+  top: 20px;
+  font-size: 18px;
+}
 
-    /* Multi-pending users section */
-    .mp-section{background:var(--card);border:1px solid rgba(139,92,246,0.3);border-radius:var(--radius);overflow:hidden;margin-bottom:18px;display:none}
-    .mp-section.visible{display:block}
-    .mp-header{background:rgba(139,92,246,0.08);padding:14px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
-    .mp-header h3{font-size:14px;font-weight:800;flex:1;color:var(--purple)}
-    .mp-table{width:100%;border-collapse:collapse;font-size:13px}
-    .mp-table th{background:var(--surface);padding:9px 14px;text-align:right;color:var(--muted);font-size:11px;font-weight:700;border-bottom:1px solid var(--border)}
-    .mp-table td{padding:10px 14px;border-top:1px solid var(--border);vertical-align:middle}
-    .mp-table tr:hover td{background:rgba(139,92,246,0.04)}
-    .mp-count{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(139,92,246,0.15);color:var(--purple);font-weight:900;font-size:13px}
-    .mp-ton{font-weight:700;color:var(--yellow)}
+.speed.left { left: 20px; }
+.speed.right { right: 20px; }
 
-    .empty{text-align:center;padding:40px;color:var(--muted)}
-    .empty .icon{font-size:36px;margin-bottom:10px}
-    .tloading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--muted);font-size:14px}
-
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .spin{animation:spin .7s linear infinite;display:inline-block}
-
-    /* User detail modal */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:1000;display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
-    .modal-overlay.open{display:flex}
-    .modal{background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:0;max-width:680px;width:100%;box-shadow:0 0 60px rgba(0,0,0,0.5);overflow:hidden}
-    .modal-header{background:var(--surface);padding:18px 22px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
-    .modal-header h3{font-size:16px;font-weight:900;flex:1}
-    .modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s}
-    .modal-close:hover{background:var(--border);color:var(--text)}
-    .modal-body{padding:20px 22px}
-
-    .user-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-    .ufield{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:11px 14px}
-    .ufield .uf-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-    .ufield .uf-val{font-size:14px;font-weight:700}
-    .ufield .uf-val.green{color:var(--green)}
-    .ufield .uf-val.red{color:var(--red)}
-    .ufield .uf-val.blue{color:var(--blue)}
-    .ufield .uf-val.yellow{color:var(--yellow)}
-
-    .section-title{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;margin-top:16px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-
-    .hist-table{width:100%;border-collapse:collapse;font-size:12px}
-    .hist-table th{padding:7px 10px;text-align:right;color:var(--muted);font-size:10px;font-weight:700;background:var(--surface);border-bottom:1px solid var(--border)}
-    .hist-table td{padding:8px 10px;border-top:1px solid var(--border)}
-    .hist-empty{text-align:center;padding:20px;color:var(--muted);font-size:12px}
-
-    .modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;background:var(--surface)}
-
-    /* Confirm reject modal */
-    .confirm-modal{background:var(--card);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:24px;max-width:400px;width:90%;box-shadow:0 0 40px rgba(239,68,68,0.1)}
-    .confirm-modal h3{font-size:16px;font-weight:900;color:var(--red);margin-bottom:10px}
-    .confirm-modal p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:18px}
-    .confirm-modal p strong{color:var(--text)}
-  </style>
+</style>
 </head>
+
 <body>
-<div class="wrapper">
 
-  <div class="header">
-    <div class="hicon">💳</div>
-    <div>
-      <h1>لوحة مراجعة السحوبات</h1>
-      <p>فحص ومراجعة طلبات السحب المعلقة — withdrawQueue</p>
-    </div>
-    <div class="header-badge">⏳ سحوبات معلقة</div>
+<div class="game">
+
+  <div class="road"></div>
+
+  <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/83d56c13-1651-4819-8aeb-708111194c39.png" class="finish">
+
+  <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/26fa6d91-973f-456a-b7e6-da1ddca47322.png" class="car car1">
+  <img src="https://i.supaimg.com/ec27537b-aa6a-42cf-8ba1-d6850eeea36d/f4695289-cd28-4737-b5b6-ec968e9b816d.png" class="car car2">
+
+  <div class="ui">
+    <div class="timer" id="timer">15</div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats" style="grid-template-columns:repeat(6,1fr)">
-    <div class="stat blue">
-      <div class="num" id="s-total">—</div>
-      <div class="lbl">إجمالي السحوبات</div>
-    </div>
-    <div class="stat yellow">
-      <div class="num" id="s-pending">—</div>
-      <div class="lbl">⏳ معلقة</div>
-    </div>
-    <div class="stat green">
-      <div class="num" id="s-ton">—</div>
-      <div class="lbl">إجمالي TON معلق</div>
-    </div>
-    <div class="stat red">
-      <div class="num" id="s-rejected">—</div>
-      <div class="lbl">❌ مرفوضة</div>
-    </div>
-    <div class="stat purple">
-      <div class="num" id="s-paid">—</div>
-      <div class="lbl">✅ مدفوعة</div>
-    </div>
-    <div class="stat orange" style="border-color:rgba(249,115,22,0.3)">
-      <div class="num" id="s-susp" style="color:var(--orange)">—</div>
-      <div class="lbl">⚠️ مكررة (مشبوهة)</div>
-    </div>
-  </div>
-
-  <!-- Filter card -->
-  <div class="filter-card">
-    <div class="fg">
-      <label>الحالة</label>
-      <select class="finp" id="f-status" onchange="applyFilters()">
-        <option value="pending">⏳ معلقة فقط</option>
-        <option value="all">الكل</option>
-        <option value="paid">✅ مدفوعة</option>
-        <option value="rejected">❌ مرفوضة</option>
-        <option value="suspicious">⚠️ مكررة (مشبوهة)</option>
-      </select>
-    </div>
-    <div class="fg">
-      <label>تصفية بالمبلغ (TON)</label>
-      <select class="finp" id="f-amount" onchange="applyFilters()">
-        <option value="all">كل المبالغ</option>
-        <option value="lt01">أقل من 0.1</option>
-        <option value="lt05">أقل من 0.5</option>
-        <option value="lt1">أقل من 1</option>
-        <option value="gte1">1 أو أكثر</option>
-        <option value="custom">مخصص ≤</option>
-      </select>
-    </div>
-    <div class="fg" id="custom-wrap" style="display:none">
-      <label>الحد الأقصى (TON)</label>
-      <input class="finp" id="f-custom" type="number" value="0.1" step="0.01" min="0" style="width:100px" oninput="applyFilters()"/>
-    </div>
-    <div class="fg">
-      <label>ترتيب</label>
-      <select class="finp" id="f-sort" onchange="applyFilters()">
-        <option value="newest">الأحدث أولاً</option>
-        <option value="oldest">الأقدم أولاً</option>
-        <option value="asc">المبلغ تصاعدي</option>
-        <option value="desc">المبلغ تنازلي</option>
-      </select>
-    </div>
-    <div class="fg">
-      <label>بحث بـ UserID</label>
-      <input class="finp" id="f-search" type="text" placeholder="مثال: 1234567890" oninput="applyFilters()" style="width:160px"/>
-    </div>
-    <button class="btn btn-blue" onclick="loadData()">🔄 تحديث البيانات</button>
-  </div>
-
-  <!-- Controls -->
-  <div class="controls">
-    <button class="btn btn-red btn-sm" id="btn-reject-filtered" onclick="confirmRejectFiltered()" disabled>
-      ❌ رفض كل النتائج الظاهرة
-    </button>
-    <button class="btn btn-ghost btn-sm" onclick="clearLog()">🗑️ مسح السجل</button>
-    <button class="btn btn-sm" id="btn-delete-susp" onclick="confirmDeleteSuspicious()" disabled
-      style="background:linear-gradient(135deg,var(--orange),#c2410c);color:#fff">
-      🗑️ حذف كل المشبوهة
-    </button>
-    <button class="btn btn-sm" id="btn-show-mp" onclick="showMultiPending()" disabled
-      style="background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff">
-      👥 مستخدمون بأكثر من سحب معلق
-    </button>
-    <span id="filter-count" style="font-size:12px;color:var(--muted);align-self:center;margin-right:auto"></span>
-  </div>
-
-  <!-- Log -->
-  <div class="log-box" id="log-box"><p>// اضغط "تحديث البيانات" للبدء</p></div>
-
-  <!-- Multi-pending users panel -->
-  <div class="mp-section" id="mp-section">
-    <div class="mp-header">
-      <span style="font-size:18px">👥</span>
-      <h3>مستخدمون لديهم أكثر من سحب معلق</h3>
-      <span id="mp-count-badge" style="background:rgba(139,92,246,0.15);color:var(--purple);padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700"></span>
-      <button class="btn btn-ghost btn-sm" onclick="closeMpSection()" style="margin-right:8px">✕ إغلاق</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table class="mp-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>User ID</th>
-            <th>عدد السحوبات المعلقة</th>
-            <th>إجمالي المبلغ</th>
-            <th>تفاصيل</th>
-            <th>حذف كل سحوباته المعلقة</th>
-          </tr>
-        </thead>
-        <tbody id="mp-table-body"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Table -->
-  <div class="table-wrap">
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>User ID</th>
-            <th>المبلغ (TON)</th>
-            <th>العنوان</th>
-            <th>التاريخ</th>
-            <th>الحالة</th>
-            <th>تفاصيل المستخدم</th>
-            <th>إجراء</th>
-          </tr>
-        </thead>
-        <tbody id="wd-table">
-          <tr><td colspan="8"><div class="empty"><div class="icon">💳</div>اضغط تحديث البيانات</div></td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="pagination" id="pagination" style="display:none"></div>
-  </div>
+  <div class="speed left" id="speed1">80 km/h</div>
+  <div class="speed right" id="speed2">95 km/h</div>
 
 </div>
 
-<!-- User Detail Modal -->
-<div class="modal-overlay" id="user-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <span style="font-size:20px">👤</span>
-      <h3 id="modal-uid">بيانات المستخدم</h3>
-      <button class="modal-close" onclick="closeUserModal()">✕</button>
-    </div>
-    <div class="modal-body" id="modal-body">
-      <div class="tloading"><span class="spin">⚙️</span> جارٍ تحميل البيانات...</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closeUserModal()">إغلاق</button>
-      <button class="btn btn-red btn-sm" id="modal-reject-btn">❌ رفض هذا السحب</button>
-    </div>
-  </div>
-</div>
+<script>
 
-<!-- Confirm Reject Modal -->
-<div class="modal-overlay" id="confirm-modal">
-  <div class="confirm-modal">
-    <h3>⚠️ تأكيد الرفض</h3>
-    <p id="confirm-text">هل أنت متأكد؟</p>
-    <div style="display:flex;gap:10px">
-      <button class="btn btn-ghost" style="flex:1;justify-content:center" onclick="closeConfirm()">إلغاء</button>
-      <button class="btn btn-red" style="flex:1;justify-content:center" id="confirm-ok">تأكيد الرفض</button>
-    </div>
-  </div>
-</div>
+let road = document.querySelector('.road');
+let finish = document.querySelector('.finish');
+let car1 = document.querySelector('.car1');
+let car2 = document.querySelector('.car2');
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, get, set, update, remove, query, orderByChild, equalTo }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+let roadY = 0;
 
-const app = initializeApp({
-  apiKey:"AIzaSyBmrSw-178Bx59TnRs03vaJGp8zS519sDc",
-  authDomain:"hhhrhdhd-2f68c.firebaseapp.com",
-  databaseURL:"https://hhhrhdhd-2f68c-default-rtdb.firebaseio.com",
-  projectId:"hhhrhdhd-2f68c",
-  storageBucket:"hhhrhdhd-2f68c.firebasestorage.app",
-  messagingSenderId:"159295815105",
-  appId:"1:159295815105:web:d23916911ae39e6f95c340",
-  measurementId:"G-TLG6TP348R"
-});
-const db = getDatabase(app);
+// السرعات (ممكن تتغير كل سباق)
+let speed1 = Math.random() * 40 + 60;
+let speed2 = Math.random() * 40 + 60;
 
-// ── State ────────────────────────────────────────────────
-let allWithdrawals = [];   // كل السحوبات من Firebase
-let filtered       = [];   // بعد الفلتر
-let currentPage    = 1;
-const PAGE_SIZE    = 30;
-let currentWdId    = null; // السحب المفتوح في المودال
-let confirmAction  = null; // دالة التأكيد
+// المسافة
+let dist1 = 0;
+let dist2 = 0;
 
-// ── Log ──────────────────────────────────────────────────
-function log(msg, type='info') {
-  const box = document.getElementById('log-box');
-  box.querySelector('p')?.remove();
-  const d = document.createElement('div');
-  d.className = 'log-item ' + type;
-  d.innerHTML = '<span class="dot"></span><span>' + msg + '</span>';
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-}
-window.clearLog = () => { document.getElementById('log-box').innerHTML='<p>// السجل فارغ</p>'; };
+// الوقت
+let time = 15;
 
-// ── Load withdrawQueue ───────────────────────────────────
-// ── Multi-pending users panel ────────────────────────────
-window.showMultiPending = function() {
-  const mpUsers = window._mpUsers || [];
-  const section = document.getElementById('mp-section');
-  const tbody   = document.getElementById('mp-table-body');
+// حالة السباق
+let raceFinished = false;
 
-  if (!mpUsers.length) return;
+// اللعبة
+function gameLoop() {
 
-  // ترتيب: الأكثر سحوبات أولاً
-  mpUsers.sort((a, b) => b[1].length - a[1].length);
+  if (raceFinished) return;
 
-  document.getElementById('mp-count-badge').textContent = mpUsers.length + ' مستخدم';
+  // تحريك الطريق
+  roadY += 10;
+  road.style.backgroundPositionY = roadY + "px";
 
-  tbody.innerHTML = mpUsers.map(([uid, wds], i) => {
-    const totalTon = wds.reduce((s, w) => s + w.ton, 0);
-    return '<tr>' +
-      '<td style="color:var(--muted);font-size:11px">' + (i+1) + '</td>' +
-      '<td style="font-family:monospace;font-weight:700;color:var(--blue)">' + uid + '</td>' +
-      '<td><span class="mp-count">' + wds.length + '</span> <span style="color:var(--muted);font-size:11px">سحب معلق</span></td>' +
-      '<td class="mp-ton">' + totalTon.toFixed(4) + ' TON</td>' +
-      '<td><button class="btn btn-ghost btn-sm" onclick="openUserModal('' + uid + '','' + wds[0].wdId + '')">👁 عرض</button></td>' +
-      '<td><button class="btn btn-red btn-sm" onclick="confirmDeleteUserPending('' + uid + '')">🗑️ حذف كل سحوباته</button></td>' +
-      '</tr>';
-  }).join('');
+  // تحريك خط النهاية
+  let finishTop = parseInt(finish.style.top || -800);
+  finishTop += 6;
+  finish.style.top = finishTop + "px";
 
-  section.classList.add('visible');
-  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-};
+  // تحديث المسافات
+  dist1 += speed1 * 0.02;
+  dist2 += speed2 * 0.02;
 
-window.closeMpSection = function() {
-  document.getElementById('mp-section').classList.remove('visible');
-};
+  // تحريك العربيات (فرق السرعة)
+  car1.style.left = (35 + dist1 * 0.03) + "%";
+  car2.style.left = (55 + dist2 * 0.03) + "%";
 
-window.confirmDeleteUserPending = function(userId) {
-  const wds = allWithdrawals.filter(w => w.userId === userId && w.status === 'pending');
-  if (!wds.length) return;
+  // لما النهاية توصل
+  if (finishTop > window.innerHeight - 200) {
+    raceFinished = true;
 
-  document.getElementById('confirm-text').innerHTML =
-    'حذف <strong>' + wds.length + ' سحب معلق</strong> للمستخدم <strong>' + userId + '</strong>؟<br>' +
-    'إجمالي المبلغ: <strong>' + wds.reduce((s,w) => s+w.ton, 0).toFixed(4) + ' TON</strong><br><br>' +
-    '<span style="color:var(--red);font-size:12px">سيتم حذفهم نهائياً من withdrawQueue.</span>';
-
-  document.getElementById('confirm-ok').onclick = () => {
-    closeConfirm();
-    doDeleteUserPending(userId, wds);
-  };
-  document.getElementById('confirm-modal').classList.add('open');
-};
-
-async function doDeleteUserPending(userId, wds) {
-  log('🗑️ حذف ' + wds.length + ' سحب معلق للمستخدم ' + userId + '...', 'warn');
-  let done = 0;
-  for (let i = 0; i < wds.length; i += 10) {
-    const chunk = wds.slice(i, i + 10);
-    await Promise.all(chunk.map(w =>
-      remove(ref(db, 'withdrawQueue/' + w.wdId))
-        .then(() => {
-          const idx = allWithdrawals.findIndex(x => x.wdId === w.wdId);
-          if (idx >= 0) allWithdrawals.splice(idx, 1);
-          done++;
-        })
-        .catch(e => log('❌ ' + w.wdId + ': ' + e.message, 'error'))
-    ));
-    await new Promise(r => setTimeout(r, 50));
-  }
-  updateStats();
-  applyFilters();
-  // تحديث البانل نفسه بعد الحذف
-  if (window._mpUsers) showMultiPending();
-  // لو ما في مستخدمين أكثر أغلق البانل
-  if (!window._mpUsers || !window._mpUsers.length) closeMpSection();
-  log('✅ تم حذف ' + done + ' سحب للمستخدم ' + userId, 'success');
-}
-
-// ── Delete all suspicious ────────────────────────────────
-window.confirmDeleteSuspicious = function() {
-  const targets = allWithdrawals.filter(w => w.suspicious);
-  if (!targets.length) return;
-
-  // نجمّع حسب المستخدم عشان نعرض ملخص واضح
-  const userMap = {};
-  targets.forEach(w => {
-    if (!userMap[w.userId]) userMap[w.userId] = [];
-    userMap[w.userId].push(w.ton.toFixed(4));
-  });
-  const summary = Object.entries(userMap)
-    .slice(0, 5)
-    .map(([uid, tons]) => uid + ' (' + tons.length + ' طلبات × ' + tons[0] + ' TON)')
-    .join('<br>') + (Object.keys(userMap).length > 5 ? '<br>...' : '');
-
-  document.getElementById('confirm-text').innerHTML =
-    'حذف <strong>' + targets.length + ' سحب مشبوه (مكرر)</strong> من ' + Object.keys(userMap).length + ' مستخدم:<br><br>' +
-    '<div style="font-size:11px;color:var(--muted);line-height:2;background:var(--surface);padding:8px;border-radius:6px;margin-top:4px">' + summary + '</div><br>' +
-    '<span style="color:var(--red);font-size:12px">سيتم حذفهم نهائياً من withdrawQueue.</span>';
-
-  document.getElementById('confirm-ok').onclick = () => {
-    closeConfirm();
-    doDeleteSuspicious(targets);
-  };
-  document.getElementById('confirm-modal').classList.add('open');
-};
-
-async function doDeleteSuspicious(targets) {
-  log('🗑️ حذف ' + targets.length + ' سحب مشبوه...', 'warn');
-  let done = 0;
-
-  for (let i = 0; i < targets.length; i += 10) {
-    const chunk = targets.slice(i, i + 10);
-    await Promise.all(chunk.map(w =>
-      remove(ref(db, 'withdrawQueue/' + w.wdId))
-        .then(() => {
-          // حذف من الـ array المحلي
-          const idx = allWithdrawals.findIndex(x => x.wdId === w.wdId);
-          if (idx >= 0) allWithdrawals.splice(idx, 1);
-          done++;
-        })
-        .catch(e => log('❌ ' + w.wdId + ': ' + e.message, 'error'))
-    ));
-    await new Promise(r => setTimeout(r, 50));
-  }
-
-  updateStats();
-  applyFilters();
-  log('✅ تم حذف ' + done + ' سحب مشبوه بنجاح!', 'success');
-}
-
-window.loadData = async function() {
-  const btn = document.querySelector('.btn-blue');
-  btn.innerHTML = '<span class="spin">⚙️</span> جارٍ التحميل...';
-  btn.disabled = true;
-  document.getElementById('wd-table').innerHTML =
-    '<tr><td colspan="8"><div class="tloading"><span class="spin">💳</span> جارٍ تحميل السحوبات...</div></td></tr>';
-
-  try {
-    const snap = await get(ref(db, 'withdrawQueue'));
-    if (!snap.exists()) {
-      allWithdrawals = [];
-      log('لا توجد سحوبات في withdrawQueue', 'warn');
+    if (dist1 > dist2) {
+      alert("🏆 العربية الأولى فازت!");
     } else {
-      const data = snap.val();
-      allWithdrawals = Object.entries(data).map(([wdId, v]) => ({
-        wdId,
-        userId:      String(v.userId || ''),
-        ton:         parseFloat(v.ton || v.amt || 0),
-        address:     v.address || '—',
-        status:      v.status || 'pending',
-        ts:          v.ts || v.timestamp || 0,
-        completedAt: v.completedAt || null,
-        txHash:      v.txHash || null,
-        attempts:    v.attempts || 0,
-        raw:         v
-      }));
-      log('✔ تم تحميل ' + allWithdrawals.length + ' سحب', 'success');
+      alert("🏆 العربية الثانية فازت!");
     }
-    updateStats();
-    applyFilters();
-  } catch(e) {
-    log('❌ خطأ: ' + e.message, 'error');
-    console.error(e);
   }
 
-  btn.innerHTML = '🔄 تحديث البيانات';
-  btn.disabled = false;
-};
-
-// ── Duplicate detection ──────────────────────────────────
-function detectDuplicates() {
-  // لكل مستخدم، لو عنده أكثر من سحب pending بنفس القيمة → مشبوه
-  // نجمّع: userId + ton (مقرّب لـ 6 أرقام عشرية) → عدد السحوبات
-  const map = {}; // key: userId|ton → [wdIds]
-  allWithdrawals.forEach(w => {
-    if (w.status !== 'pending') { w.suspicious = false; return; }
-    const key = w.userId + '|' + w.ton.toFixed(6);
-    if (!map[key]) map[key] = [];
-    map[key].push(w.wdId);
-  });
-  // وضع علامة suspicious على كل سحب ينتمي لمجموعة بها أكثر من طلب
-  allWithdrawals.forEach(w => {
-    if (w.status !== 'pending') return;
-    const key = w.userId + '|' + w.ton.toFixed(6);
-    w.suspicious = map[key] && map[key].length > 1;
-  });
+  requestAnimationFrame(gameLoop);
 }
 
-// ── Stats ────────────────────────────────────────────────
-function updateStats() {
-  detectDuplicates();
-  const pending  = allWithdrawals.filter(w => w.status === 'pending');
-  const paid     = allWithdrawals.filter(w => w.status === 'paid');
-  const rejected = allWithdrawals.filter(w => w.status === 'rejected');
-  const susp     = allWithdrawals.filter(w => w.suspicious);
-  const totalTon = pending.reduce((s, w) => s + w.ton, 0);
-  document.getElementById('s-total').textContent    = allWithdrawals.length.toLocaleString();
-  document.getElementById('s-pending').textContent  = pending.length.toLocaleString();
-  document.getElementById('s-ton').textContent      = totalTon.toFixed(3);
-  document.getElementById('s-rejected').textContent = rejected.length.toLocaleString();
-  document.getElementById('s-paid').textContent     = paid.length.toLocaleString();
-  document.getElementById('s-susp').textContent     = susp.length.toLocaleString();
-  document.getElementById('btn-delete-susp').disabled = susp.length === 0;
+gameLoop();
 
-  // كشف المستخدمين الذين لديهم أكثر من سحب معلق
-  const mpMap = {};
-  allWithdrawals.filter(w => w.status === 'pending').forEach(w => {
-    if (!mpMap[w.userId]) mpMap[w.userId] = [];
-    mpMap[w.userId].push(w);
-  });
-  const mpUsers = Object.entries(mpMap).filter(([, wds]) => wds.length > 1);
-  document.getElementById('btn-show-mp').disabled = mpUsers.length === 0;
-  // حفظ للاستخدام في الدالة
-  window._mpUsers = mpUsers;
-}
+// التايمر
+let timer = setInterval(() => {
+  time--;
+  document.getElementById("timer").innerText = time;
 
-// ── Filters ──────────────────────────────────────────────
-document.getElementById('f-amount').addEventListener('change', function() {
-  document.getElementById('custom-wrap').style.display = this.value === 'custom' ? 'flex' : 'none';
-});
-
-window.applyFilters = function() {
-  const status  = document.getElementById('f-status').value;
-  const amount  = document.getElementById('f-amount').value;
-  const custom  = parseFloat(document.getElementById('f-custom').value) || 0;
-  const sort    = document.getElementById('f-sort').value;
-  const search  = document.getElementById('f-search').value.trim().toLowerCase();
-
-  filtered = allWithdrawals.filter(w => {
-    // Status / suspicious
-    if (status === 'suspicious') {
-      if (!w.suspicious) return false;
-    } else if (status !== 'all') {
-      if (w.status !== status) return false;
-    }
-    // Amount
-    if (amount === 'lt01'   && w.ton >= 0.1)   return false;
-    if (amount === 'lt05'   && w.ton >= 0.5)   return false;
-    if (amount === 'lt1'    && w.ton >= 1)     return false;
-    if (amount === 'gte1'   && w.ton < 1)      return false;
-    if (amount === 'custom' && w.ton > custom) return false;
-    // Search
-    if (search && !w.userId.includes(search) && !w.wdId.toLowerCase().includes(search)) return false;
-    return true;
-  });
-
-  // Sort
-  filtered.sort((a, b) => {
-    if (sort === 'newest') return b.ts - a.ts;
-    if (sort === 'oldest') return a.ts - b.ts;
-    if (sort === 'asc')    return a.ton - b.ton;
-    if (sort === 'desc')   return b.ton - a.ton;
-    return 0;
-  });
-
-  currentPage = 1;
-  const pendingCount = filtered.filter(w => w.status === 'pending').length;
-  document.getElementById('btn-reject-filtered').disabled = pendingCount === 0;
-  document.getElementById('filter-count').textContent =
-    filtered.length + ' نتيجة' + (filtered.length !== allWithdrawals.length ? ' من ' + allWithdrawals.length : '');
-  renderPage();
-};
-
-// ── Render table ─────────────────────────────────────────
-function renderPage() {
-  const tbody  = document.getElementById('wd-table');
-  const pgWrap = document.getElementById('pagination');
-  const total  = filtered.length;
-
-  if (!total) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><div class="icon">🔍</div>لا توجد نتائج</div></td></tr>';
-    pgWrap.style.display = 'none';
-    return;
+  if (time <= 0) {
+    clearInterval(timer);
   }
+}, 1000);
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-  if (currentPage > totalPages) currentPage = totalPages;
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const slice = filtered.slice(start, start + PAGE_SIZE);
-
-  tbody.innerHTML = slice.map((w, i) => {
-    const date = w.ts ? new Date(w.ts).toLocaleString('ar-EG') : '—';
-    const statusBadge = w.suspicious
-      ? '<span class="badge badge-susp">⚠️ مكرر</span>'
-      : w.status === 'pending'
-      ? '<span class="badge badge-pend">⏳ معلق</span>'
-      : w.status === 'paid'
-      ? '<span class="badge badge-paid">✅ مدفوع</span>'
-      : '<span class="badge badge-rej">❌ مرفوض</span>';
-
-    const rejectBtn = w.status === 'pending'
-      ? '<button class="btn btn-red btn-sm" onclick="askReject(\'' + w.wdId + '\')">❌ رفض</button>'
-      : '<button class="btn btn-ghost btn-sm" disabled>—</button>';
-
-    const tonColor = w.ton < 0.1 ? 'color:var(--yellow)' : w.ton >= 1 ? 'color:var(--green)' : '';
-    const rowClass = w.suspicious ? 'susp-row' : '';
-
-    return '<tr class="' + rowClass + '">' +
-      '<td style="color:var(--muted);font-size:11px">' + (start + i + 1) + '</td>' +
-      '<td class="mono" style="color:var(--blue);font-weight:700">' + w.userId + '</td>' +
-      '<td style="font-weight:800;' + tonColor + '">' + w.ton.toFixed(4) + ' TON</td>' +
-      '<td class="addr" title="' + w.address + '" onclick="navigator.clipboard.writeText(\'' + w.address + '\')">' + w.address + '</td>' +
-      '<td style="font-size:11px;color:var(--muted)">' + date + '</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td><button class="btn btn-ghost btn-sm" onclick="openUserModal(\'' + w.userId + '\',\'' + w.wdId + '\')">👁 عرض</button></td>' +
-      '<td>' + rejectBtn + '</td>' +
-      '</tr>';
-  }).join('');
-
-  // Pagination
-  pgWrap.style.display = 'flex';
-  const W = 5, s = Math.max(1, Math.min(currentPage - 2, totalPages - W + 1)), e = Math.min(totalPages, s + W - 1);
-  let pg = '<button class="page-btn" onclick="goPage(' + (currentPage-1) + ')" ' + (currentPage===1?'disabled':'') + '>◀</button>';
-  if (s>1) pg += '<button class="page-btn" onclick="goPage(1)">1</button>' + (s>2?'<span class="page-info">…</span>':'');
-  for (let p=s;p<=e;p++) pg += '<button class="page-btn ' + (p===currentPage?'active':'') + '" onclick="goPage('+p+')">' + p + '</button>';
-  if (e<totalPages) pg += (e<totalPages-1?'<span class="page-info">…</span>':'') + '<button class="page-btn" onclick="goPage('+totalPages+')">'+totalPages+'</button>';
-  pg += '<button class="page-btn" onclick="goPage(' + (currentPage+1) + ')" ' + (currentPage===totalPages?'disabled':'') + '>▶</button>';
-  pg += '<span class="page-info">' + (start+1) + '–' + Math.min(start+PAGE_SIZE,total) + ' من ' + total + '</span>';
-  pgWrap.innerHTML = pg;
-}
-
-window.goPage = function(p) {
-  const tp = Math.ceil(filtered.length / PAGE_SIZE);
-  if (p<1||p>tp) return;
-  currentPage = p; renderPage();
-  window.scrollTo({top:0,behavior:'smooth'});
-};
-
-// ── Open user detail modal ───────────────────────────────
-window.openUserModal = async function(userId, wdId) {
-  currentWdId = wdId;
-  document.getElementById('modal-uid').textContent = 'المستخدم: ' + userId;
-  document.getElementById('modal-body').innerHTML =
-    '<div class="tloading"><span class="spin">⚙️</span> جارٍ تحميل بيانات المستخدم...</div>';
-  document.getElementById('user-modal').classList.add('open');
-
-  // زرار رفض في المودال
-  const wd = allWithdrawals.find(w => w.wdId === wdId);
-  const rejectBtn = document.getElementById('modal-reject-btn');
-  if (wd && wd.status === 'pending') {
-    rejectBtn.disabled = false;
-    rejectBtn.onclick = () => { closeUserModal(); askReject(wdId); };
-  } else {
-    rejectBtn.disabled = true;
-  }
-
-  try {
-    const [userSnap, wdSnap] = await Promise.all([
-      get(ref(db, 'users/' + userId)),
-      get(ref(db, 'withdrawQueue'))
-    ]);
-
-    if (!userSnap.exists()) {
-      document.getElementById('modal-body').innerHTML =
-        '<div class="hist-empty">⚠️ المستخدم غير موجود في قاعدة البيانات</div>';
-      return;
-    }
-
-    const u = userSnap.val();
-
-    // حساب بياناته
-    const depositCount = u.deposits ? Object.keys(u.deposits).length : 0;
-    const totalDepAmt  = u.deposits
-      ? Object.values(u.deposits).reduce((s,d) => s+(parseFloat(d.amount)||0), 0) : 0;
-
-    // سجل سحوباته من withdrawQueue
-    const allWds = wdSnap.exists() ? Object.entries(wdSnap.val()) : [];
-    const userWds = allWds
-      .filter(([,v]) => String(v.userId) === String(userId))
-      .map(([k,v]) => ({wdId:k,...v}))
-      .sort((a,b) => (b.ts||0)-(a.ts||0));
-
-    const totalWithdrawn = userWds
-      .filter(w => w.status === 'paid')
-      .reduce((s,w) => s+(parseFloat(w.ton||w.amt||0)), 0);
-
-    const pendingWds = userWds.filter(w => w.status === 'pending');
-
-    // عدد إحالاته
-    const referralCount = u.referrals ? Object.keys(u.referrals).length : 0;
-
-    document.getElementById('modal-body').innerHTML = `
-      <div class="user-grid">
-        <div class="ufield">
-          <div class="uf-lbl">الاسم</div>
-          <div class="uf-val">${(u.firstName||'') + ' ' + (u.lastName||'') || '—'}</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">اليوزر</div>
-          <div class="uf-val blue">@${u.username || '—'}</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">hasDeposited</div>
-          <div class="uf-val ${u.hasDeposited ? 'green' : 'red'}">${u.hasDeposited ? '✅ نعم' : '❌ لا'}</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">عدد الإيداعات</div>
-          <div class="uf-val blue">${depositCount} إيداع (${totalDepAmt.toFixed(3)} TON)</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">الرصيد الحالي</div>
-          <div class="uf-val yellow">${(u.bambooBalance || u.balance || 0).toFixed(2)}</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">tonBalance</div>
-          <div class="uf-val green">${(u.tonBalance || 0).toFixed(4)} TON</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">إجمالي المسحوب (paid)</div>
-          <div class="uf-val">${totalWithdrawn.toFixed(4)} TON</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">عدد الإحالات</div>
-          <div class="uf-val">${referralCount}</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">السحوبات المعلقة الحالية</div>
-          <div class="uf-val yellow">${pendingWds.length} معلق</div>
-        </div>
-        <div class="ufield">
-          <div class="uf-lbl">wasReset</div>
-          <div class="uf-val ${u.wasReset ? 'red' : 'green'}">${u.wasReset ? '⚠️ تم إعادة تعيينه' : '✅ سليم'}</div>
-        </div>
-      </div>
-
-      <div class="section-title">📋 سجل كل السحوبات (${userWds.length})</div>
-      ${userWds.length ? `
-      <table class="hist-table">
-        <thead>
-          <tr>
-            <th>المبلغ</th>
-            <th>الحالة</th>
-            <th>التاريخ</th>
-            <th>TxHash</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${userWds.map(w => `
-            <tr>
-              <td style="font-weight:700;color:${w.ton>=1?'var(--green)':'var(--yellow)'}">${parseFloat(w.ton||w.amt||0).toFixed(4)} TON</td>
-              <td>${w.status==='paid'?'<span class="badge badge-paid">✅ مدفوع</span>':w.status==='pending'?'<span class="badge badge-pend">⏳ معلق</span>':'<span class="badge badge-rej">❌ مرفوض</span>'}</td>
-              <td style="font-size:11px;color:var(--muted)">${w.ts ? new Date(w.ts).toLocaleString('ar-EG') : '—'}</td>
-              <td style="font-family:monospace;font-size:10px;color:var(--muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${w.txHash || '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>` : '<div class="hist-empty">لا توجد سحوبات سابقة</div>'}
-
-      ${depositCount > 0 ? `
-      <div class="section-title">💰 سجل الإيداعات (${depositCount})</div>
-      <table class="hist-table">
-        <thead><tr><th>المبلغ</th><th>bamboAdded</th><th>التاريخ</th></tr></thead>
-        <tbody>
-          ${Object.values(u.deposits).sort((a,b)=>b.timestamp-a.timestamp).slice(0,10).map(d => `
-            <tr>
-              <td style="font-weight:700;color:var(--blue)">${parseFloat(d.amount||0).toFixed(3)} TON</td>
-              <td style="color:var(--green)">${d.bambooAdded||0}</td>
-              <td style="font-size:11px;color:var(--muted)">${d.date ? new Date(d.date).toLocaleString('ar-EG') : '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>` : ''}
-    `;
-  } catch(e) {
-    document.getElementById('modal-body').innerHTML =
-      '<div class="hist-empty">❌ خطأ: ' + e.message + '</div>';
-  }
-};
-
-window.closeUserModal = function() {
-  document.getElementById('user-modal').classList.remove('open');
-  currentWdId = null;
-};
-
-// ── Reject single ────────────────────────────────────────
-window.askReject = function(wdId) {
-  const w = allWithdrawals.find(x => x.wdId === wdId);
-  if (!w) return;
-  document.getElementById('confirm-text').innerHTML =
-    'رفض سحب المستخدم <strong>' + w.userId + '</strong><br>' +
-    'المبلغ: <strong>' + w.ton.toFixed(4) + ' TON</strong>';
-  confirmAction = () => doReject(wdId);
-  document.getElementById('confirm-ok').onclick = () => { closeConfirm(); confirmAction(); };
-  document.getElementById('confirm-modal').classList.add('open');
-};
-
-async function doReject(wdId) {
-  try {
-    await update(ref(db, 'withdrawQueue/' + wdId), {
-      status: 'rejected',
-      rejectedAt: Date.now(),
-      rejectedBy: 'admin'
-    });
-    const w = allWithdrawals.find(x => x.wdId === wdId);
-    if (w) w.status = 'rejected';
-    updateStats(); applyFilters();
-    log('❌ تم رفض: ' + wdId, 'warn');
-  } catch(e) { log('❌ فشل: ' + e.message, 'error'); }
-}
-
-// ── Reject all filtered pending ──────────────────────────
-window.confirmRejectFiltered = function() {
-  const targets = filtered.filter(w => w.status === 'pending');
-  if (!targets.length) return;
-  document.getElementById('confirm-text').innerHTML =
-    'رفض <strong>' + targets.length + ' سحب معلق</strong> من النتائج الظاهرة حالياً؟<br>' +
-    '<span style="color:var(--red)">لا يمكن التراجع عن هذا الإجراء.</span>';
-  confirmAction = async () => {
-    log('🔄 رفض ' + targets.length + ' سحب...', 'warn');
-    let done = 0;
-    for (let i = 0; i < targets.length; i += 10) {
-      const chunk = targets.slice(i, i+10);
-      await Promise.all(chunk.map(w =>
-        update(ref(db, 'withdrawQueue/' + w.wdId), {
-          status: 'rejected', rejectedAt: Date.now(), rejectedBy: 'admin'
-        }).then(() => { w.status = 'rejected'; done++; })
-         .catch(e => log('❌ ' + w.wdId + ': ' + e.message, 'error'))
-      ));
-      await new Promise(r => setTimeout(r, 50));
-    }
-    updateStats(); applyFilters();
-    log('✅ تم رفض ' + done + ' سحب', 'success');
-  };
-  document.getElementById('confirm-ok').onclick = () => { closeConfirm(); confirmAction(); };
-  document.getElementById('confirm-modal').classList.add('open');
-};
-
-window.closeConfirm = function() {
-  document.getElementById('confirm-modal').classList.remove('open');
-};
-
-// Close modals on overlay click
-document.getElementById('user-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeUserModal();
-});
-document.getElementById('confirm-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeConfirm();
-});
-
-// Auto-load on start
-window.loadData();
 </script>
+
 </body>
 </html>
